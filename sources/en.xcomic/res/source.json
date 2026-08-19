@@ -1,0 +1,17 @@
+{
+	"info": {
+		"id": "en.xcomic",
+		"name": "XCOMIC",
+		"version": 1,
+		"url": "https://xcomic.me",
+		"contentRating": 2,
+		"languages": ["en"],
+		"minAppVersion": "0.7.1"
+	},
+	"listings": [
+		{ "id": "field_score", "name": "Top Rated" },
+		{ "id": "field_update", "name": "Latest Update" },
+		{ "id": "field_create", "name": "Recently Added" },
+		{ "id": "field_chapter", "name": "Most Chapters" }
+	]
+}
