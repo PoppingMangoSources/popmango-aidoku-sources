@@ -9,16 +9,27 @@ use aidoku::{
 	MangaStatus, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, borrow::ToOwned, string::ToString, vec},
 	helpers::uri::encode_uri_component,
-	imports::{net::Request, std::parse_date},
+	imports::{defaults::defaults_get, net::Request, std::parse_date},
 	prelude::*,
 };
 use flight::extract_flight;
 use models::{ApiManga, ApiMangaDetails, ApiMangaList, FlightChapterList, FlightImages, TagValue};
 
-const BASE_URL: &str = "https://reimanga.net";
+const DEFAULT_BASE_URL: &str = "https://reimanga.net";
 const PAGE_SIZE: i32 = 24;
 
 const ADULT_GENRES: &[&str] = &["ecchi", "smut", "adult", "mature", "yaoi", "yuri", "hentai"];
+
+/// The site's address, overridable in settings if the domain moves.
+fn base_url() -> String {
+	defaults_get::<String>("baseUrl")
+		.map(|value| value.trim().trim_end_matches('/').to_string())
+		.filter(|value| value.starts_with("http://") || value.starts_with("https://"))
+		.unwrap_or_else(|| DEFAULT_BASE_URL.to_string())
+}
+
+/// Sort ids matching the order of the `sort` filter options in filters.json.
+const SORT_IDS: &[&str] = &["latest", "newest", "viewed", "scored", "title"];
 
 fn clean(text: &str) -> String {
 	text.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -122,7 +133,7 @@ fn cover_for(manga: &ApiManga) -> String {
 		}
 		url.to_string()
 	} else {
-		format!("{BASE_URL}/covers/{}/thumbnail.webp", manga.id)
+		format!("{}/covers/{}/thumbnail.webp", base_url(), manga.id)
 	}
 }
 
@@ -176,7 +187,7 @@ fn to_manga(manga: &ApiManga) -> Manga {
 			.as_deref()
 			.map(clean)
 			.filter(|d| !d.is_empty()),
-		url: Some(format!("{BASE_URL}/manga/{}", manga_id_for(manga))),
+		url: Some(format!("{}/manga/{}", base_url(), manga_id_for(manga))),
 		tags: (!genres.is_empty()).then_some(genres),
 		status: status_for(manga),
 		content_rating: content_rating_for(manga),
@@ -186,7 +197,7 @@ fn to_manga(manga: &ApiManga) -> Manga {
 
 fn fetch_json<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
 	Request::get(url)?
-		.header("Referer", &format!("{BASE_URL}/"))
+		.header("Referer", &format!("{}/", base_url()))
 		.header("Accept", "application/json")
 		.header("Cookie", "showAdultContent=true")
 		.send()?
@@ -197,7 +208,7 @@ fn fetch_json<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
 /// header asks for that payload instead of the rendered page.
 fn fetch_flight(url: &str) -> Result<String> {
 	Request::get(url)?
-		.header("Referer", &format!("{BASE_URL}/"))
+		.header("Referer", &format!("{}/", base_url()))
 		.header("RSC", "1")
 		.header("Accept", "text/x-component,*/*")
 		.header("Cookie", "showAdultContent=true")
@@ -256,7 +267,7 @@ fn build_search_url(query: &str, sort: Option<&str>, page: i32, filters: &[Filte
 			encode_uri_component(excluded.join(","))
 		));
 	}
-	format!("{BASE_URL}/api/manga?{}", params.join("&"))
+	format!("{}/api/manga?{}", base_url(), params.join("&"))
 }
 
 struct ReiManga;
@@ -273,7 +284,13 @@ impl Source for ReiManga {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let query = query.unwrap_or_default();
-		let url = build_search_url(&query, None, page, &filters);
+		let sort = filters.iter().find_map(|filter| match filter {
+			FilterValue::Sort { id, index, .. } if id == "sort" => {
+				SORT_IDS.get(*index as usize).copied()
+			}
+			_ => None,
+		});
+		let url = build_search_url(&query, sort, page, &filters);
 		let list: ApiMangaList = fetch_json(&url)?;
 		let current = list
 			.pagination
@@ -301,7 +318,8 @@ impl Source for ReiManga {
 			return Ok(manga);
 		};
 		if needs_details {
-			let details: ApiMangaDetails = fetch_json(&format!("{BASE_URL}/api/manga/{numeric}"))?;
+			let details: ApiMangaDetails =
+				fetch_json(&format!("{}/api/manga/{numeric}", base_url()))?;
 			if let Some(api) = details.manga.as_ref() {
 				let mut parsed = to_manga(api);
 				parsed.key = manga.key.clone();
@@ -310,14 +328,19 @@ impl Source for ReiManga {
 			}
 		}
 		if needs_chapters {
-			let body = fetch_flight(&format!("{BASE_URL}/manga/{}", manga.key))?;
+			let body = fetch_flight(&format!("{}/manga/{}", base_url(), manga.key))?;
 			manga.chapters = Some(parse_chapters(&body, &manga.key));
 		}
 		Ok(manga)
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let body = fetch_flight(&format!("{BASE_URL}/manga/{}/{}", manga.key, chapter.key))?;
+		let body = fetch_flight(&format!(
+			"{}/manga/{}/{}",
+			base_url(),
+			manga.key,
+			chapter.key
+		))?;
 		let images = extract_flight::<FlightImages>(&body, "images")
 			.and_then(|data| data.images)
 			.unwrap_or_default();
@@ -369,7 +392,7 @@ fn parse_chapters(body: &str, manga_key: &str) -> Vec<Chapter> {
 				title,
 				chapter_number: Some(number),
 				date_uploaded: date,
-				url: Some(format!("{BASE_URL}/manga/{manga_key}/{id}")),
+				url: Some(format!("{}/manga/{manga_key}/{id}", base_url())),
 				language: Some("en".into()),
 				..Default::default()
 			})
@@ -409,17 +432,21 @@ fn is_plain_chapter_label(name: &str) -> bool {
 
 impl Home for ReiManga {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let trending: Result<Vec<ApiManga>> =
-			fetch_json(&format!("{BASE_URL}/api/manga/trending?limit=10&full=1"));
+		let trending: Result<Vec<ApiManga>> = fetch_json(&format!(
+			"{}/api/manga/trending?limit=10&full=1",
+			base_url()
+		));
 		let most_read: Result<Vec<ApiManga>> = fetch_json(&format!(
-			"{BASE_URL}/api/manga/most-read?limit=30&period=week"
+			"{}/api/manga/most-read?limit=30&period=week",
+			base_url()
 		));
 		let new_list: Result<ApiMangaList> =
-			fetch_json(&format!("{BASE_URL}/api/manga/new?limit=12"));
+			fetch_json(&format!("{}/api/manga/new?limit=12", base_url()));
 		let latest: Result<ApiMangaList> =
-			fetch_json(&format!("{BASE_URL}/api/manga/latest-updates?limit=18"));
+			fetch_json(&format!("{}/api/manga/latest-updates?limit=18", base_url()));
 		let top_rated: Result<ApiMangaList> = fetch_json(&format!(
-			"{BASE_URL}/api/manga?page=1&limit={PAGE_SIZE}&sort=scored&order=desc"
+			"{}/api/manga?page=1&limit={PAGE_SIZE}&sort=scored&order=desc",
+			base_url()
 		));
 
 		let mut components: Vec<HomeComponent> = Vec::new();
@@ -514,7 +541,7 @@ impl ListingProvider for ReiManga {
 impl aidoku::ImageRequestProvider for ReiManga {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?
-			.header("Referer", &format!("{BASE_URL}/"))
+			.header("Referer", &format!("{}/", base_url()))
 			.header(
 				"Accept",
 				"image/avif,image/webp,image/apng,image/png,image/svg+xml,*/*;q=0.8",

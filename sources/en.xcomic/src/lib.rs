@@ -7,7 +7,7 @@ use aidoku::{
 	HomeComponentValue, HomeLayout, ImageRequestProvider, Link, Listing, ListingProvider, Manga,
 	MangaPageResult, MangaStatus, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, string::ToString, vec},
-	imports::net::Request,
+	imports::{defaults::defaults_get, net::Request},
 	prelude::*,
 };
 use models::*;
@@ -16,6 +16,34 @@ const DOMAIN: &str = "https://xcomic.me";
 const API_URL: &str = "https://xcomic.me/query/";
 const PAGE_SIZE: i32 = 36;
 const CHAPTER_PAGE_SIZE: i32 = 1000;
+
+/// Sort ids matching the order of the `sort` filter options in filters.json.
+const SORT_IDS: &[&str] = &[
+	"field_score",
+	"field_update",
+	"field_create",
+	"field_name_asc",
+	"field_name_desc",
+	"field_chapter",
+	"field_follow",
+	"field_review",
+	"field_comment",
+];
+
+const DEFAULT_TYPES: &[&str] = &["manga", "manhwa", "manhua"];
+const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica"];
+
+fn content_types() -> Vec<String> {
+	defaults_get::<Vec<String>>("contentTypes")
+		.filter(|list| !list.is_empty())
+		.unwrap_or_else(|| DEFAULT_TYPES.iter().map(|s| s.to_string()).collect())
+}
+
+fn content_ratings() -> Vec<String> {
+	defaults_get::<Vec<String>>("contentRatings")
+		.filter(|list| !list.is_empty())
+		.unwrap_or_else(|| DEFAULT_RATINGS.iter().map(|s| s.to_string()).collect())
+}
 
 const ADULT_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
 const MATURE_GENRES: &[&str] = &["ecchi", "erotica", "mature", "yaoi", "yuri"];
@@ -317,9 +345,9 @@ fn browse_select(
 		"excGenres": exc,
 		"incGenresMode": "and",
 		"excGenresMode": "or",
-		"incTypes": ["manga", "manhwa", "manhua"],
+		"incTypes": content_types(),
 		"incDemographics": [],
-		"incContentRatings": ["safe", "suggestive", "erotica", "pornographic"],
+		"incContentRatings": content_ratings(),
 		"releaseYearMin": serde_json::Value::Null,
 		"releaseYearMax": serde_json::Value::Null,
 		"origStatus": serde_json::Value::Null,
@@ -379,8 +407,11 @@ impl Source for XComic {
 		let mut exc: Vec<String> = Vec::new();
 		for filter in &filters {
 			match filter {
-				FilterValue::Sort { id, .. } if id == "sort" => {}
-				FilterValue::Select { id, value } if id == "sort" => sortby = value.clone(),
+				FilterValue::Sort { id, index, .. } if id == "sort" => {
+					if let Some(sort) = SORT_IDS.get(*index as usize) {
+						sortby = (*sort).to_string();
+					}
+				}
 				FilterValue::MultiSelect {
 					included, excluded, ..
 				} => {

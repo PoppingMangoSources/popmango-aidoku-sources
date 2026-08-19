@@ -1,0 +1,23 @@
+[
+	{
+		"type": "select",
+		"id": "genre",
+		"title": "Genre",
+		"options": [
+			"All", "Action", "Adventure", "Comedy", "Crime", "Demons", "Drama", "Ecchi",
+			"Fantasy", "Girls Love", "Gourmet", "Harem", "Horror", "Isekai", "Iyashikei",
+			"Kids", "Magic", "Manhwa/Manhua", "Martial Arts", "Mecha", "Military",
+			"Mystery", "Parody", "Psychological", "Romance", "School", "Sci-Fi", "Seinen",
+			"Shoujo", "Shounen", "Slice of Life", "Space", "Sports", "Super Power",
+			"Supernatural", "Thriller", "Vampire"
+		],
+		"ids": [
+			"all", "Action", "Adventure", "Comedy", "Crime", "Demons", "Drama", "Ecchi",
+			"Fantasy", "Girls Love", "Gourmet", "Harem", "Horror", "Isekai", "Iyashikei",
+			"Kids", "Magic", "Manhwa/Manhua", "Martial Arts", "Mecha", "Military",
+			"Mystery", "Parody", "Psychological", "Romance", "School", "Sci-Fi", "Seinen",
+			"Shoujo", "Shounen", "Slice of Life", "Space", "Sports", "Super Power",
+			"Supernatural", "Thriller", "Vampire"
+		]
+	}
+]

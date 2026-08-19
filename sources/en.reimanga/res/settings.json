@@ -1,0 +1,17 @@
+[
+	{
+		"type": "group",
+		"footer": "Override the site address if the domain moves. Leave empty to use the default (https://reimanga.net).",
+		"items": [
+			{
+				"type": "text",
+				"key": "baseUrl",
+				"title": "Base URL",
+				"placeholder": "https://reimanga.net",
+				"autocapitalizationType": 0,
+				"keyboardType": 3,
+				"refreshes": ["content"]
+			}
+		]
+	}
+]

@@ -248,26 +248,66 @@ impl Source for MangaHome {
 		&self,
 		query: Option<String>,
 		page: i32,
-		_filters: Vec<FilterValue>,
+		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let query = query.unwrap_or_default();
 		let query = query.trim();
-		let url = if query.is_empty() {
+
+		let mut status = String::new();
+		let mut included: Vec<String> = Vec::new();
+		let mut excluded: Vec<String> = Vec::new();
+		for filter in &filters {
+			match filter {
+				FilterValue::Select { id, value } if id == "status" && !value.is_empty() => {
+					status = value.clone();
+				}
+				FilterValue::MultiSelect {
+					id,
+					included: inc,
+					excluded: exc,
+				} if id == "genres" => {
+					included.extend(inc.iter().cloned());
+					excluded.extend(exc.iter().cloned());
+				}
+				_ => {}
+			}
+		}
+		let has_filters = !status.is_empty() || !included.is_empty() || !excluded.is_empty();
+
+		let url = if query.is_empty() && !has_filters {
 			if page > 1 {
 				format!("{BASE_URL}/latest/{page}.html")
 			} else {
 				format!("{BASE_URL}/latest")
 			}
 		} else {
-			format!(
-				"{BASE_URL}/search?name={}&name_method=cw&advopts=1{}",
-				encode_uri_component(query),
-				if page > 1 {
-					format!("&page={page}")
-				} else {
-					String::new()
-				}
-			)
+			// The advanced-search endpoint accepts an optional name plus genre and
+			// status filters, gated behind advopts=1.
+			let mut params: Vec<String> = Vec::new();
+			if !query.is_empty() {
+				params.push(format!("name={}", encode_uri_component(query)));
+				params.push("name_method=cw".into());
+			}
+			if !included.is_empty() {
+				params.push(format!(
+					"ingenres={}",
+					encode_uri_component(included.join(","))
+				));
+			}
+			if !excluded.is_empty() {
+				params.push(format!(
+					"exgenres={}",
+					encode_uri_component(excluded.join(","))
+				));
+			}
+			if !status.is_empty() {
+				params.push(format!("is_completed={status}"));
+			}
+			params.push("advopts=1".into());
+			if page > 1 {
+				params.push(format!("page={page}"));
+			}
+			format!("{BASE_URL}/search?{}", params.join("&"))
 		};
 		let document = fetch(&url)?;
 		let entries: Vec<Manga> = parse_list(&document).into_iter().map(|i| i.manga).collect();

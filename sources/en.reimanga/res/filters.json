@@ -1,0 +1,33 @@
+[
+	{
+		"type": "sort",
+		"id": "sort",
+		"canAscend": false,
+		"default": { "index": 0, "ascending": false },
+		"options": ["Latest Update", "Newest", "Most Viewed", "Top Rated", "Title A-Z"]
+	},
+	{
+		"type": "select",
+		"id": "status",
+		"title": "Status",
+		"options": ["All", "Ongoing", "Completed"],
+		"ids": ["", "ongoing", "completed"]
+	},
+	{
+		"type": "multi-select",
+		"id": "genres",
+		"title": "Genres",
+		"isGenre": true,
+		"canExclude": true,
+		"options": [
+			"Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror",
+			"Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance",
+			"Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"
+		],
+		"ids": [
+			"action", "adventure", "comedy", "drama", "ecchi", "fantasy", "horror",
+			"mahou-shoujo", "mecha", "music", "mystery", "psychological", "romance",
+			"scifi", "slice-of-life", "sports", "supernatural", "thriller"
+		]
+	}
+]

@@ -1,0 +1,27 @@
+[
+	{
+		"type": "group",
+		"title": "Content",
+		"footer": "Choose which content types and ratings appear in Discover and search.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "contentTypes",
+				"title": "Content Types",
+				"values": ["manga", "manhwa", "manhua", "cartoon", "western", "artbook", "imageset"],
+				"titles": ["Manga", "Manhwa", "Manhua", "Cartoon", "Western", "Artbook", "Imageset"],
+				"default": ["manga", "manhwa", "manhua"],
+				"refreshes": ["content"]
+			},
+			{
+				"type": "multi-select",
+				"key": "contentRatings",
+				"title": "Content Ratings",
+				"values": ["safe", "suggestive", "erotica", "pornographic"],
+				"titles": ["Safe", "Suggestive", "Erotica", "Pornographic"],
+				"default": ["safe", "suggestive", "erotica"],
+				"refreshes": ["content"]
+			}
+		]
+	}
+]
