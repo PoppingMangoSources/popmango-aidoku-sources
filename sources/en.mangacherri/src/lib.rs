@@ -286,23 +286,57 @@ fn cards_from(document: &Document, selector: &str) -> Vec<Manga> {
 		.unwrap_or_default()
 }
 
-/// The `.section-container` whose `.section-title` matches `title`.
+/// The `.section-container` that holds the `.section-title` whose text matches
+/// `title` — the equivalent of the source's `.section-title … .closest()`.
 fn find_section(document: &Document, title: &str) -> Option<Element> {
-	let sections = document.select(".section-container")?;
-	sections.into_iter().find(|section| {
-		section
-			.select_first(".section-title")
-			.and_then(|el| el.text())
-			.map(|text| clean(&text))
-			.is_some_and(|heading| heading.eq_ignore_ascii_case(title))
+	let titles = document.select(".section-title")?;
+	for heading in titles {
+		let text = heading.text().map(|t| clean(&t)).unwrap_or_default();
+		if !text.eq_ignore_ascii_case(title) {
+			continue;
+		}
+		let mut current = heading.parent();
+		while let Some(element) = current {
+			if element.has_class("section-container") {
+				return Some(element);
+			}
+			current = element.parent();
+		}
+	}
+	None
+}
+
+/// A home-carousel card: a cover link, a title link and a rating badge.
+fn carousel_card(item: &Element) -> Option<Manga> {
+	let slug = slug_from_href(&item.select_first("a.manga-cover-link")?.attr("href")?);
+	if slug.is_empty() {
+		return None;
+	}
+	let title = item
+		.select_first("a.manga-title-link")
+		.and_then(|a| a.text())
+		.map(|t| clean(&t))
+		.filter(|t| !t.is_empty())?;
+	let cover = item
+		.select_first(".manga-live-cover img, img")
+		.and_then(|img| img.attr("data-src").or_else(|| img.attr("src")))
+		.map(|src| abs_url(&src))
+		.filter(|url| !url.is_empty());
+	Some(Manga {
+		key: slug.clone(),
+		title,
+		cover,
+		url: Some(format!("{BASE_URL}/{slug}")),
+		content_rating: ContentRating::Suggestive,
+		..Default::default()
 	})
 }
 
-/// The cards in the section whose `.section-title` matches `title`.
-fn section_cards(document: &Document, title: &str, item_selector: &str) -> Vec<Manga> {
+/// The carousel cards under the section titled `title`.
+fn carousel_cards(document: &Document, title: &str) -> Vec<Manga> {
 	find_section(document, title)
-		.and_then(|section| section.select(item_selector))
-		.map(|items| items.filter_map(|item| parse_card(&item)).collect())
+		.and_then(|section| section.select(".manga-item.manga-live-card, .manga-item"))
+		.map(|items| items.filter_map(|item| carousel_card(&item)).collect())
 		.unwrap_or_default()
 }
 
@@ -317,7 +351,7 @@ fn latest_section(document: &Document) -> Vec<MangaWithChapter> {
 	};
 	items
 		.filter_map(|item| {
-			let manga = parse_card(&item)?;
+			let manga = carousel_card(&item)?;
 			let (id, label) = latest_from(&item)?;
 			let date = item
 				.select_first(".episode-date")
@@ -448,7 +482,7 @@ impl Home for MangaCherri {
 		let mut components: Vec<HomeComponent> = Vec::new();
 
 		if let Some(home) = home.as_ref() {
-			let popular = section_cards(home, "Most Popular", ".manga-item.manga-live-card");
+			let popular = carousel_cards(home, "Most Popular");
 			if !popular.is_empty() {
 				components.push(HomeComponent {
 					title: Some("Most Popular".into()),
@@ -460,7 +494,7 @@ impl Home for MangaCherri {
 				});
 			}
 
-			let popular_now = section_cards(home, "Popular Now", ".manga-item.manga-live-card");
+			let popular_now = carousel_cards(home, "Popular Now");
 			if !popular_now.is_empty() {
 				components.push(HomeComponent {
 					title: Some("Popular Now".into()),
@@ -487,11 +521,7 @@ impl Home for MangaCherri {
 				});
 			}
 
-			let completed = section_cards(
-				home,
-				"Completed Romance Manga",
-				".manga-item.manga-live-card",
-			);
+			let completed = carousel_cards(home, "Completed Romance Manga");
 			if !completed.is_empty() {
 				components.push(HomeComponent {
 					title: Some("Completed Romance".into()),
@@ -518,6 +548,34 @@ impl Home for MangaCherri {
 						ranking: true,
 						page_size: Some(10),
 						entries,
+						listing: None,
+					},
+				});
+			}
+		}
+
+		// Safety net: if the headings ever change and no shelf matched, show every
+		// card on the home page so the source is never blank.
+		if components.is_empty()
+			&& let Some(home) = home.as_ref()
+		{
+			let mut entries: Vec<Manga> = carousel_cards(home, "Most Popular");
+			if entries.is_empty() {
+				entries = home
+					.select(".manga-item.manga-live-card, .manga-horizontal-item, .manga-item")
+					.map(|items| {
+						items
+							.filter_map(|item| carousel_card(&item).or_else(|| parse_card(&item)))
+							.collect()
+					})
+					.unwrap_or_default();
+			}
+			if !entries.is_empty() {
+				components.push(HomeComponent {
+					title: Some("Browse".into()),
+					subtitle: None,
+					value: HomeComponentValue::Scroller {
+						entries: entries.into_iter().map(Into::into).collect(),
 						listing: None,
 					},
 				});

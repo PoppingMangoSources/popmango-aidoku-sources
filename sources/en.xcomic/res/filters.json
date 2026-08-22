@@ -5,16 +5,37 @@
 		"canAscend": false,
 		"default": { "index": 0, "ascending": false },
 		"options": [
-			"Rating Score",
-			"Latest Update",
-			"Recently Added",
-			"Name A-Z",
-			"Name Z-A",
-			"Most Chapters",
-			"Most Follows",
-			"Most Reviews",
-			"Most Comments"
+			"Rating Score", "Latest Update", "Recently Added", "Name A-Z", "Name Z-A",
+			"Most Chapters", "Most Follows", "Most Reviews", "Most Comments",
+			"Most Views (All Time)", "Most Views (360 Days)", "Most Views (180 Days)",
+			"Most Views (90 Days)", "Most Views (30 Days)", "Most Views (7 Days)",
+			"Most Views (24 Hours)", "Most Views (12 Hours)", "Most Views (6 Hours)",
+			"Most Views (1 Hour)"
 		]
+	},
+	{
+		"type": "multi-select",
+		"id": "types",
+		"title": "Types",
+		"canExclude": false,
+		"options": ["Manga", "Manhwa", "Manhua", "Cartoon", "Western", "Artbook", "Imageset"],
+		"ids": ["manga", "manhwa", "manhua", "cartoon", "western", "artbook", "imageset"]
+	},
+	{
+		"type": "multi-select",
+		"id": "content_ratings",
+		"title": "Content Ratings",
+		"canExclude": false,
+		"options": ["Safe", "Suggestive", "Erotica", "Pornographic"],
+		"ids": ["safe", "suggestive", "erotica", "pornographic"]
+	},
+	{
+		"type": "multi-select",
+		"id": "demographics",
+		"title": "Demographics",
+		"canExclude": false,
+		"options": ["Shounen", "Shoujo", "Seinen", "Josei", "Kodomo", "Silver & Golden", "Non-human"],
+		"ids": ["shounen", "shoujo", "seinen", "josei", "kodomo", "silver_golden", "non_human"]
 	},
 	{
 		"type": "multi-select",
@@ -24,19 +45,90 @@
 		"canExclude": true,
 		"options": [
 			"Action", "Adventure", "Comedy", "Cooking", "Doujinshi", "Drama", "Ecchi",
-			"Fantasy", "Gender Bender", "Harem", "Historical", "Horror", "Isekai",
+			"Fantasy", "Gender Bender", "Harem", "Historical", "Horror", "Isekai", "Josei",
 			"Magic", "Martial Arts", "Mature", "Mecha", "Medical", "Military", "Music",
 			"Mystery", "Psychological", "Romance", "School Life", "Sci-Fi", "Seinen",
 			"Shoujo", "Shounen", "Slice of Life", "Smut", "Sports", "Supernatural",
-			"Thriller", "Tragedy", "Webtoons", "Yaoi", "Yuri"
+			"Thriller", "Tragedy", "Webtoon", "Yaoi", "Yuri"
 		],
 		"ids": [
 			"action", "adventure", "comedy", "cooking", "doujinshi", "drama", "ecchi",
-			"fantasy", "gender_bender", "harem", "historical", "horror", "isekai",
+			"fantasy", "gender_bender", "harem", "historical", "horror", "isekai", "josei",
 			"magic", "martial_arts", "mature", "mecha", "medical", "military", "music",
 			"mystery", "psychological", "romance", "school_life", "sci_fi", "seinen",
 			"shoujo", "shounen", "slice_of_life", "smut", "sports", "supernatural",
 			"thriller", "tragedy", "webtoon", "yaoi", "yuri"
 		]
+	},
+	{
+		"type": "multi-select",
+		"id": "formats",
+		"title": "Formats",
+		"canExclude": true,
+		"options": [
+			"4 Koma", "Adaptation", "Anthology", "Award Winning", "Doujinshi", "Fan Colored",
+			"Full Color", "Long Strip", "Official Colored", "Oneshot", "Web Comic", "Webtoon"
+		],
+		"ids": [
+			"4_koma", "adaptation", "anthology", "award_winning", "doujinshi", "fan_colored",
+			"full_color", "long_strip", "official_colored", "oneshot", "web_comic", "webtoon"
+		]
+	},
+	{
+		"type": "select",
+		"id": "include_mode",
+		"title": "Include Genres Mode",
+		"options": ["AND", "OR"],
+		"ids": ["and", "or"]
+	},
+	{
+		"type": "select",
+		"id": "exclude_mode",
+		"title": "Exclude Genres Mode",
+		"options": ["OR", "AND"],
+		"ids": ["or", "and"]
+	},
+	{
+		"type": "select",
+		"id": "original_status",
+		"title": "Original Work Status",
+		"options": ["Any", "Pending", "Ongoing", "Completed", "Hiatus", "Cancelled"],
+		"ids": ["", "pending", "ongoing", "completed", "hiatus", "cancelled"]
+	},
+	{
+		"type": "select",
+		"id": "upload_status",
+		"title": "Upload Status",
+		"options": ["Any", "Pending", "Ongoing", "Completed", "Hiatus", "Cancelled"],
+		"ids": ["", "pending", "ongoing", "completed", "hiatus", "cancelled"]
+	},
+	{
+		"type": "select",
+		"id": "chapter_count",
+		"title": "Chapter Count",
+		"options": ["Any", "1+", "10+", "20+", "30+", "50+", "100+", "200+", "300+"],
+		"ids": ["", "1", "10", "20", "30", "50", "100", "200", "300"]
+	},
+	{
+		"type": "text",
+		"id": "year",
+		"title": "Release Year",
+		"placeholder": "e.g. 2020 or 2018-2022"
+	},
+	{
+		"type": "multi-select",
+		"id": "original_languages",
+		"title": "Original Languages",
+		"canExclude": false,
+		"options": ["Chinese", "Japanese", "Korean", "English"],
+		"ids": ["zh", "ja", "ko", "en"]
+	},
+	{
+		"type": "multi-select",
+		"id": "translated_languages",
+		"title": "Translated Languages",
+		"canExclude": false,
+		"options": ["English", "Chinese", "Japanese", "Korean", "Spanish", "French", "Portuguese (Brazil)", "Russian"],
+		"ids": ["en", "zh", "ja", "ko", "es", "fr", "pt_br", "ru"]
 	}
 ]

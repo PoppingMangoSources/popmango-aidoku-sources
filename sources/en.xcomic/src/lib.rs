@@ -28,21 +28,42 @@ const SORT_IDS: &[&str] = &[
 	"field_follow",
 	"field_review",
 	"field_comment",
+	"views_d000",
+	"views_d360",
+	"views_d180",
+	"views_d090",
+	"views_d030",
+	"views_d007",
+	"views_h024",
+	"views_h012",
+	"views_h006",
+	"views_h001",
 ];
 
 const DEFAULT_TYPES: &[&str] = &["manga", "manhwa", "manhua"];
 const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica"];
 
+fn setting_list(key: &str) -> Vec<String> {
+	defaults_get::<Vec<String>>(key).unwrap_or_default()
+}
+
 fn content_types() -> Vec<String> {
-	defaults_get::<Vec<String>>("contentTypes")
+	Some(setting_list("contentTypes"))
 		.filter(|list| !list.is_empty())
 		.unwrap_or_else(|| DEFAULT_TYPES.iter().map(|s| s.to_string()).collect())
 }
 
 fn content_ratings() -> Vec<String> {
-	defaults_get::<Vec<String>>("contentRatings")
+	Some(setting_list("contentRatings"))
 		.filter(|list| !list.is_empty())
 		.unwrap_or_else(|| DEFAULT_RATINGS.iter().map(|s| s.to_string()).collect())
+}
+
+/// Genres and formats the reader has chosen to hide everywhere.
+fn excluded_from_settings() -> Vec<String> {
+	let mut out = setting_list("excludedGenres");
+	out.extend(setting_list("excludedTags"));
+	out
 }
 
 const ADULT_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
@@ -228,6 +249,20 @@ fn status_for(comic: &ComicData) -> MangaStatus {
 	}
 }
 
+/// Parses a "2020" or "2018-2022" release-year filter into a (min, max) range.
+fn parse_year(value: &str) -> (Option<i64>, Option<i64>) {
+	let trimmed = value.trim();
+	if trimmed.is_empty() {
+		return (None, None);
+	}
+	if let Some((lo, hi)) = trimmed.split_once('-') {
+		(lo.trim().parse().ok(), hi.trim().parse().ok())
+	} else {
+		let year = trimmed.parse::<i64>().ok();
+		(year, year)
+	}
+}
+
 /// Converts a source timestamp (seconds or milliseconds) to unix seconds.
 fn to_unix_seconds(value: i64) -> Option<i64> {
 	if value <= 0 {
@@ -324,53 +359,85 @@ fn graphql<T: serde::de::DeserializeOwned>(query: &str, variables: serde_json::V
 	Ok(data)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn browse_select(
+/// Every knob the browse query accepts. Defaults mirror the site's own defaults
+/// (English translations, the reader's type/rating preferences, "and"/"or"
+/// genre modes) so a bare browse behaves like the homepage.
+struct BrowseParams {
 	page: i32,
-	sortby: &str,
-	word: &str,
-	inc: &[String],
-	exc: &[String],
-) -> serde_json::Value {
-	serde_json::json!({
-		"where": "browse",
-		"page": page,
-		"size": PAGE_SIZE,
-		"init": (page - 1) * PAGE_SIZE,
-		"sortby": sortby,
-		"word": word,
-		"incOLangs": [],
-		"incTLangs": ["en"],
-		"incGenres": inc,
-		"excGenres": exc,
-		"incGenresMode": "and",
-		"excGenresMode": "or",
-		"incTypes": content_types(),
-		"incDemographics": [],
-		"incContentRatings": content_ratings(),
-		"releaseYearMin": serde_json::Value::Null,
-		"releaseYearMax": serde_json::Value::Null,
-		"origStatus": serde_json::Value::Null,
-		"siteStatus": serde_json::Value::Null,
-		"chapCount": "",
-		"ignoreGlobalULangs": true,
-		"ignoreGlobalGenres": true,
-		"ignoreGlobalBlocks": true
-	})
+	sortby: String,
+	word: String,
+	inc_genres: Vec<String>,
+	exc_genres: Vec<String>,
+	inc_mode: String,
+	exc_mode: String,
+	types: Vec<String>,
+	demographics: Vec<String>,
+	content_ratings: Vec<String>,
+	orig_langs: Vec<String>,
+	trans_langs: Vec<String>,
+	orig_status: String,
+	site_status: String,
+	chap_count: String,
+	year_min: Option<i64>,
+	year_max: Option<i64>,
 }
 
-fn browse(
-	sortby: &str,
-	word: &str,
-	page: i32,
-	inc: &[String],
-	exc: &[String],
-) -> Result<Vec<Manga>> {
+impl BrowseParams {
+	fn new(sortby: &str, page: i32) -> Self {
+		Self {
+			page,
+			sortby: sortby.into(),
+			word: String::new(),
+			inc_genres: Vec::new(),
+			exc_genres: excluded_from_settings(),
+			inc_mode: "and".into(),
+			exc_mode: "or".into(),
+			types: content_types(),
+			demographics: Vec::new(),
+			content_ratings: content_ratings(),
+			orig_langs: Vec::new(),
+			trans_langs: vec!["en".into()],
+			orig_status: String::new(),
+			site_status: String::new(),
+			chap_count: String::new(),
+			year_min: None,
+			year_max: None,
+		}
+	}
+
+	fn to_select(&self) -> serde_json::Value {
+		serde_json::json!({
+			"where": "browse",
+			"page": self.page,
+			"size": PAGE_SIZE,
+			"init": (self.page - 1) * PAGE_SIZE,
+			"sortby": self.sortby,
+			"word": self.word,
+			"incOLangs": self.orig_langs,
+			"incTLangs": self.trans_langs,
+			"incGenres": self.inc_genres,
+			"excGenres": self.exc_genres,
+			"incGenresMode": self.inc_mode,
+			"excGenresMode": self.exc_mode,
+			"incTypes": self.types,
+			"incDemographics": self.demographics,
+			"incContentRatings": self.content_ratings,
+			"releaseYearMin": self.year_min,
+			"releaseYearMax": self.year_max,
+			"origStatus": (!self.orig_status.is_empty()).then(|| self.orig_status.clone()),
+			"siteStatus": (!self.site_status.is_empty()).then(|| self.site_status.clone()),
+			"chapCount": self.chap_count,
+			"ignoreGlobalULangs": true,
+			"ignoreGlobalGenres": true,
+			"ignoreGlobalBlocks": true
+		})
+	}
+}
+
+fn browse_with(params: &BrowseParams) -> Result<Vec<Manga>> {
 	let response: BrowseResponse = graphql(
 		BROWSE_QUERY,
-		serde_json::json!({
-			"select": browse_select(page, sortby, word, inc, exc)
-		}),
+		serde_json::json!({ "select": params.to_select() }),
 	)?;
 	Ok(response
 		.get_comic_browse_items
@@ -385,6 +452,11 @@ fn browse(
 		})
 		.map(|node| card_manga(&node.data))
 		.collect())
+}
+
+/// A shelf browse with default filters, used by Home and listings.
+fn browse(sortby: &str, page: i32) -> Result<Vec<Manga>> {
+	browse_with(&BrowseParams::new(sortby, page))
 }
 
 const RSS_URL: &str = "https://xcomic.me/rss/added.xml";
@@ -511,27 +583,62 @@ impl Source for XComic {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let word = query.unwrap_or_default();
-		let word = word.trim();
-		let mut sortby = String::from("field_score");
-		let mut inc: Vec<String> = Vec::new();
-		let mut exc: Vec<String> = Vec::new();
-		for filter in &filters {
+		let mut params = BrowseParams::new("field_score", page);
+		params.word = word.trim().to_string();
+		let mut types: Vec<String> = Vec::new();
+		let mut ratings: Vec<String> = Vec::new();
+		let mut trans_langs: Vec<String> = Vec::new();
+
+		for filter in filters {
 			match filter {
 				FilterValue::Sort { id, index, .. } if id == "sort" => {
-					if let Some(sort) = SORT_IDS.get(*index as usize) {
-						sortby = (*sort).to_string();
+					if let Some(sort) = SORT_IDS.get(index as usize) {
+						params.sortby = (*sort).to_string();
 					}
 				}
-				FilterValue::MultiSelect {
-					included, excluded, ..
-				} => {
-					inc.extend(included.iter().cloned());
-					exc.extend(excluded.iter().cloned());
+				FilterValue::Select { id, value } => match id.as_str() {
+					"original_status" if !value.is_empty() => params.orig_status = value,
+					"upload_status" if !value.is_empty() => params.site_status = value,
+					"chapter_count" if !value.is_empty() => params.chap_count = value,
+					"include_mode" if !value.is_empty() => params.inc_mode = value,
+					"exclude_mode" if !value.is_empty() => params.exc_mode = value,
+					_ => {}
+				},
+				FilterValue::Text { id, value } if id == "year" => {
+					let (min, max) = parse_year(&value);
+					params.year_min = min;
+					params.year_max = max;
 				}
+				FilterValue::MultiSelect {
+					id,
+					included,
+					excluded,
+				} => match id.as_str() {
+					"genres" | "formats" => {
+						params.inc_genres.extend(included);
+						params.exc_genres.extend(excluded);
+					}
+					"types" => types.extend(included),
+					"content_ratings" => ratings.extend(included),
+					"demographics" => params.demographics.extend(included),
+					"original_languages" => params.orig_langs.extend(included),
+					"translated_languages" => trans_langs.extend(included),
+					_ => {}
+				},
 				_ => {}
 			}
 		}
-		let entries = browse(&sortby, word, page, &inc, &exc)?;
+		if !types.is_empty() {
+			params.types = types;
+		}
+		if !ratings.is_empty() {
+			params.content_ratings = ratings;
+		}
+		if !trans_langs.is_empty() {
+			params.trans_langs = trans_langs;
+		}
+
+		let entries = browse_with(&params)?;
 		Ok(MangaPageResult {
 			has_next_page: entries.len() as i32 >= PAGE_SIZE,
 			entries,
@@ -659,10 +766,10 @@ fn collect_chapters(response: ChapterListResponse, out: &mut Vec<Chapter>) {
 
 impl Home for XComic {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let top_rated = browse("field_score", "", 1, &[], &[]);
-		let most_views = browse("views_d030", "", 1, &[], &[]);
+		let top_rated = browse("field_score", 1);
+		let most_views = browse("views_d030", 1);
 		let recently = recently_added();
-		let most_chapters = browse("field_chapter", "", 1, &[], &[]);
+		let most_chapters = browse("field_chapter", 1);
 		let latest: Result<LatestUpdatesResponse> = graphql(
 			LATEST_UPDATES_QUERY,
 			serde_json::json!({ "select": { "size": PAGE_SIZE } }),
@@ -807,7 +914,7 @@ impl ListingProvider for XComic {
 				entries,
 			});
 		}
-		let entries = browse(&listing.id, "", page, &[], &[])?;
+		let entries = browse(&listing.id, page)?;
 		Ok(MangaPageResult {
 			has_next_page: entries.len() as i32 >= PAGE_SIZE,
 			entries,
