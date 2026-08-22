@@ -2,17 +2,34 @@
 	"info": {
 		"id": "en.cocomic",
 		"name": "Cocomic",
-		"version": 1,
+		"version": 2,
 		"url": "https://cocomic.co",
 		"contentRating": 2,
-		"languages": ["en"],
+		"languages": [
+			"en"
+		],
 		"minAppVersion": "0.7.1"
 	},
 	"listings": [
-		{ "id": "latest", "name": "Latest" },
-		{ "id": "rating", "name": "Top Rated" },
-		{ "id": "trending", "name": "Trending" },
-		{ "id": "views", "name": "Most Views" },
-		{ "id": "new-manga", "name": "New" }
+		{
+			"id": "latest",
+			"name": "Latest"
+		},
+		{
+			"id": "rating",
+			"name": "Top Rated"
+		},
+		{
+			"id": "trending",
+			"name": "Trending"
+		},
+		{
+			"id": "views",
+			"name": "Most Views"
+		},
+		{
+			"id": "new-manga",
+			"name": "New"
+		}
 	]
 }

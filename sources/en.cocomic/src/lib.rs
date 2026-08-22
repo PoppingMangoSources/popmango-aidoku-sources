@@ -2,7 +2,7 @@
 use aidoku::{
 	Chapter, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, MangaWithChapter, Result,
 	Source,
-	alloc::{String, Vec, string::ToString, vec},
+	alloc::{String, Vec},
 	helpers::string::StripPrefixOrSelf,
 	imports::{
 		html::{Document, Element},
@@ -15,24 +15,12 @@ use madara::{Impl, Madara, Params};
 
 const BASE_URL: &str = "https://cocomic.co";
 
-/// The rows below the banner: a title, the browse url that fills it, and whether
-/// it renders as a ranked list.
-fn home_rows() -> [(&'static str, String, bool); 5] {
-	[
-		("New Releases", browse_url("new-manga"), false),
-		("Trending", browse_url("trending"), true),
-		("Most Viewed", browse_url("views"), true),
-		("Yaoi", genre_url("yaoi"), false),
-		("Manhwa", genre_url("manhwa"), false),
-	]
-}
-
 fn browse_url(order: &str) -> String {
 	format!("{BASE_URL}/manga/?m_orderby={order}")
 }
 
-fn genre_url(slug: &str) -> String {
-	format!("{BASE_URL}/?s=&post_type=wp-manga&genre%5B%5D={slug}&m_orderby=views")
+fn clean(text: &str) -> String {
+	text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// Resolves the relative or absolute stamps the listing cards carry.
@@ -75,12 +63,15 @@ fn listing_date(text: &str) -> Option<i64> {
 }
 
 fn cover_of(element: &Element) -> Option<String> {
-	let image = element.select_first(".item-thumb img, .tab-thumb img, img")?;
+	let image = element.select_first(
+		".item-thumb img, .tab-thumb img, .related__thumb img, .slider__thumb img, img",
+	)?;
 	image
-		.attr("abs:data-src")
+		.attr("abs:data-cfsrc")
+		.or_else(|| image.attr("abs:data-src"))
 		.or_else(|| image.attr("abs:data-lazy-src"))
-		.or_else(|| image.attr("abs:srcset"))
 		.or_else(|| image.attr("abs:src"))
+		.filter(|url| !url.is_empty())
 }
 
 fn chapter_number(title: &str) -> Option<f32> {
@@ -96,17 +87,25 @@ fn chapter_number(title: &str) -> Option<f32> {
 }
 
 fn card_manga(item: &Element) -> Option<Manga> {
-	let link = item.select_first(".post-title a, h3 a, a")?;
+	// Only anchors that point at a series title the card; a bare `a` fallback
+	// would otherwise latch onto a genre link (e.g. "manhwa").
+	let link = item.select_first(
+		".post-title a, .related__title a, .slider__content h4 a, h3 a[href*='/manga/'], h4 a[href*='/manga/']",
+	)?;
 	let href = link.attr("abs:href")?;
+	if !href.contains("/manga/") {
+		return None;
+	}
 	let title = link
 		.text()
 		.or_else(|| link.attr("title"))
-		.map(|text| text.trim().to_string())
+		.map(|text| clean(&text))
 		.filter(|text| !text.is_empty())?;
+	let cover = cover_of(item)?;
 	Some(Manga {
 		key: href.strip_prefix_or_self(BASE_URL).into(),
 		title,
-		cover: cover_of(item),
+		cover: Some(cover),
 		url: Some(href),
 		..Default::default()
 	})
@@ -114,8 +113,74 @@ fn card_manga(item: &Element) -> Option<Manga> {
 
 fn browse_cards(document: &Document) -> Vec<Manga> {
 	document
-		.select(".page-item-detail, .c-tabs-item__content")
+		.select(".page-item-detail, .c-tabs-item__content, .related__item, .slider__item")
 		.map(|items| items.filter_map(|item| card_manga(&item)).collect())
+		.unwrap_or_default()
+}
+
+/// A homepage rail, located by its `.tp-heading` text and read from the
+/// following sliders block.
+fn homepage_rail(document: &Document, title: &str) -> Vec<Manga> {
+	let Some(headings) = document.select(".tp-heading") else {
+		return Vec::new();
+	};
+	for heading in headings {
+		let own = heading
+			.own_text()
+			.or_else(|| heading.text())
+			.map(|t| clean(&t))
+			.unwrap_or_default();
+		if !own.eq_ignore_ascii_case(title) {
+			continue;
+		}
+		let mut sibling = heading.next();
+		while let Some(el) = sibling {
+			if el.has_class("wp-block-wp-manga-gutenberg-manga-sliders-block") {
+				return el
+					.select(".related__item, .slider__item")
+					.map(|items| items.filter_map(|i| card_manga(&i)).collect())
+					.unwrap_or_default();
+			}
+			sibling = el.next();
+		}
+	}
+	Vec::new()
+}
+
+/// The dated latest-update rows from the `/new/` listing.
+fn latest_updates(document: &Document) -> Vec<MangaWithChapter> {
+	document
+		.select(".page-item-detail")
+		.map(|items| {
+			items
+				.filter_map(|item| {
+					let manga = card_manga(&item)?;
+					let chapter =
+						item.select_first(".latest-chap .chapter a, .chapter-item .chapter a")?;
+					let href = chapter.attr("abs:href").or_else(|| chapter.attr("href"))?;
+					let label = chapter.text().map(|text| clean(&text))?;
+					let date = item
+						.select_first(".chapter-release-date, .post-on")
+						.and_then(|el| {
+							el.select_first(".c-new-tag")
+								.and_then(|tag| tag.attr("title"))
+								.or_else(|| el.text())
+						})
+						.and_then(|text| listing_date(text.trim()));
+					Some(MangaWithChapter {
+						manga,
+						chapter: Chapter {
+							key: href.strip_prefix_or_self(BASE_URL).into(),
+							chapter_number: chapter_number(&label),
+							date_uploaded: date,
+							title: (!label.is_empty()).then_some(label),
+							url: Some(href),
+							..Default::default()
+						},
+					})
+				})
+				.collect()
+		})
 		.unwrap_or_default()
 }
 
@@ -135,11 +200,15 @@ impl Impl for Cocomic {
 	}
 
 	fn get_home(&self, _params: &Params) -> Result<HomeLayout> {
-		// The banner and every shelf is its own browse query, so they all go out
-		// together.
-		let rows = home_rows();
-		let mut urls = vec![BASE_URL.to_string(), browse_url("rating")];
-		urls.extend(rows.iter().map(|(_, url, _)| url.clone()));
+		// Ranked shelves come from browse queries; the curated rails and the dated
+		// updates come from the homepage and `/new/`. Fetch them all together.
+		let urls = [
+			browse_url("rating"),
+			browse_url("trending"),
+			browse_url("views"),
+			format!("{BASE_URL}/new/"),
+			format!("{BASE_URL}/"),
+		];
 		let requests = urls
 			.iter()
 			.map(|url| Request::get(url).map_err(Into::into))
@@ -148,10 +217,11 @@ impl Impl for Cocomic {
 			.into_iter()
 			.map(|response| response.ok().and_then(|response| response.get_html().ok()))
 			.collect();
+		let doc = |index: usize| documents.get(index).and_then(Option::as_ref);
 
 		let mut components: Vec<HomeComponent> = Vec::new();
 
-		if let Some(document) = documents.get(1).and_then(Option::as_ref) {
+		if let Some(document) = doc(0) {
 			let entries: Vec<Manga> = browse_cards(document).into_iter().take(10).collect();
 			if !entries.is_empty() {
 				components.push(HomeComponent {
@@ -165,42 +235,24 @@ impl Impl for Cocomic {
 			}
 		}
 
-		// The home page carries the dated update list.
-		if let Some(home) = documents.first().and_then(Option::as_ref) {
-			let latest: Vec<MangaWithChapter> = home
-				.select(".page-item-detail")
-				.map(|items| {
-					items
-						.filter_map(|item| {
-							let manga = card_manga(&item)?;
-							let chapter = item.select_first(
-								".latest-chap .chapter a, .chapter-item .chapter a",
-							)?;
-							let href = chapter.attr("abs:href").or_else(|| chapter.attr("href"))?;
-							let label = chapter.text().map(|text| text.trim().to_string())?;
-							let date = item
-								.select_first(".chapter-release-date, .post-on")
-								.and_then(|el| {
-									el.select_first(".c-new-tag")
-										.and_then(|tag| tag.attr("title"))
-										.or_else(|| el.text())
-								})
-								.and_then(|text| listing_date(text.trim()));
-							Some(MangaWithChapter {
-								manga,
-								chapter: Chapter {
-									key: href.strip_prefix_or_self(BASE_URL).into(),
-									chapter_number: chapter_number(&label),
-									date_uploaded: date,
-									title: (!label.is_empty()).then_some(label),
-									url: Some(href),
-									..Default::default()
-								},
-							})
-						})
-						.collect()
-				})
-				.unwrap_or_default();
+		if let Some(document) = doc(1) {
+			let entries: Vec<Link> = browse_cards(document).into_iter().map(Into::into).collect();
+			if !entries.is_empty() {
+				components.push(HomeComponent {
+					title: Some("Trending".into()),
+					subtitle: None,
+					value: HomeComponentValue::MangaList {
+						ranking: true,
+						page_size: Some(10),
+						entries,
+						listing: None,
+					},
+				});
+			}
+		}
+
+		if let Some(document) = doc(3) {
+			let latest = latest_updates(document);
 			if !latest.is_empty() {
 				components.push(HomeComponent {
 					title: Some("Latest Updates".into()),
@@ -214,32 +266,48 @@ impl Impl for Cocomic {
 			}
 		}
 
-		for ((title, _, ranked), document) in rows.iter().zip(documents.into_iter().skip(2)) {
-			let Some(document) = document else { continue };
-			let entries: Vec<Link> = browse_cards(&document)
-				.into_iter()
-				.map(Into::into)
-				.collect();
-			if entries.is_empty() {
-				continue;
-			}
-			components.push(HomeComponent {
-				title: Some((*title).into()),
-				subtitle: None,
-				value: if *ranked {
-					HomeComponentValue::MangaList {
+		if let Some(document) = doc(2) {
+			let entries: Vec<Link> = browse_cards(document).into_iter().map(Into::into).collect();
+			if !entries.is_empty() {
+				components.push(HomeComponent {
+					title: Some("Most Viewed".into()),
+					subtitle: None,
+					value: HomeComponentValue::MangaList {
 						ranking: true,
 						page_size: Some(10),
 						entries,
 						listing: None,
-					}
-				} else {
-					HomeComponentValue::Scroller {
+					},
+				});
+			}
+		}
+
+		// Curated homepage rails.
+		if let Some(home) = doc(4) {
+			for title in [
+				"Only Cocomic",
+				"New Releases",
+				"Today's Official",
+				"Yaoi",
+				"Manhwa",
+				"Smut",
+			] {
+				let entries: Vec<Link> = homepage_rail(home, title)
+					.into_iter()
+					.map(Into::into)
+					.collect();
+				if entries.is_empty() {
+					continue;
+				}
+				components.push(HomeComponent {
+					title: Some(title.into()),
+					subtitle: None,
+					value: HomeComponentValue::Scroller {
 						entries,
 						listing: None,
-					}
-				},
-			});
+					},
+				});
+			}
 		}
 
 		Ok(HomeLayout { components })

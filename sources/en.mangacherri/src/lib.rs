@@ -8,11 +8,11 @@ use aidoku::{
 	imports::{
 		html::{Document, Element},
 		net::Request,
+		std::current_date,
 	},
 	prelude::*,
 };
 
-// SITE is swapped per source (mangacherri variant).
 const BASE_URL: &str = "https://mangacherri.com";
 
 const MATURE_GENRES: &[&str] = &["seinen", "ecchi", "harem", "mature", "adult", "smut"];
@@ -85,6 +85,48 @@ fn chapter_number(text: &str) -> Option<f32> {
 		}
 	}
 	number.trim_matches('.').parse().ok()
+}
+
+/// Update labels are relative ("13 hours 49 mins ago", "7 days ago"); sum the
+/// units back from now.
+fn parse_relative_date(text: &str) -> Option<i64> {
+	let lowered = text.trim().to_lowercase();
+	if lowered.is_empty() {
+		return None;
+	}
+	if lowered.contains("just now") || lowered.contains("less than") {
+		return Some(current_date());
+	}
+	let units: [(&str, i64); 7] = [
+		("sec", 1),
+		("min", 60),
+		("hour", 3600),
+		("day", 86400),
+		("week", 604800),
+		("month", 2629800),
+		("year", 31557600),
+	];
+	let mut offset: i64 = 0;
+	let bytes = lowered.as_bytes();
+	for (unit, factor) in units {
+		if let Some(pos) = lowered.find(unit) {
+			// Walk back over spaces then digits to read the amount for this unit.
+			let mut end = pos;
+			while end > 0 && bytes[end - 1] == b' ' {
+				end -= 1;
+			}
+			let mut start = end;
+			while start > 0 && bytes[start - 1].is_ascii_digit() {
+				start -= 1;
+			}
+			if start < end
+				&& let Ok(amount) = lowered[start..end].parse::<i64>()
+			{
+				offset += amount * factor;
+			}
+		}
+	}
+	(offset > 0).then(|| current_date() - offset)
 }
 
 /// Reads a card as it appears in a listing or carousel.
@@ -244,25 +286,56 @@ fn cards_from(document: &Document, selector: &str) -> Vec<Manga> {
 		.unwrap_or_default()
 }
 
-/// The cards in the section whose `.section-title` matches `title`.
-fn section_cards(document: &Document, title: &str, item_selector: &str) -> Vec<Manga> {
-	let Some(sections) = document.select(".section-container") else {
-		return Vec::new();
-	};
-	for section in sections {
-		let heading = section
+/// The `.section-container` whose `.section-title` matches `title`.
+fn find_section(document: &Document, title: &str) -> Option<Element> {
+	let sections = document.select(".section-container")?;
+	sections.into_iter().find(|section| {
+		section
 			.select_first(".section-title")
 			.and_then(|el| el.text())
 			.map(|text| clean(&text))
-			.unwrap_or_default();
-		if heading.eq_ignore_ascii_case(title) {
-			return section
-				.select(item_selector)
-				.map(|items| items.filter_map(|item| parse_card(&item)).collect())
-				.unwrap_or_default();
-		}
-	}
-	Vec::new()
+			.is_some_and(|heading| heading.eq_ignore_ascii_case(title))
+	})
+}
+
+/// The cards in the section whose `.section-title` matches `title`.
+fn section_cards(document: &Document, title: &str, item_selector: &str) -> Vec<Manga> {
+	find_section(document, title)
+		.and_then(|section| section.select(item_selector))
+		.map(|items| items.filter_map(|item| parse_card(&item)).collect())
+		.unwrap_or_default()
+}
+
+/// The "Latest Chapter" rail: each card carries its newest chapter and a
+/// relative timestamp.
+fn latest_section(document: &Document) -> Vec<MangaWithChapter> {
+	let Some(section) = find_section(document, "Latest Chapter") else {
+		return Vec::new();
+	};
+	let Some(items) = section.select(".manga-horizontal-item") else {
+		return Vec::new();
+	};
+	items
+		.filter_map(|item| {
+			let manga = parse_card(&item)?;
+			let (id, label) = latest_from(&item)?;
+			let date = item
+				.select_first(".episode-date")
+				.and_then(|el| el.text())
+				.and_then(|t| parse_relative_date(&t));
+			Some(MangaWithChapter {
+				manga,
+				chapter: Chapter {
+					chapter_number: chapter_number(&label),
+					date_uploaded: date,
+					title: (!label.is_empty()).then_some(label),
+					url: Some(format!("{BASE_URL}/{id}")),
+					key: id,
+					..Default::default()
+				},
+			})
+		})
+		.collect()
 }
 
 fn genre_url(name: &str) -> String {
@@ -357,9 +430,6 @@ impl Home for MangaCherri {
 		let requests = [
 			format!("{BASE_URL}/home.php"),
 			format!("{BASE_URL}/weekly-manga.php"),
-			genre_url("Shounen"),
-			genre_url("Seinen"),
-			genre_url("Manhwa/Manhua"),
 		]
 		.into_iter()
 		.map(|url| {
@@ -374,69 +444,40 @@ impl Home for MangaCherri {
 
 		let home = documents.next().flatten();
 		let weekly = documents.next().flatten();
-		let shounen = documents.next().flatten();
-		let seinen = documents.next().flatten();
-		let manhwa = documents.next().flatten();
 
 		let mut components: Vec<HomeComponent> = Vec::new();
 
 		if let Some(home) = home.as_ref() {
-			let viewed = section_cards(home, "Most Viewed", ".manga-item");
-			if !viewed.is_empty() {
+			let popular = section_cards(home, "Most Popular", ".manga-item.manga-live-card");
+			if !popular.is_empty() {
 				components.push(HomeComponent {
-					title: Some("Most Viewed".into()),
+					title: Some("Most Popular".into()),
 					subtitle: None,
 					value: HomeComponentValue::BigScroller {
-						entries: viewed.into_iter().take(10).collect(),
+						entries: popular.into_iter().take(10).collect(),
 						auto_scroll_interval: Some(6.0),
 					},
 				});
 			}
 
-			let latest: Vec<MangaWithChapter> = section_cards(home, "Latest Update", "")
-				.into_iter()
-				.collect::<Vec<_>>()
-				.into_iter()
-				.map(|manga| MangaWithChapter {
-					manga,
-					chapter: Chapter::default(),
-				})
-				.collect();
-			let latest_items = home
-				.select(".section-container")
-				.and_then(|sections| {
-					sections.into_iter().find(|section| {
-						section
-							.select_first(".section-title")
-							.and_then(|el| el.text())
-							.map(|text| clean(&text))
-							.is_some_and(|t| t.eq_ignore_ascii_case("Latest Update"))
-					})
-				})
-				.and_then(|section| section.select(".manga-horizontal-item"));
-			let latest: Vec<MangaWithChapter> = latest_items
-				.map(|items| {
-					items
-						.filter_map(|item| {
-							let manga = parse_card(&item)?;
-							let (id, label) = latest_from(&item).unwrap_or_default();
-							Some(MangaWithChapter {
-								manga,
-								chapter: Chapter {
-									chapter_number: chapter_number(&label),
-									title: (!label.is_empty()).then_some(label),
-									url: (!id.is_empty()).then(|| format!("{BASE_URL}/{id}")),
-									key: id,
-									..Default::default()
-								},
-							})
-						})
-						.collect()
-				})
-				.unwrap_or(latest);
+			let popular_now = section_cards(home, "Popular Now", ".manga-item.manga-live-card");
+			if !popular_now.is_empty() {
+				components.push(HomeComponent {
+					title: Some("Popular Now".into()),
+					subtitle: None,
+					value: HomeComponentValue::MangaList {
+						ranking: true,
+						page_size: Some(10),
+						entries: popular_now.into_iter().map(Into::into).collect(),
+						listing: None,
+					},
+				});
+			}
+
+			let latest = latest_section(home);
 			if !latest.is_empty() {
 				components.push(HomeComponent {
-					title: Some("Latest Update".into()),
+					title: Some("Latest Chapter".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
 						page_size: None,
@@ -446,51 +487,41 @@ impl Home for MangaCherri {
 				});
 			}
 
-			let popular = section_cards(home, "Popular Today", ".manga-item");
-			if !popular.is_empty() {
+			let completed = section_cards(
+				home,
+				"Completed Romance Manga",
+				".manga-item.manga-live-card",
+			);
+			if !completed.is_empty() {
 				components.push(HomeComponent {
-					title: Some("Popular Today".into()),
+					title: Some("Completed Romance".into()),
 					subtitle: None,
 					value: HomeComponentValue::Scroller {
-						entries: popular.into_iter().map(Into::into).collect(),
+						entries: completed.into_iter().map(Into::into).collect(),
 						listing: None,
 					},
 				});
 			}
 		}
 
-		for (title, document, ranked) in [
-			("Top Weekly", weekly, true),
-			("Top Shounen", shounen, true),
-			("Top Seinen", seinen, true),
-			("Manhwa / Manhua", manhwa, false),
-		] {
-			let Some(document) = document else { continue };
-			let entries: Vec<Link> = cards_from(&document, ".manga-item, .manga-horizontal-item")
+		if let Some(weekly) = weekly.as_ref() {
+			let entries: Vec<Link> = cards_from(weekly, ".manga-item")
 				.into_iter()
 				.take(30)
 				.map(Into::into)
 				.collect();
-			if entries.is_empty() {
-				continue;
-			}
-			components.push(HomeComponent {
-				title: Some(title.into()),
-				subtitle: None,
-				value: if ranked {
-					HomeComponentValue::MangaList {
+			if !entries.is_empty() {
+				components.push(HomeComponent {
+					title: Some("Top Weekly".into()),
+					subtitle: None,
+					value: HomeComponentValue::MangaList {
 						ranking: true,
 						page_size: Some(10),
 						entries,
 						listing: None,
-					}
-				} else {
-					HomeComponentValue::Scroller {
-						entries,
-						listing: None,
-					}
-				},
-			});
+					},
+				});
+			}
 		}
 
 		Ok(HomeLayout { components })

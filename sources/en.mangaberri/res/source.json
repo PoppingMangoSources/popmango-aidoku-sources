@@ -2,13 +2,18 @@
 	"info": {
 		"id": "en.mangaberri",
 		"name": "MangaBerri",
-		"version": 1,
+		"version": 2,
 		"url": "https://mangaberri.com",
 		"contentRating": 2,
-		"languages": ["en"],
+		"languages": [
+			"en"
+		],
 		"minAppVersion": "0.7.1"
 	},
 	"listings": [
-		{ "id": "weekly", "name": "Top Weekly" }
+		{
+			"id": "weekly",
+			"name": "Top Weekly"
+		}
 	]
 }

@@ -2,16 +2,30 @@
 	"info": {
 		"id": "en.mangahome",
 		"name": "MangaHome",
-		"version": 1,
+		"version": 2,
 		"url": "https://www.mangahome.com",
 		"contentRating": 2,
-		"languages": ["en"],
+		"languages": [
+			"en"
+		],
 		"minAppVersion": "0.7.1"
 	},
 	"listings": [
-		{ "id": "latest", "name": "Latest" },
-		{ "id": "shoujo", "name": "Shoujo" },
-		{ "id": "shounen", "name": "Shounen" },
-		{ "id": "yaoi", "name": "Yaoi" }
+		{
+			"id": "latest",
+			"name": "Latest"
+		},
+		{
+			"id": "shoujo",
+			"name": "Shoujo"
+		},
+		{
+			"id": "shounen",
+			"name": "Shounen"
+		},
+		{
+			"id": "yaoi",
+			"name": "Yaoi"
+		}
 	]
 }

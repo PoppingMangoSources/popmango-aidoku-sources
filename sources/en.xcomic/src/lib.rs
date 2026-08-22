@@ -387,6 +387,116 @@ fn browse(
 		.collect())
 }
 
+const RSS_URL: &str = "https://xcomic.me/rss/added.xml";
+
+/// Decodes the handful of XML entities that appear in RSS titles.
+fn decode_entities(input: &str) -> String {
+	input
+		.replace("&amp;", "&")
+		.replace("&lt;", "<")
+		.replace("&gt;", ">")
+		.replace("&quot;", "\"")
+		.replace("&#39;", "'")
+		.replace("&apos;", "'")
+}
+
+/// Unwraps a `<![CDATA[...]]>` wrapper if present.
+fn strip_cdata(value: &str) -> &str {
+	value
+		.trim()
+		.strip_prefix("<![CDATA[")
+		.and_then(|rest| rest.strip_suffix("]]>"))
+		.unwrap_or(value)
+		.trim()
+}
+
+/// Returns the inner text of the first `<tag>...</tag>` in `item`.
+fn tag_inner(item: &str, tag: &str) -> Option<String> {
+	let open = format!("<{tag}");
+	let start = item.find(&open)?;
+	let after = item[start..].find('>')? + start + 1;
+	let close = format!("</{tag}>");
+	let end = item[after..].find(&close)? + after;
+	Some(decode_entities(strip_cdata(&item[after..end])))
+}
+
+/// Reads the `url` attribute from the item's `<enclosure>`.
+fn enclosure_url(item: &str) -> Option<String> {
+	let start = item.find("<enclosure")?;
+	let segment = &item[start..];
+	let key = segment.find("url=\"")? + 5;
+	let end = segment[key..].find('"')? + key;
+	Some(segment[key..end].to_string())
+}
+
+/// The comic id is the alphanumeric run right after `/comic/`.
+fn comic_id_from(link: &str) -> Option<String> {
+	let after = link.split("/comic/").nth(1)?;
+	let id: String = after
+		.chars()
+		.take_while(|c| c.is_ascii_alphanumeric())
+		.collect();
+	(!id.is_empty()).then_some(id)
+}
+
+/// Drops a leading flag emoji (two regional-indicator symbols) and whitespace.
+fn strip_leading_flag(title: &str) -> String {
+	let trimmed = title.trim_start();
+	let mut offset = 0;
+	for c in trimmed.chars() {
+		if ('\u{1F1E6}'..='\u{1F1FF}').contains(&c) || c.is_whitespace() {
+			offset += c.len_utf8();
+		} else {
+			break;
+		}
+	}
+	trimmed[offset..].trim().to_string()
+}
+
+/// The RSS "recently added" feed, fetched and parsed into cards. Unlike the
+/// GraphQL browse, this is a plain GET, so it works even when the API is fussy.
+fn recently_added() -> Result<Vec<Manga>> {
+	let xml = Request::get(RSS_URL)?
+		.header("Referer", &format!("{DOMAIN}/"))
+		.header("Accept", "application/rss+xml,application/xml,text/xml")
+		.send()?
+		.get_string()?;
+
+	let mut out: Vec<Manga> = Vec::new();
+	let mut seen: Vec<String> = Vec::new();
+	for chunk in xml.split("<item").skip(1) {
+		let item = chunk.split("</item>").next().unwrap_or(chunk);
+		let link = tag_inner(item, "link").unwrap_or_default();
+		if !link.contains("/comic/") || !link.contains("-en-") {
+			continue;
+		}
+		let Some(id) = tag_inner(item, "guid")
+			.filter(|g| !g.is_empty())
+			.or_else(|| comic_id_from(&link))
+		else {
+			continue;
+		};
+		if seen.contains(&id) {
+			continue;
+		}
+		let title = strip_leading_flag(&tag_inner(item, "title").unwrap_or_default());
+		let cover = enclosure_url(item).map(|u| abs_url(&u)).unwrap_or_default();
+		if title.is_empty() || cover.is_empty() {
+			continue;
+		}
+		seen.push(id.clone());
+		out.push(Manga {
+			key: id,
+			title,
+			cover: Some(cover),
+			url: Some(abs_url(&link)),
+			content_rating: ContentRating::Suggestive,
+			..Default::default()
+		});
+	}
+	Ok(out)
+}
+
 struct XComic;
 
 impl Source for XComic {
@@ -551,7 +661,7 @@ impl Home for XComic {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let top_rated = browse("field_score", "", 1, &[], &[]);
 		let most_views = browse("views_d030", "", 1, &[], &[]);
-		let recently_added = browse("field_create", "", 1, &[], &[]);
+		let recently = recently_added();
 		let most_chapters = browse("field_chapter", "", 1, &[], &[]);
 		let latest: Result<LatestUpdatesResponse> = graphql(
 			LATEST_UPDATES_QUERY,
@@ -611,7 +721,7 @@ impl Home for XComic {
 			}
 		}
 
-		if let Ok(entries) = recently_added {
+		if let Ok(entries) = recently {
 			let entries: Vec<Link> = entries.into_iter().map(Into::into).collect();
 			if !entries.is_empty() {
 				components.push(HomeComponent {
@@ -683,6 +793,20 @@ fn latest_entry(item: LatestUploadItem) -> Option<MangaWithChapter> {
 
 impl ListingProvider for XComic {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
+		if listing.id == "recently_added" {
+			// The RSS feed is one flat list, so it is paged client-side.
+			let all = recently_added()?;
+			let start = ((page - 1).max(0) * PAGE_SIZE) as usize;
+			let entries: Vec<Manga> = all
+				.into_iter()
+				.skip(start)
+				.take(PAGE_SIZE as usize)
+				.collect();
+			return Ok(MangaPageResult {
+				has_next_page: entries.len() as i32 >= PAGE_SIZE,
+				entries,
+			});
+		}
 		let entries = browse(&listing.id, "", page, &[], &[])?;
 		Ok(MangaPageResult {
 			has_next_page: entries.len() as i32 >= PAGE_SIZE,

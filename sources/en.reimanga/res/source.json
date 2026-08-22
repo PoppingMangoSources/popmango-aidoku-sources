@@ -2,16 +2,30 @@
 	"info": {
 		"id": "en.reimanga",
 		"name": "ReiManga",
-		"version": 1,
+		"version": 2,
 		"url": "https://reimanga.net",
 		"contentRating": 2,
-		"languages": ["en"],
+		"languages": [
+			"en"
+		],
 		"minAppVersion": "0.7.1"
 	},
 	"listings": [
-		{ "id": "latest", "name": "Latest Update" },
-		{ "id": "newest", "name": "Newest" },
-		{ "id": "viewed", "name": "Most Viewed" },
-		{ "id": "scored", "name": "Top Rated" }
+		{
+			"id": "latest",
+			"name": "Latest Update"
+		},
+		{
+			"id": "newest",
+			"name": "Newest"
+		},
+		{
+			"id": "viewed",
+			"name": "Most Viewed"
+		},
+		{
+			"id": "scored",
+			"name": "Top Rated"
+		}
 	]
 }
