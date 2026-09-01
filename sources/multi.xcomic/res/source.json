@@ -1,0 +1,183 @@
+{
+	"info": {
+		"id": "multi.xcomic",
+		"name": "XCOMIC",
+		"version": 4,
+		"urls": [
+			"https://xcomic.me",
+			"https://xcomic.net"
+		],
+		"contentRating": 2,
+		"languages": [
+			"en",
+			"fr",
+			"es",
+			"es-419",
+			"pt",
+			"pt-BR",
+			"ja",
+			"ko",
+			"zh",
+			"ru",
+			"id",
+			"ab",
+			"af",
+			"sq",
+			"am",
+			"ar",
+			"hy",
+			"az",
+			"be",
+			"bn",
+			"bs",
+			"bg",
+			"my",
+			"km",
+			"ca",
+			"ceb",
+			"hr",
+			"cs",
+			"cv",
+			"da",
+			"nl",
+			"et",
+			"eo",
+			"eu",
+			"fo",
+			"fil",
+			"fi",
+			"ka",
+			"de",
+			"el",
+			"gn",
+			"gu",
+			"ht",
+			"ha",
+			"he",
+			"hi",
+			"hu",
+			"is",
+			"ig",
+			"ga",
+			"gl",
+			"it",
+			"jv",
+			"kn",
+			"kk",
+			"ku",
+			"ky",
+			"la",
+			"lo",
+			"lv",
+			"lt",
+			"lb",
+			"mk",
+			"mg",
+			"ms",
+			"ml",
+			"mt",
+			"mi",
+			"mr",
+			"mo",
+			"mn",
+			"ne",
+			"no",
+			"ny",
+			"ps",
+			"fa",
+			"pl",
+			"ro",
+			"rm",
+			"sm",
+			"sr",
+			"sh",
+			"ss",
+			"st",
+			"sn",
+			"sd",
+			"si",
+			"sk",
+			"sl",
+			"so",
+			"sw",
+			"sv",
+			"tg",
+			"ta",
+			"te",
+			"th",
+			"ti",
+			"to",
+			"tr",
+			"tk",
+			"uk",
+			"ur",
+			"uz",
+			"vi",
+			"yo",
+			"zu"
+		],
+		"minAppVersion": "0.7.1"
+	},
+	"listings": [
+		{
+			"id": "field_score",
+			"name": "Top Rated"
+		},
+		{
+			"id": "field_update",
+			"name": "Latest Update"
+		},
+		{
+			"id": "field_create",
+			"name": "Recently Added"
+		},
+		{
+			"id": "field_chapter",
+			"name": "Most Chapters"
+		},
+		{
+			"id": "views_d000",
+			"name": "Most Viewed (All Time)"
+		},
+		{
+			"id": "views_d360",
+			"name": "Most Viewed (360 Days)"
+		},
+		{
+			"id": "views_d180",
+			"name": "Most Viewed (180 Days)"
+		},
+		{
+			"id": "views_d090",
+			"name": "Most Viewed (90 Days)"
+		},
+		{
+			"id": "views_d030",
+			"name": "Most Viewed (30 Days)"
+		},
+		{
+			"id": "views_d007",
+			"name": "Most Viewed (7 Days)"
+		},
+		{
+			"id": "views_h024",
+			"name": "Most Viewed (24 Hours)"
+		},
+		{
+			"id": "views_h012",
+			"name": "Most Viewed (12 Hours)"
+		},
+		{
+			"id": "views_h006",
+			"name": "Most Viewed (6 Hours)"
+		},
+		{
+			"id": "views_h001",
+			"name": "Most Viewed (1 Hour)"
+		}
+	],
+	"config": {
+		"languageSelectType": "multi",
+		"allowsBaseUrlSelect": true
+	}
+}

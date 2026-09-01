@@ -38,43 +38,6 @@
 		"ids": ["shounen", "shoujo", "seinen", "josei", "kodomo", "silver_golden", "non_human"]
 	},
 	{
-		"type": "multi-select",
-		"id": "genres",
-		"title": "Genres",
-		"isGenre": true,
-		"canExclude": true,
-		"options": [
-			"Action", "Adventure", "Comedy", "Cooking", "Doujinshi", "Drama", "Ecchi",
-			"Fantasy", "Gender Bender", "Harem", "Historical", "Horror", "Isekai", "Josei",
-			"Magic", "Martial Arts", "Mature", "Mecha", "Medical", "Military", "Music",
-			"Mystery", "Psychological", "Romance", "School Life", "Sci-Fi", "Seinen",
-			"Shoujo", "Shounen", "Slice of Life", "Smut", "Sports", "Supernatural",
-			"Thriller", "Tragedy", "Webtoon", "Yaoi", "Yuri"
-		],
-		"ids": [
-			"action", "adventure", "comedy", "cooking", "doujinshi", "drama", "ecchi",
-			"fantasy", "gender_bender", "harem", "historical", "horror", "isekai", "josei",
-			"magic", "martial_arts", "mature", "mecha", "medical", "military", "music",
-			"mystery", "psychological", "romance", "school_life", "sci_fi", "seinen",
-			"shoujo", "shounen", "slice_of_life", "smut", "sports", "supernatural",
-			"thriller", "tragedy", "webtoon", "yaoi", "yuri"
-		]
-	},
-	{
-		"type": "multi-select",
-		"id": "formats",
-		"title": "Formats",
-		"canExclude": true,
-		"options": [
-			"4 Koma", "Adaptation", "Anthology", "Award Winning", "Doujinshi", "Fan Colored",
-			"Full Color", "Long Strip", "Official Colored", "Oneshot", "Web Comic", "Webtoon"
-		],
-		"ids": [
-			"4_koma", "adaptation", "anthology", "award_winning", "doujinshi", "fan_colored",
-			"full_color", "long_strip", "official_colored", "oneshot", "web_comic", "webtoon"
-		]
-	},
-	{
 		"type": "select",
 		"id": "include_mode",
 		"title": "Include Genres Mode",
@@ -106,8 +69,16 @@
 		"type": "select",
 		"id": "chapter_count",
 		"title": "Chapter Count",
-		"options": ["Any", "1+", "10+", "20+", "30+", "50+", "100+", "200+", "300+"],
-		"ids": ["", "1", "10", "20", "30", "50", "100", "200", "300"]
+		"options": [
+			"Any", "0", "1+", "10+", "20+", "30+", "40+", "50+", "60+", "70+",
+			"80+", "90+", "100+", "200+", "300+", "1-9", "10-19", "20-29", "30-39",
+			"40-49", "50-59", "60-69", "70-79", "80-89", "90-99", "100-199", "200-299"
+		],
+		"ids": [
+			"", "0", "1", "10", "20", "30", "40", "50", "60", "70", "80", "90",
+			"100", "200", "300", "1-9", "10-19", "20-29", "30-39", "40-49", "50-59",
+			"60-69", "70-79", "80-89", "90-99", "100-199", "200-299"
+		]
 	},
 	{
 		"type": "text",
@@ -122,13 +93,5 @@
 		"canExclude": false,
 		"options": ["Chinese", "Japanese", "Korean", "English"],
 		"ids": ["zh", "ja", "ko", "en"]
-	},
-	{
-		"type": "multi-select",
-		"id": "translated_languages",
-		"title": "Translated Languages",
-		"canExclude": false,
-		"options": ["English", "Chinese", "Japanese", "Korean", "Spanish", "French", "Portuguese (Brazil)", "Russian"],
-		"ids": ["en", "zh", "ja", "ko", "es", "fr", "pt_br", "ru"]
 	}
 ]

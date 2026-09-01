@@ -121,9 +121,9 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v5.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v5.aix">.aix (v5)</a></sub>
 
-<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.xcomic/res/icon.png" width="24" align="top"/>&nbsp; XCOMIC &nbsp;<sub><a href="https://xcomic.me">xcomic.me</a></sub></h3>
+<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/multi.xcomic/res/icon.png" width="24" align="top"/>&nbsp; XCOMIC &nbsp;<sub><a href="https://xcomic.me">xcomic.me</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.xcomic-v3.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.xcomic-v3.aix">.aix (v3)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v4.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v4.aix">.aix (v4)</a></sub>
 
 ## Novels
 
