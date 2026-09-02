@@ -85,13 +85,5 @@
 		"id": "year",
 		"title": "Release Year",
 		"placeholder": "e.g. 2020 or 2018-2022"
-	},
-	{
-		"type": "multi-select",
-		"id": "original_languages",
-		"title": "Original Languages",
-		"canExclude": false,
-		"options": ["Chinese", "Japanese", "Korean", "English"],
-		"ids": ["zh", "ja", "ko", "en"]
 	}
 ]

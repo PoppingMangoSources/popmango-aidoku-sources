@@ -4,10 +4,10 @@ extern crate alloc;
 use core::cell::RefCell;
 
 mod filters;
-mod genres;
 mod graphql;
 mod helpers;
 mod home;
+mod lists;
 mod models;
 mod settings;
 
@@ -107,6 +107,7 @@ impl Source for XComic {
 		params.word = query.unwrap_or_default();
 		let mut types = Vec::new();
 		let mut ratings = Vec::new();
+		let mut translated = Vec::new();
 
 		for filter in filters {
 			match filter {
@@ -139,6 +140,7 @@ impl Source for XComic {
 					"content_ratings" => ratings.extend(included),
 					"demographics" => params.demographics.extend(included),
 					"original_languages" => params.original_languages.extend(included),
+					"translated_languages" => translated.extend(included),
 					_ => {}
 				},
 				_ => {}
@@ -150,6 +152,10 @@ impl Source for XComic {
 		}
 		if !ratings.is_empty() {
 			params.content_ratings = ratings;
+		}
+		// A filter choice overrides the languages picked in settings.
+		if !translated.is_empty() {
+			params.translated_languages = translated;
 		}
 
 		self.browse_page(&base_url, params)

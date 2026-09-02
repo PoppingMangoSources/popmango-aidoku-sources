@@ -1,6 +1,6 @@
 use crate::{
 	XComic,
-	genres::{FORMATS, GENRES},
+	lists::{FORMATS, GENRES, LANGUAGES},
 };
 use aidoku::{
 	BaseUrlProvider, DynamicFilters, DynamicSettings, Filter, GroupSetting, MultiSelectFilter,
@@ -57,13 +57,14 @@ fn multi_select(
 	id: &'static str,
 	title: &'static str,
 	is_genre: bool,
+	can_exclude: bool,
 	options: Vec<(String, String)>,
 ) -> Filter {
 	MultiSelectFilter {
 		id: id.into(),
 		title: Some(title.into()),
 		is_genre,
-		can_exclude: true,
+		can_exclude,
 		options: options
 			.iter()
 			.map(|(_, title)| title.clone().into())
@@ -77,9 +78,24 @@ fn multi_select(
 impl DynamicFilters for XComic {
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
 		let genres = fetch_genres(&self.get_base_url()?).unwrap_or_else(|| owned(GENRES));
+		// The api only takes languages as includes.
 		Ok(vec![
-			multi_select("genres", "Genres", true, genres),
-			multi_select("formats", "Formats", false, owned(FORMATS)),
+			multi_select("genres", "Genres", true, true, genres),
+			multi_select("formats", "Formats", false, true, owned(FORMATS)),
+			multi_select(
+				"original_languages",
+				"Original Languages",
+				false,
+				false,
+				owned(LANGUAGES),
+			),
+			multi_select(
+				"translated_languages",
+				"Translated Languages",
+				false,
+				false,
+				owned(LANGUAGES),
+			),
 		])
 	}
 }

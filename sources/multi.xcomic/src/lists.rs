@@ -1,6 +1,34 @@
 //! Single source of truth for the search filters and the exclusion settings,
 //! both of which are built from these lists so they cannot drift apart.
 
+/// `(id, title)`. The site offers these for both original and translated
+/// language filtering; `_t` is its own catch-all id.
+pub const LANGUAGES: &[(&str, &str)] = &[
+	("en", "English"),
+	("zh", "Chinese"),
+	("ja", "Japanese"),
+	("ko", "Korean"),
+	("ar", "Arabic"),
+	("de", "German"),
+	("es", "Spanish"),
+	("es_419", "Spanish (Latin America)"),
+	("fr", "French"),
+	("hi", "Hindi"),
+	("id", "Indonesian"),
+	("it", "Italian"),
+	("pl", "Polish"),
+	("pt", "Portuguese"),
+	("pt_br", "Portuguese (Brazil)"),
+	("ru", "Russian"),
+	("th", "Thai"),
+	("tr", "Turkish"),
+	("uk", "Ukrainian"),
+	("vi", "Vietnamese"),
+	("zh_hk", "Chinese (Cantonese)"),
+	("zh_tw", "Chinese (Traditional)"),
+	("_t", "Other"),
+];
+
 /// `(id, title)`. Fallback when the live list cannot be fetched.
 pub const GENRES: &[(&str, &str)] = &[
 	("action", "Action"),
