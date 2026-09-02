@@ -18,7 +18,7 @@ use aidoku::{
 };
 use serde::de::DeserializeOwned;
 
-pub const PAGE_SIZE: i32 = 36;
+pub const PAGE_SIZE: i32 = 48;
 pub const EXTENDED_PAGE_SIZE: i32 = 120;
 const CHAPTER_PAGE_SIZE: i32 = 1000;
 
