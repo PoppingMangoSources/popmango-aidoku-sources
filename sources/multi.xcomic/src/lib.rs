@@ -131,7 +131,7 @@ impl Source for XComic {
 					included,
 					excluded,
 				} => match id.as_str() {
-					"genres" | "formats" => {
+					"genres" => {
 						params.included_genres.extend(included);
 						params.excluded_genres.extend(excluded);
 					}

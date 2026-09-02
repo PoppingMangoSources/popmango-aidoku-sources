@@ -1,6 +1,6 @@
 use crate::{
 	XComic,
-	helpers::{FORMATS, GENRES, LANGUAGES},
+	helpers::{GENRES, LANGUAGES},
 };
 use aidoku::{
 	BaseUrlProvider, DynamicFilters, DynamicSettings, Filter, GroupSetting, MultiSelectFilter,
@@ -34,11 +34,7 @@ fn fetch_genres(base_url: &str) -> Option<Vec<(String, String)>> {
 			continue;
 		};
 		let title = title.trim();
-		if id.is_empty()
-			|| title.is_empty()
-			|| FORMATS.iter().any(|(format, _)| *format == id)
-			|| genres.iter().any(|(seen, _)| seen == id)
-		{
+		if id.is_empty() || title.is_empty() || genres.iter().any(|(seen, _)| seen == id) {
 			continue;
 		}
 		genres.push((id.into(), title.into()));
@@ -88,7 +84,6 @@ impl DynamicFilters for XComic {
 		// The api only takes languages as includes.
 		Ok(vec![
 			multi_select("genres", "Genres", true, true, genres),
-			multi_select("formats", "Formats", false, true, owned(FORMATS)),
 			multi_select(
 				"original_languages",
 				"Original Languages",
@@ -109,28 +104,22 @@ impl DynamicFilters for XComic {
 
 impl DynamicSettings for XComic {
 	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
-		let exclusion = |key: &'static str, title: &'static str, list: &[(&str, &str)]| {
-			let (values, titles) = split(owned(list));
-			MultiSelectSetting {
-				key: key.into(),
-				title: title.into(),
-				values,
-				titles: Some(titles),
-				refreshes: Some(vec!["content".into()]),
-				..Default::default()
-			}
-			.into()
-		};
+		let (values, titles) = split(owned(GENRES));
 		Ok(vec![
 			GroupSetting {
 				key: "exclusions".into(),
 				title: "Exclusions".into(),
-				footer: Some(
-					"Series carrying any excluded genre or format are hidden everywhere.".into(),
-				),
+				footer: Some("Series carrying any excluded genre are hidden everywhere.".into()),
 				items: vec![
-					exclusion("excludedGenres", "Excluded Genres", GENRES),
-					exclusion("excludedTags", "Excluded Formats", FORMATS),
+					MultiSelectSetting {
+						key: "excludedGenres".into(),
+						title: "Excluded Genres".into(),
+						values,
+						titles: Some(titles),
+						refreshes: Some(vec!["content".into()]),
+						..Default::default()
+					}
+					.into(),
 				],
 				..Default::default()
 			}

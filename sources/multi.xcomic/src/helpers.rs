@@ -5,7 +5,6 @@ use aidoku::{
 };
 
 pub const PORNOGRAPHIC_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
-const SUGGESTIVE_GENRES: &[&str] = &["ecchi", "erotica", "mature", "yaoi", "yuri"];
 
 // Single source of truth for the search filters and the exclusion settings,
 // both of which are built from these so they cannot drift apart.
@@ -109,61 +108,48 @@ pub const LANGUAGES: &[(&str, &str)] = &[
 
 /// `(id, title)`. Fallback when the live list cannot be fetched.
 pub const GENRES: &[(&str, &str)] = &[
-	("action", "Action"),
-	("adventure", "Adventure"),
-	("comedy", "Comedy"),
-	("cooking", "Cooking"),
-	("doujinshi", "Doujinshi"),
-	("drama", "Drama"),
-	("ecchi", "Ecchi"),
 	("fantasy", "Fantasy"),
-	("gender_bender", "Gender Bender"),
-	("harem", "Harem"),
-	("historical", "Historical"),
-	("horror", "Horror"),
-	("isekai", "Isekai"),
-	("josei", "Josei"),
-	("magic", "Magic"),
-	("martial_arts", "Martial Arts"),
-	("mature", "Mature"),
-	("mecha", "Mecha"),
-	("medical", "Medical"),
-	("military", "Military"),
-	("music", "Music"),
-	("mystery", "Mystery"),
+	("supernatural", "Supernatural"),
+	("action", "Action"),
+	("drama", "Drama"),
 	("psychological", "Psychological"),
 	("romance", "Romance"),
-	("school_life", "School Life"),
-	("sci_fi", "Sci-Fi"),
-	("seinen", "Seinen"),
-	("shoujo", "Shoujo"),
-	("shounen", "Shounen"),
 	("slice_of_life", "Slice of Life"),
-	("smut", "Smut"),
-	("sports", "Sports"),
-	("supernatural", "Supernatural"),
-	("thriller", "Thriller"),
 	("tragedy", "Tragedy"),
-	("webtoon", "Webtoon"),
-	("yaoi", "Yaoi"),
-	("yuri", "Yuri"),
-];
-
-/// `(id, title)`. Also used to split formats out of the live genre list, which
-/// the site serves as one combined group.
-pub const FORMATS: &[(&str, &str)] = &[
-	("4_koma", "4 Koma"),
-	("adaptation", "Adaptation"),
-	("anthology", "Anthology"),
-	("award_winning", "Award Winning"),
-	("doujinshi", "Doujinshi"),
-	("fan_colored", "Fan Colored"),
+	("horror", "Horror"),
+	("mystery", "Mystery"),
+	("comedy", "Comedy"),
+	("martial_arts", "Martial Arts"),
+	("boys_love", "Boys Love"),
+	("adventure", "Adventure"),
+	("historical", "Historical"),
+	("sci_fi", "Sci-Fi"),
+	("girls_love", "Girls Love"),
+	("adult", "Adult"),
+	("smut", "Smut"),
+	("thriller", "Thriller"),
+	("hentai", "Hentai"),
+	("longstrip", "Longstrip"),
 	("full_color", "Full Color"),
-	("long_strip", "Long Strip"),
-	("official_colored", "Official Colored"),
-	("oneshot", "Oneshot"),
 	("web_comic", "Web Comic"),
-	("webtoon", "Webtoon"),
+	("doujinshi", "Doujinshi"),
+	("web_novel", "Web Novel"),
+	("original_doujinshi", "Original Doujinshi"),
+	("4_koma", "4-Koma"),
+	("fanbook", "Fanbook"),
+	("light_novel", "Light Novel"),
+	("japanese_novel", "Japanese Novel"),
+	("novels", "Novels"),
+	("illustration_book", "Illustration Book"),
+	("guidebook", "Guidebook"),
+	("illustbook", "Illustbook"),
+	("artbook", "Artbook"),
+	("partially_colored", "Partially Colored"),
+	("1_koma", "1-Koma"),
+	("fanwork", "Fanwork"),
+	("partially_colored_webtoon", "Partially Colored Webtoon"),
+	("3_koma", "3-koma"),
+	("2_koma", "2-koma"),
 ];
 
 pub fn absolute_url(base_url: &str, url: &str) -> String {
@@ -210,23 +196,20 @@ fn node_names(nodes: Vec<Node<Option<NamedData>>>) -> Vec<String> {
 		.collect()
 }
 
-// The API is inconsistent about genre casing.
-fn has_any(genres: &[String], list: &[&str]) -> bool {
-	genres
-		.iter()
-		.any(|genre| list.contains(&genre.trim().to_ascii_lowercase().as_str()))
-}
-
 pub fn is_pornographic(rating: Option<&str>, genres: Option<&[String]>) -> bool {
+	// The API is inconsistent about genre casing.
 	rating == Some("pornographic")
-		|| genres.is_some_and(|genres| has_any(genres, PORNOGRAPHIC_GENRES))
+		|| genres.is_some_and(|genres| {
+			genres.iter().any(|genre| {
+				PORNOGRAPHIC_GENRES.contains(&genre.trim().to_ascii_lowercase().as_str())
+			})
+		})
 }
 
 fn content_rating(rating: Option<&str>, genres: &[String]) -> ContentRating {
 	if is_pornographic(rating, Some(genres)) {
 		ContentRating::NSFW
-	} else if matches!(rating, Some("suggestive" | "erotica")) || has_any(genres, SUGGESTIVE_GENRES)
-	{
+	} else if matches!(rating, Some("suggestive" | "erotica")) {
 		ContentRating::Suggestive
 	} else {
 		ContentRating::Safe
@@ -237,7 +220,7 @@ fn status(original_status: Option<&str>, upload_status: Option<&str>) -> MangaSt
 	let status = original_status.or(upload_status).unwrap_or_default();
 	if status.contains("completed") {
 		MangaStatus::Completed
-	} else if status.contains("ongoing") {
+	} else if status.contains("releasing") || status.contains("ongoing") {
 		MangaStatus::Ongoing
 	} else if status.contains("hiatus") {
 		MangaStatus::Hiatus
@@ -253,8 +236,8 @@ fn viewer(read_direction: Option<&str>, kind: Option<&str>, genres: &[String]) -
 		Some("ttb") => Viewer::Webtoon,
 		Some("rtl") => Viewer::RightToLeft,
 		Some("ltr") => Viewer::LeftToRight,
-		_ if matches!(kind, Some("manhwa" | "manhua" | "webtoon"))
-			|| genres.iter().any(|genre| genre == "webtoon") =>
+		_ if matches!(kind, Some("manhwa" | "manhua"))
+			|| genres.iter().any(|genre| genre == "longstrip") =>
 		{
 			Viewer::Webtoon
 		}

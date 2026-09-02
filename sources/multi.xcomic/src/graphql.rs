@@ -44,9 +44,7 @@ pub const SORT_IDS: &[&str] = &[
 	"views_h001",
 ];
 
-const DEFAULT_TYPES: &[&str] = &[
-	"manga", "manhwa", "manhua", "cartoon", "western", "artbook", "imageset",
-];
+const DEFAULT_TYPES: &[&str] = &["manga", "manhwa", "manhua", "other", "oel", "novel"];
 const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica", "pornographic"];
 
 const BROWSE_QUERY: &str = r#"
@@ -150,12 +148,7 @@ pub struct BrowseParams {
 
 impl BrowseParams {
 	pub fn new(sortby: &str, page: i32) -> Result<Self> {
-		let mut excluded_genres = defaults_get::<Vec<String>>("excludedGenres").unwrap_or_default();
-		for tag in defaults_get::<Vec<String>>("excludedTags").unwrap_or_default() {
-			if !excluded_genres.contains(&tag) {
-				excluded_genres.push(tag);
-			}
-		}
+		let excluded_genres = defaults_get::<Vec<String>>("excludedGenres").unwrap_or_default();
 		Ok(Self {
 			page,
 			size: PAGE_SIZE,
