@@ -4,14 +4,14 @@ use crate::{
 		BrowseParams, EXTENDED_PAGE_SIZE, PAGE_SIZE, browse_request, latest_uploads_request,
 		parse_browse, parse_latest_uploads,
 	},
-	helpers::{chapter_from_data, manga_from_data, type_and_chapter},
+	helpers::{chapter_from_data, manga_from_data, type_label},
 	models::{ComicData, LatestEntry},
 	settings,
 };
 use aidoku::{
 	BaseUrlProvider, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing,
 	ListingKind, Manga, MangaWithChapter, Result,
-	alloc::{Vec, vec},
+	alloc::{String, Vec, vec},
 	imports::net::{Request, RequestError, Response},
 };
 
@@ -30,25 +30,32 @@ fn visible(comic: ComicData, base_url: &str) -> Option<Manga> {
 	manga.cover.is_some().then_some(manga)
 }
 
-fn section<T: From<Manga>>(comics: Vec<ComicData>, base_url: &str, limit: usize) -> Vec<T> {
+/// Entries for the big scroller, which renders the description itself.
+fn manga_section(comics: Vec<ComicData>, base_url: &str, limit: usize) -> Vec<Manga> {
 	comics
 		.into_iter()
 		.filter_map(|comic| visible(comic, base_url))
 		.take(limit)
-		.map(T::from)
 		.collect()
 }
 
-/// Links carrying the type and latest chapter as their subtitle.
-fn typed_links(comics: Vec<ComicData>, base_url: &str) -> Vec<Link> {
+/// Links with an explicit subtitle. It is always set, since otherwise the
+/// browse summary would fill it through `From<Manga>`.
+fn links(
+	comics: Vec<ComicData>,
+	base_url: &str,
+	limit: usize,
+	subtitle: impl Fn(&ComicData) -> Option<String>,
+) -> Vec<Link> {
 	comics
 		.into_iter()
 		.filter_map(|comic| {
-			let subtitle = type_and_chapter(&comic);
+			let subtitle = subtitle(&comic);
 			let mut link = Link::from(visible(comic, base_url)?);
-			link.subtitle = subtitle.or(link.subtitle);
+			link.subtitle = subtitle;
 			Some(link)
 		})
+		.take(limit)
 		.collect()
 }
 
@@ -61,7 +68,7 @@ fn chapter_entries(items: Vec<LatestEntry>, base_url: &str, limit: usize) -> Vec
 				.translated_language
 				.as_deref()
 				.and_then(settings::normalize_language);
-			let chapter = chapter_from_data(chapter?, base_url, language.as_deref())?;
+			let chapter = chapter_from_data(chapter?, base_url, language.as_deref(), true)?;
 			Some(MangaWithChapter {
 				manga: visible(comic, base_url)?,
 				chapter,
@@ -98,29 +105,33 @@ impl Home for XComic {
 		] = responses;
 
 		let page = PAGE_SIZE as usize;
-		let top_rated: Vec<Manga> = section(
+		let top_rated = manga_section(
 			parse_browse(top_rated?, &top_rated_params)?.0,
 			&base_url,
 			10,
 		);
-		let most_viewed: Vec<Link> = section(
+		let most_viewed = links(
 			parse_browse(most_viewed?, &most_viewed_params)?.0,
 			&base_url,
 			usize::MAX,
+			|_| None,
 		);
 		let latest = chapter_entries(
 			parse_latest_uploads(latest?, &latest_params)?.0,
 			&base_url,
 			page,
 		);
-		let recently_added: Vec<Link> = section(
+		let recently_added = links(
 			parse_browse(recently_added?, &recently_added_params)?.0,
 			&base_url,
 			page,
+			|_| None,
 		);
-		let most_chapters = typed_links(
+		let most_chapters = links(
 			parse_browse(most_chapters?, &most_chapters_params)?.0,
 			&base_url,
+			usize::MAX,
+			type_label,
 		);
 
 		Ok(HomeLayout {

@@ -44,7 +44,9 @@ pub const SORT_IDS: &[&str] = &[
 	"views_h001",
 ];
 
-const DEFAULT_TYPES: &[&str] = &["manga", "manhwa", "manhua"];
+const DEFAULT_TYPES: &[&str] = &[
+	"manga", "manhwa", "manhua", "cartoon", "western", "artbook", "imageset",
+];
 const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica", "pornographic"];
 
 const BROWSE_QUERY: &str = r#"
@@ -54,7 +56,6 @@ query get_comic_browse_items($select: Comic_Browse_Select) {
       id name urlPath urlCover
       type contentRating genres
       summary { text }
-      chapterNodes_last(amount: 1) { data { serial chaNum } }
     }
   }
 }

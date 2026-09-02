@@ -13,28 +13,98 @@ const SUGGESTIVE_GENRES: &[&str] = &["ecchi", "erotica", "mature", "yaoi", "yuri
 /// language filtering; `_t` is its own catch-all id.
 pub const LANGUAGES: &[(&str, &str)] = &[
 	("en", "English"),
-	("zh", "Chinese"),
-	("ja", "Japanese"),
-	("ko", "Korean"),
-	("ar", "Arabic"),
-	("de", "German"),
-	("es", "Spanish"),
-	("es_419", "Spanish (Latin America)"),
 	("fr", "French"),
-	("hi", "Hindi"),
-	("id", "Indonesian"),
-	("it", "Italian"),
-	("pl", "Polish"),
 	("pt", "Portuguese"),
-	("pt_br", "Portuguese (Brazil)"),
+	("ko", "Korean"),
+	("ja", "Japanese"),
+	("id", "Indonesian"),
+	("zh", "Chinese"),
+	("ab", "Abkhazian"),
+	("af", "Afrikaans"),
+	("hy", "Armenian"),
+	("ar", "Arabic"),
+	("sq", "Albanian"),
+	("az", "Azerbaijani"),
+	("be", "Belarusian"),
+	("bn", "Bengali"),
+	("my", "Burmese"),
+	("bg", "Bulgarian"),
+	("bs", "Bosnian"),
+	("km", "Cambodian"),
+	("ca", "Catalan"),
+	("ceb", "Cebuano"),
+	("cs", "Czech"),
+	("hr", "Croatian"),
+	("cv", "Chuvash"),
+	("da", "Danish"),
+	("nl", "Dutch"),
+	("et", "Estonian"),
+	("eo", "Esperanto"),
+	("eu", "Basque"),
+	("fil", "Filipino"),
+	("fi", "Finnish"),
+	("de", "German"),
+	("ka", "Georgian"),
+	("el", "Greek"),
+	("gn", "Guarani"),
+	("gu", "Gujarati"),
+	("hi", "Hindi"),
+	("he", "Hebrew"),
+	("ht", "Haitian Creole"),
+	("hu", "Hungarian"),
+	("is", "Icelandic"),
+	("ig", "Igbo"),
+	("gl", "Galician"),
+	("ga", "Irish"),
+	("it", "Italian"),
+	("kk", "Kazakh"),
+	("ky", "Kyrgyz"),
+	("lt", "Lithuanian"),
+	("la", "Latin"),
+	("lo", "Laothian"),
+	("ku", "Kurdish"),
+	("jv", "Javanese"),
+	("mg", "Malagasy"),
+	("lv", "Latvian"),
+	("ms", "Malay"),
+	("ml", "Malayalam"),
+	("mt", "Maltese"),
+	("mo", "Moldavian"),
+	("mr", "Marathi"),
+	("mi", "Maori"),
+	("mn", "Mongolian"),
+	("ny", "Nyanja"),
+	("ne", "Nepali"),
+	("ps", "Pashto"),
+	("no", "Norwegian"),
+	("fa", "Persian"),
+	("pt_br", "Portuguese (BR)"),
+	("sr", "Serbian"),
+	("st", "Sesotho"),
 	("ru", "Russian"),
+	("ro", "Romanian"),
+	("pl", "Polish"),
+	("sh", "Serbo-Croatian"),
+	("si", "Sinhalese"),
+	("so", "Somali"),
+	("sv", "Swedish"),
 	("th", "Thai"),
 	("tr", "Turkish"),
+	("ss", "Swati"),
+	("sk", "Slovak"),
+	("es", "Spanish"),
+	("ti", "Tigrinya"),
+	("ta", "Tamil"),
+	("tk", "Turkmen"),
 	("uk", "Ukrainian"),
+	("to", "Tonga"),
+	("te", "Telugu"),
+	("es_419", "Spanish (LA)"),
+	("sl", "Slovenian"),
 	("vi", "Vietnamese"),
-	("zh_hk", "Chinese (Cantonese)"),
-	("zh_tw", "Chinese (Traditional)"),
 	("_t", "Other"),
+	("uz", "Uzbek"),
+	("zu", "Zulu"),
 ];
 
 /// `(id, title)`. Fallback when the live list cannot be fetched.
@@ -273,29 +343,9 @@ pub fn manga_from_data(mut comic: ComicData, base_url: &str) -> Manga {
 	}
 }
 
-fn format_number(value: f64) -> String {
-	let whole = value as i64;
-	if whole as f64 == value {
-		format!("{whole}")
-	} else {
-		format!("{value}")
-	}
-}
-
-/// `Manhwa · Ch. 12` subtitle, from the type and the latest chapter.
-pub fn type_and_chapter(comic: &ComicData) -> Option<String> {
-	let kind = comic.kind.as_deref().map(title_case);
-	let chapter = comic
-		.last_chapter
-		.as_ref()
-		.and_then(|nodes| nodes.first())
-		.and_then(|node| node.data.cha_num.or(node.data.serial))
-		.map(|number| format!("Ch. {}", format_number(number)));
-	match (kind, chapter) {
-		(Some(kind), Some(chapter)) => Some(format!("{kind} · {chapter}")),
-		(Some(only), None) | (None, Some(only)) => Some(only),
-		(None, None) => None,
-	}
+/// The content type, title cased for use as a subtitle.
+pub fn type_label(comic: &ComicData) -> Option<String> {
+	comic.kind.as_deref().map(title_case)
 }
 
 /// `(comic, chapter)` ids from a `/comic/{id}-slug[/{id}-slug]` url.
@@ -346,10 +396,14 @@ fn unix_seconds(timestamp: i64) -> Option<i64> {
 	})
 }
 
+/// `published_first` dates the chapter by publication rather than by revision,
+/// which is what the latest-uploads feed reports; the chapter list uses the
+/// revision date so edits move a chapter back up.
 pub fn chapter_from_data(
 	mut data: ChapterData,
 	base_url: &str,
 	language: Option<&str>,
+	published_first: bool,
 ) -> Option<Chapter> {
 	if data.db_status.as_deref().unwrap_or("normal") != "normal" {
 		return None;
@@ -393,11 +447,12 @@ pub fn chapter_from_data(
 		key: data.id,
 		chapter_number: data.cha_num.or(data.serial).map(|number| number as f32),
 		title,
-		date_uploaded: data
-			.date_modify
-			.or(data.date_create)
-			.or(data.date_public)
-			.and_then(unix_seconds),
+		date_uploaded: if published_first {
+			data.date_public.or(data.date_modify).or(data.date_create)
+		} else {
+			data.date_modify.or(data.date_create).or(data.date_public)
+		}
+		.and_then(unix_seconds),
 		scanlators: (!scanlators.is_empty()).then_some(scanlators),
 		url: data.url_path.map(|url| absolute_url(base_url, &url)),
 		language: language.map(Into::into),

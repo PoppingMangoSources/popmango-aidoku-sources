@@ -187,7 +187,7 @@ impl Source for XComic {
 				graphql::fetch_chapters(&base_url, &manga.key)?
 					.into_iter()
 					.filter_map(|chapter| {
-						chapter_from_data(chapter, &base_url, language.as_deref())
+						chapter_from_data(chapter, &base_url, language.as_deref(), false)
 					})
 					.collect(),
 			);
