@@ -23,6 +23,15 @@ use helpers::{chapter_from_data, manga_from_data};
 
 const DEFAULT_BASE_URL: &str = "https://xcomic.me";
 
+/// Manga key for a url target, looking up the series' editions when needed.
+fn comic_key(base_url: &str, target: helpers::Target) -> Result<String> {
+	match target {
+		helpers::Target::Comic(key, _) => Ok(key),
+		helpers::Target::Title(id) => helpers::resolve_title(base_url, &id)
+			.ok_or_else(|| error!("No comics are available for this series")),
+	}
+}
+
 struct XComic {
 	latest_cursor: RefCell<Option<i64>>,
 }
@@ -94,8 +103,9 @@ impl Source for XComic {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let base_url = self.get_base_url()?;
-		// Quick open: a pasted comic url or an `id:<value>` query resolves directly.
-		if let Some(key) = query.as_deref().and_then(helpers::comic_key_from_query) {
+		// Quick open: a pasted url or an `id:<value>` query resolves directly.
+		if let Some(target) = query.as_deref().and_then(helpers::target_from_query) {
+			let key = comic_key(&base_url, target)?;
 			let comic = graphql::fetch_comic(&base_url, &key)?;
 			return Ok(MangaPageResult {
 				entries: vec![manga_from_data(comic, &base_url)],
@@ -231,12 +241,16 @@ impl ImageRequestProvider for XComic {
 
 impl DeepLinkHandler for XComic {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		let Some((manga_key, chapter)) = helpers::parse_comic_url(&url) else {
+		let Some(target) = helpers::parse_link(&url) else {
 			return Ok(None);
 		};
-		Ok(Some(match chapter {
-			Some(key) => DeepLinkResult::Chapter { manga_key, key },
-			None => DeepLinkResult::Manga { key: manga_key },
+		Ok(Some(match target {
+			helpers::Target::Comic(manga_key, Some(key)) => {
+				DeepLinkResult::Chapter { manga_key, key }
+			}
+			target => DeepLinkResult::Manga {
+				key: comic_key(&self.get_base_url()?, target)?,
+			},
 		}))
 	}
 }

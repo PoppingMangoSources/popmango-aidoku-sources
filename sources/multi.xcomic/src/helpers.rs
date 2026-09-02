@@ -1,7 +1,11 @@
-use crate::models::{ChapterData, ComicData, NamedData, Node};
+use crate::{
+	models::{ChapterData, ComicData, NamedData, Node},
+	settings::get_languages,
+};
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Viewer,
 	alloc::{String, Vec, format, string::ToString, vec},
+	imports::net::Request,
 };
 
 pub const PORNOGRAPHIC_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
@@ -287,7 +291,7 @@ pub fn manga_from_data(mut comic: ComicData, base_url: &str) -> Manga {
 		.url_path
 		.take()
 		.map(|url| absolute_url(base_url, &url))
-		.unwrap_or_else(|| format!("{base_url}/title/{}", comic.id));
+		.unwrap_or_else(|| format!("{base_url}/comic/{}", comic.id));
 	let authors = comic
 		.author_nodes
 		.take()
@@ -331,9 +335,15 @@ pub fn type_label(comic: &ComicData) -> Option<String> {
 	comic.kind.as_deref().map(title_case)
 }
 
-/// `(comic, chapter)` ids from a `/title/{id}[/{id}]` url. The site moved these
-/// off `/comic/`, so both prefixes are accepted.
-pub fn parse_comic_url(url: &str) -> Option<(String, Option<String>)> {
+/// What an xcomic url points at. The two prefixes are different things, not
+/// aliases: `/title/{id}` is the series, which owns one `/comic/{id}-{lang}`
+/// edition per language, and only the edition ids are usable as manga keys.
+pub enum Target {
+	Title(String),
+	Comic(String, Option<String>),
+}
+
+pub fn parse_link(url: &str) -> Option<Target> {
 	fn id(segment: &str) -> Option<String> {
 		segment
 			.split('-')
@@ -341,20 +351,22 @@ pub fn parse_comic_url(url: &str) -> Option<(String, Option<String>)> {
 			.filter(|id| !id.is_empty())
 			.map(Into::into)
 	}
-	let path = url
-		.split("/title/")
-		.nth(1)
-		.or_else(|| url.split("/comic/").nth(1))?;
-	let mut segments = path.split('/');
-	Some((id(segments.next()?)?, segments.next().and_then(id)))
+	if let Some(path) = url.split("/title/").nth(1) {
+		return id(path.split('/').next()?).map(Target::Title);
+	}
+	let mut segments = url.split("/comic/").nth(1)?.split('/');
+	Some(Target::Comic(
+		id(segments.next()?)?,
+		segments.next().and_then(id),
+	))
 }
 
-/// Comic id from a pasted url or an `id:<value>` query. A bare id is not
-/// accepted, since it would swallow ordinary search terms.
-pub fn comic_key_from_query(query: &str) -> Option<String> {
+/// Target of a pasted url or an `id:<value>` query. A bare id is not accepted,
+/// since it would swallow ordinary search terms.
+pub fn target_from_query(query: &str) -> Option<Target> {
 	let query = query.trim();
 	if query.contains("/title/") || query.contains("/comic/") {
-		return parse_comic_url(query).map(|(comic, _)| comic);
+		return parse_link(query);
 	}
 	let rest = query
 		.get(..3)
@@ -362,7 +374,49 @@ pub fn comic_key_from_query(query: &str) -> Option<String> {
 		.and_then(|_| query.get(3..))?
 		.trim();
 	let id = rest.split('-').next()?;
-	(!id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')).then(|| id.into())
+	(!id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'))
+		.then(|| Target::Comic(id.into(), None))
+}
+
+/// Edition id for a series, since a `/title/` page is not itself readable. Its
+/// "Sources" list links one comic per language, so prefer a language the reader
+/// picked and otherwise take the site's own first choice.
+pub fn resolve_title(base_url: &str, title_id: &str) -> Option<String> {
+	let document = Request::get(format!("{base_url}/title/{title_id}"))
+		.ok()?
+		.html()
+		.ok()?;
+	let mut editions: Vec<(String, String)> = Vec::new();
+	for anchor in document.select("a[href*='/comic/']")? {
+		let Some(href) = anchor.attr("href") else {
+			continue;
+		};
+		let Some(path) = href.split("/comic/").nth(1) else {
+			continue;
+		};
+		// Chapter links live under an edition, so they carry a second segment.
+		let mut segments = path.trim_end_matches('/').split('/');
+		let Some(edition) = segments.next() else {
+			continue;
+		};
+		if segments.next().is_some() {
+			continue;
+		}
+		let mut fields = edition.split('-');
+		let (Some(id), Some(language)) = (fields.next(), fields.next()) else {
+			continue;
+		};
+		if !id.is_empty() && !editions.iter().any(|(seen, _)| seen == id) {
+			editions.push((id.into(), language.into()));
+		}
+	}
+
+	let languages = get_languages().unwrap_or_default();
+	editions
+		.iter()
+		.find(|(_, language)| languages.iter().any(|wanted| wanted == language))
+		.or_else(|| editions.first())
+		.map(|(id, _)| id.clone())
 }
 
 pub fn parse_year(value: &str) -> (Option<i64>, Option<i64>) {
