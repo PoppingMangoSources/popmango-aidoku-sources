@@ -287,7 +287,7 @@ pub fn manga_from_data(mut comic: ComicData, base_url: &str) -> Manga {
 		.url_path
 		.take()
 		.map(|url| absolute_url(base_url, &url))
-		.unwrap_or_else(|| format!("{base_url}/comic/{}", comic.id));
+		.unwrap_or_else(|| format!("{base_url}/title/{}", comic.id));
 	let authors = comic
 		.author_nodes
 		.take()
@@ -331,7 +331,8 @@ pub fn type_label(comic: &ComicData) -> Option<String> {
 	comic.kind.as_deref().map(title_case)
 }
 
-/// `(comic, chapter)` ids from a `/comic/{id}-slug[/{id}-slug]` url.
+/// `(comic, chapter)` ids from a `/title/{id}[/{id}]` url. The site moved these
+/// off `/comic/`, so both prefixes are accepted.
 pub fn parse_comic_url(url: &str) -> Option<(String, Option<String>)> {
 	fn id(segment: &str) -> Option<String> {
 		segment
@@ -340,7 +341,11 @@ pub fn parse_comic_url(url: &str) -> Option<(String, Option<String>)> {
 			.filter(|id| !id.is_empty())
 			.map(Into::into)
 	}
-	let mut segments = url.split("/comic/").nth(1)?.split('/');
+	let path = url
+		.split("/title/")
+		.nth(1)
+		.or_else(|| url.split("/comic/").nth(1))?;
+	let mut segments = path.split('/');
 	Some((id(segments.next()?)?, segments.next().and_then(id)))
 }
 
@@ -348,7 +353,7 @@ pub fn parse_comic_url(url: &str) -> Option<(String, Option<String>)> {
 /// accepted, since it would swallow ordinary search terms.
 pub fn comic_key_from_query(query: &str) -> Option<String> {
 	let query = query.trim();
-	if query.contains("/comic/") {
+	if query.contains("/title/") || query.contains("/comic/") {
 		return parse_comic_url(query).map(|(comic, _)| comic);
 	}
 	let rest = query
