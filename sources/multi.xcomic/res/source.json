@@ -2,10 +2,11 @@
 	"info": {
 		"id": "multi.xcomic",
 		"name": "XCOMIC",
-		"version": 13,
+		"version": 14,
 		"urls": [
 			"https://xcomic.me",
-			"https://xcomic.net"
+			"https://xcomic.net",
+			"https://comik.to"
 		],
 		"contentRating": 2,
 		"languages": [

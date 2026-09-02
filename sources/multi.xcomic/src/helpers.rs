@@ -348,7 +348,9 @@ pub fn parse_link(url: &str) -> Option<Target> {
 		segment
 			.split('-')
 			.next()
-			.filter(|id| !id.is_empty())
+			// The site rewrites its legacy chapter links to `/comic/_/{chapter}`,
+			// where `_` stands in for a comic it does not name.
+			.filter(|id| !id.is_empty() && *id != "_")
 			.map(Into::into)
 	}
 	if let Some(path) = url.split("/title/").nth(1) {
