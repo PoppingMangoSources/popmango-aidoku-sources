@@ -104,84 +104,109 @@ fn viewer(read_direction: Option<&str>, kind: Option<&str>, genres: &[String]) -
 	}
 }
 
-pub fn manga_from_data(mut comic: ComicData, base_url: &str, details: bool) -> Manga {
-	let mut tags = comic.genres.take().unwrap_or_default();
-	if details {
-		tags.extend(comic.demographics.take().unwrap_or_default());
-		tags.extend(comic.tags.take().unwrap_or_default());
-		if let Some(nodes) = comic.tag_nodes.take() {
-			tags.extend(node_names(nodes));
-		}
+/// Maps whatever the query returned; absent fields simply stay empty.
+pub fn manga_from_data(mut comic: ComicData, base_url: &str) -> Manga {
+	let mut raw_tags = comic.genres.take().unwrap_or_default();
+	raw_tags.extend(comic.demographics.take().unwrap_or_default());
+	raw_tags.extend(comic.tags.take().unwrap_or_default());
+	if let Some(nodes) = comic.tag_nodes.take() {
+		raw_tags.extend(node_names(nodes));
 	}
-	let rating = content_rating(comic.content_rating.as_deref(), &tags);
+	// Rating and viewer read the site's own lowercase ids, so derive them before
+	// the tags are title cased for display.
+	let rating = content_rating(comic.content_rating.as_deref(), &raw_tags);
 	let preferred_viewer = viewer(
 		comic.read_direction.as_deref(),
 		comic.kind.as_deref(),
-		&tags,
+		&raw_tags,
 	);
-	let fallback_url = format!("{base_url}/comic/{}", comic.id);
-	let mut manga = Manga {
-		key: comic.id,
-		title: clean(&comic.name),
-		cover: comic
-			.url_cover
-			.take()
-			.map(|url| absolute_url(base_url, &url))
-			.filter(|url| !url.is_empty()),
-		url: Some(
-			comic
-				.url_path
-				.take()
-				.map(|url| absolute_url(base_url, &url))
-				.unwrap_or(fallback_url),
-		),
-		content_rating: rating,
-		..Default::default()
-	};
 
-	if !details {
-		return manga;
-	}
+	let mut seen = Vec::new();
+	let tags: Vec<String> = raw_tags
+		.into_iter()
+		.filter(|tag| !tag.trim().is_empty())
+		.filter(|tag| {
+			let normalized = tag.to_ascii_lowercase();
+			let unseen = !seen.contains(&normalized);
+			if unseen {
+				seen.push(normalized);
+			}
+			unseen
+		})
+		.map(|tag| title_case(&tag))
+		.collect();
 
-	manga.authors = comic
+	let cover = comic
+		.url_cover
+		.take()
+		.map(|url| absolute_url(base_url, &url))
+		.filter(|url| !url.is_empty());
+	let url = comic
+		.url_path
+		.take()
+		.map(|url| absolute_url(base_url, &url))
+		.unwrap_or_else(|| format!("{base_url}/comic/{}", comic.id));
+	let authors = comic
 		.author_nodes
 		.take()
 		.map(node_names)
 		.filter(|names| !names.is_empty());
-	manga.artists = comic
+	let artists = comic
 		.artist_nodes
 		.take()
 		.map(node_names)
 		.filter(|names| !names.is_empty());
-	let mut seen = Vec::new();
-	manga.tags = Some(
-		tags.into_iter()
-			.filter(|tag| !tag.trim().is_empty())
-			.filter(|tag| {
-				let normalized = tag.to_ascii_lowercase();
-				if seen.contains(&normalized) {
-					false
-				} else {
-					seen.push(normalized);
-					true
-				}
-			})
-			.map(|tag| title_case(&tag))
-			.collect(),
-	)
-	.filter(|tags: &Vec<String>| !tags.is_empty());
-	manga.description = comic
+	let description = comic
 		.summary
 		.take()
 		.and_then(|summary| summary.text)
 		.map(|summary| summary.trim().to_string())
 		.filter(|description| !description.is_empty());
-	manga.status = status(
+	let publish_status = status(
 		comic.original_status.as_deref(),
 		comic.upload_status.as_deref(),
 	);
-	manga.viewer = preferred_viewer;
-	manga
+	let title = clean(&comic.name);
+
+	Manga {
+		key: comic.id,
+		title,
+		cover,
+		url: Some(url),
+		authors,
+		artists,
+		tags: (!tags.is_empty()).then_some(tags),
+		description,
+		status: publish_status,
+		content_rating: rating,
+		viewer: preferred_viewer,
+		..Default::default()
+	}
+}
+
+fn format_number(value: f64) -> String {
+	let whole = value as i64;
+	if whole as f64 == value {
+		format!("{whole}")
+	} else {
+		format!("{value}")
+	}
+}
+
+/// `Manhwa · Ch. 12` subtitle, from the type and the latest chapter.
+pub fn type_and_chapter(comic: &ComicData) -> Option<String> {
+	let kind = comic.kind.as_deref().map(title_case);
+	let chapter = comic
+		.last_chapter
+		.as_ref()
+		.and_then(|nodes| nodes.first())
+		.and_then(|node| node.data.cha_num.or(node.data.serial))
+		.map(|number| format!("Ch. {}", format_number(number)));
+	match (kind, chapter) {
+		(Some(kind), Some(chapter)) => Some(format!("{kind} · {chapter}")),
+		(Some(only), None) | (None, Some(only)) => Some(only),
+		(None, None) => None,
+	}
 }
 
 /// `(comic, chapter)` ids from a `/comic/{id}-slug[/{id}-slug]` url.

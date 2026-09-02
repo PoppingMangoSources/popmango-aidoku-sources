@@ -4,12 +4,13 @@ use crate::{
 		BrowseParams, EXTENDED_PAGE_SIZE, PAGE_SIZE, browse_request, latest_uploads_request,
 		parse_browse, parse_latest_uploads,
 	},
-	helpers::manga_from_data,
-	models::ComicData,
+	helpers::{chapter_from_data, manga_from_data, type_and_chapter},
+	models::{ComicData, LatestEntry},
+	settings,
 };
 use aidoku::{
 	BaseUrlProvider, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing,
-	ListingKind, Manga, Result,
+	ListingKind, Manga, MangaWithChapter, Result,
 	alloc::{Vec, vec},
 	imports::net::{Request, RequestError, Response},
 };
@@ -27,10 +28,45 @@ fn listing(id: &str, name: &str) -> Option<Listing> {
 fn section<T: From<Manga>>(comics: Vec<ComicData>, base_url: &str, limit: usize) -> Vec<T> {
 	comics
 		.into_iter()
-		.map(|comic| manga_from_data(comic, base_url, false))
+		.map(|comic| manga_from_data(comic, base_url))
 		.filter(|manga| manga.cover.is_some())
 		.take(limit)
 		.map(T::from)
+		.collect()
+}
+
+/// Links carrying the type and latest chapter as their subtitle.
+fn typed_links(comics: Vec<ComicData>, base_url: &str) -> Vec<Link> {
+	comics
+		.into_iter()
+		.filter_map(|comic| {
+			let subtitle = type_and_chapter(&comic);
+			let manga = manga_from_data(comic, base_url);
+			manga.cover.as_ref()?;
+			let mut link = Link::from(manga);
+			link.subtitle = subtitle.or(link.subtitle);
+			Some(link)
+		})
+		.collect()
+}
+
+/// Pairs each upload with its chapter so the app can show a relative timestamp.
+fn chapter_entries(items: Vec<LatestEntry>, base_url: &str, limit: usize) -> Vec<MangaWithChapter> {
+	items
+		.into_iter()
+		.filter_map(|(comic, chapter)| {
+			let language = comic
+				.translated_language
+				.as_deref()
+				.and_then(settings::normalize_language);
+			let chapter = chapter_from_data(chapter?, base_url, language.as_deref())?;
+			let manga = manga_from_data(comic, base_url);
+			manga
+				.cover
+				.is_some()
+				.then_some(MangaWithChapter { manga, chapter })
+		})
+		.take(limit)
 		.collect()
 }
 
@@ -71,7 +107,7 @@ impl Home for XComic {
 			&base_url,
 			usize::MAX,
 		);
-		let latest: Vec<Link> = section(
+		let latest = chapter_entries(
 			parse_latest_uploads(latest?, &latest_params)?.0,
 			&base_url,
 			page,
@@ -81,10 +117,9 @@ impl Home for XComic {
 			&base_url,
 			page,
 		);
-		let most_chapters: Vec<Link> = section(
+		let most_chapters = typed_links(
 			parse_browse(most_chapters?, &most_chapters_params)?.0,
 			&base_url,
-			usize::MAX,
 		);
 
 		Ok(HomeLayout {
@@ -110,7 +145,8 @@ impl Home for XComic {
 				HomeComponent {
 					title: Some("Latest Update".into()),
 					subtitle: None,
-					value: HomeComponentValue::Scroller {
+					value: HomeComponentValue::MangaChapterList {
+						page_size: Some(10),
 						entries: latest,
 						listing: listing("field_update", "Latest Update"),
 					},

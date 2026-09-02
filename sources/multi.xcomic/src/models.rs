@@ -47,6 +47,9 @@ pub struct ComicData {
 	pub artist_nodes: Option<Vec<Node<Option<NamedData>>>>,
 	pub tag_nodes: Option<Vec<Node<Option<NamedData>>>>,
 	pub summary: Option<Summary>,
+	/// Latest chapter, requested as `chapterNodes_last(amount: 1)`.
+	#[serde(rename = "chapterNodes_last")]
+	pub last_chapter: Option<Vec<Node<ChapterData>>>,
 	pub url_path: Option<String>,
 	pub url_cover: Option<String>,
 	pub original_status: Option<String>,
@@ -61,10 +64,15 @@ pub struct BrowseResponse {
 	pub get_comic_browse_items: Vec<Node<ComicData>>,
 }
 
+/// A latest-uploads entry: the comic, plus the chapter that was uploaded.
+pub type LatestEntry = (ComicData, Option<ChapterData>);
+
 #[derive(Deserialize, Default)]
 #[serde(default)]
 pub struct LatestUploadsItem {
 	pub comic: Option<Node<Option<ComicData>>>,
+	/// The upload this feed entry is for, as `chapters(amount: 1)`.
+	pub chapters: Option<Vec<Node<ChapterData>>>,
 }
 
 #[derive(Deserialize, Default)]

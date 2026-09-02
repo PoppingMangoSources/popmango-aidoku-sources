@@ -41,7 +41,10 @@ impl XComic {
 		};
 		for _ in 0..10 {
 			let response = graphql::latest_uploads_request(base_url, before)?.send()?;
-			let (comics, next_cursor) = graphql::parse_latest_uploads(response, params)?;
+			let (entries, next_cursor) = graphql::parse_latest_uploads(response, params)?;
+			// Only the home page pairs these with their chapter.
+			let comics: Vec<models::ComicData> =
+				entries.into_iter().map(|(comic, _)| comic).collect();
 			let has_next_page = next_cursor.is_some();
 			*self.latest_cursor.borrow_mut() = next_cursor;
 			if !comics.is_empty() || !has_next_page {
@@ -68,7 +71,7 @@ impl XComic {
 		};
 		let entries = comics
 			.into_iter()
-			.map(|comic| manga_from_data(comic, base_url, false))
+			.map(|comic| manga_from_data(comic, base_url))
 			.filter(|manga| !skip_coverless || manga.cover.is_some())
 			.collect();
 		Ok(MangaPageResult {
@@ -96,7 +99,7 @@ impl Source for XComic {
 		if let Some(key) = query.as_deref().and_then(helpers::comic_key_from_query) {
 			let comic = graphql::fetch_comic(&base_url, &key)?;
 			return Ok(MangaPageResult {
-				entries: vec![manga_from_data(comic, &base_url, false)],
+				entries: vec![manga_from_data(comic, &base_url)],
 				has_next_page: false,
 			});
 		}
@@ -168,7 +171,7 @@ impl Source for XComic {
 			.and_then(settings::normalize_language);
 		if needs_details {
 			let chapters = manga.chapters.take();
-			manga = manga_from_data(comic, &base_url, true);
+			manga = manga_from_data(comic, &base_url);
 			manga.chapters = chapters;
 			if needs_chapters {
 				send_partial_result(&manga);

@@ -2,7 +2,8 @@ use crate::{
 	helpers::{PORNOGRAPHIC_GENRES, is_pornographic},
 	models::{
 		BrowseResponse, ChapterData, ChapterListResponse, ChapterPagesResponse, ComicData,
-		ComicNodeResponse, GraphQlResponse, LatestUploadsResponse, LatestUploadsResult,
+		ComicNodeResponse, GraphQlResponse, LatestEntry, LatestUploadsResponse,
+		LatestUploadsResult,
 	},
 	settings,
 };
@@ -52,6 +53,8 @@ query get_comic_browse_items($select: Comic_Browse_Select) {
     data {
       id name urlPath urlCover
       type contentRating genres
+      summary { text }
+      chapterNodes_last(amount: 1) { data { serial chaNum } }
     }
   }
 }
@@ -67,6 +70,9 @@ query get_comic_latestUploads($select: Comic_LatestUploads_Select) {
           id name urlPath urlCover translatedLanguage
           type contentRating genres
         }
+      }
+      chapters(amount: 1) {
+        data { id serial chaNum dname datePublic dateCreate dateModify }
       }
     }
   }
@@ -309,29 +315,36 @@ pub fn latest_uploads_request(base_url: &str, before: Option<i64>) -> Result<Req
 pub fn parse_latest_uploads(
 	response: Response,
 	params: &BrowseParams,
-) -> Result<(Vec<ComicData>, Option<i64>)> {
+) -> Result<(Vec<LatestEntry>, Option<i64>)> {
 	let response: LatestUploadsResponse = parse_graphql(response)?;
 	let LatestUploadsResult { before, items } = response.latest_uploads.unwrap_or_default();
 	let mut seen: Vec<String> = Vec::new();
 	let comics = items
 		.into_iter()
-		.filter_map(|item| item.comic.and_then(|node| node.data))
-		.filter(|comic| {
+		.filter_map(|item| {
+			let comic = item.comic.and_then(|node| node.data)?;
+			let chapter = item
+				.chapters
+				.and_then(|chapters| chapters.into_iter().next())
+				.map(|node| node.data);
+			Some((comic, chapter))
+		})
+		.filter(|(comic, _)| {
 			params.translated_languages.is_empty()
 				|| comic
 					.translated_language
 					.as_ref()
 					.is_some_and(|language| params.translated_languages.contains(language))
 		})
-		.filter(|comic| params.allows(comic))
-		.filter(|comic| {
+		.filter(|(comic, _)| params.allows(comic))
+		.filter(|(comic, _)| {
 			comic
 				.url_cover
 				.as_deref()
 				.is_some_and(|cover| !cover.trim().is_empty())
 		})
 		// The feed lists one entry per upload, so a comic repeats per new chapter.
-		.filter(|comic| {
+		.filter(|(comic, _)| {
 			let unseen = !seen.contains(&comic.id);
 			if unseen {
 				seen.push(comic.id.clone());
