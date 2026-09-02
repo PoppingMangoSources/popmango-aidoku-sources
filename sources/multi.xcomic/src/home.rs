@@ -25,11 +25,15 @@ fn listing(id: &str, name: &str) -> Option<Listing> {
 }
 
 // Home sections only render covers, so coverless entries are dropped.
+fn visible(comic: ComicData, base_url: &str) -> Option<Manga> {
+	let manga = manga_from_data(comic, base_url);
+	manga.cover.is_some().then_some(manga)
+}
+
 fn section<T: From<Manga>>(comics: Vec<ComicData>, base_url: &str, limit: usize) -> Vec<T> {
 	comics
 		.into_iter()
-		.map(|comic| manga_from_data(comic, base_url))
-		.filter(|manga| manga.cover.is_some())
+		.filter_map(|comic| visible(comic, base_url))
 		.take(limit)
 		.map(T::from)
 		.collect()
@@ -41,9 +45,7 @@ fn typed_links(comics: Vec<ComicData>, base_url: &str) -> Vec<Link> {
 		.into_iter()
 		.filter_map(|comic| {
 			let subtitle = type_and_chapter(&comic);
-			let manga = manga_from_data(comic, base_url);
-			manga.cover.as_ref()?;
-			let mut link = Link::from(manga);
+			let mut link = Link::from(visible(comic, base_url)?);
 			link.subtitle = subtitle.or(link.subtitle);
 			Some(link)
 		})
@@ -60,11 +62,10 @@ fn chapter_entries(items: Vec<LatestEntry>, base_url: &str, limit: usize) -> Vec
 				.as_deref()
 				.and_then(settings::normalize_language);
 			let chapter = chapter_from_data(chapter?, base_url, language.as_deref())?;
-			let manga = manga_from_data(comic, base_url);
-			manga
-				.cover
-				.is_some()
-				.then_some(MangaWithChapter { manga, chapter })
+			Some(MangaWithChapter {
+				manga: visible(comic, base_url)?,
+				chapter,
+			})
 		})
 		.take(limit)
 		.collect()

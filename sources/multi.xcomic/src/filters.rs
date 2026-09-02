@@ -53,6 +53,15 @@ fn owned(list: &[(&str, &str)]) -> Vec<(String, String)> {
 		.collect()
 }
 
+/// Splits `(id, title)` pairs into the parallel vectors both the filter and
+/// setting structs take.
+fn split(options: Vec<(String, String)>) -> (Vec<Cow<'static, str>>, Vec<Cow<'static, str>>) {
+	options
+		.into_iter()
+		.map(|(id, title)| (Cow::Owned(id), Cow::Owned(title)))
+		.unzip()
+}
+
 fn multi_select(
 	id: &'static str,
 	title: &'static str,
@@ -60,16 +69,14 @@ fn multi_select(
 	can_exclude: bool,
 	options: Vec<(String, String)>,
 ) -> Filter {
+	let (ids, options) = split(options);
 	MultiSelectFilter {
 		id: id.into(),
 		title: Some(title.into()),
 		is_genre,
 		can_exclude,
-		options: options
-			.iter()
-			.map(|(_, title)| title.clone().into())
-			.collect(),
-		ids: Some(options.into_iter().map(|(id, _)| id.into()).collect()),
+		options,
+		ids: Some(ids),
 		..Default::default()
 	}
 	.into()
@@ -102,18 +109,13 @@ impl DynamicFilters for XComic {
 
 impl DynamicSettings for XComic {
 	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
-		let exclusion = |key: &'static str,
-		                 title: &'static str,
-		                 list: &'static [(&'static str, &'static str)]| {
+		let exclusion = |key: &'static str, title: &'static str, list: &[(&str, &str)]| {
+			let (values, titles) = split(owned(list));
 			MultiSelectSetting {
 				key: key.into(),
 				title: title.into(),
-				values: list.iter().map(|(id, _)| Cow::Borrowed(*id)).collect(),
-				titles: Some(
-					list.iter()
-						.map(|(_, title)| Cow::Borrowed(*title))
-						.collect(),
-				),
+				values,
+				titles: Some(titles),
 				refreshes: Some(vec!["content".into()]),
 				..Default::default()
 			}
