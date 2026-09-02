@@ -7,7 +7,6 @@ mod filters;
 mod graphql;
 mod helpers;
 mod home;
-mod lists;
 mod models;
 mod settings;
 

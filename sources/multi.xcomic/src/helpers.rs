@@ -7,6 +7,95 @@ use aidoku::{
 pub const PORNOGRAPHIC_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
 const SUGGESTIVE_GENRES: &[&str] = &["ecchi", "erotica", "mature", "yaoi", "yuri"];
 
+// Single source of truth for the search filters and the exclusion settings,
+// both of which are built from these so they cannot drift apart.
+/// `(id, title)`. The site offers these for both original and translated
+/// language filtering; `_t` is its own catch-all id.
+pub const LANGUAGES: &[(&str, &str)] = &[
+	("en", "English"),
+	("zh", "Chinese"),
+	("ja", "Japanese"),
+	("ko", "Korean"),
+	("ar", "Arabic"),
+	("de", "German"),
+	("es", "Spanish"),
+	("es_419", "Spanish (Latin America)"),
+	("fr", "French"),
+	("hi", "Hindi"),
+	("id", "Indonesian"),
+	("it", "Italian"),
+	("pl", "Polish"),
+	("pt", "Portuguese"),
+	("pt_br", "Portuguese (Brazil)"),
+	("ru", "Russian"),
+	("th", "Thai"),
+	("tr", "Turkish"),
+	("uk", "Ukrainian"),
+	("vi", "Vietnamese"),
+	("zh_hk", "Chinese (Cantonese)"),
+	("zh_tw", "Chinese (Traditional)"),
+	("_t", "Other"),
+];
+
+/// `(id, title)`. Fallback when the live list cannot be fetched.
+pub const GENRES: &[(&str, &str)] = &[
+	("action", "Action"),
+	("adventure", "Adventure"),
+	("comedy", "Comedy"),
+	("cooking", "Cooking"),
+	("doujinshi", "Doujinshi"),
+	("drama", "Drama"),
+	("ecchi", "Ecchi"),
+	("fantasy", "Fantasy"),
+	("gender_bender", "Gender Bender"),
+	("harem", "Harem"),
+	("historical", "Historical"),
+	("horror", "Horror"),
+	("isekai", "Isekai"),
+	("josei", "Josei"),
+	("magic", "Magic"),
+	("martial_arts", "Martial Arts"),
+	("mature", "Mature"),
+	("mecha", "Mecha"),
+	("medical", "Medical"),
+	("military", "Military"),
+	("music", "Music"),
+	("mystery", "Mystery"),
+	("psychological", "Psychological"),
+	("romance", "Romance"),
+	("school_life", "School Life"),
+	("sci_fi", "Sci-Fi"),
+	("seinen", "Seinen"),
+	("shoujo", "Shoujo"),
+	("shounen", "Shounen"),
+	("slice_of_life", "Slice of Life"),
+	("smut", "Smut"),
+	("sports", "Sports"),
+	("supernatural", "Supernatural"),
+	("thriller", "Thriller"),
+	("tragedy", "Tragedy"),
+	("webtoon", "Webtoon"),
+	("yaoi", "Yaoi"),
+	("yuri", "Yuri"),
+];
+
+/// `(id, title)`. Also used to split formats out of the live genre list, which
+/// the site serves as one combined group.
+pub const FORMATS: &[(&str, &str)] = &[
+	("4_koma", "4 Koma"),
+	("adaptation", "Adaptation"),
+	("anthology", "Anthology"),
+	("award_winning", "Award Winning"),
+	("doujinshi", "Doujinshi"),
+	("fan_colored", "Fan Colored"),
+	("full_color", "Full Color"),
+	("long_strip", "Long Strip"),
+	("official_colored", "Official Colored"),
+	("oneshot", "Oneshot"),
+	("web_comic", "Web Comic"),
+	("webtoon", "Webtoon"),
+];
+
 pub fn absolute_url(base_url: &str, url: &str) -> String {
 	let url = url.trim();
 	if url.is_empty() {

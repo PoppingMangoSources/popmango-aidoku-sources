@@ -1,6 +1,6 @@
 use crate::{
 	XComic,
-	lists::{FORMATS, GENRES, LANGUAGES},
+	helpers::{FORMATS, GENRES, LANGUAGES},
 };
 use aidoku::{
 	BaseUrlProvider, DynamicFilters, DynamicSettings, Filter, GroupSetting, MultiSelectFilter,
