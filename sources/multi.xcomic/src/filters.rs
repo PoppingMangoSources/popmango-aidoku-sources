@@ -3,16 +3,23 @@ use crate::{
 	helpers::{GENRES, LANGUAGES},
 };
 use aidoku::{
-	BaseUrlProvider, DynamicFilters, DynamicSettings, Filter, GroupSetting, MultiSelectFilter,
-	MultiSelectSetting, Result, Setting,
-	alloc::{String, Vec, borrow::Cow, format, vec},
+	BaseUrlProvider, DynamicFilters, Filter, MultiSelectFilter, Result,
+	alloc::{Vec, borrow::Cow, format, vec},
 	imports::net::Request,
 };
 
-/// Live genre list from the search page, or `None` to fall back to [`GENRES`].
+/// `(id, title)` pairs in the form [`MultiSelectFilter`] takes.
+type Options = Vec<(Cow<'static, str>, Cow<'static, str>)>;
+
+fn borrowed(list: &'static [(&'static str, &'static str)]) -> Options {
+	list.iter()
+		.map(|(id, title)| (Cow::Borrowed(*id), Cow::Borrowed(*title)))
+		.collect()
+}
+
 /// Options live in `details.group` blocks, each carrying its id in a `:`
 /// attribute and its label in a `span`. Formats share the genre group.
-fn fetch_genres(base_url: &str) -> Option<Vec<(String, String)>> {
+fn fetch_genres(base_url: &str) -> Option<Options> {
 	let document = Request::get(format!("{base_url}/search"))
 		.ok()?
 		.html()
@@ -24,7 +31,7 @@ fn fetch_genres(base_url: &str) -> Option<Vec<(String, String)>> {
 			.is_some_and(|text| text.trim().to_lowercase().starts_with("genres"))
 	})?;
 
-	let mut genres: Vec<(String, String)> = Vec::new();
+	let mut genres: Options = Vec::new();
 	for element in group.select("div")? {
 		let Some(id) = element.attr(":") else {
 			continue;
@@ -37,25 +44,10 @@ fn fetch_genres(base_url: &str) -> Option<Vec<(String, String)>> {
 		if id.is_empty() || title.is_empty() || genres.iter().any(|(seen, _)| seen == id) {
 			continue;
 		}
-		genres.push((id.into(), title.into()));
+		genres.push((Cow::Owned(id.into()), Cow::Owned(title.into())));
 	}
 
 	(!genres.is_empty()).then_some(genres)
-}
-
-fn owned(list: &[(&str, &str)]) -> Vec<(String, String)> {
-	list.iter()
-		.map(|(id, title)| ((*id).into(), (*title).into()))
-		.collect()
-}
-
-/// Splits `(id, title)` pairs into the parallel vectors both the filter and
-/// setting structs take.
-fn split(options: Vec<(String, String)>) -> (Vec<Cow<'static, str>>, Vec<Cow<'static, str>>) {
-	options
-		.into_iter()
-		.map(|(id, title)| (Cow::Owned(id), Cow::Owned(title)))
-		.unzip()
 }
 
 fn multi_select(
@@ -63,9 +55,9 @@ fn multi_select(
 	title: &'static str,
 	is_genre: bool,
 	can_exclude: bool,
-	options: Vec<(String, String)>,
+	options: Options,
 ) -> Filter {
-	let (ids, options) = split(options);
+	let (ids, options): (Vec<_>, Vec<_>) = options.into_iter().unzip();
 	MultiSelectFilter {
 		id: id.into(),
 		title: Some(title.into()),
@@ -82,9 +74,9 @@ fn multi_select(
 
 impl DynamicFilters for XComic {
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let genres = fetch_genres(&self.get_base_url()?).unwrap_or_else(|| owned(GENRES));
-		// Translated languages come from the app's own language setting. Original
-		// language is a separate axis, and the api only takes it as includes.
+		let genres = fetch_genres(&self.get_base_url()?).unwrap_or_else(|| borrowed(GENRES));
+		// Translated language is the app's own setting; this is a separate axis,
+		// and the api only takes it as includes.
 		Ok(vec![
 			multi_select("genres", "Genres", true, true, genres),
 			multi_select(
@@ -92,34 +84,8 @@ impl DynamicFilters for XComic {
 				"Original Languages",
 				false,
 				false,
-				owned(LANGUAGES),
+				borrowed(LANGUAGES),
 			),
-		])
-	}
-}
-
-impl DynamicSettings for XComic {
-	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
-		let (values, titles) = split(owned(GENRES));
-		Ok(vec![
-			GroupSetting {
-				key: "exclusions".into(),
-				title: "Exclusions".into(),
-				footer: Some("Series carrying any excluded genre are hidden everywhere.".into()),
-				items: vec![
-					MultiSelectSetting {
-						key: "excludedGenres".into(),
-						title: "Excluded Genres".into(),
-						values,
-						titles: Some(titles),
-						refreshes: Some(vec!["content".into()]),
-						..Default::default()
-					}
-					.into(),
-				],
-				..Default::default()
-			}
-			.into(),
 		])
 	}
 }

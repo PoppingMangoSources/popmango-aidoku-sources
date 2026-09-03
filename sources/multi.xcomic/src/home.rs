@@ -30,15 +30,6 @@ fn visible(comic: ComicData, base_url: &str) -> Option<Manga> {
 	manga.cover.is_some().then_some(manga)
 }
 
-/// Entries for the big scroller, which renders the description itself.
-fn manga_section(comics: Vec<ComicData>, base_url: &str, limit: usize) -> Vec<Manga> {
-	comics
-		.into_iter()
-		.filter_map(|comic| visible(comic, base_url))
-		.take(limit)
-		.collect()
-}
-
 /// Links with an explicit subtitle, which `From<Manga>` would otherwise leave
 /// empty for these compact browse results.
 fn links(
@@ -107,11 +98,12 @@ impl Home for XComic {
 		] = responses;
 
 		let page = PAGE_SIZE as usize;
-		let top_rated = manga_section(
-			parse_browse(top_rated?, &top_rated_params)?.0,
-			&base_url,
-			10,
-		);
+		let top_rated: Vec<Manga> = parse_browse(top_rated?, &top_rated_params)?
+			.0
+			.into_iter()
+			.filter_map(|comic| visible(comic, &base_url))
+			.take(10)
+			.collect();
 		let most_viewed = links(
 			parse_browse(most_viewed?, &most_viewed_params)?.0,
 			&base_url,

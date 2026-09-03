@@ -41,10 +41,8 @@ pub const SORT_IDS: &[&str] = &[
 	"views_h001",
 ];
 
-// Search cards need only enough to identify a series; `get_manga_update` fills
-// in the rest. `type`, `contentRating` and `genres` are fetched regardless
-// because `BrowseParams::allows` filters on them, but only the detailed query
-// lets them reach the reader.
+// `type`, `contentRating` and `genres` are fetched only to filter on, and
+// dropped again by `BrowseParams::compact` before a card is handed over.
 const BROWSE_QUERY: &str = r#"
 query get_comic_browse_items($select: Comic_Browse_Select) {
   get_comic_browse_items(select: $select) {
@@ -130,7 +128,7 @@ query get_chapterNode($id: ID!) {
 
 #[derive(Default)]
 pub struct BrowseParams {
-	/// Whether the reader sees more than the cover and title of each result.
+	/// Keeps the fields only the big scroller shows.
 	pub detailed: bool,
 	pub page: i32,
 	pub size: i32,
@@ -209,6 +207,18 @@ impl BrowseParams {
 			"ignoreGlobalGenres": true,
 			"ignoreGlobalBlocks": true
 		})
+	}
+
+	/// Strips what only [`Self::allows`] needed, folding the genre-derived rating
+	/// in first so a card can never look safer than the series is.
+	fn compact(&self, mut comic: ComicData) -> ComicData {
+		if !self.detailed {
+			if is_pornographic(comic.content_rating.as_deref(), comic.genres.as_deref()) {
+				comic.content_rating = Some("pornographic".into());
+			}
+			comic.genres = None;
+		}
+		comic
 	}
 
 	fn allows(&self, comic: &ComicData) -> bool {
@@ -346,31 +356,21 @@ pub fn parse_latest_uploads(
 			}
 			unseen
 		})
+		.map(|(comic, chapter)| (params.compact(comic), chapter))
 		.collect();
 	Ok((comics, before))
 }
 
-/// Returns surviving comics plus whether a full page came back. The flag must use
-/// the unfiltered count, or local filtering would cut pagination short.
 pub fn parse_browse(response: Response, params: &BrowseParams) -> Result<(Vec<ComicData>, bool)> {
 	let response: BrowseResponse = parse_graphql(response)?;
 	let items = response.get_comic_browse_items;
+	// Counted before filtering, or a page thinned locally would end pagination.
 	let has_next_page = items.len() as i32 >= params.size;
 	let comics = items
 		.into_iter()
 		.map(|node| node.data)
 		.filter(|comic| params.allows(comic))
-		.map(|mut comic| {
-			if !params.detailed {
-				// Fold the genre-derived rating in before the genres go, so a card
-				// can never end up looking safer than the series is.
-				if is_pornographic(comic.content_rating.as_deref(), comic.genres.as_deref()) {
-					comic.content_rating = Some("pornographic".into());
-				}
-				comic.genres = None;
-			}
-			comic
-		})
+		.map(|comic| params.compact(comic))
 		.collect();
 	Ok((comics, has_next_page))
 }

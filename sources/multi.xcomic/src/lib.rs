@@ -238,7 +238,6 @@ register_source!(
 	Home,
 	ListingProvider,
 	DynamicFilters,
-	DynamicSettings,
 	ImageRequestProvider,
 	DeepLinkHandler,
 	BaseUrlProvider

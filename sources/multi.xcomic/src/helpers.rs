@@ -11,10 +11,7 @@ use aidoku::{
 
 pub const PORNOGRAPHIC_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
 
-// Single source of truth for the search filters and the exclusion settings,
-// both of which are built from these so they cannot drift apart.
-/// `(id, title)`. The site offers these for both original and translated
-/// language filtering; `_t` is its own catch-all id.
+/// `(id, title)` for the original-language filter; `_t` is the site's catch-all.
 pub const LANGUAGES: &[(&str, &str)] = &[
 	("en", "English"),
 	("fr", "French"),
@@ -125,7 +122,8 @@ pub const LANGUAGES: &[(&str, &str)] = &[
 	("yo", "Yoruba"),
 ];
 
-/// `(id, title)`. Fallback when the live list cannot be fetched.
+/// `(id, title)`. Fallback for the live list, and the source of the exclusion
+/// setting, so the filter and the setting cannot drift apart.
 pub const GENRES: &[(&str, &str)] = &[
 	("fantasy", "Fantasy"),
 	("supernatural", "Supernatural"),
@@ -345,14 +343,13 @@ pub fn manga_from_data(mut comic: ComicData, base_url: &str) -> Manga {
 	}
 }
 
-/// The content type, title cased for use as a subtitle.
 pub fn type_label(comic: &ComicData) -> Option<String> {
 	comic.kind.as_deref().map(title_case)
 }
 
-/// What an xcomic url points at. The two prefixes are different things, not
-/// aliases: `/title/{id}` is the series, which owns one `/comic/{id}-{lang}`
-/// edition per language, and only the edition ids are usable as manga keys.
+/// The two prefixes are different things, not aliases: `/title/{id}` is the
+/// series, which owns one `/comic/` edition per language, and only edition ids
+/// work as manga keys.
 pub enum Target {
 	Title(String),
 	Comic(String, Option<String>),
@@ -395,9 +392,8 @@ pub fn target_from_query(query: &str) -> Option<Target> {
 		.then(|| Target::Comic(id.into(), None))
 }
 
-/// Edition id for a series, since a `/title/` page is not itself readable. Its
-/// "Sources" list links one comic per language, so prefer a language the reader
-/// picked and otherwise take the site's own first choice.
+/// A `/title/` page is not itself readable; its "Sources" list links one comic
+/// per language, so prefer one the reader picked over the site's first choice.
 pub fn resolve_title(base_url: &str, title_id: &str) -> Option<String> {
 	let document = Request::get(format!("{base_url}/title/{title_id}"))
 		.ok()?
@@ -436,7 +432,6 @@ pub fn resolve_title(base_url: &str, title_id: &str) -> Option<String> {
 		.map(|(id, _)| id.clone())
 }
 
-/// Manga key for a url target, looking up the series' editions when needed.
 pub fn comic_key(base_url: &str, target: Target) -> Result<String> {
 	match target {
 		Target::Comic(key, _) => Ok(key),
@@ -470,9 +465,8 @@ fn unix_seconds(timestamp: i64) -> Option<i64> {
 	})
 }
 
-/// `published_first` dates the chapter by publication rather than by revision,
-/// which is what the latest-uploads feed reports; the chapter list uses the
-/// revision date so edits move a chapter back up.
+/// `published_first` dates by publication instead of revision: the feed reports
+/// an upload, while the chapter list should move edited chapters back up.
 pub fn chapter_from_data(
 	mut data: ChapterData,
 	base_url: &str,
@@ -517,8 +511,8 @@ pub fn chapter_from_data(
 	if scanlators.is_empty() {
 		scanlators = data.group_nodes.take().map(node_names).unwrap_or_default();
 	}
-	// A comic is published in one language, and every chapter path repeats it, so a
-	// chapter list needs no separate lookup of the comic it belongs to.
+	// Every chapter path repeats its comic's language, so listing chapters needs no
+	// lookup of the comic itself.
 	let language = language
 		.map(Into::into)
 		.or_else(|| language_from_path(data.url_path.as_deref()));
