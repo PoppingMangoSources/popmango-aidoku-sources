@@ -197,10 +197,9 @@ impl BrowseParams {
 			"releaseYearMax": self.year_max,
 			"origStatus": (!self.original_status.is_empty()).then_some(&self.original_status),
 			"siteStatus": (!self.upload_status.is_empty()).then_some(&self.upload_status),
-			"chapCount": (!self.chapter_count.is_empty()).then_some(&self.chapter_count),
-			"ignoreGlobalULangs": true,
-			"ignoreGlobalGenres": true,
-			"ignoreGlobalBlocks": true
+			"chapCount": (!self.chapter_count.is_empty()).then_some(&self.chapter_count)
+			// The ignoreGlobal* flags stay off. Turning off the site's own blocklist
+			// let unapproved uploads through, which lands hardest on the newest ones.
 		})
 	}
 
