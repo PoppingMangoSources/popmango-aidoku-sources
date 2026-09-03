@@ -49,24 +49,6 @@
 	},
 	{
 		"type": "multi-select",
-		"id": "content_ratings",
-		"title": "Content Ratings",
-		"canExclude": false,
-		"options": [
-			"Safe",
-			"Suggestive",
-			"Erotica",
-			"Pornographic"
-		],
-		"ids": [
-			"safe",
-			"suggestive",
-			"erotica",
-			"pornographic"
-		]
-	},
-	{
-		"type": "multi-select",
 		"id": "demographics",
 		"title": "Demographics",
 		"canExclude": false,

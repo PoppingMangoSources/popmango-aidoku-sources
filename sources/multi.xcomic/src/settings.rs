@@ -39,6 +39,11 @@ pub fn get_content_ratings() -> Vec<String> {
 	stored_list("contentRatings", ALL_RATINGS)
 }
 
+/// Off by default: the deduplicated list drops alternate scanlator uploads.
+pub fn deduplicate_chapters() -> bool {
+	defaults_get::<bool>("deduplicateChapters").unwrap_or(false)
+}
+
 pub fn get_excluded_genres() -> Vec<String> {
 	defaults_get::<Vec<String>>("excludedGenres").unwrap_or_default()
 }

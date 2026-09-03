@@ -129,9 +129,8 @@ impl Source for XComic {
 					"demographics" => params.demographics = included,
 					"original_languages" => params.original_languages = included,
 					// An empty selection means the reader narrowed nothing, so the
-					// settings defaults these carry have to survive it.
+					// settings default this carries has to survive it.
 					"types" if !included.is_empty() => params.types = included,
-					"content_ratings" if !included.is_empty() => params.content_ratings = included,
 					_ => {}
 				},
 				_ => {}

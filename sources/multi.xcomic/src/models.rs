@@ -141,7 +141,7 @@ pub struct ChapterListResult {
 #[derive(Deserialize, Default)]
 #[serde(default)]
 pub struct ChapterListResponse {
-	#[serde(rename = "get_comic_chapterList_uniqList")]
+	#[serde(rename = "chapterList")]
 	pub chapter_list: Option<ChapterListResult>,
 }
 

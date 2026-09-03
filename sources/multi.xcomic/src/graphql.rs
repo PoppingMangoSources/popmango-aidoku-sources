@@ -17,7 +17,8 @@ use serde::de::DeserializeOwned;
 
 pub const PAGE_SIZE: i32 = 48;
 const RECENTLY_ADDED_SIZE: i32 = 50;
-const CHAPTER_PAGE_SIZE: i32 = 1000;
+const CHAPTER_PAGE_SIZE: i32 = 100;
+const UNIQUE_CHAPTER_PAGE_SIZE: i32 = 1000;
 
 pub const SORT_IDS: &[&str] = &[
 	"field_score",
@@ -117,9 +118,27 @@ query get_comicNode($id: ID!) {
 }
 "#;
 
+// The site collapses alternate uploads of a chapter into one on request. Both
+// forms select the same fields, and are aliased so one model reads either.
 const CHAPTERS_QUERY: &str = r#"
+query get_comic_chapterList_fullList($select: Select_Comic_ChapterList) {
+  chapterList: get_comic_chapterList_fullList(select: $select) {
+    paging { pages }
+    items {
+      data {
+        id dbStatus serial chaNum volNum dname title urlPath
+        dateCreate dateModify datePublic srcName
+        profileNodes { data { name } }
+        groupNodes { data { name } }
+      }
+    }
+  }
+}
+"#;
+
+const UNIQUE_CHAPTERS_QUERY: &str = r#"
 query get_comic_chapterList_uniqList($select: Select_Comic_ChapterList_UniqList) {
-  get_comic_chapterList_uniqList(select: $select) {
+  chapterList: get_comic_chapterList_uniqList(select: $select) {
     paging { pages }
     items {
       data {
@@ -407,8 +426,14 @@ pub fn fetch_comic(base_url: &str, id: &str) -> Result<ComicData> {
 }
 
 pub fn fetch_chapters(base_url: &str, comic_id: &str) -> Result<Vec<ChapterData>> {
+	// The full list carries every scanlator's upload, so it is paged smaller.
+	let (query, size) = if settings::deduplicate_chapters() {
+		(UNIQUE_CHAPTERS_QUERY, UNIQUE_CHAPTER_PAGE_SIZE)
+	} else {
+		(CHAPTERS_QUERY, CHAPTER_PAGE_SIZE)
+	};
 	let first: ChapterListResponse =
-		graphql(base_url, CHAPTERS_QUERY, chapter_variables(comic_id, 1))?;
+		graphql(base_url, query, chapter_variables(comic_id, 1, size))?;
 	let pages = first
 		.chapter_list
 		.as_ref()
@@ -422,8 +447,8 @@ pub fn fetch_chapters(base_url: &str, comic_id: &str) -> Result<Vec<ChapterData>
 	for page in 2..=pages {
 		let response: ChapterListResponse = graphql(
 			base_url,
-			CHAPTERS_QUERY,
-			chapter_variables(comic_id, page as i32),
+			query,
+			chapter_variables(comic_id, page as i32, size),
 		)?;
 		if let Some(result) = response.chapter_list {
 			chapters.extend(result.items.into_iter().map(|node| node.data));
@@ -432,12 +457,12 @@ pub fn fetch_chapters(base_url: &str, comic_id: &str) -> Result<Vec<ChapterData>
 	Ok(chapters)
 }
 
-fn chapter_variables(comic_id: &str, page: i32) -> serde_json::Value {
+fn chapter_variables(comic_id: &str, page: i32, size: i32) -> serde_json::Value {
 	serde_json::json!({
 		"select": {
 			"comic_id": comic_id,
 			"page": page,
-			"size": CHAPTER_PAGE_SIZE,
+			"size": size,
 			"sortby": "chapter_desc"
 		}
 	})
