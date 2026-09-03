@@ -3,7 +3,8 @@ use crate::{
 	helpers::{GENRES, LANGUAGES},
 };
 use aidoku::{
-	BaseUrlProvider, DynamicFilters, Filter, MultiSelectFilter, Result,
+	BaseUrlProvider, DynamicFilters, DynamicSettings, Filter, GroupSetting, MultiSelectFilter,
+	MultiSelectSetting, Result, Setting,
 	alloc::{Vec, borrow::Cow, format, vec},
 	imports::net::Request,
 };
@@ -72,9 +73,15 @@ fn multi_select(
 	.into()
 }
 
+/// Live where possible, so the filter and the exclusion setting cannot drift
+/// from each other or from the site.
+fn genres(base_url: &str) -> Options {
+	fetch_genres(base_url).unwrap_or_else(|| borrowed(GENRES))
+}
+
 impl DynamicFilters for XComic {
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let genres = fetch_genres(&self.get_base_url()?).unwrap_or_else(|| borrowed(GENRES));
+		let genres = genres(&self.get_base_url()?);
 		// Translated language is the app's own setting; this is a separate axis,
 		// and the api only takes it as includes.
 		Ok(vec![
@@ -86,6 +93,31 @@ impl DynamicFilters for XComic {
 				false,
 				borrowed(LANGUAGES),
 			),
+		])
+	}
+}
+
+impl DynamicSettings for XComic {
+	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
+		let (values, titles): (Vec<_>, Vec<_>) = genres(&self.get_base_url()?).into_iter().unzip();
+		Ok(vec![
+			GroupSetting {
+				title: "Exclusions".into(),
+				footer: Some("Series carrying any excluded genre are hidden everywhere.".into()),
+				items: vec![
+					MultiSelectSetting {
+						key: "excludedGenres".into(),
+						title: "Excluded Genres".into(),
+						values,
+						titles: Some(titles),
+						refreshes: Some(vec!["content".into()]),
+						..Default::default()
+					}
+					.into(),
+				],
+				..Default::default()
+			}
+			.into(),
 		])
 	}
 }
