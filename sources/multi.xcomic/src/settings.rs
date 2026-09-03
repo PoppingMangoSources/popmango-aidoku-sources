@@ -5,8 +5,8 @@ use aidoku::{
 	prelude::*,
 };
 
-const DEFAULT_TYPES: &[&str] = &["manga", "manhwa", "manhua", "other", "oel", "novel"];
-const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica", "pornographic"];
+pub const ALL_TYPES: &[&str] = &["manga", "manhwa", "manhua", "other", "oel", "novel"];
+pub const ALL_RATINGS: &[&str] = &["safe", "suggestive", "erotica", "pornographic"];
 
 /// An unset key takes the declared default, but a stored empty list stays empty:
 /// unchecking every box must not silently mean every box.
@@ -32,11 +32,11 @@ pub fn get_languages() -> Result<Vec<String>> {
 }
 
 pub fn get_content_types() -> Vec<String> {
-	stored_list("contentTypes", DEFAULT_TYPES)
+	stored_list("contentTypes", ALL_TYPES)
 }
 
 pub fn get_content_ratings() -> Vec<String> {
-	stored_list("contentRatings", DEFAULT_RATINGS)
+	stored_list("contentRatings", ALL_RATINGS)
 }
 
 pub fn get_excluded_genres() -> Vec<String> {

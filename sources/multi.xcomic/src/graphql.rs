@@ -183,6 +183,17 @@ impl BrowseParams {
 			.any(|value| value == "pornographic")
 	}
 
+	/// A selection covering every option constrains nothing, and sending it anyway
+	/// would drop everything the site has not classified yet — which is most of
+	/// what a recently-added listing is.
+	fn narrowing<'a>(selected: &'a [String], all: &[&str]) -> &'a [String] {
+		if selected.len() >= all.len() {
+			&[]
+		} else {
+			selected
+		}
+	}
+
 	fn select(&self) -> serde_json::Value {
 		let mut excluded_genres: Vec<&str> =
 			self.excluded_genres.iter().map(String::as_str).collect();
@@ -206,9 +217,9 @@ impl BrowseParams {
 			"excGenres": excluded_genres,
 			"incGenresMode": self.include_mode,
 			"excGenresMode": self.exclude_mode,
-			"incTypes": self.types,
+			"incTypes": Self::narrowing(&self.types, settings::ALL_TYPES),
 			"incDemographics": self.demographics,
-			"incContentRatings": self.content_ratings,
+			"incContentRatings": Self::narrowing(&self.content_ratings, settings::ALL_RATINGS),
 			"releaseYearMin": self.year_min,
 			"releaseYearMax": self.year_max,
 			"origStatus": (!self.original_status.is_empty()).then_some(&self.original_status),

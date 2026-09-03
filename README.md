@@ -123,7 +123,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/multi.xcomic/res/icon.png" width="24" align="top"/>&nbsp; XCOMIC &nbsp;<sub><a href="https://xcomic.me">xcomic.me</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v20.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v20.aix">.aix (v20)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v21.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v21.aix">.aix (v21)</a></sub>
 
 ## Novels
 
