@@ -62,9 +62,9 @@ impl Home for XComic {
 		let base_url = self.get_base_url()?;
 		let top_rated_params = BrowseParams::new("field_score", 1)?;
 		let most_viewed_params = BrowseParams::new("views_d030", 1)?;
-		let latest_params = BrowseParams::new("field_update", 1)?;
-		let recently_added_params = BrowseParams::new("field_create", 1)?;
 		let most_chapters_params = BrowseParams::new("field_chapter", 1)?;
+		// Neither feed takes a sort; these carry the reader's content settings only.
+		let feed_params = BrowseParams::new("field_update", 1)?;
 		let responses: [core::result::Result<Response, RequestError>; 5] = Request::send_all([
 			scroller_request(&base_url, &top_rated_params)?,
 			browse_request(&base_url, &most_viewed_params)?,
@@ -95,12 +95,12 @@ impl Home for XComic {
 			usize::MAX,
 		);
 		let latest = chapter_entries(
-			parse_latest_uploads(latest?, &latest_params)?.0,
+			parse_latest_uploads(latest?, &feed_params)?.0,
 			&base_url,
 			page,
 		);
 		let recently_added = links(
-			parse_recently_added(recently_added?, &recently_added_params)?,
+			parse_recently_added(recently_added?, &feed_params)?,
 			&base_url,
 			page,
 		);
