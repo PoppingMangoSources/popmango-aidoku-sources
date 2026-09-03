@@ -2,7 +2,7 @@ use crate::{
 	XComic,
 	graphql::{
 		BrowseParams, PAGE_SIZE, browse_request, latest_uploads_request, parse_browse,
-		parse_latest_uploads, scroller_request,
+		parse_latest_uploads, parse_recently_added, recently_added_request, scroller_request,
 	},
 	helpers::{chapter_from_data, manga_from_data},
 	models::{ComicData, LatestEntry},
@@ -69,7 +69,7 @@ impl Home for XComic {
 			scroller_request(&base_url, &top_rated_params)?,
 			browse_request(&base_url, &most_viewed_params)?,
 			latest_uploads_request(&base_url, None)?,
-			browse_request(&base_url, &recently_added_params)?,
+			recently_added_request(&base_url)?,
 			browse_request(&base_url, &most_chapters_params)?,
 		])
 		.try_into()
@@ -100,7 +100,7 @@ impl Home for XComic {
 			page,
 		);
 		let recently_added = links(
-			parse_browse(recently_added?, &recently_added_params)?.0,
+			parse_recently_added(recently_added?, &recently_added_params)?,
 			&base_url,
 			page,
 		);

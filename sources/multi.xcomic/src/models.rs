@@ -88,6 +88,19 @@ pub struct LatestUploadsResponse {
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
+pub struct RecentlyAddedResult {
+	pub items: Vec<Node<ComicData>>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub struct RecentlyAddedResponse {
+	#[serde(rename = "get_comic_recentlyAdded")]
+	pub recently_added: Option<RecentlyAddedResult>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub struct ComicNodeResponse {
 	#[serde(rename = "get_comicNode")]
 	pub comic: Option<Node<ComicData>>,

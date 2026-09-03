@@ -3,7 +3,7 @@ use crate::{
 	models::{
 		BrowseResponse, ChapterData, ChapterListResponse, ChapterPagesResponse, ComicData,
 		ComicNodeResponse, GraphQlResponse, LatestEntry, LatestUploadsResponse,
-		LatestUploadsResult,
+		LatestUploadsResult, RecentlyAddedResponse,
 	},
 	settings,
 };
@@ -16,6 +16,7 @@ use aidoku::{
 use serde::de::DeserializeOwned;
 
 pub const PAGE_SIZE: i32 = 48;
+const RECENTLY_ADDED_SIZE: i32 = 50;
 const CHAPTER_PAGE_SIZE: i32 = 1000;
 
 pub const SORT_IDS: &[&str] = &[
@@ -61,6 +62,21 @@ query get_comic_browse_items($select: Comic_Browse_Select) {
       id name urlPath urlCover
       contentRating originalStatus uploadStatus
       genres summary { text }
+    }
+  }
+}
+"#;
+
+// The site has its own recently-added feed. Browse sorted by creation date is a
+// different set, which is why this section never matched other clients.
+const RECENTLY_ADDED_QUERY: &str = r#"
+query get_comic_recentlyAdded($select: Comic_RecentlyAdded_Select) {
+  get_comic_recentlyAdded(select: $select) {
+    items {
+      data {
+        id name urlPath urlCover translatedLanguage
+        type contentRating genres
+      }
     }
   }
 }
@@ -203,16 +219,21 @@ impl BrowseParams {
 		})
 	}
 
-	/// Only the latest-uploads feed needs this: it takes no filters of its own,
-	/// where browse applies every one of them server side.
+	/// Only the two feeds need this: they take no filters of their own, where
+	/// browse applies every one of them server side.
 	fn allows(&self, comic: &ComicData) -> bool {
 		let rating = comic.content_rating.as_deref().unwrap_or("safe");
 		let genres = comic.genres.as_deref().unwrap_or_default();
-		// An undeclared type is common on new uploads, and is not a reason to hide one.
-		comic
-			.kind
-			.as_deref()
-			.is_none_or(|kind| self.types.iter().any(|value| value == kind))
+		(self.translated_languages.is_empty()
+			|| comic
+				.translated_language
+				.as_ref()
+				.is_some_and(|language| self.translated_languages.contains(language)))
+			// An undeclared type is common on new uploads, and is no reason to hide one.
+			&& comic
+				.kind
+				.as_deref()
+				.is_none_or(|kind| self.types.iter().any(|value| value == kind))
 			&& self.content_ratings.iter().any(|value| value == rating)
 			&& !genres
 				.iter()
@@ -294,6 +315,26 @@ pub fn scroller_request(base_url: &str, params: &BrowseParams) -> Result<Request
 	)
 }
 
+pub fn recently_added_request(base_url: &str) -> Result<Request> {
+	graphql_request(
+		base_url,
+		RECENTLY_ADDED_QUERY,
+		serde_json::json!({ "select": { "size": RECENTLY_ADDED_SIZE } }),
+	)
+}
+
+pub fn parse_recently_added(response: Response, params: &BrowseParams) -> Result<Vec<ComicData>> {
+	let response: RecentlyAddedResponse = parse_graphql(response)?;
+	Ok(response
+		.recently_added
+		.unwrap_or_default()
+		.items
+		.into_iter()
+		.map(|node| node.data)
+		.filter(|comic| params.allows(comic))
+		.collect())
+}
+
 pub fn latest_uploads_request(base_url: &str, before: Option<i64>) -> Result<Request> {
 	graphql_request(
 		base_url,
@@ -323,13 +364,6 @@ pub fn parse_latest_uploads(
 				.and_then(|chapters| chapters.into_iter().next())
 				.map(|node| node.data);
 			Some((comic, chapter))
-		})
-		.filter(|(comic, _)| {
-			params.translated_languages.is_empty()
-				|| comic
-					.translated_language
-					.as_ref()
-					.is_some_and(|language| params.translated_languages.contains(language))
 		})
 		.filter(|(comic, _)| params.allows(comic))
 		// The feed lists one entry per upload, so a comic repeats per new chapter.
