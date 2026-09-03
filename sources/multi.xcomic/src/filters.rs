@@ -70,6 +70,8 @@ fn multi_select(
 		id: id.into(),
 		title: Some(title.into()),
 		is_genre,
+		// Only the genre list wants the tag presentation other sources use.
+		uses_tag_style: is_genre,
 		can_exclude,
 		options,
 		ids: Some(ids),
@@ -81,19 +83,13 @@ fn multi_select(
 impl DynamicFilters for XComic {
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
 		let genres = fetch_genres(&self.get_base_url()?).unwrap_or_else(|| owned(GENRES));
-		// The api only takes languages as includes.
+		// Translated languages come from the app's own language setting. Original
+		// language is a separate axis, and the api only takes it as includes.
 		Ok(vec![
 			multi_select("genres", "Genres", true, true, genres),
 			multi_select(
 				"original_languages",
 				"Original Languages",
-				false,
-				false,
-				owned(LANGUAGES),
-			),
-			multi_select(
-				"translated_languages",
-				"Translated Languages",
 				false,
 				false,
 				owned(LANGUAGES),

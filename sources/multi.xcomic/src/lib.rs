@@ -23,15 +23,6 @@ use helpers::{chapter_from_data, manga_from_data};
 
 const DEFAULT_BASE_URL: &str = "https://xcomic.me";
 
-/// Manga key for a url target, looking up the series' editions when needed.
-fn comic_key(base_url: &str, target: helpers::Target) -> Result<String> {
-	match target {
-		helpers::Target::Comic(key, _) => Ok(key),
-		helpers::Target::Title(id) => helpers::resolve_title(base_url, &id)
-			.ok_or_else(|| error!("No comics are available for this series")),
-	}
-}
-
 struct XComic {
 	latest_cursor: RefCell<Option<i64>>,
 }
@@ -105,7 +96,7 @@ impl Source for XComic {
 		let base_url = self.get_base_url()?;
 		// Quick open: a pasted url or an `id:<value>` query resolves directly.
 		if let Some(target) = query.as_deref().and_then(helpers::target_from_query) {
-			let key = comic_key(&base_url, target)?;
+			let key = helpers::comic_key(&base_url, target)?;
 			let comic = graphql::fetch_comic(&base_url, &key)?;
 			return Ok(MangaPageResult {
 				entries: vec![manga_from_data(comic, &base_url)],
@@ -114,9 +105,6 @@ impl Source for XComic {
 		}
 		let mut params = BrowseParams::new("field_score", page)?;
 		params.word = query.unwrap_or_default();
-		let mut types = Vec::new();
-		let mut ratings = Vec::new();
-		let mut translated = Vec::new();
 
 		for filter in filters {
 			match filter {
@@ -142,29 +130,19 @@ impl Source for XComic {
 					excluded,
 				} => match id.as_str() {
 					"genres" => {
-						params.included_genres.extend(included);
+						params.included_genres = included;
 						params.excluded_genres.extend(excluded);
 					}
-					"types" => types.extend(included),
-					"content_ratings" => ratings.extend(included),
-					"demographics" => params.demographics.extend(included),
-					"original_languages" => params.original_languages.extend(included),
-					"translated_languages" => translated.extend(included),
+					"demographics" => params.demographics = included,
+					"original_languages" => params.original_languages = included,
+					// An empty selection means the reader narrowed nothing, so the
+					// settings defaults these carry have to survive it.
+					"types" if !included.is_empty() => params.types = included,
+					"content_ratings" if !included.is_empty() => params.content_ratings = included,
 					_ => {}
 				},
 				_ => {}
 			}
-		}
-
-		if !types.is_empty() {
-			params.types = types;
-		}
-		if !ratings.is_empty() {
-			params.content_ratings = ratings;
-		}
-		// A filter choice overrides the languages picked in settings.
-		if !translated.is_empty() {
-			params.translated_languages = translated;
 		}
 
 		self.browse_page(&base_url, params)
@@ -177,14 +155,8 @@ impl Source for XComic {
 		needs_chapters: bool,
 	) -> Result<Manga> {
 		let base_url = self.get_base_url()?;
-		let comic = graphql::fetch_comic(&base_url, &manga.key)?;
-		// A comic is published in a single language, so the chapter language comes
-		// from the comic node rather than from the chapter entries themselves.
-		let language = comic
-			.translated_language
-			.as_deref()
-			.and_then(settings::normalize_language);
 		if needs_details {
+			let comic = graphql::fetch_comic(&base_url, &manga.key)?;
 			let chapters = manga.chapters.take();
 			manga = manga_from_data(comic, &base_url);
 			manga.chapters = chapters;
@@ -196,9 +168,7 @@ impl Source for XComic {
 			manga.chapters = Some(
 				graphql::fetch_chapters(&base_url, &manga.key)?
 					.into_iter()
-					.filter_map(|chapter| {
-						chapter_from_data(chapter, &base_url, language.as_deref(), false)
-					})
+					.filter_map(|chapter| chapter_from_data(chapter, &base_url, None, false))
 					.collect(),
 			);
 		}
@@ -249,7 +219,7 @@ impl DeepLinkHandler for XComic {
 				DeepLinkResult::Chapter { manga_key, key }
 			}
 			target => DeepLinkResult::Manga {
-				key: comic_key(&self.get_base_url()?, target)?,
+				key: helpers::comic_key(&self.get_base_url()?, target)?,
 			},
 		}))
 	}

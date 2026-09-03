@@ -100,6 +100,7 @@ pub struct ChapterData {
 	pub db_status: Option<String>,
 	pub serial: Option<f64>,
 	pub cha_num: Option<f64>,
+	pub vol_num: Option<f64>,
 	pub dname: Option<String>,
 	pub title: Option<String>,
 	pub url_path: Option<String>,

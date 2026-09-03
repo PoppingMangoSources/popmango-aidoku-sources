@@ -7,6 +7,17 @@ use aidoku::{
 
 const LANGUAGES_KEY: &str = "languages";
 
+const DEFAULT_TYPES: &[&str] = &["manga", "manhwa", "manhua", "other", "oel", "novel"];
+const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica", "pornographic"];
+
+/// A stored multi-select. An unset key falls back to the declared default, but a
+/// stored empty list is kept empty: unchecking every box must not silently mean
+/// every box.
+fn stored_list(key: &str, default: &[&str]) -> Vec<String> {
+	defaults_get::<Vec<String>>(key)
+		.unwrap_or_else(|| default.iter().map(|value| (*value).into()).collect())
+}
+
 /// Selected languages, in the underscore form the API expects.
 pub fn get_languages() -> Result<Vec<String>> {
 	defaults_get::<Vec<String>>(LANGUAGES_KEY)
@@ -21,6 +32,18 @@ pub fn get_languages() -> Result<Vec<String>> {
 				.collect()
 		})
 		.ok_or(error!("Unable to fetch languages"))
+}
+
+pub fn get_content_types() -> Vec<String> {
+	stored_list("contentTypes", DEFAULT_TYPES)
+}
+
+pub fn get_content_ratings() -> Vec<String> {
+	stored_list("contentRatings", DEFAULT_RATINGS)
+}
+
+pub fn get_excluded_genres() -> Vec<String> {
+	defaults_get::<Vec<String>>("excludedGenres").unwrap_or_default()
 }
 
 /// Inverse of [`get_languages`]: API code back to the BCP 47 form Aidoku uses.

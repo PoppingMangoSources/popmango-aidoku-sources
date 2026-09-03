@@ -39,8 +39,8 @@ fn manga_section(comics: Vec<ComicData>, base_url: &str, limit: usize) -> Vec<Ma
 		.collect()
 }
 
-/// Links with an explicit subtitle. It is always set, since otherwise the
-/// browse summary would fill it through `From<Manga>`.
+/// Links with an explicit subtitle, which `From<Manga>` would otherwise leave
+/// empty for these compact browse results.
 fn links(
 	comics: Vec<ComicData>,
 	base_url: &str,
@@ -81,7 +81,9 @@ fn chapter_entries(items: Vec<LatestEntry>, base_url: &str, limit: usize) -> Vec
 impl Home for XComic {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let base_url = self.get_base_url()?;
-		let top_rated_params = BrowseParams::new("field_score", 1)?;
+		let mut top_rated_params = BrowseParams::new("field_score", 1)?;
+		// The only section that shows more than a cover and a title.
+		top_rated_params.detailed = true;
 		let most_viewed_params = BrowseParams::new("views_d030", 1)?;
 		let latest_params = BrowseParams::new("field_update", 1)?;
 		let mut recently_added_params = BrowseParams::new("field_create", 1)?;

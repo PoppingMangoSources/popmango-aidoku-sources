@@ -1,11 +1,12 @@
 use crate::{
 	models::{ChapterData, ComicData, NamedData, Node},
-	settings::get_languages,
+	settings::{get_languages, normalize_language},
 };
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, Viewer,
+	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, format, string::ToString, vec},
 	imports::net::Request,
+	prelude::*,
 };
 
 pub const PORNOGRAPHIC_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
@@ -108,6 +109,20 @@ pub const LANGUAGES: &[(&str, &str)] = &[
 	("_t", "Other"),
 	("uz", "Uzbek"),
 	("zu", "Zulu"),
+	("am", "Amharic"),
+	("fo", "Faroese"),
+	("ha", "Hausa"),
+	("kn", "Kannada"),
+	("lb", "Luxembourgish"),
+	("mk", "Macedonian"),
+	("rm", "Romansh"),
+	("sd", "Sindhi"),
+	("sm", "Samoan"),
+	("sn", "Shona"),
+	("sw", "Swahili"),
+	("tg", "Tajik"),
+	("ur", "Urdu"),
+	("yo", "Yoruba"),
 ];
 
 /// `(id, title)`. Fallback when the live list cannot be fetched.
@@ -421,6 +436,15 @@ pub fn resolve_title(base_url: &str, title_id: &str) -> Option<String> {
 		.map(|(id, _)| id.clone())
 }
 
+/// Manga key for a url target, looking up the series' editions when needed.
+pub fn comic_key(base_url: &str, target: Target) -> Result<String> {
+	match target {
+		Target::Comic(key, _) => Ok(key),
+		Target::Title(id) => resolve_title(base_url, &id)
+			.ok_or_else(|| error!("No comics are available for this series")),
+	}
+}
+
 pub fn parse_year(value: &str) -> (Option<i64>, Option<i64>) {
 	if let Some((minimum, maximum)) = value.split_once('-') {
 		(minimum.trim().parse().ok(), maximum.trim().parse().ok())
@@ -428,6 +452,12 @@ pub fn parse_year(value: &str) -> (Option<i64>, Option<i64>) {
 		let year = value.trim().parse().ok();
 		(year, year)
 	}
+}
+
+/// Language code from a chapter path, whose last segment is `{id}-{lang}-{name}`.
+fn language_from_path(url_path: Option<&str>) -> Option<String> {
+	let segment = url_path?.trim_end_matches('/').rsplit('/').next()?;
+	segment.split('-').nth(1).and_then(normalize_language)
 }
 
 fn unix_seconds(timestamp: i64) -> Option<i64> {
@@ -487,9 +517,15 @@ pub fn chapter_from_data(
 	if scanlators.is_empty() {
 		scanlators = data.group_nodes.take().map(node_names).unwrap_or_default();
 	}
+	// A comic is published in one language, and every chapter path repeats it, so a
+	// chapter list needs no separate lookup of the comic it belongs to.
+	let language = language
+		.map(Into::into)
+		.or_else(|| language_from_path(data.url_path.as_deref()));
 	Some(Chapter {
 		key: data.id,
 		chapter_number: data.cha_num.or(data.serial).map(|number| number as f32),
+		volume_number: data.vol_num.map(|number| number as f32),
 		title,
 		date_uploaded: if published_first {
 			data.date_public.or(data.date_modify).or(data.date_create)
@@ -499,7 +535,7 @@ pub fn chapter_from_data(
 		.and_then(unix_seconds),
 		scanlators: (!scanlators.is_empty()).then_some(scanlators),
 		url: data.url_path.map(|url| absolute_url(base_url, &url)),
-		language: language.map(Into::into),
+		language,
 		..Default::default()
 	})
 }

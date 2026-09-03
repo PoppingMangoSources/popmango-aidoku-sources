@@ -10,10 +10,7 @@ use crate::{
 use aidoku::{
 	Result,
 	alloc::{String, Vec, string::ToString},
-	imports::{
-		defaults::defaults_get,
-		net::{Request, Response},
-	},
+	imports::net::{Request, Response},
 	prelude::*,
 };
 use serde::de::DeserializeOwned;
@@ -44,15 +41,30 @@ pub const SORT_IDS: &[&str] = &[
 	"views_h001",
 ];
 
-const DEFAULT_TYPES: &[&str] = &["manga", "manhwa", "manhua", "other", "oel", "novel"];
-const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica", "pornographic"];
-
+// Search cards need only enough to identify a series; `get_manga_update` fills
+// in the rest. `type`, `contentRating` and `genres` are fetched regardless
+// because `BrowseParams::allows` filters on them, but only the detailed query
+// lets them reach the reader.
 const BROWSE_QUERY: &str = r#"
 query get_comic_browse_items($select: Comic_Browse_Select) {
   get_comic_browse_items(select: $select) {
     data {
       id name urlPath urlCover
       type contentRating genres
+      originalStatus uploadStatus
+    }
+  }
+}
+"#;
+
+/// [`BROWSE_QUERY`] plus the summary, for the home scroller that shows one.
+const BROWSE_DETAILED_QUERY: &str = r#"
+query get_comic_browse_items($select: Comic_Browse_Select) {
+  get_comic_browse_items(select: $select) {
+    data {
+      id name urlPath urlCover
+      type contentRating genres
+      originalStatus uploadStatus
       summary { text }
     }
   }
@@ -100,7 +112,7 @@ query get_comic_chapterList_uniqList($select: Select_Comic_ChapterList_UniqList)
     paging { pages }
     items {
       data {
-        id dbStatus serial chaNum dname title urlPath
+        id dbStatus serial chaNum volNum dname title urlPath
         dateCreate dateModify datePublic srcName
         profileNodes { data { name } }
         groupNodes { data { name } }
@@ -116,16 +128,10 @@ query get_chapterNode($id: ID!) {
 }
 "#;
 
-fn setting_list(key: &str, fallback: &[&str]) -> Vec<String> {
-	let values = defaults_get::<Vec<String>>(key).unwrap_or_default();
-	if values.is_empty() {
-		fallback.iter().map(|value| (*value).into()).collect()
-	} else {
-		values
-	}
-}
-
+#[derive(Default)]
 pub struct BrowseParams {
+	/// Whether the reader sees more than the cover and title of each result.
+	pub detailed: bool,
 	pub page: i32,
 	pub size: i32,
 	pub sortby: String,
@@ -148,26 +154,17 @@ pub struct BrowseParams {
 
 impl BrowseParams {
 	pub fn new(sortby: &str, page: i32) -> Result<Self> {
-		let excluded_genres = defaults_get::<Vec<String>>("excludedGenres").unwrap_or_default();
 		Ok(Self {
 			page,
 			size: PAGE_SIZE,
 			sortby: sortby.into(),
-			word: String::new(),
-			included_genres: Vec::new(),
-			excluded_genres,
 			include_mode: "and".into(),
 			exclude_mode: "or".into(),
-			types: setting_list("contentTypes", DEFAULT_TYPES),
-			demographics: Vec::new(),
-			content_ratings: setting_list("contentRatings", DEFAULT_RATINGS),
-			original_languages: Vec::new(),
+			excluded_genres: settings::get_excluded_genres(),
+			types: settings::get_content_types(),
+			content_ratings: settings::get_content_ratings(),
 			translated_languages: settings::get_languages()?,
-			original_status: String::new(),
-			upload_status: String::new(),
-			chapter_count: String::new(),
-			year_min: None,
-			year_max: None,
+			..Default::default()
 		})
 	}
 
@@ -288,7 +285,11 @@ fn graphql<T: DeserializeOwned>(
 pub fn browse_request(base_url: &str, params: &BrowseParams) -> Result<Request> {
 	graphql_request(
 		base_url,
-		BROWSE_QUERY,
+		if params.detailed {
+			BROWSE_DETAILED_QUERY
+		} else {
+			BROWSE_QUERY
+		},
 		serde_json::json!({ "select": params.select() }),
 	)
 }
@@ -359,6 +360,17 @@ pub fn parse_browse(response: Response, params: &BrowseParams) -> Result<(Vec<Co
 		.into_iter()
 		.map(|node| node.data)
 		.filter(|comic| params.allows(comic))
+		.map(|mut comic| {
+			if !params.detailed {
+				// Fold the genre-derived rating in before the genres go, so a card
+				// can never end up looking safer than the series is.
+				if is_pornographic(comic.content_rating.as_deref(), comic.genres.as_deref()) {
+					comic.content_rating = Some("pornographic".into());
+				}
+				comic.genres = None;
+			}
+			comic
+		})
 		.collect();
 	Ok((comics, has_next_page))
 }

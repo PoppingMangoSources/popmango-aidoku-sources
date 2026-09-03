@@ -2,7 +2,7 @@
 	"info": {
 		"id": "multi.xcomic",
 		"name": "XCOMIC",
-		"version": 14,
+		"version": 15,
 		"urls": [
 			"https://xcomic.me",
 			"https://xcomic.net",
@@ -121,10 +121,6 @@
 	},
 	"listings": [
 		{
-			"id": "field_score",
-			"name": "Top Rated"
-		},
-		{
 			"id": "field_update",
 			"name": "Latest Update"
 		},
@@ -137,44 +133,8 @@
 			"name": "Most Chapters"
 		},
 		{
-			"id": "views_d000",
-			"name": "Most Viewed (All Time)"
-		},
-		{
-			"id": "views_d360",
-			"name": "Most Viewed (360 Days)"
-		},
-		{
-			"id": "views_d180",
-			"name": "Most Viewed (180 Days)"
-		},
-		{
-			"id": "views_d090",
-			"name": "Most Viewed (90 Days)"
-		},
-		{
 			"id": "views_d030",
 			"name": "Most Viewed (30 Days)"
-		},
-		{
-			"id": "views_d007",
-			"name": "Most Viewed (7 Days)"
-		},
-		{
-			"id": "views_h024",
-			"name": "Most Viewed (24 Hours)"
-		},
-		{
-			"id": "views_h012",
-			"name": "Most Viewed (12 Hours)"
-		},
-		{
-			"id": "views_h006",
-			"name": "Most Viewed (6 Hours)"
-		},
-		{
-			"id": "views_h001",
-			"name": "Most Viewed (1 Hour)"
 		}
 	],
 	"config": {
