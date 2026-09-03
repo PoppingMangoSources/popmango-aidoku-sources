@@ -40,14 +40,27 @@ pub const SORT_IDS: &[&str] = &[
 	"views_h001",
 ];
 
-// Browse takes every filter server side, so a card needs nothing beyond what it
-// displays; `get_manga_update` fills in the rest.
+// Browse takes every filter server side, so a search card needs nothing beyond
+// what it displays; `get_manga_update` fills in the rest.
 const BROWSE_QUERY: &str = r#"
 query get_comic_browse_items($select: Comic_Browse_Select) {
   get_comic_browse_items(select: $select) {
     data {
       id name urlPath urlCover
       contentRating originalStatus uploadStatus
+    }
+  }
+}
+"#;
+
+// The big scroller is the one component that renders a description and tags.
+const SCROLLER_QUERY: &str = r#"
+query get_comic_browse_items($select: Comic_Browse_Select) {
+  get_comic_browse_items(select: $select) {
+    data {
+      id name urlPath urlCover
+      contentRating originalStatus uploadStatus
+      genres summary { text }
     }
   }
 }
@@ -270,6 +283,14 @@ pub fn browse_request(base_url: &str, params: &BrowseParams) -> Result<Request> 
 	graphql_request(
 		base_url,
 		BROWSE_QUERY,
+		serde_json::json!({ "select": params.select() }),
+	)
+}
+
+pub fn scroller_request(base_url: &str, params: &BrowseParams) -> Result<Request> {
+	graphql_request(
+		base_url,
+		SCROLLER_QUERY,
 		serde_json::json!({ "select": params.select() }),
 	)
 }

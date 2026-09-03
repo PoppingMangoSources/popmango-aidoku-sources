@@ -2,7 +2,7 @@ use crate::{
 	XComic,
 	graphql::{
 		BrowseParams, PAGE_SIZE, browse_request, latest_uploads_request, parse_browse,
-		parse_latest_uploads,
+		parse_latest_uploads, scroller_request,
 	},
 	helpers::{chapter_from_data, manga_from_data},
 	models::{ComicData, LatestEntry},
@@ -66,7 +66,7 @@ impl Home for XComic {
 		let recently_added_params = BrowseParams::new("field_create", 1)?;
 		let most_chapters_params = BrowseParams::new("field_chapter", 1)?;
 		let responses: [core::result::Result<Response, RequestError>; 5] = Request::send_all([
-			browse_request(&base_url, &top_rated_params)?,
+			scroller_request(&base_url, &top_rated_params)?,
 			browse_request(&base_url, &most_viewed_params)?,
 			latest_uploads_request(&base_url, None)?,
 			browse_request(&base_url, &recently_added_params)?,
