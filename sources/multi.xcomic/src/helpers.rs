@@ -343,10 +343,6 @@ pub fn manga_from_data(mut comic: ComicData, base_url: &str) -> Manga {
 	}
 }
 
-pub fn type_label(comic: &ComicData) -> Option<String> {
-	comic.kind.as_deref().map(title_case)
-}
-
 /// The two prefixes are different things, not aliases: `/title/{id}` is the
 /// series, which owns one `/comic/` edition per language, and only edition ids
 /// work as manga keys.

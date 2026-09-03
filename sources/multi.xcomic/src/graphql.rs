@@ -16,7 +16,6 @@ use aidoku::{
 use serde::de::DeserializeOwned;
 
 pub const PAGE_SIZE: i32 = 48;
-pub const EXTENDED_PAGE_SIZE: i32 = 120;
 const CHAPTER_PAGE_SIZE: i32 = 1000;
 
 pub const SORT_IDS: &[&str] = &[
@@ -41,29 +40,14 @@ pub const SORT_IDS: &[&str] = &[
 	"views_h001",
 ];
 
-// `type`, `contentRating` and `genres` are fetched only to filter on, and
-// dropped again by `BrowseParams::compact` before a card is handed over.
+// Browse takes every filter server side, so a card needs nothing beyond what it
+// displays; `get_manga_update` fills in the rest.
 const BROWSE_QUERY: &str = r#"
 query get_comic_browse_items($select: Comic_Browse_Select) {
   get_comic_browse_items(select: $select) {
     data {
       id name urlPath urlCover
-      type contentRating genres
-      originalStatus uploadStatus
-    }
-  }
-}
-"#;
-
-/// [`BROWSE_QUERY`] plus the summary, for the home scroller that shows one.
-const BROWSE_DETAILED_QUERY: &str = r#"
-query get_comic_browse_items($select: Comic_Browse_Select) {
-  get_comic_browse_items(select: $select) {
-    data {
-      id name urlPath urlCover
-      type contentRating genres
-      originalStatus uploadStatus
-      summary { text }
+      contentRating originalStatus uploadStatus
     }
   }
 }
@@ -128,8 +112,6 @@ query get_chapterNode($id: ID!) {
 
 #[derive(Default)]
 pub struct BrowseParams {
-	/// Keeps the fields only the big scroller shows.
-	pub detailed: bool,
 	pub page: i32,
 	pub size: i32,
 	pub sortby: String,
@@ -209,24 +191,16 @@ impl BrowseParams {
 		})
 	}
 
-	/// Strips what only [`Self::allows`] needed, folding the genre-derived rating
-	/// in first so a card can never look safer than the series is.
-	fn compact(&self, mut comic: ComicData) -> ComicData {
-		if !self.detailed {
-			if is_pornographic(comic.content_rating.as_deref(), comic.genres.as_deref()) {
-				comic.content_rating = Some("pornographic".into());
-			}
-			comic.genres = None;
-		}
-		comic
-	}
-
+	/// Only the latest-uploads feed needs this: it takes no filters of its own,
+	/// where browse applies every one of them server side.
 	fn allows(&self, comic: &ComicData) -> bool {
 		let rating = comic.content_rating.as_deref().unwrap_or("safe");
 		let genres = comic.genres.as_deref().unwrap_or_default();
-		self.types
-			.iter()
-			.any(|kind| Some(kind.as_str()) == comic.kind.as_deref())
+		// An undeclared type is common on new uploads, and is not a reason to hide one.
+		comic
+			.kind
+			.as_deref()
+			.is_none_or(|kind| self.types.iter().any(|value| value == kind))
 			&& self.content_ratings.iter().any(|value| value == rating)
 			&& !genres
 				.iter()
@@ -295,11 +269,7 @@ fn graphql<T: DeserializeOwned>(
 pub fn browse_request(base_url: &str, params: &BrowseParams) -> Result<Request> {
 	graphql_request(
 		base_url,
-		if params.detailed {
-			BROWSE_DETAILED_QUERY
-		} else {
-			BROWSE_QUERY
-		},
+		BROWSE_QUERY,
 		serde_json::json!({ "select": params.select() }),
 	)
 }
@@ -310,7 +280,7 @@ pub fn latest_uploads_request(base_url: &str, before: Option<i64>) -> Result<Req
 		LATEST_UPLOADS_QUERY,
 		serde_json::json!({
 			"select": {
-				"size": EXTENDED_PAGE_SIZE,
+				"size": PAGE_SIZE,
 				"before": before
 			}
 		}),
@@ -342,12 +312,6 @@ pub fn parse_latest_uploads(
 					.is_some_and(|language| params.translated_languages.contains(language))
 		})
 		.filter(|(comic, _)| params.allows(comic))
-		.filter(|(comic, _)| {
-			comic
-				.url_cover
-				.as_deref()
-				.is_some_and(|cover| !cover.trim().is_empty())
-		})
 		// The feed lists one entry per upload, so a comic repeats per new chapter.
 		.filter(|(comic, _)| {
 			let unseen = !seen.contains(&comic.id);
@@ -356,7 +320,6 @@ pub fn parse_latest_uploads(
 			}
 			unseen
 		})
-		.map(|(comic, chapter)| (params.compact(comic), chapter))
 		.collect();
 	Ok((comics, before))
 }
@@ -364,14 +327,8 @@ pub fn parse_latest_uploads(
 pub fn parse_browse(response: Response, params: &BrowseParams) -> Result<(Vec<ComicData>, bool)> {
 	let response: BrowseResponse = parse_graphql(response)?;
 	let items = response.get_comic_browse_items;
-	// Counted before filtering, or a page thinned locally would end pagination.
 	let has_next_page = items.len() as i32 >= params.size;
-	let comics = items
-		.into_iter()
-		.map(|node| node.data)
-		.filter(|comic| params.allows(comic))
-		.map(|comic| params.compact(comic))
-		.collect();
+	let comics = items.into_iter().map(|node| node.data).collect();
 	Ok((comics, has_next_page))
 }
 

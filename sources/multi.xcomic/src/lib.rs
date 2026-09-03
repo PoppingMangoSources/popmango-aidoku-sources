@@ -18,7 +18,7 @@ use aidoku::{
 	imports::{defaults::defaults_get, net::Request, std::send_partial_result},
 	prelude::*,
 };
-use graphql::{BrowseParams, EXTENDED_PAGE_SIZE};
+use graphql::BrowseParams;
 use helpers::{chapter_from_data, manga_from_data};
 
 const DEFAULT_BASE_URL: &str = "https://xcomic.me";
@@ -55,23 +55,16 @@ impl XComic {
 	}
 
 	/// One page of browse results, shared by search and listings.
-	fn browse_page(&self, base_url: &str, mut params: BrowseParams) -> Result<MangaPageResult> {
-		// These sorts surface placeholder entries with no cover, so ask for a
-		// bigger page to leave enough behind after filtering.
-		let skip_coverless = matches!(params.sortby.as_str(), "field_update" | "field_create");
+	fn browse_page(&self, base_url: &str, params: BrowseParams) -> Result<MangaPageResult> {
 		let (comics, has_next_page) = if params.can_use_latest_uploads() {
 			self.latest_page(base_url, &params)?
 		} else {
-			if skip_coverless {
-				params.size = EXTENDED_PAGE_SIZE;
-			}
 			let response = graphql::browse_request(base_url, &params)?.send()?;
 			graphql::parse_browse(response, &params)?
 		};
 		let entries = comics
 			.into_iter()
 			.map(|comic| manga_from_data(comic, base_url))
-			.filter(|manga| !skip_coverless || manga.cover.is_some())
 			.collect();
 		Ok(MangaPageResult {
 			has_next_page,

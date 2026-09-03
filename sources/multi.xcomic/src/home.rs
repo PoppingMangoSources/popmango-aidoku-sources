@@ -1,17 +1,17 @@
 use crate::{
 	XComic,
 	graphql::{
-		BrowseParams, EXTENDED_PAGE_SIZE, PAGE_SIZE, browse_request, latest_uploads_request,
-		parse_browse, parse_latest_uploads,
+		BrowseParams, PAGE_SIZE, browse_request, latest_uploads_request, parse_browse,
+		parse_latest_uploads,
 	},
-	helpers::{chapter_from_data, manga_from_data, type_label},
+	helpers::{chapter_from_data, manga_from_data},
 	models::{ComicData, LatestEntry},
 	settings,
 };
 use aidoku::{
 	BaseUrlProvider, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing,
 	ListingKind, Manga, MangaWithChapter, Result,
-	alloc::{String, Vec, vec},
+	alloc::{Vec, vec},
 	imports::net::{Request, RequestError, Response},
 };
 
@@ -30,22 +30,10 @@ fn visible(comic: ComicData, base_url: &str) -> Option<Manga> {
 	manga.cover.is_some().then_some(manga)
 }
 
-/// Links with an explicit subtitle, which `From<Manga>` would otherwise leave
-/// empty for these compact browse results.
-fn links(
-	comics: Vec<ComicData>,
-	base_url: &str,
-	limit: usize,
-	subtitle: impl Fn(&ComicData) -> Option<String>,
-) -> Vec<Link> {
+fn links(comics: Vec<ComicData>, base_url: &str, limit: usize) -> Vec<Link> {
 	comics
 		.into_iter()
-		.filter_map(|comic| {
-			let subtitle = subtitle(&comic);
-			let mut link = Link::from(visible(comic, base_url)?);
-			link.subtitle = subtitle;
-			Some(link)
-		})
+		.filter_map(|comic| Some(Link::from(visible(comic, base_url)?)))
 		.take(limit)
 		.collect()
 }
@@ -72,13 +60,10 @@ fn chapter_entries(items: Vec<LatestEntry>, base_url: &str, limit: usize) -> Vec
 impl Home for XComic {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let base_url = self.get_base_url()?;
-		let mut top_rated_params = BrowseParams::new("field_score", 1)?;
-		// The only section that shows more than a cover and a title.
-		top_rated_params.detailed = true;
+		let top_rated_params = BrowseParams::new("field_score", 1)?;
 		let most_viewed_params = BrowseParams::new("views_d030", 1)?;
 		let latest_params = BrowseParams::new("field_update", 1)?;
-		let mut recently_added_params = BrowseParams::new("field_create", 1)?;
-		recently_added_params.size = EXTENDED_PAGE_SIZE;
+		let recently_added_params = BrowseParams::new("field_create", 1)?;
 		let most_chapters_params = BrowseParams::new("field_chapter", 1)?;
 		let responses: [core::result::Result<Response, RequestError>; 5] = Request::send_all([
 			browse_request(&base_url, &top_rated_params)?,
@@ -108,7 +93,6 @@ impl Home for XComic {
 			parse_browse(most_viewed?, &most_viewed_params)?.0,
 			&base_url,
 			usize::MAX,
-			|_| None,
 		);
 		let latest = chapter_entries(
 			parse_latest_uploads(latest?, &latest_params)?.0,
@@ -119,13 +103,11 @@ impl Home for XComic {
 			parse_browse(recently_added?, &recently_added_params)?.0,
 			&base_url,
 			page,
-			|_| None,
 		);
 		let most_chapters = links(
 			parse_browse(most_chapters?, &most_chapters_params)?.0,
 			&base_url,
 			usize::MAX,
-			type_label,
 		);
 
 		Ok(HomeLayout {
