@@ -1,0 +1,11 @@
+{
+	"info": {
+		"id": "en.galaxymanga",
+		"name": "Galaxy Manga",
+		"version": 1,
+		"url": "https://galaxymanga.io",
+		"contentRating": 1,
+		"languages": ["en"],
+		"minAppVersion": "0.7.1"
+	}
+}
