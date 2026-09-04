@@ -6,7 +6,7 @@ use aidoku::{
 	UpdateStrategy, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::encode_uri_component,
-	imports::html::Element,
+	imports::html::{Element, Html},
 	imports::net::Request,
 	imports::std::{parse_date, send_partial_result},
 	prelude::*,
@@ -163,6 +163,46 @@ fn book_to_manga(book: Book) -> Manga {
 		url: book.url.as_deref().map(resolve_url),
 		..Default::default()
 	}
+}
+
+/// Deep links carry the url slug, but every api call keys on the numeric book
+/// id, so a slug has to be exchanged for one before the first request.
+fn resolve_book_id(key: &str) -> Result<String> {
+	if !key.is_empty() && key.bytes().all(|byte| byte.is_ascii_digit()) {
+		return Ok(key.into());
+	}
+
+	let url = format!("{DOMAIN}/novel/{key}.html");
+	let body = Request::get(&url)?
+		.header("Referer", &format!("{DOMAIN}/"))
+		.string()?;
+
+	if let Some(id) = Html::parse_with_url(&body, &url)
+		.ok()
+		.and_then(|document| document.select_first("[book_id]"))
+		.and_then(|element| element.attr("book_id"))
+		.map(|id| id.trim().to_string())
+		.filter(|id| !id.is_empty())
+	{
+		return Ok(id);
+	}
+
+	// Older pages only carry it in an inline `BOOK_ID = 12345` assignment.
+	let id: String = body
+		.find("BOOK_ID")
+		.and_then(|start| body.get(start..start + 40))
+		.map(|window| {
+			window
+				.chars()
+				.skip_while(|character| !character.is_ascii_digit())
+				.take_while(char::is_ascii_digit)
+				.collect()
+		})
+		.unwrap_or_default();
+	if id.is_empty() {
+		bail!("No book id for {key}");
+	}
+	Ok(id)
 }
 
 fn browse(order: &str, content_type: &str, page: i32) -> Result<Vec<Book>> {
@@ -332,7 +372,7 @@ impl Source for NovelCool {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let book_id = manga.key.clone();
+		let book_id = resolve_book_id(&manga.key)?;
 		let mut is_novel = manga.viewer == Viewer::Vertical;
 
 		if needs_details {

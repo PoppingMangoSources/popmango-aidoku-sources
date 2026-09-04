@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.omanga",
 		"name": "oManga",
-		"version": 10,
+		"version": 11,
 		"url": "https://omanga.to",
 		"contentRating": 1,
 		"languages": ["en"],

@@ -4,6 +4,7 @@ use aidoku::{
 	HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga, MangaPageResult,
 	MangaStatus, MangaWithChapter, Page, PageContent, PageContext, Result, Source, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
+	helpers::uri::encode_uri_component,
 	imports::net::Request,
 	imports::std::{parse_date, send_partial_result},
 	prelude::*,
@@ -97,6 +98,19 @@ struct SeriesPage {
 	series: Series,
 	#[serde(default)]
 	chapters: Vec<ChapterItem>,
+	#[serde(rename = "totalPages")]
+	total_pages: Option<i32>,
+}
+
+impl SeriesPage {
+	/// The list sits beside the series on some pages and inside it on others.
+	fn take_chapters(&mut self) -> Vec<ChapterItem> {
+		if self.chapters.is_empty() {
+			self.series.chapters.take().unwrap_or_default()
+		} else {
+			core::mem::take(&mut self.chapters)
+		}
+	}
 }
 
 #[derive(Deserialize, Default)]
@@ -236,10 +250,18 @@ fn series_to_detail(series: Series) -> Manga {
 	}
 }
 
-fn browse(page: i32) -> Result<Vec<Series>> {
-	let payload = fetch(&format!("{DOMAIN}/series?page={}", page.max(1)), false)?;
+/// Returns one page of the catalogue and whether the listing has another.
+fn browse(page: i32, query: Option<&str>) -> Result<(Vec<Series>, bool)> {
+	let mut url = format!("{DOMAIN}/series?page={}", page.max(1));
+	if let Some(query) = query.map(str::trim).filter(|query| !query.is_empty()) {
+		url = format!("{url}&q={}", encode_uri_component(query));
+	}
+	let payload = fetch(&url, false)?;
 	let lists: Vec<Vec<Series>> = extract_all_by_marker(&payload, "\"initialSeries\":", false);
-	Ok(lists.into_iter().next().unwrap_or_default())
+	Ok((
+		lists.into_iter().next().unwrap_or_default(),
+		payload.contains("\"initialHasMore\":true"),
+	))
 }
 
 struct ValirScans;
@@ -256,7 +278,6 @@ impl Source for ValirScans {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let query = query.unwrap_or_default();
-		let query = query.trim().to_lowercase();
 
 		let mut kind = String::new();
 		for filter in filters {
@@ -267,17 +288,12 @@ impl Source for ValirScans {
 			}
 		}
 
-		let mut series = browse(page)?;
-		let has_next_page = !series.is_empty();
-		series.retain(|entry| {
-			if !query.is_empty() && !entry.title.to_lowercase().contains(&query) {
-				return false;
-			}
-			match kind.as_str() {
-				"novel" => is_novel(entry),
-				"comic" => !is_novel(entry),
-				_ => true,
-			}
+		// The catalogue matches the query itself; only the type is ours to apply.
+		let (mut series, has_next_page) = browse(page, Some(&query))?;
+		series.retain(|entry| match kind.as_str() {
+			"novel" => is_novel(entry),
+			"comic" => !is_novel(entry),
+			_ => true,
 		});
 
 		Ok(MangaPageResult {
@@ -302,11 +318,33 @@ impl Source for ValirScans {
 		};
 
 		let novel = is_novel(&page.series);
-		// The chapter list sits beside the series on some pages and inside it on
-		// others, so take it before the series is consumed.
-		let mut items = page.chapters;
-		if items.is_empty() {
-			items = page.series.chapters.take().unwrap_or_default();
+		// Take the chapters before the series is consumed below.
+		let mut items = page.take_chapters();
+
+		// A series paginates its own chapter list; without the later pages only
+		// the most recent chapters would ever be visible.
+		let total_pages = page.total_pages.unwrap_or(1);
+		if needs_chapters && total_pages > 1 {
+			let requests = (2..=total_pages)
+				.map(|number| {
+					Request::get(format!("{DOMAIN}/series/{key}?page={number}"))
+						.map(|request| request.header("Referer", &format!("{DOMAIN}/")))
+						.map_err(Into::into)
+				})
+				.collect::<Result<Vec<_>>>()?;
+			for response in Request::send_all(requests) {
+				let Ok(response) = response else { continue };
+				let Ok(body) = response.get_string() else {
+					continue;
+				};
+				if let Some(mut later) =
+					extract_all_by_marker::<SeriesPage>(&body, "{\"series\":", true)
+						.into_iter()
+						.next()
+				{
+					items.extend(later.take_chapters());
+				}
+			}
 		}
 
 		if needs_details {
@@ -585,7 +623,8 @@ impl Home for ValirScans {
 			});
 		}
 
-		let new_entries: Vec<Link> = browse(1)?
+		let new_entries: Vec<Link> = browse(1, None)?
+			.0
 			.into_iter()
 			.map(|series| Link::from(series_to_manga(series)))
 			.collect();
@@ -613,9 +652,9 @@ impl ListingProvider for ValirScans {
 		if listing.id != "browse" {
 			bail!("Unknown listing: {}", listing.id);
 		}
-		let series = browse(page)?;
+		let (series, has_next_page) = browse(page, None)?;
 		Ok(MangaPageResult {
-			has_next_page: !series.is_empty(),
+			has_next_page,
 			entries: series.into_iter().map(series_to_manga).collect(),
 		})
 	}

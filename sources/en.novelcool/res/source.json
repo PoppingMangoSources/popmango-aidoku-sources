@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.novelcool",
 		"name": "NovelCool",
-		"version": 5,
+		"version": 6,
 		"url": "https://www.novelcool.com",
 		"contentRating": 1,
 		"languages": ["en"],

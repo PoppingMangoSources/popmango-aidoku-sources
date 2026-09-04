@@ -21,7 +21,18 @@ fn hide_adult() -> bool {
 	defaults_get::<bool>(HIDE_ADULT_KEY).unwrap_or(false)
 }
 
-const ADULT_GENRES: &[&str] = &["adult", "smut", "erotica", "hentai", "explicit", "nsfw"];
+const ADULT_GENRES: &[&str] = &[
+	"adult",
+	"smut",
+	"erotica",
+	"hentai",
+	"explicit",
+	"nsfw",
+	"sexual content",
+	"r-18",
+	"lewd",
+	"pornographic",
+];
 const MATURE_GENRES: &[&str] = &["mature", "ecchi"];
 
 #[derive(Deserialize, Default)]

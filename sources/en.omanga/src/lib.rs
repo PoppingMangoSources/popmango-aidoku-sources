@@ -380,10 +380,20 @@ impl Source for OManga {
 		}
 
 		if needs_chapters {
+			// Several teams can release the same chapter number, and the number is
+			// the key, so only the first release of each is kept.
+			let mut seen: Vec<f32> = Vec::new();
 			let mut chapters: Vec<Chapter> = props
 				.chapters
 				.unwrap_or_default()
 				.into_iter()
+				.filter(|entry| {
+					let fresh = !seen.contains(&entry.number);
+					if fresh {
+						seen.push(entry.number);
+					}
+					fresh
+				})
 				.map(|entry| {
 					let scanlators = entry
 						.team
