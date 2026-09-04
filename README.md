@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-platform.svg?v=2" alt="iOS / iPadOS" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-aidoku.svg?v=2" alt="Aidoku 0.8+" height="28"/>
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=2" alt="24 sources" height="28"/>
+  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=2" alt="23 sources" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-unofficial.svg?v=2" alt="Best effort, not maintained 24/7" height="28"/>
 </p>
 
@@ -39,7 +39,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 ## Manga, Manhwa & Manhua
 
-**24 sources** are currently packaged in this repository.
+**23 sources** are currently packaged in this repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/mkissa.png" width="24" align="top"/>&nbsp; Mkissa &nbsp;<sub><a href="https://mkissa.to">mkissa.to</a></sub></h3>
 
@@ -121,9 +121,6 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v9.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v9.aix">.aix (v9)</a></sub>
 
-<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/multi.xcomic/res/icon.png" width="24" align="top"/>&nbsp; XCOMIC &nbsp;<sub><a href="https://xcomic.me">xcomic.me</a></sub></h3>
-
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v25.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.xcomic-v25.aix">.aix (v25)</a></sub>
 
 ## Novels
 
