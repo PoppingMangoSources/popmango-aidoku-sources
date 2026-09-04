@@ -50,13 +50,24 @@ fn extract_nonce(body: &str) -> Option<&str> {
 	Some(&value[open..close])
 }
 
-fn is_locked(element: &Element) -> bool {
-	if element.attr("data-reason").is_some() {
+/// Every row carries `data-reason`, so only a value other than `free` locks one.
+///
+/// Novel chapters drop their link entirely when locked, and paid ones price
+/// themselves in a `.chapter_price` badge.
+fn is_locked(element: &Element, href: Option<&str>) -> bool {
+	if element
+		.attr("data-reason")
+		.map(|reason| reason.trim().to_lowercase())
+		.is_some_and(|reason| !reason.is_empty() && reason != "free")
+	{
 		return true;
 	}
-	element
-		.attr("class")
-		.is_some_and(|class| class.contains("locked-chapter") || class.contains("is-locked"))
+	let locked_class = element.attr("class").is_some_and(|class| {
+		class
+			.split_whitespace()
+			.any(|name| name == "locked-chapter" || name == "is-locked")
+	});
+	locked_class || href.is_none() || element.select_first(".chapter_price").is_some()
 }
 
 /// Resolves a relative date such as `3 days ago` or a bare `10 minutes`.
@@ -130,6 +141,11 @@ fn parse_batch(document: &Document, base_url: &str) -> Vec<Chapter> {
 						.or_else(|| element.attr("data-permalink"))
 						.or_else(|| element.attr("abs:href"))
 						.or_else(|| element.attr("href"))
+						.or_else(|| {
+							element
+								.select_first("a")
+								.and_then(|link| link.attr("abs:href").or(link.attr("href")))
+						})
 						.map(|url| url.trim().to_string())
 						.filter(|url| !url.is_empty() && url != "#");
 					let post_id = element
@@ -155,7 +171,7 @@ fn parse_batch(document: &Document, base_url: &str) -> Vec<Chapter> {
 						.map(|name| name.trim().to_string())
 						.unwrap_or_default();
 
-					let locked = is_locked(&element);
+					let locked = is_locked(&element, href.as_deref());
 					let key = match &href {
 						Some(url) => url.strip_prefix_or_self(base_url).to_string(),
 						// Locked chapters have no link of their own, so the post
