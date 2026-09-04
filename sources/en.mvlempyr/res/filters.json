@@ -3,10 +3,6 @@
 		"type": "sort",
 		"id": "sort",
 		"canAscend": false,
-		"default": {
-			"index": 0,
-			"ascending": false
-		},
 		"options": [
 			"Popular",
 			"Top Rated",

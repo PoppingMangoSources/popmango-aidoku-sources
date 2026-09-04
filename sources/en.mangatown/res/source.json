@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.mangatown",
 		"name": "MangaTown",
-		"version": 4,
+		"version": 5,
 		"url": "https://www.mangatown.com",
 		"contentRating": 1,
 		"languages": ["en"],

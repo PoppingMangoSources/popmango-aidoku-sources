@@ -314,10 +314,4 @@ impl Impl for Cocomic {
 	}
 }
 
-register_source!(
-	Madara<Cocomic>,
-	Home,
-	ListingProvider,
-	DeepLinkHandler,
-	ImageRequestProvider
-);
+register_source!(Madara<Cocomic>, Home, DeepLinkHandler, ImageRequestProvider);

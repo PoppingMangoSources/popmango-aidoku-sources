@@ -508,10 +508,8 @@ impl Home for OManga {
 impl ListingProvider for OManga {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let query = match listing.id.as_str() {
-			"real_views" => "sort=real_views",
 			"updated_at" => "sort=updated_at",
-			"created_at" | "new_season" => "sort=created_at",
-			"rating" => "sort=rating",
+			"new_season" => "sort=created_at",
 			"most_liked" => "sort=likes",
 			"best_ongoing" => "sort=rating&status=Ongoing",
 			"trend" => "sort=by_views",

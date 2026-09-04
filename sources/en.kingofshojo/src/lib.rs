@@ -35,7 +35,6 @@ impl Impl for Kingofshojo {
 register_source!(
 	MangaThemesia<Kingofshojo>,
 	Home,
-	ListingProvider,
 	ImageRequestProvider,
 	DeepLinkHandler
 );

@@ -3,10 +3,6 @@
 		"type": "sort",
 		"id": "m_orderby",
 		"canAscend": false,
-		"default": {
-			"index": 0,
-			"ascending": false
-		},
 		"options": [
 			"Relevance",
 			"Latest",

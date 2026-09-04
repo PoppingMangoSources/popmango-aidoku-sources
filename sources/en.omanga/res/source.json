@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.omanga",
 		"name": "oManga",
-		"version": 8,
+		"version": 9,
 		"url": "https://omanga.to",
 		"contentRating": 1,
 		"languages": ["en"],
@@ -12,10 +12,10 @@
 		"supportsTagSearch": true
 	},
 	"listings": [
-		{ "id": "real_views", "name": "Popular" },
 		{ "id": "updated_at", "name": "Latest Updates" },
-		{ "id": "created_at", "name": "Newest" },
-		{ "id": "rating", "name": "Top Rated" },
+		{ "id": "top_manhwa", "name": "Top Manhwa" },
+		{ "id": "top_manga", "name": "Top Manga" },
+		{ "id": "top_manhua", "name": "Top Manhua" },
 		{ "id": "new_season", "name": "New Season" },
 		{ "id": "most_liked", "name": "Most Liked" },
 		{ "id": "best_ongoing", "name": "Best Ongoings" },
