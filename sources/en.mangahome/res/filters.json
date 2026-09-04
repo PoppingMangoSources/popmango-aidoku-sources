@@ -1,10 +1,76 @@
 [
 	{
 		"type": "select",
+		"id": "type",
+		"title": "Type",
+		"options": [
+			"Any",
+			"Japanese Manga",
+			"Korean Manhwa",
+			"Chinese Manhua"
+		],
+		"ids": [
+			"",
+			"manga",
+			"manhwa",
+			"manhua"
+		]
+	},
+	{
+		"type": "text",
+		"id": "author",
+		"title": "Author",
+		"placeholder": "Author"
+	},
+	{
+		"type": "text",
+		"id": "artist",
+		"title": "Artist",
+		"placeholder": "Artist"
+	},
+	{
+		"type": "text",
+		"id": "released",
+		"title": "Release Year",
+		"placeholder": "Year"
+	},
+	{
+		"type": "select",
+		"id": "rating",
+		"title": "Rating",
+		"options": [
+			"Any star",
+			"No star",
+			"1 star",
+			"2 stars",
+			"3 stars",
+			"4 stars",
+			"5 stars"
+		],
+		"ids": [
+			"",
+			"0",
+			"1",
+			"2",
+			"3",
+			"4",
+			"5"
+		]
+	},
+	{
+		"type": "select",
 		"id": "status",
 		"title": "Status",
-		"options": ["All", "Ongoing", "Completed"],
-		"ids": ["", "0", "1"]
+		"options": [
+			"All",
+			"Ongoing",
+			"Completed"
+		],
+		"ids": [
+			"",
+			"0",
+			"1"
+		]
 	},
 	{
 		"type": "multi-select",
@@ -14,16 +80,58 @@
 		"isGenre": true,
 		"canExclude": true,
 		"options": [
-			"Action", "Adventure", "Comedy", "Doujinshi", "Drama", "Ecchi", "Fantasy",
-			"Harem", "Historical", "Horror", "Josei", "Mature", "Mecha", "Mystery",
-			"Psychological", "Romance", "Sci-fi", "Seinen", "Shoujo", "Shounen",
-			"Sports", "Supernatural", "Tragedy", "Yaoi", "Yuri"
+			"Action",
+			"Adventure",
+			"Comedy",
+			"Doujinshi",
+			"Drama",
+			"Ecchi",
+			"Fantasy",
+			"Harem",
+			"Historical",
+			"Horror",
+			"Josei",
+			"Mature",
+			"Mecha",
+			"Mystery",
+			"Psychological",
+			"Romance",
+			"Sci-fi",
+			"Seinen",
+			"Shoujo",
+			"Shounen",
+			"Sports",
+			"Supernatural",
+			"Tragedy",
+			"Yaoi",
+			"Yuri"
 		],
 		"ids": [
-			"action", "adventure", "comedy", "doujinshi", "drama", "ecchi", "fantasy",
-			"harem", "historical", "horror", "josei", "mature", "mecha", "mystery",
-			"psychological", "romance", "sci-fi", "seinen", "shoujo", "shounen",
-			"sports", "supernatural", "tragedy", "yaoi", "yuri"
+			"action",
+			"adventure",
+			"comedy",
+			"doujinshi",
+			"drama",
+			"ecchi",
+			"fantasy",
+			"harem",
+			"historical",
+			"horror",
+			"josei",
+			"mature",
+			"mecha",
+			"mystery",
+			"psychological",
+			"romance",
+			"sci-fi",
+			"seinen",
+			"shoujo",
+			"shounen",
+			"sports",
+			"supernatural",
+			"tragedy",
+			"yaoi",
+			"yuri"
 		]
 	}
 ]

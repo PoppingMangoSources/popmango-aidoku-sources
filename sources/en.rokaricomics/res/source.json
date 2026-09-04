@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.rokaricomics",
 		"name": "RokariComics",
-		"version": 8,
+		"version": 9,
 		"url": "https://rokaricomics.com",
 		"contentRating": 1,
 		"languages": ["en"],

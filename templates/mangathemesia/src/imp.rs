@@ -3,9 +3,9 @@ use crate::{
 	helpers::{self, ElementImageAttr},
 };
 use aidoku::{
-	Chapter, ContentRating, DeepLinkResult, FilterValue, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, Listing, Manga, MangaPageResult, MangaStatus,
-	MangaWithChapter, Page, PageContent, PageContext, Result, Viewer,
+	Chapter, ContentRating, DeepLinkResult, Filter, FilterValue, HomeComponent, HomeComponentValue,
+	HomeLayout, Link, Listing, Manga, MangaPageResult, MangaStatus, MangaWithChapter,
+	MultiSelectFilter, Page, PageContent, PageContext, Result, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{string::StripPrefixOrSelf, uri::QueryParameters},
 	imports::{
@@ -379,6 +379,39 @@ pub trait Impl {
 		} else {
 			bail!("No pages found")
 		}
+	}
+
+	/// Reads the genre list off the directory page's advanced search form.
+	///
+	/// Every site numbers its genre terms differently, so the ids cannot live in
+	/// `filters.json`; the theme renders them as checkboxes in `ul.genrez`.
+	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
+		let url = format!("{}{}/", params.base_url, params.manga_url_directory);
+		let (options, ids): (Vec<_>, Vec<_>) = Request::get(url)?
+			.html()?
+			.select("ul.genrez li")
+			.map(|els| {
+				els.filter_map(|el| {
+					let option = el.select_first("label")?.text()?;
+					let id = el.select_first("input[type=checkbox]")?.attr("value")?;
+					Some((option.into(), id.into()))
+				})
+				.unzip()
+			})
+			.unwrap_or_default();
+
+		Ok(vec![
+			MultiSelectFilter {
+				id: "genre[]".into(),
+				title: Some("Genre".into()),
+				is_genre: true,
+				can_exclude: true,
+				options,
+				ids: Some(ids),
+				..Default::default()
+			}
+			.into(),
+		])
 	}
 
 	fn get_image_request(

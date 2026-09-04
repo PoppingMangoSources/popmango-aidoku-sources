@@ -1,7 +1,7 @@
 #![no_std]
 use aidoku::{
-	Chapter, ContentRating, FilterValue, HomeComponent, HomeComponentValue, HomeLayout, Manga,
-	MangaPageResult, MangaWithChapter, Page, PageContent, Result, Source,
+	Chapter, ContentRating, Filter, FilterValue, HomeComponent, HomeComponentValue, HomeLayout,
+	Manga, MangaPageResult, MangaWithChapter, MultiSelectFilter, Page, PageContent, Result, Source,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{element::ElementHelpers, string::StripPrefixOrSelf, uri::QueryParameters},
 	imports::{
@@ -18,6 +18,9 @@ mod chapters;
 use chapters::LOCK_SUFFIX;
 
 const BASE_URL: &str = "https://rinkocomics.com";
+
+/// Query values behind the sort filter, in the order `filters.json` lists them.
+const SORT_IDS: [&str; 4] = ["newest", "oldest", "az", "za"];
 
 struct RinkoComics;
 
@@ -154,7 +157,11 @@ impl Impl for RinkoComics {
 		}
 		for filter in filters {
 			match filter {
-				FilterValue::Sort { .. } => {}
+				FilterValue::Sort { index, .. } => {
+					if let Some(value) = SORT_IDS.get(index as usize) {
+						qs.set("sort", Some(value));
+					}
+				}
 				FilterValue::MultiSelect { id, included, .. } if id == "genres[]" => {
 					for genre in included {
 						qs.push("genres[]", Some(&genre));
@@ -197,6 +204,38 @@ impl Impl for RinkoComics {
 			entries,
 			has_next_page: html.select_first(".ac-pagination a.next").is_some(),
 		})
+	}
+
+	/// The theme puts its genre checkboxes on the browse page rather than the
+	/// Madara search form, and labels them with a slug the browse query takes.
+	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
+		let (options, ids): (Vec<_>, Vec<_>) = Request::get(format!("{}/comic/", params.base_url))?
+			.header("Referer", &format!("{}/", params.base_url))
+			.html()?
+			.select(".ac-filter-group.ac-genre input[name='genres[]']")
+			.map(|inputs| {
+				inputs
+					.filter_map(|input| {
+						let id = input.attr("value")?;
+						let option = input.parent()?.select_first(".ac-option-text")?.text()?;
+						Some((option.into(), id.into()))
+					})
+					.unzip()
+			})
+			.unwrap_or_default();
+
+		Ok(vec![
+			MultiSelectFilter {
+				id: "genres[]".into(),
+				title: Some("Genres".into()),
+				is_genre: true,
+				can_exclude: false,
+				options,
+				ids: Some(ids),
+				..Default::default()
+			}
+			.into(),
+		])
 	}
 
 	/// The site paginates chapters through its own ajax action instead of the
@@ -509,6 +548,7 @@ impl Impl for RinkoComics {
 register_source!(
 	Madara<RinkoComics>,
 	Home,
+	DynamicFilters,
 	DeepLinkHandler,
 	ImageRequestProvider
 );

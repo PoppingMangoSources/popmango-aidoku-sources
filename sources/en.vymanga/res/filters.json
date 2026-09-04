@@ -15,5 +15,20 @@
 		"id": "author",
 		"title": "Author",
 		"placeholder": "Author name"
+	},
+	{
+		"type": "select",
+		"id": "completed",
+		"title": "Status",
+		"options": [
+			"All",
+			"Ongoing",
+			"Completed"
+		],
+		"ids": [
+			"",
+			"0",
+			"1"
+		]
 	}
 ]

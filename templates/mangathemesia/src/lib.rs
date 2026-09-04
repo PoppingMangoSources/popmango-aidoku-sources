@@ -1,7 +1,8 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, ImageRequestProvider,
-	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContext, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
+	HomeLayout, ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult, Page,
+	PageContext, Result, Source,
 	alloc::{String, Vec, borrow::Cow},
 	imports::net::Request,
 };
@@ -136,6 +137,12 @@ impl<T: Impl> ImageRequestProvider for MangaThemesia<T> {
 impl<T: Impl> ListingProvider for MangaThemesia<T> {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		self.inner.get_manga_list(&self.params, listing, page)
+	}
+}
+
+impl<T: Impl> DynamicFilters for MangaThemesia<T> {
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		self.inner.get_dynamic_filters(&self.params)
 	}
 }
 

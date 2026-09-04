@@ -1,7 +1,26 @@
 [
 	{
+		"type": "text",
+		"id": "author",
+		"title": "Author",
+		"placeholder": "Author"
+	},
+	{
+		"type": "text",
+		"id": "artist",
+		"title": "Artist",
+		"placeholder": "Artist"
+	},
+	{
+		"type": "text",
+		"id": "release",
+		"title": "Release Year",
+		"placeholder": "Year"
+	},
+	{
 		"type": "sort",
 		"id": "m_orderby",
+		"title": "Order by",
 		"canAscend": false,
 		"options": [
 			"Relevance",
@@ -12,5 +31,30 @@
 			"Most Views",
 			"New"
 		]
+	},
+	{
+		"type": "select",
+		"id": "adult",
+		"title": "Adult content",
+		"options": ["All", "No adult content", "Only adult content"],
+		"ids": ["", "0", "1"]
+	},
+	{
+		"type": "multi-select",
+		"id": "status[]",
+		"title": "Status",
+		"canExclude": false,
+		"options": ["Ongoing", "Completed", "Canceled", "On Hold", "Upcoming"],
+		"ids": ["on-going", "end", "canceled", "on-hold", "upcoming"]
+	},
+	{
+		"type": "select",
+		"id": "op",
+		"title": "Genres condition",
+		"options": [
+			"OR (having one of the selected genres)",
+			"AND (having all of the selected genres)"
+		],
+		"ids": ["", "1"]
 	}
 ]

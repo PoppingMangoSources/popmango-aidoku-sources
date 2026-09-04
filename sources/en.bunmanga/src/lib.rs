@@ -288,6 +288,7 @@ impl Impl for BunManga {
 register_source!(
 	Madara<BunManga>,
 	Home,
+	DynamicFilters,
 	DeepLinkHandler,
 	ImageRequestProvider
 );

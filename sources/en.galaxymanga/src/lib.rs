@@ -22,6 +22,7 @@ impl Impl for Galaxymanga {
 register_source!(
 	MangaThemesia<Galaxymanga>,
 	Home,
+	DynamicFilters,
 	ImageRequestProvider,
 	DeepLinkHandler
 );

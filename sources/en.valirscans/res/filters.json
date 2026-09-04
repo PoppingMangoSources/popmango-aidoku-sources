@@ -3,14 +3,69 @@
 		"type": "sort",
 		"id": "sort",
 		"canAscend": false,
-		"options": ["Default", "Newest"],
-		"ids": ["", "newest"]
+		"options": [
+			"Default",
+			"Newest"
+		],
+		"ids": [
+			"",
+			"newest"
+		]
 	},
 	{
-		"type": "select",
+		"type": "multi-select",
 		"id": "type",
 		"title": "Type",
-		"options": ["All", "Comic", "Novel"],
-		"ids": ["", "comic", "novel"]
+		"canExclude": true,
+		"options": [
+			"Manhwa",
+			"Manhua",
+			"Manga",
+			"Comic",
+			"Webtoon",
+			"Novel"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "status",
+		"title": "Status",
+		"canExclude": true,
+		"options": [
+			"Ongoing",
+			"Completed",
+			"Hiatus",
+			"Cancelled"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "origin",
+		"title": "Origin",
+		"canExclude": true,
+		"options": [
+			"Korean",
+			"Japanese",
+			"Chinese",
+			"English"
+		],
+		"ids": [
+			"KOREAN",
+			"JAPANESE",
+			"CHINESE",
+			"ENGLISH"
+		]
+	},
+	{
+		"type": "text",
+		"id": "minChapters",
+		"title": "Chapters From",
+		"placeholder": "e.g. 20"
+	},
+	{
+		"type": "text",
+		"id": "maxChapters",
+		"title": "Chapters To",
+		"placeholder": "e.g. 100"
 	}
 ]

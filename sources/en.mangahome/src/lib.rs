@@ -253,14 +253,24 @@ impl Source for MangaHome {
 		let query = query.unwrap_or_default();
 		let query = query.trim();
 
-		let mut status = String::new();
+		// Every advanced-search field the site takes, keyed by its query name.
+		let mut fields: Vec<(&str, String)> = Vec::new();
 		let mut included: Vec<String> = Vec::new();
 		let mut excluded: Vec<String> = Vec::new();
 		for filter in &filters {
 			match filter {
-				FilterValue::Select { id, value } if id == "status" && !value.is_empty() => {
-					status = value.clone();
-				}
+				FilterValue::Select { id, value } if !value.is_empty() => match id.as_str() {
+					"status" => fields.push(("is_completed", value.clone())),
+					"type" => fields.push(("type", value.clone())),
+					"rating" => fields.push(("rating", value.clone())),
+					_ => {}
+				},
+				FilterValue::Text { id, value } if !value.is_empty() => match id.as_str() {
+					"author" => fields.push(("author", value.clone())),
+					"artist" => fields.push(("artist", value.clone())),
+					"released" => fields.push(("released", value.clone())),
+					_ => {}
+				},
 				FilterValue::MultiSelect {
 					id,
 					included: inc,
@@ -272,7 +282,7 @@ impl Source for MangaHome {
 				_ => {}
 			}
 		}
-		let has_filters = !status.is_empty() || !included.is_empty() || !excluded.is_empty();
+		let has_filters = !fields.is_empty() || !included.is_empty() || !excluded.is_empty();
 
 		let url = if query.is_empty() && !has_filters {
 			if page > 1 {
@@ -300,8 +310,15 @@ impl Source for MangaHome {
 					encode_uri_component(excluded.join(","))
 				));
 			}
-			if !status.is_empty() {
-				params.push(format!("is_completed={status}"));
+			for (name, value) in &fields {
+				params.push(format!("{name}={}", encode_uri_component(value)));
+				// The text fields each pair with a comparison the site defaults
+				// to nothing, so state the one its own form submits.
+				match *name {
+					"author" | "artist" => params.push(format!("{name}_method=cw")),
+					"released" | "rating" => params.push(format!("{name}_method=eq")),
+					_ => {}
+				}
 			}
 			params.push("advopts=1".into());
 			if page > 1 {

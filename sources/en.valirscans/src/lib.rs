@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
-	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, Manga, MangaPageResult, MangaStatus, MangaWithChapter,
-	Page, PageContent, PageContext, Result, Source, Viewer,
+	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue,
+	Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, MangaPageResult, MangaStatus,
+	MangaWithChapter, MultiSelectFilter, Page, PageContent, PageContext, Result, Source, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::encode_uri_component,
 	imports::net::Request,
@@ -19,6 +19,17 @@ const DOMAIN: &str = "https://valirscans.org";
 
 /// Matches the `ids` of the sort filter in `filters.json`.
 const SORT_IDS: [&str; 2] = ["", "newest"];
+
+/// Catalogue facets, paired with the query name that excludes them instead.
+const TAXONOMIES: [(&str, &str); 5] = [
+	("genre", "excludeGenre"),
+	("tag", "excludeTag"),
+	("type", "excludeType"),
+	("status", "excludeStatus"),
+	("origin", "excludeOrigin"),
+];
+
+const CHAPTER_COUNT_IDS: [&str; 2] = ["minChapters", "maxChapters"];
 
 #[derive(Deserialize, Default)]
 struct Genre {
@@ -50,6 +61,25 @@ impl Genre {
 #[derive(Deserialize, Default)]
 struct TagEntry {
 	name: Option<String>,
+}
+
+/// One entry of the catalogue's genre or tag list.
+#[derive(Deserialize, Default)]
+struct TaxonomyEntry {
+	name: Option<String>,
+	slug: Option<String>,
+}
+
+impl TaxonomyEntry {
+	fn is_named(&self) -> bool {
+		self.name.is_some() && self.slug.is_some()
+	}
+
+	fn option(self) -> Option<(String, String)> {
+		let name = self.name?.trim().to_string();
+		let slug = self.slug?.trim().to_string();
+		(!name.is_empty() && !slug.is_empty()).then_some((name, slug))
+	}
 }
 
 #[derive(Deserialize, Default)]
@@ -254,7 +284,12 @@ fn series_to_detail(series: Series) -> Manga {
 }
 
 /// Returns one page of the catalogue and whether the listing has another.
-fn browse(page: i32, query: Option<&str>, sort: Option<&str>) -> Result<(Vec<Series>, bool)> {
+fn browse(
+	page: i32,
+	query: Option<&str>,
+	sort: Option<&str>,
+	filters: &[(&str, String)],
+) -> Result<(Vec<Series>, bool)> {
 	let mut url = format!("{DOMAIN}/series?page={}", page.max(1));
 	if let Some(query) = query.map(str::trim).filter(|query| !query.is_empty()) {
 		url = format!("{url}&q={}", encode_uri_component(query));
@@ -262,6 +297,9 @@ fn browse(page: i32, query: Option<&str>, sort: Option<&str>) -> Result<(Vec<Ser
 	// The catalogue only ever orders a chosen sort downwards.
 	if let Some(sort) = sort.filter(|sort| !sort.is_empty()) {
 		url = format!("{url}&sort={sort}&order=desc");
+	}
+	for (name, value) in filters {
+		url = format!("{url}&{name}={}", encode_uri_component(value));
 	}
 	let payload = fetch(&url, false)?;
 	let lists: Vec<Vec<Series>> = extract_all_by_marker(&payload, "\"initialSeries\":", false);
@@ -286,25 +324,38 @@ impl Source for ValirScans {
 	) -> Result<MangaPageResult> {
 		let query = query.unwrap_or_default();
 
-		let mut kind = String::new();
 		let mut sort = "";
+		let mut params: Vec<(&str, String)> = Vec::new();
 		for filter in filters {
 			match filter {
-				FilterValue::Select { id, value } if id == "type" => kind = value,
 				FilterValue::Sort { index, .. } => {
 					sort = SORT_IDS.get(index as usize).copied().unwrap_or("")
+				}
+				FilterValue::Text { id, value } if !value.is_empty() => {
+					if let Some(name) = CHAPTER_COUNT_IDS.iter().find(|name| **name == id) {
+						params.push((name, value));
+					}
+				}
+				FilterValue::MultiSelect {
+					id,
+					included,
+					excluded,
+				} => {
+					let Some((name, exclude_name)) = TAXONOMIES
+						.iter()
+						.find(|(name, _)| *name == id)
+						.map(|(name, exclude_name)| (*name, *exclude_name))
+					else {
+						continue;
+					};
+					params.extend(included.into_iter().map(|value| (name, value)));
+					params.extend(excluded.into_iter().map(|value| (exclude_name, value)));
 				}
 				_ => {}
 			}
 		}
 
-		// The catalogue matches the query itself; only the type is ours to apply.
-		let (mut series, has_next_page) = browse(page, Some(&query), Some(sort))?;
-		series.retain(|entry| match kind.as_str() {
-			"novel" => is_novel(entry),
-			"comic" => !is_novel(entry),
-			_ => true,
-		});
+		let (series, has_next_page) = browse(page, Some(&query), Some(sort), &params)?;
 
 		Ok(MangaPageResult {
 			entries: series.into_iter().map(series_to_manga).collect(),
@@ -629,7 +680,7 @@ impl Home for ValirScans {
 			});
 		}
 
-		let new_entries: Vec<Link> = browse(1, None, None)?
+		let new_entries: Vec<Link> = browse(1, None, None, &[])?
 			.0
 			.into_iter()
 			.map(|series| Link::from(series_to_manga(series)))
@@ -646,6 +697,46 @@ impl Home for ValirScans {
 		}
 
 		Ok(HomeLayout { components })
+	}
+}
+
+impl DynamicFilters for ValirScans {
+	/// Reads the catalogue's own genre and tag lists off the browse page, which
+	/// ships them in the same payload as the series it lists.
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		let payload = fetch(&format!("{DOMAIN}/series"), false)?;
+		Ok([("genre", "Genres"), ("tag", "Tags")]
+			.into_iter()
+			.map(|(id, title)| {
+				// The payload names the same key in several shapes; the longest
+				// list is the full taxonomy rather than one series' own labels.
+				let entries = extract_all_by_marker::<Vec<TaxonomyEntry>>(
+					&payload,
+					&format!("\"{id}s\":"),
+					false,
+				)
+				.into_iter()
+				.filter(|list| list.iter().all(|entry| entry.is_named()))
+				.max_by_key(Vec::len)
+				.unwrap_or_default();
+				let (options, ids) = entries
+					.into_iter()
+					.filter_map(TaxonomyEntry::option)
+					.map(|(name, slug)| (name.into(), slug.into()))
+					.unzip::<_, _, Vec<_>, Vec<_>>();
+
+				MultiSelectFilter {
+					id: id.into(),
+					title: Some(title.into()),
+					is_genre: id == "genre",
+					can_exclude: true,
+					options,
+					ids: Some(ids),
+					..Default::default()
+				}
+				.into()
+			})
+			.collect())
 	}
 }
 
@@ -685,4 +776,10 @@ impl DeepLinkHandler for ValirScans {
 	}
 }
 
-register_source!(ValirScans, Home, ImageRequestProvider, DeepLinkHandler);
+register_source!(
+	ValirScans,
+	Home,
+	DynamicFilters,
+	ImageRequestProvider,
+	DeepLinkHandler
+);

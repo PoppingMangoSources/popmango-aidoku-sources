@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.valirscans",
 		"name": "ValirScans",
-		"version": 8,
+		"version": 9,
 		"url": "https://valirscans.org",
 		"contentRating": 1,
 		"languages": ["en"],

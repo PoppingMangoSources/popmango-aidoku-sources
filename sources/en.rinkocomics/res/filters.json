@@ -1,16 +1,8 @@
 [
 	{
 		"type": "sort",
-		"id": "m_orderby",
+		"id": "sort",
 		"canAscend": false,
-		"options": [
-			"Relevance",
-			"Latest",
-			"A-Z",
-			"Rating",
-			"Trending",
-			"Most Views",
-			"New"
-		]
+		"options": ["Newest First", "Oldest First", "A-Z", "Z-A"]
 	}
 ]

@@ -1,8 +1,9 @@
 #![no_std]
 use aidoku::{
-	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterItem, FilterValue, Home,
-	HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Listing, ListingProvider,
-	Manga, MangaPageResult, MangaStatus, Page, PageContent, PageContext, Result, Source,
+	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterItem,
+	FilterValue, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Listing,
+	ListingProvider, Manga, MangaPageResult, MangaStatus, MultiSelectFilter, Page, PageContent,
+	PageContext, Result, Source,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::QueryParameters,
 	imports::defaults::defaults_get,
@@ -195,12 +196,14 @@ impl Source for VyManga {
 
 		let mut sort_index = 0;
 		let mut author = String::new();
+		let mut completed = String::new();
 		let mut included_genres: Vec<String> = Vec::new();
 		let mut excluded_genres: Vec<String> = Vec::new();
 		for filter in filters {
 			match filter {
 				FilterValue::Sort { index, .. } => sort_index = index,
 				FilterValue::Text { id, value } if id == "author" => author = value,
+				FilterValue::Select { id, value } if id == "completed" => completed = value,
 				FilterValue::MultiSelect {
 					id,
 					included,
@@ -220,6 +223,9 @@ impl Source for VyManga {
 		qs.push("author_po", Some("0"));
 		if !author.is_empty() {
 			qs.push("author", Some(&author));
+		}
+		if !completed.is_empty() {
+			qs.push("completed", Some(&completed));
 		}
 		for genre in &included_genres {
 			qs.push("genre[]", Some(genre));
@@ -560,6 +566,39 @@ impl ListingProvider for VyManga {
 	}
 }
 
+impl DynamicFilters for VyManga {
+	/// Genre ids are the site's own numbering, so the search form is read for
+	/// them rather than pinning a list that goes stale.
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		let (options, ids): (Vec<_>, Vec<_>) = request(&format!("{}/search", base_url()))?
+			.html()?
+			.select(".checkbox-genre[data-value]")
+			.map(|boxes| {
+				boxes
+					.filter_map(|checkbox| {
+						let id = checkbox.attr("data-value")?;
+						let option = checkbox.parent()?.select_first("label")?.text()?;
+						Some((option.into(), id.into()))
+					})
+					.unzip()
+			})
+			.unwrap_or_default();
+
+		Ok(vec![
+			MultiSelectFilter {
+				id: "genres".into(),
+				title: Some("Genres".into()),
+				is_genre: true,
+				can_exclude: true,
+				options,
+				ids: Some(ids),
+				..Default::default()
+			}
+			.into(),
+		])
+	}
+}
+
 impl aidoku::ImageRequestProvider for VyManga {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		request(&url)
@@ -577,6 +616,7 @@ impl DeepLinkHandler for VyManga {
 
 register_source!(
 	VyManga,
+	DynamicFilters,
 	Home,
 	ListingProvider,
 	ImageRequestProvider,
