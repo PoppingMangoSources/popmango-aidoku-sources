@@ -7,6 +7,7 @@ use aidoku::{
 	imports::{
 		html::{Element, Html},
 		net::Request,
+		std::send_partial_result,
 	},
 	prelude::*,
 };
@@ -124,6 +125,11 @@ impl Impl for RinkoComics {
 
 		if needs_details {
 			self.apply_manga_details(params, &mut manga, &html, &url);
+			// Walking the ajax pages below costs a request per batch, so hand the
+			// details over before starting it.
+			if needs_chapters {
+				send_partial_result(&manga);
+			}
 		}
 
 		if needs_chapters {
@@ -143,16 +149,14 @@ impl Impl for RinkoComics {
 				items
 					.filter_map(|item| {
 						let manga = card_manga(params, &item, "a", ".comic-title", "img")?;
-						Some(aidoku::Link {
-							title: manga.title.clone(),
-							subtitle: manga
-								.tags
-								.as_ref()
-								.filter(|genres| !genres.is_empty())
-								.map(|genres| genres.join(" · ")),
-							image_url: manga.cover.clone(),
-							value: Some(aidoku::LinkValue::Manga(manga)),
-						})
+						let genres = manga
+							.tags
+							.as_ref()
+							.filter(|genres| !genres.is_empty())
+							.map(|genres| genres.join(" · "));
+						let mut link = aidoku::Link::from(manga);
+						link.subtitle = genres;
+						Some(link)
 					})
 					.collect()
 			})
@@ -193,7 +197,7 @@ impl Impl for RinkoComics {
 				subtitle: None,
 				value: HomeComponentValue::MangaList {
 					ranking: true,
-					page_size: Some(10),
+					page_size: Some(5),
 					entries: hot,
 					listing: None,
 				},

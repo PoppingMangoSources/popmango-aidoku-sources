@@ -9,7 +9,11 @@ use aidoku::{
 	MangaStatus, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, borrow::ToOwned, string::ToString, vec},
 	helpers::uri::encode_uri_component,
-	imports::{defaults::defaults_get, net::Request, std::parse_date},
+	imports::{
+		defaults::defaults_get,
+		net::Request,
+		std::{parse_date, send_partial_result},
+	},
 	prelude::*,
 };
 use flight::extract_flight;
@@ -326,6 +330,10 @@ impl Source for ReiManga {
 				parsed.chapters = manga.chapters.take();
 				manga = parsed;
 			}
+			// Chapters come from a second endpoint, so release the details first.
+			if needs_chapters {
+				send_partial_result(&manga);
+			}
 		}
 		if needs_chapters {
 			let body = fetch_flight(&format!("{}/manga/{}", base_url(), manga.key))?;
@@ -473,7 +481,7 @@ impl Home for ReiManga {
 					subtitle: None,
 					value: HomeComponentValue::MangaList {
 						ranking: true,
-						page_size: Some(10),
+						page_size: Some(5),
 						entries,
 						listing: None,
 					},
@@ -505,7 +513,7 @@ impl Home for ReiManga {
 					subtitle: None,
 					value: HomeComponentValue::MangaList {
 						ranking: true,
-						page_size: Some(10),
+						page_size: Some(5),
 						entries,
 						listing: None,
 					},

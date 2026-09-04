@@ -1,27 +1,24 @@
 use aidoku::{
-	alloc::{String, Vec, vec},
+	alloc::{String, Vec},
 	imports::defaults::defaults_get,
 };
 
 const CONTENT_TYPES_KEY: &str = "contentTypes";
 const CONTENT_RATINGS_KEY: &str = "contentRatings";
 
+/// An unset list means the declared default; one the reader emptied stays empty,
+/// so clearing every box cannot silently re-enable everything.
+fn stored_list(key: &str, fallback: &[&str]) -> Vec<String> {
+	defaults_get::<Vec<String>>(key)
+		.unwrap_or_else(|| fallback.iter().copied().map(Into::into).collect())
+}
+
 pub fn content_types() -> Vec<String> {
-	let types = defaults_get::<Vec<String>>(CONTENT_TYPES_KEY).unwrap_or_default();
-	if types.is_empty() {
-		vec!["manga".into(), "manhwa".into(), "manhua".into()]
-	} else {
-		types
-	}
+	stored_list(CONTENT_TYPES_KEY, &["manga", "manhwa", "manhua"])
 }
 
 pub fn content_ratings() -> Vec<String> {
-	let ratings = defaults_get::<Vec<String>>(CONTENT_RATINGS_KEY).unwrap_or_default();
-	if ratings.is_empty() {
-		vec!["safe".into(), "suggestive".into()]
-	} else {
-		ratings
-	}
+	stored_list(CONTENT_RATINGS_KEY, &["safe", "suggestive"])
 }
 
 pub fn adult() -> bool {
