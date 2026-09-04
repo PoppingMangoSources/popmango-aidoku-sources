@@ -55,7 +55,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.cocomic/res/icon.png" width="24" align="top"/>&nbsp; Cocomic &nbsp;<sub><a href="https://cocomic.co">cocomic.co</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v8.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v8.aix">.aix (v8)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v9.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v9.aix">.aix (v9)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/galaxymanga.png" width="24" align="top"/>&nbsp; Galaxy Manga &nbsp;<sub><a href="https://galaxymanga.io">galaxymanga.io</a></sub></h3>
 
@@ -95,7 +95,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.reimanga/res/icon.png" width="24" align="top"/>&nbsp; ReiManga &nbsp;<sub><a href="https://reimanga.net">reimanga.net</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v4.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v4.aix">.aix (v4)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v5.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v5.aix">.aix (v5)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/rinkocomics.png" width="24" align="top"/>&nbsp; RinkoComics &nbsp;<sub><a href="https://rinkocomics.com">rinkocomics.com</a></sub></h3>
 
@@ -103,7 +103,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/rokaricomics.png" width="24" align="top"/>&nbsp; RokariComics &nbsp;<sub><a href="https://rokaricomics.com">rokaricomics.com</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rokaricomics-v7.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rokaricomics-v7.aix">.aix (v7)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rokaricomics-v8.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rokaricomics-v8.aix">.aix (v8)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/scansgg.png" width="24" align="top"/>&nbsp; Scans.GG &nbsp;<sub><a href="https://scans.gg">scans.gg</a></sub></h3>
 
@@ -111,7 +111,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/templescan.png" width="24" align="top"/>&nbsp; Temple Scan &nbsp;<sub><a href="https://templetoons.com">templetoons.com</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v7.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v7.aix">.aix (v7)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix">.aix (v8)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/valirscans.png" width="24" align="top"/>&nbsp; ValirScans &nbsp;<sub><a href="https://valirscans.org">valirscans.org</a></sub></h3>
 
