@@ -16,7 +16,7 @@ use serde::Deserialize;
 const AJAX_PATH: &str = "/wp-admin/admin-ajax.php";
 const CHAPTER_SELECTOR: &str = "li.chapter, div.chapter, a.chapter-item";
 const LOAD_MORE_SELECTOR: &str = "[data-comic-id]";
-const LOCK_SUFFIX: &str = "#lock";
+pub const LOCK_SUFFIX: &str = "#lock";
 
 /// Stop walking after this many pages so a misbehaving endpoint cannot spin.
 const MAX_PAGES: usize = 60;

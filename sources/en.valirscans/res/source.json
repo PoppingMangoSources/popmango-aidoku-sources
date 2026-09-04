@@ -2,11 +2,10 @@
 	"info": {
 		"id": "en.valirscans",
 		"name": "ValirScans",
-		"version": 7,
+		"version": 8,
 		"url": "https://valirscans.org",
 		"contentRating": 1,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
-	},
-	"listings": [{ "id": "browse", "name": "All Series" }]
+	}
 }

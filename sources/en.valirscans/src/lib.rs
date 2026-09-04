@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga, MangaPageResult,
-	MangaStatus, MangaWithChapter, Page, PageContent, PageContext, Result, Source, Viewer,
+	HomeComponentValue, HomeLayout, Link, Manga, MangaPageResult, MangaStatus, MangaWithChapter,
+	Page, PageContent, PageContext, Result, Source, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::encode_uri_component,
 	imports::net::Request,
@@ -16,6 +16,9 @@ mod rsc;
 use rsc::*;
 
 const DOMAIN: &str = "https://valirscans.org";
+
+/// Matches the `ids` of the sort filter in `filters.json`.
+const SORT_IDS: [&str; 2] = ["", "newest"];
 
 #[derive(Deserialize, Default)]
 struct Genre {
@@ -251,10 +254,14 @@ fn series_to_detail(series: Series) -> Manga {
 }
 
 /// Returns one page of the catalogue and whether the listing has another.
-fn browse(page: i32, query: Option<&str>) -> Result<(Vec<Series>, bool)> {
+fn browse(page: i32, query: Option<&str>, sort: Option<&str>) -> Result<(Vec<Series>, bool)> {
 	let mut url = format!("{DOMAIN}/series?page={}", page.max(1));
 	if let Some(query) = query.map(str::trim).filter(|query| !query.is_empty()) {
 		url = format!("{url}&q={}", encode_uri_component(query));
+	}
+	// The catalogue only ever orders a chosen sort downwards.
+	if let Some(sort) = sort.filter(|sort| !sort.is_empty()) {
+		url = format!("{url}&sort={sort}&order=desc");
 	}
 	let payload = fetch(&url, false)?;
 	let lists: Vec<Vec<Series>> = extract_all_by_marker(&payload, "\"initialSeries\":", false);
@@ -280,16 +287,19 @@ impl Source for ValirScans {
 		let query = query.unwrap_or_default();
 
 		let mut kind = String::new();
+		let mut sort = "";
 		for filter in filters {
-			if let FilterValue::Select { id, value } = filter
-				&& id == "type"
-			{
-				kind = value;
+			match filter {
+				FilterValue::Select { id, value } if id == "type" => kind = value,
+				FilterValue::Sort { index, .. } => {
+					sort = SORT_IDS.get(index as usize).copied().unwrap_or("")
+				}
+				_ => {}
 			}
 		}
 
 		// The catalogue matches the query itself; only the type is ours to apply.
-		let (mut series, has_next_page) = browse(page, Some(&query))?;
+		let (mut series, has_next_page) = browse(page, Some(&query), Some(sort))?;
 		series.retain(|entry| match kind.as_str() {
 			"novel" => is_novel(entry),
 			"comic" => !is_novel(entry),
@@ -555,11 +565,7 @@ impl Home for ValirScans {
 						.into_iter()
 						.map(|series| Link::from(series_to_manga(series)))
 						.collect(),
-					listing: Some(Listing {
-						id: "browse".into(),
-						name: "All Series".into(),
-						..Default::default()
-					}),
+					listing: None,
 				},
 			});
 		}
@@ -623,7 +629,7 @@ impl Home for ValirScans {
 			});
 		}
 
-		let new_entries: Vec<Link> = browse(1, None)?
+		let new_entries: Vec<Link> = browse(1, None, None)?
 			.0
 			.into_iter()
 			.map(|series| Link::from(series_to_manga(series)))
@@ -634,29 +640,12 @@ impl Home for ValirScans {
 				subtitle: None,
 				value: HomeComponentValue::Scroller {
 					entries: new_entries,
-					listing: Some(Listing {
-						id: "browse".into(),
-						name: "All Series".into(),
-						..Default::default()
-					}),
+					listing: None,
 				},
 			});
 		}
 
 		Ok(HomeLayout { components })
-	}
-}
-
-impl ListingProvider for ValirScans {
-	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		if listing.id != "browse" {
-			bail!("Unknown listing: {}", listing.id);
-		}
-		let (series, has_next_page) = browse(page, None)?;
-		Ok(MangaPageResult {
-			has_next_page,
-			entries: series.into_iter().map(series_to_manga).collect(),
-		})
 	}
 }
 
@@ -696,10 +685,4 @@ impl DeepLinkHandler for ValirScans {
 	}
 }
 
-register_source!(
-	ValirScans,
-	Home,
-	ListingProvider,
-	ImageRequestProvider,
-	DeepLinkHandler
-);
+register_source!(ValirScans, Home, ImageRequestProvider, DeepLinkHandler);
