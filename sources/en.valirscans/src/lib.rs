@@ -390,9 +390,11 @@ impl Source for ValirScans {
 			}
 		}
 
-		// Novel chapters ship prose instead of page images.
+		// Novel chapters ship prose instead of page images, kept out of line in
+		// the flight stream whenever it is long enough to be worth a row.
 		let text = data
 			.content
+			.map(|html| resolve_reference(&payload, &html).unwrap_or(html))
 			.map(|html| strip_html(&html))
 			.unwrap_or_default();
 		if text.is_empty() {
