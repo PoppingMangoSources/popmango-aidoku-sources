@@ -14,8 +14,7 @@ use madtheme::{Impl, MadTheme, Params};
 
 const DEFAULT_BASE_URL: &str = "https://kaliscan.com";
 
-const BASE_URL_KEY: &str = "baseUrl";
-const SHOW_NSFW_KEY: &str = "showNSFW";
+const BASE_URL_KEY: &str = "url";
 
 const ADULT_GENRES: &[&str] = &["adult", "hentai", "smut", "mature", "erotica", "18+"];
 const SUGGESTIVE_GENRES: &[&str] = &["ecchi", "bl", "gl", "yaoi", "yuri", "harem"];
@@ -25,10 +24,6 @@ fn base_url() -> String {
 		.map(|url| url.trim().trim_end_matches('/').to_string())
 		.filter(|url| url.starts_with("http"))
 		.unwrap_or_else(|| DEFAULT_BASE_URL.into())
-}
-
-fn show_nsfw() -> bool {
-	defaults_get::<bool>(SHOW_NSFW_KEY).unwrap_or(false)
 }
 
 fn rating_for(tags: &[String]) -> ContentRating {
@@ -101,7 +96,6 @@ fn relative_date(text: &str) -> Option<i64> {
 }
 
 fn parse_home_cards(document: &Document, selector: &str, base: &str) -> Vec<Manga> {
-	let hide_nsfw = !show_nsfw();
 	document
 		.select(selector)
 		.map(|items| {
@@ -129,9 +123,6 @@ fn parse_home_cards(document: &Document, selector: &str, base: &str) -> Vec<Mang
 						})
 						.unwrap_or_default();
 					let content_rating = rating_for(&tags);
-					if hide_nsfw && content_rating == ContentRating::NSFW {
-						return None;
-					}
 					let image = item.select_first("img")?;
 					let description = item
 						.select_first(".description, .summary, .excerpt, .book-summary, p")
@@ -159,7 +150,6 @@ fn parse_home_cards(document: &Document, selector: &str, base: &str) -> Vec<Mang
 }
 
 fn parse_latest(document: &Document, base: &str) -> Vec<MangaWithChapter> {
-	let hide_nsfw = !show_nsfw();
 	document
 		.select(".book-item, .book-item-list, .latest-updates .item")
 		.map(|items| {
@@ -188,9 +178,6 @@ fn parse_latest(document: &Document, base: &str) -> Vec<MangaWithChapter> {
 						})
 						.unwrap_or_default();
 					let content_rating = rating_for(&tags);
-					if hide_nsfw && content_rating == ContentRating::NSFW {
-						return None;
-					}
 					Some(MangaWithChapter {
 						manga: Manga {
 							key: href.strip_prefix_or_self(base).into(),
@@ -383,7 +370,6 @@ impl Impl for KaliScan {
 
 		let url = format!("{}/search?{qs}", params.base_url);
 		let html = Request::get(url)?.html()?;
-		let hide_nsfw = !show_nsfw();
 
 		let entries: Vec<Manga> = html
 			.select(".book-detailed-item")
@@ -401,9 +387,6 @@ impl Impl for KaliScan {
 						})
 						.unwrap_or_default();
 					let content_rating = rating_for(&tags);
-					if hide_nsfw && content_rating == ContentRating::NSFW {
-						return None;
-					}
 					Some(Manga {
 						key: link
 							.attr("href")?

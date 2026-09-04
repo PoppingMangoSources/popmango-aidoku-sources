@@ -2,10 +2,18 @@
 	"info": {
 		"id": "en.kaliscan",
 		"name": "KaliScan",
-		"version": 13,
-		"url": "https://kaliscan.com",
+		"version": 14,
+		"urls": [
+			"https://kaliscan.com",
+			"https://kaliscan.me",
+			"https://kaliscan.io",
+			"https://mgjinx.com"
+		],
 		"contentRating": 1,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
+	},
+	"config": {
+		"allowsBaseUrlSelect": true
 	}
 }
