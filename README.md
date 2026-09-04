@@ -25,6 +25,8 @@
 
 ## Please read first
 
+**NOTE 1: XCOMIC HAS BEEN REMOVED FROM THIS REPO BECAUSE I SUBMITTED A PR TO ADD IT TO THE AIDOKU COMMUNITY SOURCES REPO, YOU CAN FIND IT THERE NOW**
+
 **This is a side project, not a maintained source list.**
 
 These are Aidoku clones of my [Paperback sources](https://github.com/PoppingMangoSources/general-extensions-mangago). I built them so I could read the sources that weren't already available on Aidoku. They're public in case they're useful to someone else too.
