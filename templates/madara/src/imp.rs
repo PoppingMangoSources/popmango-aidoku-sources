@@ -5,9 +5,9 @@ use crate::{
 	models::*,
 };
 use aidoku::{
-	Chapter, ContentRating, DeepLinkResult, Filter, FilterValue, HomeComponent, HomeLayout, Manga,
-	MangaPageResult, MangaStatus, MangaWithChapter, MultiSelectFilter, Page, PageContent,
-	PageContext, Result, Viewer,
+	Chapter, ContentRating, DeepLinkResult, Filter, FilterValue, HomeComponent,
+	HomeComponentValue, HomeLayout, Link, Listing, Manga, MangaPageResult, MangaStatus,
+	MangaWithChapter, MultiSelectFilter, Page, PageContent, PageContext, Result, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{element::ElementHelpers, string::StripPrefixOrSelf},
 	imports::{
@@ -89,44 +89,7 @@ pub trait Impl {
 		let html = self.modify_request(params, Request::get(&url)?)?.html()?;
 
 		if needs_details {
-			manga.title = html
-				.select_first(&params.details_title_selector)
-				.and_then(|e| e.own_text())
-				.unwrap_or(manga.title);
-			manga.cover = html
-				.select_first(&params.details_cover_selector)
-				.and_then(|img| img.img_attr(params.use_style_images))
-				.or(manga.cover);
-			manga.artists = html.select(&params.details_artist_selector).map(|els| {
-				els.filter_map(|span| span.text())
-					.filter(|t| !t.is_empty())
-					.collect()
-			});
-			manga.authors = html.select(&params.details_author_selector).map(|els| {
-				els.filter_map(|span| span.text())
-					.filter(|t| !t.is_empty())
-					.collect()
-			});
-			manga.description = html
-				.select_first(&params.details_description_selector)
-				.and_then(|div| div.text_with_newlines())
-				.map(|t| t.trim().into());
-			manga.tags = html
-				.select(&params.details_tag_selector)
-				.map(|els| els.filter_map(|el| el.text()).collect());
-			manga.url = Some(url.clone());
-			manga.status = html
-				.select_first(&params.details_status_selector)
-				.and_then(|span| span.text())
-				.map(|text| self.get_manga_status(&text))
-				.unwrap_or_default();
-			manga.content_rating = self.get_manga_content_rating(&html, &manga);
-			manga.viewer = html
-				.select_first(&params.details_type_selector)
-				.and_then(|el| el.own_text())
-				.map(|text| self.get_manga_viewer(&text, params.default_viewer))
-				.unwrap_or(params.default_viewer);
-			send_partial_result(&manga);
+			self.apply_manga_details(params, &mut manga, &html, &url);
 		}
 
 		if needs_chapters {
@@ -163,6 +126,51 @@ pub trait Impl {
 		}
 
 		Ok(manga)
+	}
+
+	/// Fills in a manga's details from its already-fetched detail page.
+	///
+	/// Split out so sources that fetch chapters their own way can reuse the
+	/// shared detail parsing without refetching the page.
+	fn apply_manga_details(&self, params: &Params, manga: &mut Manga, html: &Document, url: &str) {
+		manga.title = html
+			.select_first(&params.details_title_selector)
+			.and_then(|e| e.own_text())
+			.unwrap_or(core::mem::take(&mut manga.title));
+		manga.cover = html
+			.select_first(&params.details_cover_selector)
+			.and_then(|img| img.img_attr(params.use_style_images))
+			.or(manga.cover.take());
+		manga.artists = html.select(&params.details_artist_selector).map(|els| {
+			els.filter_map(|span| span.text())
+				.filter(|t| !t.is_empty())
+				.collect()
+		});
+		manga.authors = html.select(&params.details_author_selector).map(|els| {
+			els.filter_map(|span| span.text())
+				.filter(|t| !t.is_empty())
+				.collect()
+		});
+		manga.description = html
+			.select_first(&params.details_description_selector)
+			.and_then(|div| div.text_with_newlines())
+			.map(|t| t.trim().into());
+		manga.tags = html
+			.select(&params.details_tag_selector)
+			.map(|els| els.filter_map(|el| el.text()).collect());
+		manga.url = Some(url.into());
+		manga.status = html
+			.select_first(&params.details_status_selector)
+			.and_then(|span| span.text())
+			.map(|text| self.get_manga_status(&text))
+			.unwrap_or_default();
+		manga.content_rating = self.get_manga_content_rating(html, manga);
+		manga.viewer = html
+			.select_first(&params.details_type_selector)
+			.and_then(|el| el.own_text())
+			.map(|text| self.get_manga_viewer(&text, params.default_viewer))
+			.unwrap_or(params.default_viewer);
+		send_partial_result(manga);
 	}
 
 	fn get_manga_status(&self, str: &str) -> MangaStatus {
@@ -370,17 +378,61 @@ pub trait Impl {
 
 	fn get_manga_list(
 		&self,
-		_params: &Params,
-		_listing: aidoku::Listing,
-		_page: i32,
+		params: &Params,
+		listing: Listing,
+		page: i32,
 	) -> Result<MangaPageResult> {
-		todo!()
+		let index = match listing.id.as_str() {
+			"relevance" => 0,
+			"latest" => 1,
+			"alphabet" => 2,
+			"top_rated" => 3,
+			"trending" => 4,
+			"top_daily" | "popular" => 5,
+			"new" => 6,
+			_ => bail!("Unknown listing"),
+		};
+		self.get_search_manga_list(
+			params,
+			None,
+			page,
+			vec![FilterValue::Sort {
+				id: "order".into(),
+				index,
+				ascending: false,
+			}],
+		)
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let html = self
-			.modify_request(params, Request::get(&params.base_url)?)?
-			.html()?;
+		let mut home_requests = vec![self.modify_request(params, Request::get(&params.base_url)?)?];
+		let mut section_specs = Vec::new();
+		for (title, id, index, ranked) in [
+			("Relevance", "relevance", 0, false),
+			("Top Rated", "top_rated", 3, true),
+			("Trending", "trending", 4, false),
+		] {
+			let Ok(request) = helpers::get_search_request(
+				params,
+				None,
+				1,
+				vec![FilterValue::Sort {
+					id: "order".into(),
+					index,
+					ascending: false,
+				}],
+			)
+			.and_then(|request| self.modify_request(params, request)) else {
+				continue;
+			};
+			section_specs.push((title, id, ranked));
+			home_requests.push(request);
+		}
+		let mut home_responses = Request::send_all(home_requests).into_iter();
+		let html = home_responses
+			.next()
+			.ok_or(error!("Missing homepage response"))??
+			.get_html()?;
 
 		let mut components = Vec::new();
 
@@ -440,12 +492,13 @@ pub trait Impl {
 				.map(|els| els.filter_map(|el| parse_manga(&el)).collect::<Vec<_>>())
 				.unwrap_or_default();
 			if !items.is_empty() {
+				let items: Vec<Manga> = items.into_iter().take(8).collect();
 				components.push(HomeComponent {
 					title,
 					subtitle: None,
-					value: aidoku::HomeComponentValue::Scroller {
-						entries: items.into_iter().map(|m| m.into()).collect(),
-						listing: None,
+					value: HomeComponentValue::BigScroller {
+						entries: items,
+						auto_scroll_interval: Some(6.0),
 					},
 				});
 			}
@@ -491,6 +544,43 @@ pub trait Impl {
 					},
 				});
 			}
+		}
+
+		for ((title, id, ranked), response) in section_specs.into_iter().zip(home_responses) {
+			let Ok(html) = response.and_then(|response| response.get_html()) else {
+				continue;
+			};
+			let entries: Vec<Link> = html
+				.select(&params.search_manga_selector)
+				.map(|items| {
+					items
+						.filter_map(|item| self.parse_manga_element(params, item))
+						.map(Into::into)
+						.collect()
+				})
+				.unwrap_or_default();
+			if entries.is_empty() {
+				continue;
+			}
+			let listing = Some(Listing {
+				id: id.into(),
+				name: title.into(),
+				..Default::default()
+			});
+			components.push(HomeComponent {
+				title: Some(title.into()),
+				subtitle: None,
+				value: if ranked {
+					HomeComponentValue::MangaList {
+						ranking: true,
+						page_size: Some(5),
+						entries,
+						listing,
+					}
+				} else {
+					HomeComponentValue::Scroller { entries, listing }
+				},
+			});
 		}
 
 		Ok(HomeLayout { components })
