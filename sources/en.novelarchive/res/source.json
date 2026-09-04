@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.novelarchive",
 		"name": "NovelArchive",
-		"version": 4,
+		"version": 5,
 		"url": "https://novelarchive.cc",
 		"contentRating": 1,
 		"languages": ["en"],

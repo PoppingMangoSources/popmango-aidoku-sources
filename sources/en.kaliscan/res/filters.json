@@ -3,6 +3,7 @@
 		"type": "multi-select",
 		"id": "genre[]",
 		"title": "Genres",
+		"usesTagStyle": true,
 		"isGenre": true,
 		"canExclude": false,
 		"options": [

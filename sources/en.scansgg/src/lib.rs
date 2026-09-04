@@ -628,7 +628,7 @@ impl Home for ScansGG {
 					subtitle: None,
 					value: HomeComponentValue::MangaList {
 						ranking: true,
-						page_size: Some(10),
+						page_size: Some(5),
 						entries,
 						listing: Some(Listing {
 							id: "popular_monthly".into(),

@@ -220,7 +220,7 @@ impl Impl for BunManga {
 					subtitle: None,
 					value: HomeComponentValue::MangaList {
 						ranking: true,
-						page_size: Some(10),
+						page_size: Some(5),
 						entries: top_daily,
 						listing: None,
 					},
@@ -268,7 +268,7 @@ impl Impl for BunManga {
 				value: if *ranked {
 					HomeComponentValue::MangaList {
 						ranking: true,
-						page_size: Some(10),
+						page_size: Some(5),
 						entries,
 						listing: None,
 					}

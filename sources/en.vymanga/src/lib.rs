@@ -489,7 +489,7 @@ impl Home for VyManga {
 					let value = if sort == "scored" {
 						HomeComponentValue::MangaList {
 							ranking: true,
-							page_size: Some(10),
+							page_size: Some(5),
 							entries,
 							listing,
 						}

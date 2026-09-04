@@ -106,7 +106,10 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 			return Some(key);
 		}
 
-		let target_len = rest.bytes().take_while(|byte| is_parser_key_byte(*byte)).count();
+		let target_len = rest
+			.bytes()
+			.take_while(|byte| is_parser_key_byte(*byte))
+			.count();
 		if target_len > 0 {
 			let target = &rest[..target_len];
 			if let Some(key) = resolve_parser_key_assignment(script, target) {
@@ -126,8 +129,7 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 /// `chapterPages` is still captured from `Response.json` / `JSON.parse` as a
 /// fallback.
 fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
-	let chapter_path =
-		serde_json::to_string(chapter_path).unwrap_or_else(|_| String::from("\"\""));
+	let chapter_path = serde_json::to_string(chapter_path).unwrap_or_else(|_| String::from("\"\""));
 	let pin = pinned_key
 		.and_then(|key| serde_json::to_string(key).ok())
 		.map(|key| {

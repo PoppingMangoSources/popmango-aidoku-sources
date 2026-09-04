@@ -664,7 +664,7 @@ impl Home for MangaTown {
 				subtitle: None,
 				value: HomeComponentValue::MangaList {
 					ranking: true,
-					page_size: Some(10),
+					page_size: Some(5),
 					entries: hot,
 					listing: Some(Listing {
 						id: "hot_total".into(),
@@ -785,7 +785,7 @@ impl Home for MangaTown {
 						subtitle: None,
 						value: HomeComponentValue::MangaList {
 							ranking: true,
-							page_size: Some(10),
+							page_size: Some(5),
 							entries,
 							listing: Some(Listing {
 								id: top_id.into(),

@@ -538,7 +538,7 @@ impl Home for TempleScan {
 					value: if ranked {
 						HomeComponentValue::MangaList {
 							ranking: true,
-							page_size: Some(10),
+							page_size: Some(5),
 							entries: links,
 							listing: None,
 						}

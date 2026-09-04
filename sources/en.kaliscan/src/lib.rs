@@ -280,7 +280,7 @@ impl Impl for KaliScan {
 					subtitle: None,
 					value: HomeComponentValue::MangaList {
 						ranking: true,
-						page_size: Some(10),
+						page_size: Some(5),
 						entries: hot.into_iter().map(Into::into).collect(),
 						listing: None,
 					},
@@ -328,7 +328,7 @@ impl Impl for KaliScan {
 				} else {
 					HomeComponentValue::MangaList {
 						ranking: true,
-						page_size: Some(10),
+						page_size: Some(5),
 						entries: entries.into_iter().map(Into::into).collect(),
 						listing: None,
 					}
