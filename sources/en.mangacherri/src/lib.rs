@@ -514,7 +514,7 @@ impl Home for MangaCherri {
 					title: Some("Latest Chapter".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries: latest,
 						listing: None,
 					},

@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, LinkValue, Listing, ListingProvider, Manga,
-	MangaPageResult, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
+	HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga, MangaPageResult,
+	MangaWithChapter, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::QueryParameters,
 	imports::defaults::defaults_get,
@@ -184,48 +184,48 @@ fn parse_chapter_title(raw: Option<&str>) -> (Option<String>, Option<String>) {
 	(title, group)
 }
 
+/// Cards carry identity only; the rest waits for `get_manga_update`.
 fn series_to_manga(series: SeriesDto) -> Manga {
-	let tag_ids = series.tags.clone().unwrap_or_default();
-	let content_rating = derive_content_rating(series.content_rating, &tag_ids);
-	let viewer = viewer_for_type(series.kind);
-	let cover = cover_url(series.cover.as_deref());
-	// The listing payload already carries genres and a synopsis, so cards can
-	// show them without a detail request.
-	let tags: Vec<String> = tag_ids
-		.iter()
-		.filter_map(|id| tag_name(*id))
-		.map(|name| name.to_string())
-		.collect();
-	let description = series
-		.summary
-		.as_deref()
-		.map(strip_html)
-		.filter(|text| !text.is_empty());
 	Manga {
+		content_rating: derive_content_rating(
+			series.content_rating,
+			series.tags.as_deref().unwrap_or_default(),
+		),
+		viewer: viewer_for_type(series.kind),
+		cover: cover_url(series.cover.as_deref()),
+		status: map_status(series.status),
 		key: series.id.to_string(),
 		title: series.title,
-		cover,
-		description,
-		status: map_status(series.status),
-		content_rating,
-		viewer,
-		tags: (!tags.is_empty()).then_some(tags),
 		..Default::default()
 	}
 }
 
-fn series_to_link(series: SeriesDto) -> Link {
-	let manga = series_to_manga(series);
-	Link {
-		title: manga.title.clone(),
-		subtitle: manga
-			.tags
-			.as_ref()
-			.filter(|tags| !tags.is_empty())
-			.map(|tags| tags.join(" · ")),
-		image_url: manga.cover.clone(),
-		value: Some(LinkValue::Manga(manga)),
+fn tag_names(ids: &[i64]) -> Vec<String> {
+	ids.iter()
+		.filter_map(|id| tag_name(*id))
+		.map(String::from)
+		.collect()
+}
+
+/// The full payload, for the scroller that renders a description and tags.
+fn series_to_detail(mut series: SeriesDto) -> Manga {
+	let tags = tag_names(&series.tags.take().unwrap_or_default());
+	Manga {
+		description: series
+			.summary
+			.as_deref()
+			.map(strip_html)
+			.filter(|text| !text.is_empty()),
+		tags: (!tags.is_empty()).then_some(tags),
+		..series_to_manga(series)
 	}
+}
+
+fn series_to_link(series: SeriesDto) -> Link {
+	let subtitle = tag_names(series.tags.as_deref().unwrap_or_default()).join(" · ");
+	let mut link = Link::from(series_to_manga(series));
+	link.subtitle = (!subtitle.is_empty()).then_some(subtitle);
+	link
 }
 
 fn series_to_manga_chapter(mut series: SeriesDto) -> Option<MangaWithChapter> {
@@ -563,7 +563,7 @@ impl Home for ScansGG {
 				.into_iter()
 				.filter(|s| s.cover.is_some())
 				.take(15)
-				.map(series_to_manga)
+				.map(series_to_detail)
 				.collect();
 			if !entries.is_empty() {
 				components.push(HomeComponent {
@@ -656,7 +656,7 @@ impl Home for ScansGG {
 					title: Some("Latest Updates".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries,
 						listing: Some(Listing {
 							id: "latest".into(),

@@ -292,7 +292,7 @@ impl Impl for KaliScan {
 					title: Some("Latest Updates".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries: latest,
 						listing: None,
 					},

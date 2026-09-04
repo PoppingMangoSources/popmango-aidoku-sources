@@ -507,7 +507,7 @@ impl Home for MangaHome {
 					title: Some("Latest Releases".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries,
 						listing: None,
 					},

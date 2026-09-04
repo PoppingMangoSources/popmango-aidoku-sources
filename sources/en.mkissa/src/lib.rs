@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
-	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterItem, FilterValue, Home,
-	HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Listing, ListingProvider,
-	Manga, MangaPageResult, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
+	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
+	HomeComponentValue, HomeLayout, Link, LinkValue, Listing, ListingProvider, Manga,
+	MangaPageResult, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, string::ToString, vec},
 	imports::net::Request,
 	imports::std::send_partial_result,
@@ -390,7 +390,7 @@ impl Home for Mkissa {
 					title: Some("Latest Updates".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries,
 						listing: Some(Listing {
 							id: "latest_updates".into(),
@@ -423,23 +423,6 @@ impl Home for Mkissa {
 				});
 			}
 		}
-
-		let genre_items: Vec<FilterItem> = GENRE_OPTIONS
-			.iter()
-			.map(|genre| FilterItem {
-				title: (*genre).into(),
-				values: Some(vec![FilterValue::MultiSelect {
-					id: "genres".into(),
-					included: vec![(*genre).into()],
-					excluded: Vec::new(),
-				}]),
-			})
-			.collect();
-		components.push(HomeComponent {
-			title: Some("Genres".into()),
-			subtitle: None,
-			value: HomeComponentValue::Filters(genre_items),
-		});
 
 		Ok(HomeLayout { components })
 	}

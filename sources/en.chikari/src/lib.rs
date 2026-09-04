@@ -518,7 +518,7 @@ impl Home for Chikari {
 				title: Some("Recently Updated".into()),
 				subtitle: None,
 				value: HomeComponentValue::MangaChapterList {
-					page_size: None,
+					page_size: Some(5),
 					entries: updated,
 					listing: Some(Listing {
 						id: "updated".into(),

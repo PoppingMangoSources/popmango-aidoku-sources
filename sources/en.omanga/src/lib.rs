@@ -144,16 +144,25 @@ fn rating_for(age_rating: Option<&str>, genres: &[String]) -> ContentRating {
 	}
 }
 
+/// Cards carry identity only; the rest waits for `get_manga_update`.
 fn item_to_manga(item: CatalogItem) -> Manga {
-	let genres = item.genres.unwrap_or_default();
 	Manga {
+		content_rating: rating_for(None, item.genres.as_deref().unwrap_or_default()),
+		viewer: viewer_for(item.kind.as_deref()),
 		key: item.slug,
 		title: item.title,
 		cover: image_url(&item.poster),
-		content_rating: rating_for(None, &genres),
-		viewer: viewer_for(item.kind.as_deref()),
-		tags: (!genres.is_empty()).then_some(genres),
 		..Default::default()
+	}
+}
+
+/// The full payload, for the scroller that renders tags alongside the cover.
+fn item_to_detail(mut item: CatalogItem) -> Manga {
+	let genres = item.genres.take().unwrap_or_default();
+	Manga {
+		content_rating: rating_for(None, &genres),
+		tags: (!genres.is_empty()).then_some(genres),
+		..item_to_manga(item)
 	}
 }
 
@@ -489,7 +498,13 @@ impl Home for OManga {
 			.next()
 			.and_then(|response| response.ok())
 			.and_then(|response| response.get_json_owned::<CatalogResponse>().ok())
-			.map(|data| data.items.into_iter().take(10).map(item_to_manga).collect())
+			.map(|data| {
+				data.items
+					.into_iter()
+					.take(10)
+					.map(item_to_detail)
+					.collect()
+			})
 			.unwrap_or_default();
 		if !banner.is_empty() {
 			components.push(HomeComponent {

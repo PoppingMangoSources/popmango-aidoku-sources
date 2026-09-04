@@ -1,9 +1,9 @@
 #![no_std]
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, LinkValue, Listing, ListingProvider, Manga,
-	MangaPageResult, MangaStatus, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
-	UpdateStrategy, Viewer,
+	HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga, MangaPageResult,
+	MangaStatus, MangaWithChapter, Page, PageContent, PageContext, Result, Source, UpdateStrategy,
+	Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::encode_uri_component,
 	imports::html::{Element, Html},
@@ -137,14 +137,29 @@ fn split_creators(value: Option<&str>) -> Option<Vec<String>> {
 	(!names.is_empty()).then_some(names)
 }
 
+/// Cards carry identity only; the rest waits for `get_manga_update`.
 fn book_to_manga(book: Book) -> Manga {
-	let genres = book.category_list.clone().unwrap_or_default();
-	let is_novel = book.is_novel();
-	let content_rating = content_rating_for(&genres);
 	Manga {
 		key: book.key().to_string(),
 		title: book.name.trim().to_string(),
 		cover: Some(resolve_url(&book.cover)),
+		status: status_from(book.completed.as_deref()),
+		content_rating: content_rating_for(book.category_list.as_deref().unwrap_or_default()),
+		viewer: if book.is_novel() {
+			Viewer::Vertical
+		} else {
+			Viewer::RightToLeft
+		},
+		url: book.url.as_deref().map(resolve_url),
+		..Default::default()
+	}
+}
+
+/// The full payload, for the details page and the scroller that renders a
+/// description and tags.
+fn book_to_detail(mut book: Book) -> Manga {
+	let genres = book.category_list.take().unwrap_or_default();
+	Manga {
 		description: book
 			.intro
 			.as_deref()
@@ -152,16 +167,9 @@ fn book_to_manga(book: Book) -> Manga {
 			.filter(|d| !d.is_empty()),
 		authors: split_creators(book.author.as_deref()),
 		artists: split_creators(book.artist.as_deref()),
-		status: status_from(book.completed.as_deref()),
-		content_rating,
-		viewer: if is_novel {
-			Viewer::Vertical
-		} else {
-			Viewer::RightToLeft
-		},
+		content_rating: content_rating_for(&genres),
 		tags: (!genres.is_empty()).then_some(genres),
-		url: book.url.as_deref().map(resolve_url),
-		..Default::default()
+		..book_to_manga(book)
 	}
 }
 
@@ -379,7 +387,7 @@ impl Source for NovelCool {
 			let response: ApiResponse<Book> = api_post("book/info", &[("book_id", &book_id)])?;
 			let book = response.info.ok_or_else(|| error!("No book info"))?;
 			is_novel = book.is_novel();
-			let mut details = book_to_manga(book);
+			let mut details = book_to_detail(book);
 			details.key = book_id.clone();
 			manga.copy_from(details);
 
@@ -607,13 +615,7 @@ fn book_item_manga(item: &Element) -> Option<Manga> {
 }
 
 fn book_to_link(book: Book) -> Link {
-	let manga = book_to_manga(book);
-	Link {
-		title: manga.title.clone(),
-		subtitle: None,
-		image_url: manga.cover.clone(),
-		value: Some(LinkValue::Manga(manga)),
-	}
+	Link::from(book_to_manga(book))
 }
 
 impl Home for NovelCool {
@@ -632,7 +634,7 @@ impl Home for NovelCool {
 			// Only worth paying for the api round trips when the carousel is gone.
 			let mut books = browse("hot", "novel", 1).unwrap_or_default();
 			books.extend(browse("hot", "manga", 1).unwrap_or_default());
-			entries = books.into_iter().take(10).map(book_to_manga).collect();
+			entries = books.into_iter().take(10).map(book_to_detail).collect();
 		}
 		let mut seen_keys = Vec::new();
 		let mut seen_covers = Vec::new();
@@ -696,7 +698,7 @@ impl Home for NovelCool {
 						title: Some(title.into()),
 						subtitle: None,
 						value: HomeComponentValue::MangaChapterList {
-							page_size: None,
+							page_size: Some(5),
 							entries,
 							listing: Some(Listing {
 								id: listing_id.into(),

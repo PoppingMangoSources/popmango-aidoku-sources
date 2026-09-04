@@ -509,7 +509,7 @@ impl Home for NovelArchive {
 					title: Some("Latest Updates".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries,
 						listing: Some(Listing {
 							id: "recent".into(),

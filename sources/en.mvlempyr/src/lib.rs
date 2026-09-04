@@ -317,7 +317,7 @@ impl Home for Mvlempyr {
 					title: Some("New Updates".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries,
 						listing: Some(Listing {
 							id: "latest".into(),

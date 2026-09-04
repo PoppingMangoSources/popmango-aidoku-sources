@@ -590,7 +590,7 @@ impl Home for ValirScans {
 					title: Some(title.into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries,
 						listing: None,
 					},

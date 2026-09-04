@@ -653,7 +653,7 @@ impl Home for LikeManga {
 					title: Some("Latest Releases".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries: chapter_entries,
 						listing: Some(Listing {
 							id: "lastest-chap".into(),

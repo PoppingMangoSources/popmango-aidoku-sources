@@ -439,7 +439,7 @@ impl Home for MangaBerri {
 					title: Some("Latest Update".into()),
 					subtitle: None,
 					value: HomeComponentValue::MangaChapterList {
-						page_size: None,
+						page_size: Some(5),
 						entries: latest,
 						listing: None,
 					},
