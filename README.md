@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-platform.svg?v=2" alt="iOS / iPadOS" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-aidoku.svg?v=2" alt="Aidoku 0.8+" height="28"/>
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=2" alt="23 sources" height="28"/>
+  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=3" alt="23 sources" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-unofficial.svg?v=2" alt="Best effort, not maintained 24/7" height="28"/>
 </p>
 
