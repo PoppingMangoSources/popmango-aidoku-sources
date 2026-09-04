@@ -1,9 +1,8 @@
 #![no_std]
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, LinkValue, Listing, ListingProvider, Manga,
-	MangaPageResult, MangaStatus, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
-	Viewer,
+	HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga, MangaPageResult,
+	MangaStatus, MangaWithChapter, Page, PageContent, PageContext, Result, Source, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	imports::net::Request,
 	imports::std::{parse_date, send_partial_result},
@@ -17,14 +16,14 @@ use rsc::*;
 
 const DOMAIN: &str = "https://valirscans.org";
 
-#[derive(Deserialize, Clone, Default)]
+#[derive(Deserialize, Default)]
 struct Genre {
 	genre: Option<GenreInner>,
 	slug: Option<String>,
 	name: Option<String>,
 }
 
-#[derive(Deserialize, Clone, Default)]
+#[derive(Deserialize, Default)]
 struct GenreInner {
 	slug: Option<String>,
 	name: Option<String>,
@@ -32,23 +31,24 @@ struct GenreInner {
 
 impl Genre {
 	fn label(&self) -> Option<String> {
-		let inner = self.genre.clone().unwrap_or_default();
+		let inner = self.genre.as_ref();
 		inner
-			.name
-			.or(self.name.clone())
-			.or(inner.slug)
-			.or(self.slug.clone())
-			.map(|value| value.trim().to_string())
-			.filter(|value| !value.is_empty())
+			.and_then(|genre| genre.name.as_deref())
+			.or(self.name.as_deref())
+			.or_else(|| inner.and_then(|genre| genre.slug.as_deref()))
+			.or(self.slug.as_deref())
+			.map(str::trim)
+			.filter(|label| !label.is_empty())
+			.map(String::from)
 	}
 }
 
-#[derive(Deserialize, Clone, Default)]
+#[derive(Deserialize, Default)]
 struct TagEntry {
 	name: Option<String>,
 }
 
-#[derive(Deserialize, Clone, Default)]
+#[derive(Deserialize, Default)]
 struct ChapterItem {
 	#[serde(default)]
 	id: String,
@@ -61,7 +61,7 @@ struct ChapterItem {
 	published_at: Option<String>,
 }
 
-#[derive(Deserialize, Clone, Default)]
+#[derive(Deserialize, Default)]
 struct Series {
 	#[serde(default)]
 	slug: String,
@@ -173,72 +173,66 @@ fn key_of(series: &Series) -> String {
 	format!("{kind}/{slug}")
 }
 
-fn series_to_manga(series: Series) -> Manga {
-	let novel = is_novel(&series);
-	let mut tags: Vec<String> = series
-		.genres
-		.as_ref()
-		.map(|genres| genres.iter().filter_map(|g| g.label()).collect())
-		.unwrap_or_default();
-	tags.extend(
-		series
-			.tags
-			.as_ref()
-			.map(|entries| {
-				entries
-					.iter()
-					.filter_map(|t| t.name.as_deref())
-					.map(|name| name.trim().to_string())
-					.filter(|name| !name.is_empty())
-					.collect::<Vec<_>>()
-			})
-			.unwrap_or_default(),
-	);
+fn one_person(name: Option<&str>) -> Option<Vec<String>> {
+	name.map(str::trim)
+		.filter(|name| !name.is_empty())
+		.map(|name| vec![name.to_string()])
+}
 
+/// Cards carry identity only; everything else waits for `get_manga_update`.
+fn series_to_manga(series: Series) -> Manga {
+	let key = key_of(&series);
 	Manga {
-		key: key_of(&series),
+		url: Some(format!("{DOMAIN}/series/{key}")),
+		key,
 		title: series.title,
 		cover: image_url(series.cover_image.as_deref()),
-		description: series
-			.description
-			.as_deref()
-			.map(|d| d.trim().to_string())
-			.filter(|d| !d.is_empty()),
-		authors: series
-			.author
-			.as_deref()
-			.map(str::trim)
-			.filter(|a| !a.is_empty())
-			.map(|a| vec![a.to_string()]),
-		artists: series
-			.artist
-			.as_deref()
-			.map(str::trim)
-			.filter(|a| !a.is_empty())
-			.map(|a| vec![a.to_string()]),
 		status: status_from(series.status.as_deref()),
 		content_rating: if series.is_mature.unwrap_or(false) {
 			ContentRating::NSFW
 		} else {
 			ContentRating::Safe
 		},
-		viewer: if novel {
+		..Default::default()
+	}
+}
+
+/// The full payload, for the details page and the home scrollers that render
+/// a description and tags.
+fn series_to_detail(series: Series) -> Manga {
+	let mut tags: Vec<String> = series
+		.genres
+		.iter()
+		.flatten()
+		.filter_map(Genre::label)
+		.collect();
+	tags.extend(
+		series
+			.tags
+			.iter()
+			.flatten()
+			.filter_map(|tag| tag.name.as_deref())
+			.map(str::trim)
+			.filter(|name| !name.is_empty())
+			.map(String::from),
+	);
+
+	Manga {
+		description: series
+			.description
+			.as_deref()
+			.map(str::trim)
+			.filter(|text| !text.is_empty())
+			.map(String::from),
+		authors: one_person(series.author.as_deref()),
+		artists: one_person(series.artist.as_deref()),
+		viewer: if is_novel(&series) {
 			Viewer::Vertical
 		} else {
 			Viewer::Webtoon
 		},
 		tags: (!tags.is_empty()).then_some(tags),
-		..Default::default()
-	}
-}
-
-fn series_to_link(series: Series) -> Link {
-	let manga = series_to_manga(series);
-	Link {
-		title: manga.title.clone(),
-		subtitle: None,
-		image_url: manga.cover.clone(),
-		value: Some(LinkValue::Manga(manga)),
+		..series_to_manga(series)
 	}
 }
 
@@ -300,7 +294,7 @@ impl Source for ValirScans {
 	) -> Result<Manga> {
 		let key = manga.key.clone();
 		let payload = fetch(&format!("{DOMAIN}/series/{key}"), false)?;
-		let Some(page) = extract_all_by_marker::<SeriesPage>(&payload, "{\"series\":", true)
+		let Some(mut page) = extract_all_by_marker::<SeriesPage>(&payload, "{\"series\":", true)
 			.into_iter()
 			.find(|candidate| !candidate.series.title.is_empty())
 		else {
@@ -308,9 +302,15 @@ impl Source for ValirScans {
 		};
 
 		let novel = is_novel(&page.series);
+		// The chapter list sits beside the series on some pages and inside it on
+		// others, so take it before the series is consumed.
+		let mut items = page.chapters;
+		if items.is_empty() {
+			items = page.series.chapters.take().unwrap_or_default();
+		}
 
 		if needs_details {
-			let mut details = series_to_manga(page.series.clone());
+			let mut details = series_to_detail(page.series);
 			details.key = key.clone();
 			details.url = Some(format!("{DOMAIN}/series/{key}"));
 			manga.copy_from(details);
@@ -321,10 +321,6 @@ impl Source for ValirScans {
 		}
 
 		if needs_chapters {
-			let mut items = page.chapters;
-			if items.is_empty() {
-				items = page.series.chapters.unwrap_or_default();
-			}
 			let mut chapters: Vec<Chapter> = items
 				.into_iter()
 				.filter(|item| !item.id.is_empty())
@@ -446,25 +442,26 @@ impl Home for ValirScans {
 				.into_iter()
 				.next()
 				.unwrap_or_default();
-		let banner_links: Vec<Link> = featured
+		// Banners are the better artwork when the slides carry them, so the
+		// scroller falls back to covers only when none do.
+		let banners = featured
 			.iter()
-			.filter_map(|series| {
-				let image = image_url(series.banner_image.as_deref())?;
-				let manga = series_to_manga(series.clone());
-				Some(Link {
-					title: manga.title.clone(),
-					subtitle: manga.description.clone(),
-					image_url: Some(image),
-					value: Some(LinkValue::Manga(manga)),
+			.any(|series| image_url(series.banner_image.as_deref()).is_some());
+		if banners {
+			let links: Vec<Link> = featured
+				.into_iter()
+				.filter_map(|series| {
+					let banner = image_url(series.banner_image.as_deref())?;
+					let mut link = Link::from(series_to_detail(series));
+					link.image_url = Some(banner);
+					Some(link)
 				})
-			})
-			.collect();
-		if !banner_links.is_empty() {
+				.collect();
 			components.push(HomeComponent {
 				title: Some("Top Featured".into()),
 				subtitle: None,
 				value: HomeComponentValue::ImageScroller {
-					links: banner_links,
+					links,
 					auto_scroll_interval: Some(6.0),
 					width: None,
 					height: None,
@@ -475,35 +472,29 @@ impl Home for ValirScans {
 				title: Some("Top Featured".into()),
 				subtitle: None,
 				value: HomeComponentValue::BigScroller {
-					entries: featured.into_iter().map(series_to_manga).collect(),
+					entries: featured.into_iter().map(series_to_detail).collect(),
 					auto_scroll_interval: Some(6.0),
 				},
 			});
 		}
 
-		let series_lists: Vec<Vec<Series>> =
+		let mut series_lists: Vec<Vec<Series>> =
 			extract_all_by_marker::<Vec<Series>>(&payload, "\"series\":", false)
 				.into_iter()
 				.filter(|list| !list.is_empty() && list.iter().all(|s| !s.title.is_empty()))
 				.collect();
-		let latest = series_lists
-			.iter()
-			.find(|list| {
-				list.first()
-					.and_then(|s| s.last_chapter_at.as_ref())
-					.is_some()
-			})
-			.cloned()
-			.unwrap_or_default();
-		let editors = series_lists
-			.iter()
-			.find(|list| {
-				list.first()
-					.map(|s| s.view_count.is_some() && s.created_at.is_none())
-					.unwrap_or(false)
-			})
-			.cloned()
-			.unwrap_or_default();
+		// The page ships several unlabelled lists; each is recognised by the
+		// fields its entries carry.
+		let mut take_list = |matches: fn(&Series) -> bool| {
+			series_lists
+				.iter()
+				.position(|list| list.first().is_some_and(matches))
+				.map(|index| series_lists.swap_remove(index))
+				.unwrap_or_default()
+		};
+		let latest = take_list(|series| series.last_chapter_at.is_some());
+		let editors =
+			take_list(|series| series.view_count.is_some() && series.created_at.is_none());
 		let popular_today: Vec<Series> =
 			extract_all_by_marker::<Vec<Series>>(&payload, "\"novels\":", false)
 				.into_iter()
@@ -521,8 +512,11 @@ impl Home for ValirScans {
 				subtitle: None,
 				value: HomeComponentValue::MangaList {
 					ranking: true,
-					page_size: Some(10),
-					entries: most_popular.into_iter().map(series_to_link).collect(),
+					page_size: Some(5),
+					entries: most_popular
+						.into_iter()
+						.map(|series| Link::from(series_to_manga(series)))
+						.collect(),
 					listing: Some(Listing {
 						id: "browse".into(),
 						name: "All Series".into(),
@@ -532,18 +526,18 @@ impl Home for ValirScans {
 			});
 		}
 
-		for (title, novels) in [
-			("Latest Comic Updates", false),
-			("Latest Novel Updates", true),
+		let (novel_updates, comic_updates): (Vec<Series>, Vec<Series>) =
+			latest.into_iter().partition(is_novel);
+		for (title, list) in [
+			("Latest Comic Updates", comic_updates),
+			("Latest Novel Updates", novel_updates),
 		] {
-			let entries: Vec<MangaWithChapter> = latest
-				.iter()
-				.filter(|series| is_novel(series) == novels)
-				.filter_map(|series| {
-					let chapter = series.chapters.as_ref()?.first()?.clone();
-					let manga = series_to_manga(series.clone());
+			let entries: Vec<MangaWithChapter> = list
+				.into_iter()
+				.filter_map(|mut series| {
+					let chapter = series.chapters.take()?.into_iter().next()?;
 					Some(MangaWithChapter {
-						manga,
+						manga: series_to_manga(series),
 						chapter: Chapter {
 							key: chapter.number.to_string(),
 							chapter_number: Some(chapter.number),
@@ -566,7 +560,10 @@ impl Home for ValirScans {
 			}
 		}
 
-		let entries: Vec<Link> = popular_today.into_iter().map(series_to_link).collect();
+		let entries: Vec<Link> = popular_today
+			.into_iter()
+			.map(|series| Link::from(series_to_manga(series)))
+			.collect();
 		if !entries.is_empty() {
 			components.push(HomeComponent {
 				title: Some("Popular Today".into()),
@@ -582,13 +579,16 @@ impl Home for ValirScans {
 				title: Some("Editors' Picks".into()),
 				subtitle: None,
 				value: HomeComponentValue::BigScroller {
-					entries: editors.into_iter().map(series_to_manga).collect(),
+					entries: editors.into_iter().map(series_to_detail).collect(),
 					auto_scroll_interval: None,
 				},
 			});
 		}
 
-		let new_entries: Vec<Link> = browse(1)?.into_iter().map(series_to_link).collect();
+		let new_entries: Vec<Link> = browse(1)?
+			.into_iter()
+			.map(|series| Link::from(series_to_manga(series)))
+			.collect();
 		if !new_entries.is_empty() {
 			components.push(HomeComponent {
 				title: Some("New Series".into()),
@@ -610,20 +610,13 @@ impl Home for ValirScans {
 
 impl ListingProvider for ValirScans {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let kind = match listing.id.as_str() {
-			"browse" => None,
-			"browse_comics" => Some(false),
-			"browse_novels" => Some(true),
-			_ => bail!("Unknown listing"),
-		};
-		let mut series = browse(page)?;
-		if let Some(novels) = kind {
-			series.retain(|entry| is_novel(entry) == novels);
+		if listing.id != "browse" {
+			bail!("Unknown listing: {}", listing.id);
 		}
-		let has_next_page = !series.is_empty();
+		let series = browse(page)?;
 		Ok(MangaPageResult {
+			has_next_page: !series.is_empty(),
 			entries: series.into_iter().map(series_to_manga).collect(),
-			has_next_page,
 		})
 	}
 }
