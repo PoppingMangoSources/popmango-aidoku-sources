@@ -95,7 +95,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.reimanga/res/icon.png" width="24" align="top"/>&nbsp; ReiManga &nbsp;<sub><a href="https://reimanga.net">reimanga.net</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v5.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v5.aix">.aix (v5)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v6.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v6.aix">.aix (v6)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/rinkocomics.png" width="24" align="top"/>&nbsp; RinkoComics &nbsp;<sub><a href="https://rinkocomics.com">rinkocomics.com</a></sub></h3>
 
