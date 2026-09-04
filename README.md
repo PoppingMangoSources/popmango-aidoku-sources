@@ -55,7 +55,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.cocomic/res/icon.png" width="24" align="top"/>&nbsp; Cocomic &nbsp;<sub><a href="https://cocomic.co">cocomic.co</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v6.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v6.aix">.aix (v6)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v7.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v7.aix">.aix (v7)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/galaxymanga.png" width="24" align="top"/>&nbsp; Galaxy Manga &nbsp;<sub><a href="https://galaxymanga.io">galaxymanga.io</a></sub></h3>
 
@@ -63,7 +63,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/kaliscan.png" width="24" align="top"/>&nbsp; KaliScan &nbsp;<sub><a href="https://kaliscan.io">kaliscan.io</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.kaliscan-v11.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.kaliscan-v11.aix">.aix (v11)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.kaliscan-v12.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.kaliscan-v12.aix">.aix (v12)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/kingofshojo.png" width="24" align="top"/>&nbsp; KingOfShojo &nbsp;<sub><a href="https://kingofshojo.com">kingofshojo.com</a></sub></h3>
 
@@ -75,11 +75,11 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.mangaberri/res/icon.png" width="24" align="top"/>&nbsp; MangaBerri &nbsp;<sub><a href="https://mangaberri.com">mangaberri.com</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangaberri-v5.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangaberri-v5.aix">.aix (v5)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangaberri-v6.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangaberri-v6.aix">.aix (v6)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.mangacherri/res/icon.png" width="24" align="top"/>&nbsp; MangaCherri &nbsp;<sub><a href="https://mangacherri.com">mangacherri.com</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangacherri-v6.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangacherri-v6.aix">.aix (v6)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangacherri-v7.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangacherri-v7.aix">.aix (v7)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.mangahome/res/icon.png" width="24" align="top"/>&nbsp; MangaHome &nbsp;<sub><a href="https://www.mangahome.com">mangahome.com</a></sub></h3>
 
@@ -99,7 +99,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/rinkocomics.png" width="24" align="top"/>&nbsp; RinkoComics &nbsp;<sub><a href="https://rinkocomics.com">rinkocomics.com</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rinkocomics-v13.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rinkocomics-v13.aix">.aix (v13)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rinkocomics-v14.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rinkocomics-v14.aix">.aix (v14)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/rokaricomics.png" width="24" align="top"/>&nbsp; RokariComics &nbsp;<sub><a href="https://rokaricomics.com">rokaricomics.com</a></sub></h3>
 

@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga, MangaPageResult,
-	MangaWithChapter, Page, PageContent, PageContext, Result, Source,
+	HomeComponentValue, HomeLayout, Manga, MangaPageResult, MangaWithChapter, Page, PageContent,
+	PageContext, Result, Source,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::encode_uri_component,
 	imports::{
@@ -363,29 +363,19 @@ impl Source for MangaBerri {
 
 impl Home for MangaBerri {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let requests = [
-			format!("{BASE_URL}/home.php"),
-			format!("{BASE_URL}/weekly-manga.php"),
-			genre_url("Shounen"),
-			genre_url("Seinen"),
-			genre_url("Manhwa/Manhua"),
-		]
-		.into_iter()
-		.map(|url| {
-			Request::get(&url)
-				.map(|r| r.header("Referer", &format!("{BASE_URL}/")))
-				.map_err(Into::into)
-		})
-		.collect::<Result<Vec<_>>>()?;
+		let requests = [format!("{BASE_URL}/home.php")]
+			.into_iter()
+			.map(|url| {
+				Request::get(&url)
+					.map(|r| r.header("Referer", &format!("{BASE_URL}/")))
+					.map_err(Into::into)
+			})
+			.collect::<Result<Vec<_>>>()?;
 		let mut documents = Request::send_all(requests)
 			.into_iter()
 			.map(|response| response.ok().and_then(|response| response.get_html().ok()));
 
 		let home = documents.next().flatten();
-		let weekly = documents.next().flatten();
-		let shounen = documents.next().flatten();
-		let seinen = documents.next().flatten();
-		let manhwa = documents.next().flatten();
 
 		let mut components: Vec<HomeComponent> = Vec::new();
 
@@ -468,55 +458,7 @@ impl Home for MangaBerri {
 			}
 		}
 
-		for (title, document, ranked) in [
-			("Top Weekly", weekly, true),
-			("Top Shounen", shounen, true),
-			("Top Seinen", seinen, true),
-			("Manhwa / Manhua", manhwa, false),
-		] {
-			let Some(document) = document else { continue };
-			let entries: Vec<Link> = cards_from(&document, ".manga-item, .manga-horizontal-item")
-				.into_iter()
-				.take(30)
-				.map(Into::into)
-				.collect();
-			if entries.is_empty() {
-				continue;
-			}
-			components.push(HomeComponent {
-				title: Some(title.into()),
-				subtitle: None,
-				value: if ranked {
-					HomeComponentValue::MangaList {
-						ranking: true,
-						page_size: Some(5),
-						entries,
-						listing: None,
-					}
-				} else {
-					HomeComponentValue::Scroller {
-						entries,
-						listing: None,
-					}
-				},
-			});
-		}
-
 		Ok(HomeLayout { components })
-	}
-}
-
-impl ListingProvider for MangaBerri {
-	fn get_manga_list(&self, listing: Listing, _page: i32) -> Result<MangaPageResult> {
-		let url = match listing.id.as_str() {
-			"weekly" => format!("{BASE_URL}/weekly-manga.php"),
-			_ => format!("{BASE_URL}/home.php"),
-		};
-		let document = fetch(&url)?;
-		Ok(MangaPageResult {
-			entries: cards_from(&document, ".manga-item, .manga-horizontal-item"),
-			has_next_page: false,
-		})
 	}
 }
 
@@ -537,10 +479,4 @@ impl DeepLinkHandler for MangaBerri {
 	}
 }
 
-register_source!(
-	MangaBerri,
-	Home,
-	ListingProvider,
-	ImageRequestProvider,
-	DeepLinkHandler
-);
+register_source!(MangaBerri, Home, ImageRequestProvider, DeepLinkHandler);

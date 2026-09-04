@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga, MangaPageResult,
-	MangaWithChapter, Page, PageContent, PageContext, Result, Source,
+	HomeComponentValue, HomeLayout, Manga, MangaPageResult, MangaWithChapter, Page, PageContent,
+	PageContext, Result, Source,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::encode_uri_component,
 	imports::{
@@ -470,23 +470,19 @@ impl Source for MangaCherri {
 
 impl Home for MangaCherri {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let requests = [
-			format!("{BASE_URL}/home.php"),
-			format!("{BASE_URL}/weekly-manga.php"),
-		]
-		.into_iter()
-		.map(|url| {
-			Request::get(&url)
-				.map(|r| r.header("Referer", &format!("{BASE_URL}/")))
-				.map_err(Into::into)
-		})
-		.collect::<Result<Vec<_>>>()?;
+		let requests = [format!("{BASE_URL}/home.php")]
+			.into_iter()
+			.map(|url| {
+				Request::get(&url)
+					.map(|r| r.header("Referer", &format!("{BASE_URL}/")))
+					.map_err(Into::into)
+			})
+			.collect::<Result<Vec<_>>>()?;
 		let mut documents = Request::send_all(requests)
 			.into_iter()
 			.map(|response| response.ok().and_then(|response| response.get_html().ok()));
 
 		let home = documents.next().flatten();
-		let weekly = documents.next().flatten();
 
 		let mut components: Vec<HomeComponent> = Vec::new();
 
@@ -543,26 +539,6 @@ impl Home for MangaCherri {
 			}
 		}
 
-		if let Some(weekly) = weekly.as_ref() {
-			let entries: Vec<Link> = cards_from(weekly, ".manga-item")
-				.into_iter()
-				.take(30)
-				.map(Into::into)
-				.collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Top Weekly".into()),
-					subtitle: None,
-					value: HomeComponentValue::MangaList {
-						ranking: true,
-						page_size: Some(5),
-						entries,
-						listing: None,
-					},
-				});
-			}
-		}
-
 		// Safety net: if the headings ever change and no shelf matched, show every
 		// card on the home page so the source is never blank.
 		if components.is_empty()
@@ -595,20 +571,6 @@ impl Home for MangaCherri {
 	}
 }
 
-impl ListingProvider for MangaCherri {
-	fn get_manga_list(&self, listing: Listing, _page: i32) -> Result<MangaPageResult> {
-		let url = match listing.id.as_str() {
-			"weekly" => format!("{BASE_URL}/weekly-manga.php"),
-			_ => format!("{BASE_URL}/home.php"),
-		};
-		let document = fetch(&url)?;
-		Ok(MangaPageResult {
-			entries: cards_from(&document, ".manga-item, .manga-horizontal-item"),
-			has_next_page: false,
-		})
-	}
-}
-
 impl aidoku::ImageRequestProvider for MangaCherri {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
@@ -626,10 +588,4 @@ impl DeepLinkHandler for MangaCherri {
 	}
 }
 
-register_source!(
-	MangaCherri,
-	Home,
-	ListingProvider,
-	ImageRequestProvider,
-	DeepLinkHandler
-);
+register_source!(MangaCherri, Home, ImageRequestProvider, DeepLinkHandler);
