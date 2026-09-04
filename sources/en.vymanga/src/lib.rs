@@ -12,7 +12,7 @@ use aidoku::{
 	prelude::*,
 };
 
-const DEFAULT_BASE_URL: &str = "https://vymanga.com";
+const DEFAULT_BASE_URL: &str = "https://mangavyvy.net";
 const BASE_URL_KEY: &str = "baseUrl";
 const DESKTOP_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
 	(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";

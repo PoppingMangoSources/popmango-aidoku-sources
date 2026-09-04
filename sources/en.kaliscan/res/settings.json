@@ -19,13 +19,13 @@
 	},
 	{
 		"type": "group",
-		"footer": "Override the website address if KaliScan has moved. Leave empty to use the default (https://kaliscan.io).",
+		"footer": "Override the website address if KaliScan has moved. Leave empty to use the default (https://kaliscan.com).",
 		"items": [
 			{
 				"type": "text",
 				"key": "baseUrl",
 				"title": "Base URL",
-				"placeholder": "https://kaliscan.io",
+				"placeholder": "https://kaliscan.com",
 				"refreshes": [
 					"content",
 					"listings"

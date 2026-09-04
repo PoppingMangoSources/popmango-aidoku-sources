@@ -221,7 +221,8 @@ fn fetch_cards(url: &str) -> Result<MangaPageResult> {
 		.header("Referer", &format!("{BASE_URL}/"))
 		.html()?;
 	let entries: Vec<Manga> = parse_cards(&doc).into_iter().map(|(m, _)| m).collect();
-	let has_next_page = !entries.is_empty();
+	// The pager only draws its next arrow while another page exists.
+	let has_next_page = doc.select_first("ul.pagination a:contains(»)").is_some();
 	Ok(MangaPageResult {
 		entries,
 		has_next_page,

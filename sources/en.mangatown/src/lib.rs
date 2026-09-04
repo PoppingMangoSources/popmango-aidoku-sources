@@ -141,7 +141,9 @@ fn parse_site_date(text: &str) -> Option<i64> {
 		}
 	}
 
-	parse_date(text.trim(), "MMM d, yyyy")
+	// Chapter rows omit the space after the comma; cards keep it.
+	let text = text.trim();
+	parse_date(text, "MMM dd,yyyy").or_else(|| parse_date(text, "MMM d, yyyy"))
 }
 
 struct ListItem {
@@ -492,9 +494,23 @@ impl Source for MangaTown {
 						.select_first("span.time")
 						.and_then(|el| el.text())
 						.and_then(|t| parse_site_date(&t));
+					// Any span beside the stamp and the new badge is the chapter's
+					// own name, which the numbered link never carries.
+					let title = li
+						.select("span:not(span.time):not(span.new)")
+						.map(|spans| {
+							spans
+								.filter_map(|span| span.text())
+								.map(|text| text.trim().to_string())
+								.filter(|text| !text.is_empty())
+								.collect::<Vec<_>>()
+								.join(" ")
+						})
+						.filter(|title| !title.is_empty());
 					chapters.push(Chapter {
 						url: Some(format!("{BASE_URL}/manga/{}/{}/", manga.key, chapter_key)),
 						key: chapter_key,
+						title,
 						chapter_number,
 						volume_number,
 						date_uploaded,
@@ -639,11 +655,7 @@ impl Home for MangaTown {
 			let entries: Vec<Manga> = parse_list(&doc)
 				.into_iter()
 				.take(8)
-				.map(|item| {
-					let manga = item.manga;
-					self.get_manga_update(manga.clone(), true, false)
-						.unwrap_or(manga)
-				})
+				.map(|item| item.manga)
 				.collect();
 			if !entries.is_empty() {
 				components.push(HomeComponent {

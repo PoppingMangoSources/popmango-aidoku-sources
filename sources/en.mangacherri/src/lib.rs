@@ -372,6 +372,15 @@ fn latest_section(document: &Document) -> Vec<MangaWithChapter> {
 		.collect()
 }
 
+/// Adds the page number, which the listing urls take as a query parameter.
+fn paged(url: &str, page: i32) -> String {
+	if page <= 1 {
+		return url.into();
+	}
+	let separator = if url.contains('?') { '&' } else { '?' };
+	format!("{url}{separator}page={page}")
+}
+
 fn genre_url(name: &str) -> String {
 	format!(
 		"{BASE_URL}/genre.php?genre={}",
@@ -389,7 +398,7 @@ impl Source for MangaCherri {
 	fn get_search_manga_list(
 		&self,
 		query: Option<String>,
-		_page: i32,
+		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let query = query.unwrap_or_default();
@@ -410,11 +419,11 @@ impl Source for MangaCherri {
 			format!("{BASE_URL}/home.php")
 		};
 
-		let document = fetch(&url)?;
+		let document = fetch(&paged(&url, page))?;
 		let entries = cards_from(&document, ".manga-item, .manga-horizontal-item");
 		Ok(MangaPageResult {
+			has_next_page: !entries.is_empty(),
 			entries,
-			has_next_page: false,
 		})
 	}
 

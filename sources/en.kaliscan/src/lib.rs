@@ -12,7 +12,7 @@ use aidoku::{
 };
 use madtheme::{Impl, MadTheme, Params};
 
-const DEFAULT_BASE_URL: &str = "https://kaliscan.io";
+const DEFAULT_BASE_URL: &str = "https://kaliscan.com";
 
 const BASE_URL_KEY: &str = "baseUrl";
 const SHOW_NSFW_KEY: &str = "showNSFW";

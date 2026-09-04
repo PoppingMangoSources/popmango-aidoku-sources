@@ -2,8 +2,8 @@
 	"info": {
 		"id": "en.kaliscan",
 		"name": "KaliScan",
-		"version": 9,
-		"url": "https://kaliscan.io",
+		"version": 10,
+		"url": "https://kaliscan.com",
 		"contentRating": 1,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
