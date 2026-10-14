@@ -3,7 +3,8 @@ use aidoku::{
 	imports::defaults::defaults_get,
 };
 
-pub const CONTENT_RATINGS: &[&str] = &["safe", "suggestive", "erotica", "pornographic"];
+/// Pornographic titles are opt-in, as they are on the site.
+const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica"];
 
 /// The catalogue files a series by its original language, so a type filters as the
 /// languages it is written in.
@@ -21,7 +22,7 @@ fn stored_list(key: &str, default: &[&str]) -> Vec<String> {
 }
 
 pub fn content_ratings() -> Vec<String> {
-	stored_list("contentRatings", &CONTENT_RATINGS[..3])
+	stored_list("contentRatings", DEFAULT_RATINGS)
 }
 
 pub fn types() -> Vec<String> {
@@ -43,4 +44,8 @@ pub fn original_languages() -> Vec<String> {
 		.filter(|(id, _)| selected.iter().any(|value| value == id))
 		.flat_map(|(_, languages)| languages.iter().map(|language| (*language).into()))
 		.collect()
+}
+
+pub fn hidden_tags() -> Vec<String> {
+	defaults_get::<Vec<String>>("hiddenTags").unwrap_or_default()
 }

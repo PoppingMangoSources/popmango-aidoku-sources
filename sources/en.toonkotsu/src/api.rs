@@ -55,6 +55,7 @@ impl BrowseParams {
 			page,
 			sort: sort.into(),
 			order: "desc".into(),
+			excluded_genres: settings::hidden_tags(),
 			original_languages: settings::original_languages(),
 			..Default::default()
 		}
@@ -100,11 +101,15 @@ fn sfw() -> bool {
 		.any(|rating| rating == "pornographic")
 }
 
-fn json_request(url: String) -> Result<Request> {
-	Ok(Request::get(url)?
+fn site_headers(request: Request) -> Request {
+	request
 		.header("Accept", "application/json")
 		.header("Origin", BASE_URL)
-		.header("Referer", &format!("{BASE_URL}/")))
+		.header("Referer", &format!("{BASE_URL}/"))
+}
+
+pub fn json_request(url: String) -> Result<Request> {
+	Ok(site_headers(Request::get(url)?))
 }
 
 pub fn browse_request(params: &BrowseParams) -> Result<Request> {
@@ -120,32 +125,29 @@ pub fn ranking_request(metric: &str, params: &BrowseParams) -> Result<Request> {
 
 /// The site's curated rankings take the browse parameters posted as a body rather than
 /// a query string.
-pub fn discovery_request(metric: &str, page: i32) -> Result<Request> {
-	let languages = settings::original_languages().join(",");
-	let mut params = serde_json::json!({
+pub fn discovery_request(metric: &str, params: &BrowseParams) -> Result<Request> {
+	let mut body = serde_json::json!({
 		"limit": PAGE_SIZE,
-		"page": page,
+		"page": params.page,
 		"sfw": sfw(),
 		"discovery": metric,
 		"metric": metric,
 	});
-	if !languages.is_empty() {
-		params["originalLanguage"] = languages.into();
+	for (name, values) in [
+		("originalLanguage", &params.original_languages),
+		("exclude", &params.excluded_genres),
+	] {
+		if !values.is_empty() {
+			body[name] = values.join(",").into();
+		}
 	}
-	let body = serde_json::to_vec(&serde_json::json!({ "params": params }))
+	let body = serde_json::to_vec(&serde_json::json!({ "params": body }))
 		.map_err(|_| error!("Could not build the Toonkotsu ranking request"))?;
-	Ok(Request::post(format!("{BASE_URL}/api/v1/rankings"))?
-		.header("Accept", "application/json")
-		.header("Content-Type", "application/json")
-		.header("Origin", BASE_URL)
-		.header("Referer", &format!("{BASE_URL}/"))
-		.body(body))
-}
-
-pub fn latest_request(page: i32) -> Result<Request> {
-	json_request(format!(
-		"{BASE_URL}/cdn/v1/latest?page={page}&limit={PAGE_SIZE}"
-	))
+	Ok(
+		site_headers(Request::post(format!("{BASE_URL}/api/v1/rankings"))?)
+			.header("Content-Type", "application/json")
+			.body(body),
+	)
 }
 
 pub fn series_request(key: &str) -> Result<Request> {
@@ -153,10 +155,6 @@ pub fn series_request(key: &str) -> Result<Request> {
 		"{BASE_URL}/cdn/v1/series/{}",
 		encode_uri_component(key)
 	))
-}
-
-pub fn facets_request() -> Result<Request> {
-	json_request(format!("{BASE_URL}/cdn/v1/facets?sfw=0"))
 }
 
 pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {

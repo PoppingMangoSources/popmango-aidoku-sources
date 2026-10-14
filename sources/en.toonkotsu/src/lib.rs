@@ -13,8 +13,8 @@ mod test;
 
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, ImageResponse,
-	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext,
-	PageImageProcessor, Result, Source,
+	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContext, PageImageProcessor,
+	Result, Source,
 	alloc::{String, Vec, format, vec},
 	imports::{canvas::ImageRef, net::Request},
 	prelude::*,
@@ -98,6 +98,10 @@ impl Source for Toonkotsu {
 			}
 		}
 
+		// A hidden tag the search asks for is shown for that search.
+		let included = &params.included_genres;
+		params.excluded_genres.retain(|tag| !included.contains(tag));
+
 		// Best Match ranks by the search term, so the site's own order stands in without one.
 		if params.sort == "relevance" && params.query.is_empty() {
 			params.sort = "latest".into();
@@ -140,24 +144,7 @@ impl Source for Toonkotsu {
 	}
 
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		Ok(reader::page_sources(&chapter.key)?
-			.into_iter()
-			.map(|page| {
-				let content = match (page.key, page.nonce) {
-					(Some(key), Some(nonce)) => {
-						let mut context = PageContext::new();
-						context.insert("key".into(), key);
-						context.insert("nonce".into(), nonce);
-						PageContent::url_context(page.url, context)
-					}
-					_ => PageContent::url(page.url),
-				};
-				Page {
-					content,
-					..Default::default()
-				}
-			})
-			.collect())
+		reader::pages(&chapter.key)
 	}
 }
 
@@ -203,6 +190,7 @@ register_source!(
 	Home,
 	ListingProvider,
 	DynamicFilters,
+	DynamicSettings,
 	ImageRequestProvider,
 	PageImageProcessor,
 	DeepLinkHandler

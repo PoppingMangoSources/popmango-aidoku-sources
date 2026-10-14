@@ -1,9 +1,11 @@
+// reference: https://github.com/PoppingMangoSources/general-extensions-mangago/blob/592613dda3388f0e95c64bc5c42d4cf752ddb42f/src/Toonkotsu/utils.ts
 use crate::{
-	api::{self, BASE_URL},
+	api::{self, BASE_URL, json_request},
+	helpers::absolute_url,
 	models::{ReaderKey, ReaderLimit, ReaderResponse},
 };
 use aidoku::{
-	Result,
+	Page, PageContent, PageContext, Result,
 	alloc::{String, Vec, format, string::ToString},
 	imports::net::{Request, Response},
 	prelude::*,
@@ -33,7 +35,7 @@ fn xor_cycle(data: &[u8], mask: &[u8]) -> Vec<u8> {
 
 /// The served key is masked with a digest of the reader secret; unmasked it is the key
 /// that signs chapter requests and unwraps the page keys.
-pub struct Signer {
+struct Signer {
 	key: Vec<u8>,
 	now: i64,
 }
@@ -72,13 +74,6 @@ impl Signer {
 	}
 }
 
-/// One page of a chapter, with the key and nonce that decrypt it when it is encrypted.
-pub struct PageSource {
-	pub url: String,
-	pub key: Option<String>,
-	pub nonce: Option<String>,
-}
-
 /// Guests are asked to pass a human check before reading on, which only the site's own
 /// reader can run; a temporary limit names its own wait instead.
 fn check_limit(response: Response) -> Result<Response> {
@@ -101,10 +96,10 @@ fn check_limit(response: Response) -> Result<Response> {
 	);
 }
 
-pub fn page_sources(chapter_key: &str) -> Result<Vec<PageSource>> {
+/// Each encrypted page carries its key and nonce in its context, for the image processor.
+pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	let request = |path: &str| -> Result<Request> {
-		Ok(Request::get(format!("{BASE_URL}{path}"))?
-			.header("Accept", "application/json")
+		Ok(json_request(format!("{BASE_URL}{path}"))?
 			.header("Referer", &format!("{BASE_URL}/chapter/{chapter_key}")))
 	};
 	// The reader refuses a request without the guest session cookie, which only this
@@ -131,23 +126,24 @@ pub fn page_sources(chapter_key: &str) -> Result<Vec<PageSource>> {
 	pages
 		.into_iter()
 		.map(|page| {
-			let url = crate::helpers::absolute_url(&page.src);
-			let (Some(key), Some(nonce)) = (page.k, page.n) else {
-				return Ok(PageSource {
-					url,
-					key: None,
-					nonce: None,
-				});
+			let url = absolute_url(&page.src);
+			let content = match (page.k, page.n) {
+				(Some(key), Some(nonce)) => {
+					let key = if wrapped {
+						signer.unwrap_page_key(&key, &nonce)?
+					} else {
+						key
+					};
+					let mut context = PageContext::new();
+					context.insert("key".into(), key);
+					context.insert("nonce".into(), nonce);
+					PageContent::url_context(url, context)
+				}
+				_ => PageContent::url(url),
 			};
-			let key = if wrapped {
-				signer.unwrap_page_key(&key, &nonce)?
-			} else {
-				key
-			};
-			Ok(PageSource {
-				url,
-				key: Some(key),
-				nonce: Some(nonce),
+			Ok(Page {
+				content,
+				..Default::default()
 			})
 		})
 		.collect()
