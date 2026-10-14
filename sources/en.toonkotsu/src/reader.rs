@@ -170,7 +170,7 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 			// A new guest session starts without the check, so one is tried before asking.
 			Retry::NewSession if !new_session => {
 				new_session = true;
-				site.send("POST", "/api/auth/logout", None)?;
+				site.0.delete_all_cookies()?;
 				site.send("GET", "/api/auth/me", None)?;
 			}
 			Retry::NewSession => bail!(

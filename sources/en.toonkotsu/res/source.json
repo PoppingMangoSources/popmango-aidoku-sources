@@ -2,12 +2,13 @@
 	"info": {
 		"id": "en.toonkotsu",
 		"name": "Toonkotsu",
-		"version": 8,
+		"version": 9,
 		"url": "https://toonkotsu.com",
 		"contentRating": 1,
 		"languages": [
 			"en"
-		]
+		],
+		"minAppVersion": "0.9.0"
 	},
 	"listings": [
 		{
