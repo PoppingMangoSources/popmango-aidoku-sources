@@ -7,7 +7,11 @@ use crate::{
 use aidoku::{
 	Page, PageContent, PageContext, Result,
 	alloc::{String, Vec, format, string::ToString},
-	imports::{js::WebView, net::Request, std::sleep},
+	imports::{
+		js::{WebView, WebViewUserScript},
+		net::Request,
+		std::sleep,
+	},
 	prelude::*,
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -76,6 +80,30 @@ impl Signer {
 	}
 }
 
+/// Ads, the cover and page images, and everything else from another host except the human
+/// check, none of which the check needs.
+const CHECK_BLOCK_RULES: &str = r#"[
+	{"trigger": {"url-filter": ".*", "load-type": ["third-party"]}, "action": {"type": "block"}},
+	{"trigger": {"url-filter": ".*", "resource-type": ["image", "media", "font"]}, "action": {"type": "block"}},
+	{"trigger": {"url-filter": "/cdn/[ectg]/"}, "action": {"type": "block"}},
+	{"trigger": {"url-filter": "^https://challenges\\.cloudflare\\.com/"}, "action": {"type": "ignore-previous-rules"}}
+]"#;
+
+/// Marks the page once the site's reader has unlocked the session.
+const UNLOCK_WATCH: &str = "(() => {
+	const fetch = window.fetch;
+	window.fetch = async (...args) => {
+		const response = await fetch.apply(window, args);
+		if (response.ok && String(args[0]?.url ?? args[0]).includes('/api/manga/unlock')) {
+			window.__unlocked = true;
+		}
+		return response;
+	};
+})();";
+
+/// How long the site's reader is given to pass the check without a tap.
+const CHECK_SECONDS: i32 = 20;
+
 /// Reads go through the source's web view, whose cookies the verify sheet in settings
 /// shares, so a human check passed there unlocks the guest session reading uses.
 struct Site(WebView);
@@ -109,6 +137,27 @@ impl Site {
 		serde_json::from_str(&result).map_err(|_| error!("Toonkotsu's reader could not be reached"))
 	}
 
+	/// Opens the chapter's own page, whose reader runs the human check that often passes
+	/// without a tap, and waits for it to unlock the session.
+	fn pass_check(&self, chapter_key: &str) -> Result<bool> {
+		// Blocking only speeds the page up, so a list the app cannot compile is no reason to stop.
+		self.0.set_rule_list(CHECK_BLOCK_RULES).ok();
+		self.0.add_user_script(WebViewUserScript {
+			source: UNLOCK_WATCH.into(),
+			for_main_frame_only: true,
+			..Default::default()
+		})?;
+		self.0
+			.load(Request::get(format!("{BASE_URL}/chapter/{chapter_key}"))?)?;
+		for _ in 0..CHECK_SECONDS {
+			sleep(1);
+			if self.0.eval("String(window.__unlocked === true)")? == "true" {
+				return Ok(true);
+			}
+		}
+		Ok(false)
+	}
+
 	/// The web view's clock in milliseconds, which signatures are timed by.
 	fn clock(&self) -> Result<i64> {
 		self.0
@@ -130,7 +179,7 @@ fn read<T: DeserializeOwned>((status, body): (i32, String)) -> Result<T> {
 enum Retry {
 	Resign,
 	Wait(i32),
-	/// The human check, which belongs to the guest session rather than to the reader.
+	/// The human check, which passing unlocks the session for.
 	Verify,
 }
 
@@ -169,7 +218,7 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	// twice more.
 	let mut signer: Option<Signer> = None;
 	let mut retries = 0;
-	let mut checks = 0;
+	let mut checked = false;
 	let (signer, chapter) = loop {
 		let response = match signer.take() {
 			None => {
@@ -191,27 +240,14 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 		};
 		match retry_for(serde_json::from_str(&response.1).unwrap_or_default())? {
 			Retry::Verify => {
-				checks += 1;
-				match checks {
-					// A new guest session starts without the check, and with its own key.
-					1 => {
-						site.0.delete_all_cookies()?;
-						site.send("GET", "/api/auth/me", None)?;
-						signer = None;
-					}
-					// The site's own reader runs the check, which often passes without a tap,
-					// and unlocks the session; it is given a few seconds to.
-					2 => {
-						site.0.load_blocking(Request::get(format!(
-							"{BASE_URL}/chapter/{chapter_key}"
-						))?)?;
-						sleep(5);
-					}
-					3 | 4 => sleep(5),
-					_ => bail!(
+				if checked || !site.pass_check(chapter_key)? {
+					bail!(
 						"Toonkotsu wants you to confirm you're human. In Toonkotsu's settings, tap Pass Human Check, open any chapter and pass the check, then reopen this one."
-					),
+					);
 				}
+				checked = true;
+				// The site's reader drops its key once the check is passed.
+				signer = None;
 			}
 			_ if retries == 2 => {
 				bail!("Toonkotsu is limiting reads right now. Try again in a moment.")
