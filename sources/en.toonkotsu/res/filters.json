@@ -46,10 +46,10 @@
 			"Cancelled"
 		],
 		"ids": [
-			"ongoing",
-			"completed",
-			"hiatus",
-			"cancelled"
+			"Ongoing",
+			"Complete",
+			"Hiatus",
+			"Canceled"
 		]
 	},
 	{
