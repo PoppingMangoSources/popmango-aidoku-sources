@@ -1,8 +1,6 @@
 use crate::{
 	api::BASE_URL,
-	helpers::{
-		absolute_url, clean_text, cover_url, is_unlisted_tag, manga_url, rating_id, split_label,
-	},
+	helpers::{clean_text, cover_url, is_unlisted_tag, manga_url, rating_id, split_label},
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Viewer,
@@ -131,8 +129,6 @@ pub struct Release {
 	/// Page width in pixels and download size in megabytes, which rank a group's uploads.
 	pub w: Option<i64>,
 	pub mb: Option<f64>,
-	/// Only a chapter's own upload has a thumbnail; its alternates do not.
-	pub thumb: Option<String>,
 }
 
 /// The site numbers a volume either way round.
@@ -185,7 +181,6 @@ impl Release {
 			date_uploaded: self.at.map(|at| at / 1000),
 			scanlators: scanlator.map(|name| vec![name]),
 			language: Some("en".into()),
-			thumbnail: self.thumb.as_deref().map(absolute_url),
 			..Default::default()
 		}
 	}

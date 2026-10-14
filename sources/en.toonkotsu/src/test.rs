@@ -235,7 +235,7 @@ fn test_upload_sizes_keep_each_download() {
 	let list = chapter_list(
 		serde_json::from_str(
 			r#"[
-				{"id": 1, "n": 1, "label": "Friends", "w": 720, "mb": 9.5, "thumb": "/cdn/t/1/a.webp",
+				{"id": 1, "n": 1, "label": "Friends", "w": 720, "mb": 9.5,
 					"group": {"name": "Rolia"}, "alts": [
 					{"id": 2, "w": 1200, "mb": 19.1, "group": {"name": "Rolia"}},
 					{"id": 3, "w": 1200, "mb": 19.1, "group": {"name": "Rolia"}},
@@ -251,9 +251,4 @@ fn test_upload_sizes_keep_each_download() {
 	assert_eq!(list[0].title.as_deref(), Some("Friends (9.5 MB)"));
 	assert_eq!(list[1].title.as_deref(), Some("19.1 MB"));
 	assert_eq!(list[2].title.as_deref(), Some("1274 MB"));
-	assert_eq!(
-		list[0].thumbnail.as_deref(),
-		Some("https://toonkotsu.com/cdn/t/1/a.webp")
-	);
-	assert_eq!(list[1].thumbnail, None);
 }
