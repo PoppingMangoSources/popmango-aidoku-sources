@@ -5,12 +5,12 @@
 		"canAscend": true,
 		"options": [
 			"Best Match",
-			"Latest Upload",
-			"Date Added",
+			"Updated Date",
+			"Created Date",
 			"Rating",
-			"Popularity",
+			"Follow Count",
 			"Chapter Count",
-			"Release Year",
+			"Year",
 			"Title"
 		]
 	},
