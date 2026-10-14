@@ -49,3 +49,7 @@ pub fn original_languages() -> Vec<String> {
 pub fn hidden_tags() -> Vec<String> {
 	defaults_get::<Vec<String>>("hiddenTags").unwrap_or_default()
 }
+
+pub fn deduplicate_chapters() -> bool {
+	defaults_get::<bool>("deduplicateChapters").unwrap_or_default()
+}

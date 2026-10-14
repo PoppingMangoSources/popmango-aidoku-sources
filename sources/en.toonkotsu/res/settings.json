@@ -63,6 +63,21 @@
 	},
 	{
 		"type": "group",
+		"title": "Chapters",
+		"footer": "Lists only the upload the site shows first for each chapter, rather than one from every group.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "deduplicateChapters",
+				"title": "Deduplicate Chapters",
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
 		"title": "Human Check",
 		"footer": "Toonkotsu asks guests to confirm they're human after reading a while. When a chapter stops with that message, open this, read any chapter until the check appears, pass it, then close the page. Reset clears the session it kept.",
 		"items": [

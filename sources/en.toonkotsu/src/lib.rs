@@ -124,7 +124,10 @@ impl Source for Toonkotsu {
 		let SeriesDetail { series, chapters } =
 			api::parse(api::series_request(&manga.key)?.send()?)?;
 		if needs_chapters {
-			manga.chapters = Some(chapter_list(chapters.unwrap_or_default()));
+			manga.chapters = Some(chapter_list(
+				chapters.unwrap_or_default(),
+				settings::deduplicate_chapters(),
+			));
 		}
 		if needs_details {
 			manga.copy_from(

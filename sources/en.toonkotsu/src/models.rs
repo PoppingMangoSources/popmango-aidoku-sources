@@ -223,8 +223,9 @@ pub struct SeriesDetail {
 }
 
 /// One row per group for each chapter, as the site lists them: a group's other uploads of
-/// the same chapter are mirrors, of which the widest, then largest, is kept.
-pub fn chapter_list(entries: Vec<ChapterEntry>) -> Vec<Chapter> {
+/// the same chapter are mirrors, of which the widest, then largest, is kept. With `main_only`,
+/// a chapter is only the upload the site shows first for it.
+pub fn chapter_list(entries: Vec<ChapterEntry>, main_only: bool) -> Vec<Chapter> {
 	// A release can also be listed under more than one chapter.
 	let mut ids: BTreeSet<i64> = BTreeSet::new();
 	let mut slots: BTreeMap<String, usize> = BTreeMap::new();
@@ -236,7 +237,12 @@ pub fn chapter_list(entries: Vec<ChapterEntry>) -> Vec<Chapter> {
 		alts,
 	} in entries
 	{
-		for release in core::iter::once(release).chain(alts.unwrap_or_default()) {
+		let alts = if main_only {
+			Vec::new()
+		} else {
+			alts.unwrap_or_default()
+		};
+		for release in core::iter::once(release).chain(alts) {
 			if !ids.insert(release.id) {
 				continue;
 			}

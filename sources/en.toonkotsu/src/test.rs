@@ -6,7 +6,7 @@ use aidoku::alloc::{String, Vec, vec};
 use aidoku_test::aidoku_test;
 
 fn chapters(json: &str) -> Vec<aidoku::Chapter> {
-	chapter_list(serde_json::from_str(json).expect("chapter entries"))
+	chapter_list(serde_json::from_str(json).expect("chapter entries"), false)
 }
 
 fn keys(list: &[aidoku::Chapter]) -> Vec<&str> {
@@ -204,4 +204,22 @@ fn test_volumes_order_the_list() {
 	);
 	assert_eq!(keys(&list), ["1", "4", "6", "2", "3", "5"]);
 	assert_eq!(list[2].title, None);
+}
+
+#[aidoku_test]
+fn test_main_only_skips_alternates() {
+	let list = chapter_list(
+		serde_json::from_str(
+			r#"[
+				{"id": 2351311, "n": 1, "vol": 1, "group": {"name": "Official"}},
+				{"id": 1491694, "n": 1, "vol": 1, "group": {"name": "WeebCentral"}, "alts": [
+					{"id": 2168860, "group": {"name": "Official"}},
+					{"id": 1268949, "group": {"name": "Rolia Scans"}}
+				]}
+			]"#,
+		)
+		.expect("chapter entries"),
+		true,
+	);
+	assert_eq!(keys(&list), ["2351311", "1491694"]);
 }
