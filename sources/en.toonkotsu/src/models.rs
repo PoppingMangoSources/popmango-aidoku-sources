@@ -333,6 +333,7 @@ pub struct ReaderResponse {
 #[derive(Deserialize, Default)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ReaderLimit {
+	pub error: Option<String>,
 	pub code: Option<String>,
 	pub reason: Option<String>,
 	pub transient: Option<bool>,

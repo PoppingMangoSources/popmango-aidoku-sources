@@ -38,15 +38,16 @@ fn xor_cycle(data: &[u8], mask: &[u8]) -> Vec<u8> {
 /// that signs chapter requests and unwraps the page keys.
 struct Signer {
 	key: Vec<u8>,
-	now: i64,
+	/// How far the site's clock runs ahead of the web view's, as the site's reader keeps it.
+	offset: i64,
 }
 
 impl Signer {
-	fn new(response: &ReaderKey) -> Result<Self> {
+	fn new(response: &ReaderKey, clock: i64) -> Result<Self> {
 		let mask = Sha256::digest(format!("sign:{READER_SECRET}").as_bytes());
 		Ok(Self {
 			key: xor_cycle(&decode(&response.key)?, &mask),
-			now: response.now,
+			offset: response.now - clock,
 		})
 	}
 
@@ -58,8 +59,8 @@ impl Signer {
 
 	/// The site times its signatures in milliseconds and takes a nonce it never checks for
 	/// randomness, so one derived from the request stands in for a random one.
-	fn header(&self, path: &str) -> String {
-		let time = self.now.to_string();
+	fn header(&self, path: &str, clock: i64) -> String {
+		let time = (clock + self.offset).to_string();
 		let nonce =
 			URL_SAFE_NO_PAD.encode(&Sha256::digest(format!("{time}.{path}").as_bytes())[..12]);
 		let signature = URL_SAFE_NO_PAD.encode(self.sign(&format!("{time}.{nonce}.{path}")));
@@ -107,6 +108,14 @@ impl Site {
 		))?;
 		serde_json::from_str(&result).map_err(|_| error!("Toonkotsu's reader could not be reached"))
 	}
+
+	/// The web view's clock in milliseconds, which signatures are timed by.
+	fn clock(&self) -> Result<i64> {
+		self.0
+			.eval("String(Date.now())")?
+			.parse()
+			.map_err(|_| error!("Toonkotsu's reader could not be reached"))
+	}
 }
 
 fn read<T: DeserializeOwned>((status, body): (i32, String)) -> Result<T> {
@@ -127,7 +136,10 @@ enum Retry {
 
 fn retry_for(limit: ReaderLimit) -> Result<Retry> {
 	if limit.code.as_deref() != Some("manga-limit") {
-		bail!("Toonkotsu refused to load this chapter (status 429)");
+		bail!(
+			"Toonkotsu refused to load this chapter: {}",
+			limit.error.as_deref().unwrap_or("status 429")
+		);
 	}
 	if limit.resign == Some(true) {
 		return Ok(Retry::Resign);
@@ -153,27 +165,39 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	site.send("GET", "/api/auth/me", None)?;
 
 	let path = format!("/api/manga/chapter/{chapter_key}");
-	// As on the site, a refused read is tried twice more with a fresh key.
+	// As on the site, the key is kept until a read is refused, and a refused read is tried
+	// twice more.
+	let mut signer: Option<Signer> = None;
 	let mut retries = 0;
 	let mut checks = 0;
 	let (signer, chapter) = loop {
-		let signer = Signer::new(&read::<ReaderKey>(site.send(
-			"GET",
-			"/api/manga/key",
-			None,
-		)?)?)?;
-		let response = site.send("GET", &path, Some(&signer.header(&path)))?;
-		if response.0 != 429 {
-			break (signer, read::<ReaderResponse>(response)?);
-		}
+		let response = match signer.take() {
+			None => {
+				let response = site.send("GET", "/api/manga/key", None)?;
+				if response.0 != 429 {
+					signer = Some(Signer::new(&read(response)?, site.clock()?)?);
+					continue;
+				}
+				response
+			}
+			Some(kept) => {
+				let response = site.send("GET", &path, Some(&kept.header(&path, site.clock()?)))?;
+				if response.0 != 429 {
+					break (kept, read::<ReaderResponse>(response)?);
+				}
+				signer = Some(kept);
+				response
+			}
+		};
 		match retry_for(serde_json::from_str(&response.1).unwrap_or_default())? {
 			Retry::Verify => {
 				checks += 1;
 				match checks {
-					// A new guest session starts without the check.
+					// A new guest session starts without the check, and with its own key.
 					1 => {
 						site.0.delete_all_cookies()?;
 						site.send("GET", "/api/auth/me", None)?;
+						signer = None;
 					}
 					// The site's own reader runs the check, which often passes without a tap,
 					// and unlocks the session; it is given a few seconds to.
@@ -192,7 +216,10 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 			_ if retries == 2 => {
 				bail!("Toonkotsu is limiting reads right now. Try again in a moment.")
 			}
-			Retry::Resign => retries += 1,
+			Retry::Resign => {
+				retries += 1;
+				signer = None;
+			}
 			Retry::Wait(seconds) => {
 				retries += 1;
 				sleep(seconds);
