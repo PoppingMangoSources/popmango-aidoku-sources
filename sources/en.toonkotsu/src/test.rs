@@ -63,18 +63,14 @@ fn test_chapter_from_entry() {
 }
 
 #[aidoku_test]
-fn test_volume_zero_is_none() {
-	assert_eq!(
-		chapters(r#"[{"id": 1, "n": 1, "vol": 0}]"#)[0].volume_number,
-		None
-	);
-	assert_eq!(
-		chapters(r#"[{"id": 1, "n": 1, "vol": "0"}]"#)[0].volume_number,
-		None
-	);
+fn test_volume_either_way_round() {
 	assert_eq!(chapters(r#"[{"id": 1, "n": 1}]"#)[0].volume_number, None);
 	assert_eq!(
 		chapters(r#"[{"id": 1, "n": 1, "vol": 2}]"#)[0].volume_number,
+		Some(2.0)
+	);
+	assert_eq!(
+		chapters(r#"[{"id": 1, "n": 1, "vol": "2"}]"#)[0].volume_number,
 		Some(2.0)
 	);
 }
@@ -173,18 +169,25 @@ fn test_release_listed_twice_is_one_chapter() {
 	assert_eq!(keys(&list), ["3", "1", "2"]);
 }
 
+// 20th Century Boys, Vol. 1 Ch. 1: the site lists one row for each of these four groups
 #[aidoku_test]
 fn test_group_keeps_its_best_upload() {
 	let list = chapters(
 		r#"[
-			{"id": 1, "n": 1, "w": 720, "mb": 9.5, "group": {"name": "Rolia"}, "alts": [
-				{"id": 2, "w": 1200, "mb": 19.1, "group": {"name": "Rolia"}},
-				{"id": 3, "w": 720, "mb": 2.7, "group": {"name": "Luna"}}
-			]},
-			{"id": 4, "n": 1, "w": 720, "mb": 3.0, "group": {"name": "Luna"}}
+			{"id": 90074, "n": 1, "vol": 1, "label": "Chapter 1", "w": 1817, "mb": 8.2,
+				"group": {"name": "Band of the Hawks"}},
+			{"id": 2351311, "n": 1, "vol": 1, "label": "Friends", "w": 3790, "mb": 238.6,
+				"group": {"name": "Official"}},
+			{"id": 1491694, "n": 1, "vol": 1, "label": "Chapter 1", "w": 1200, "mb": 19.1,
+				"group": {"name": "WeebCentral"}, "alts": [
+				{"id": 2168860, "label": "Friends", "w": 3790, "mb": 238.6, "group": {"name": "Official"}},
+				{"id": 4176441, "label": "Chapter 1", "w": 720, "mb": 9.5, "group": {"name": "Rolia Scans"}},
+				{"id": 1268949, "label": "Chapter 1", "w": 1200, "mb": 19.1, "group": {"name": "Rolia Scans"}}
+			]}
 		]"#,
 	);
-	assert_eq!(keys(&list), ["2", "4"]);
+	assert_eq!(keys(&list), ["90074", "2351311", "1491694", "1268949"]);
+	assert_eq!(list[1].title.as_deref(), Some("Friends"));
 }
 
 #[aidoku_test]

@@ -172,13 +172,11 @@ impl Release {
 					.is_none_or(|scanlator| !title.eq_ignore_ascii_case(scanlator))
 			}),
 			chapter_number: number.map(|number| number as f32),
-			// The catalogue fills in 0 where a chapter belongs to no volume.
 			volume_number: match volume {
 				Some(Volume::Number(number)) => Some(*number as f32),
 				Some(Volume::Text(text)) => text.trim().parse().ok(),
 				None => None,
-			}
-			.filter(|volume| *volume > 0.0),
+			},
 			// The catalogue times its uploads in milliseconds.
 			date_uploaded: self.at.map(|at| at / 1000),
 			scanlators: scanlator.map(|name| vec![name]),
