@@ -7,11 +7,7 @@ use crate::{
 use aidoku::{
 	Page, PageContent, PageContext, Result,
 	alloc::{String, Vec, format, string::ToString},
-	imports::{
-		js::{WebView, WebViewUserScript},
-		net::Request,
-		std::sleep,
-	},
+	imports::{js::WebView, net::Request, std::sleep},
 	prelude::*,
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -80,27 +76,6 @@ impl Signer {
 	}
 }
 
-/// Ads, the cover and page images, and everything else from another host except the human
-/// check, none of which the check needs.
-const CHECK_BLOCK_RULES: &str = r#"[
-	{"trigger": {"url-filter": ".*", "load-type": ["third-party"]}, "action": {"type": "block"}},
-	{"trigger": {"url-filter": ".*", "resource-type": ["image", "media", "font"]}, "action": {"type": "block"}},
-	{"trigger": {"url-filter": "/cdn/[ectg]/"}, "action": {"type": "block"}},
-	{"trigger": {"url-filter": "^https://challenges\\.cloudflare\\.com/"}, "action": {"type": "ignore-previous-rules"}}
-]"#;
-
-/// Marks the page once the site's reader has unlocked the session.
-const UNLOCK_WATCH: &str = "(() => {
-	const fetch = window.fetch;
-	window.fetch = async (...args) => {
-		const response = await fetch.apply(window, args);
-		if (response.ok && String(args[0]?.url ?? args[0]).includes('/api/manga/unlock')) {
-			window.__unlocked = true;
-		}
-		return response;
-	};
-})();";
-
 /// How long the site's reader is given to pass the check without a tap.
 const CHECK_SECONDS: i32 = 20;
 
@@ -138,20 +113,18 @@ impl Site {
 	}
 
 	/// Opens the chapter's own page, whose reader runs the human check that often passes
-	/// without a tap, and waits for it to unlock the session.
+	/// without a tap, and waits for it to post the unlock.
 	fn pass_check(&self, chapter_key: &str) -> Result<bool> {
-		// Blocking only speeds the page up, so a list the app cannot compile is no reason to stop.
-		self.0.set_rule_list(CHECK_BLOCK_RULES).ok();
-		self.0.add_user_script(WebViewUserScript {
-			source: UNLOCK_WATCH.into(),
-			for_main_frame_only: true,
-			..Default::default()
-		})?;
 		self.0
 			.load(Request::get(format!("{BASE_URL}/chapter/{chapter_key}"))?)?;
+		// The page's own record of its requests shows the unlock without touching the page,
+		// which its checks could notice.
 		for _ in 0..CHECK_SECONDS {
 			sleep(1);
-			if self.0.eval("String(window.__unlocked === true)")? == "true" {
+			let unlocked = self.0.eval(
+				"String(performance.getEntriesByType('resource').some(entry => entry.name.includes('/api/manga/unlock')))",
+			)?;
+			if unlocked == "true" {
 				return Ok(true);
 			}
 		}
