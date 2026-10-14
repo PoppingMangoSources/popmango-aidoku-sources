@@ -6,8 +6,10 @@
 		"options": [
 			"Best Match",
 			"Updated Date",
+			"Uploaded Date",
 			"Created Date",
 			"Rating",
+			"View Count",
 			"Follow Count",
 			"Chapter Count",
 			"Year",

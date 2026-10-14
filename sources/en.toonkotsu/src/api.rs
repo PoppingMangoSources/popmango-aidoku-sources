@@ -16,12 +16,15 @@ pub const BASE_URL: &str = "https://toonkotsu.com";
 pub const PAGE_SIZE: i32 = 42;
 
 /// The site's browse orderings, in the order `filters.json` labels them. Each takes its
-/// direction separately, as `order`.
+/// direction separately, as `order`. The site offers its upload and update dates, and its
+/// view and follow counts, as separate sorts that send the same ordering.
 pub const SORTS: &[&str] = &[
 	"relevance",
 	"latest",
+	"latest",
 	"new",
 	"score",
+	"popular",
 	"popular",
 	"chapters",
 	"year",
