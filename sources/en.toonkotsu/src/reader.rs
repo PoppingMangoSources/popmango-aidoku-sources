@@ -179,7 +179,6 @@ fn retry_for(limit: ReaderLimit) -> Result<Retry> {
 	Ok(Retry::Verify)
 }
 
-/// Each encrypted page carries its key and nonce in its context, for the image processor.
 pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	let site = Site::open(chapter_key)?;
 	// The reader refuses a request without the guest session cookie, which only this
@@ -187,6 +186,14 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	site.send("GET", "/api/auth/me", None)?;
 
 	let path = format!("/api/manga/chapter/{chapter_key}");
+	// The site serves a chapter's page keys to an unsigned request, unmasked, so a signed
+	// read is only the fallback for a refused or masked reply.
+	if let Ok(chapter) = read::<ReaderResponse>(site.send("GET", &path, None)?)
+		&& chapter.wrap.as_deref().is_none_or(str::is_empty)
+	{
+		return chapter_pages(chapter, None);
+	}
+
 	// As on the site, the key is kept until a read is refused, and a refused read is tried
 	// twice more.
 	let mut signer: Option<Signer> = None;
@@ -235,10 +242,16 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 			}
 		}
 	};
+	chapter_pages(chapter, Some(&signer))
+}
 
-	let wrapped = match chapter.wrap.as_deref() {
-		None | Some("") => false,
-		Some("v1") => true,
+/// Each encrypted page carries its key and nonce in its context, for the image processor.
+fn chapter_pages(chapter: ReaderResponse, signer: Option<&Signer>) -> Result<Vec<Page>> {
+	let signer = match chapter.wrap.as_deref() {
+		None | Some("") => None,
+		Some("v1") => {
+			Some(signer.ok_or_else(|| error!("Toonkotsu masked this chapter's page keys"))?)
+		}
 		Some(version) => bail!("This source does not support reader encryption {version} yet"),
 	};
 	let pages = chapter.chapter.pages.unwrap_or_default();
@@ -251,10 +264,9 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 			let url = absolute_url(&page.src);
 			let content = match (page.k, page.n) {
 				(Some(key), Some(nonce)) => {
-					let key = if wrapped {
-						signer.unwrap_page_key(&key, &nonce)?
-					} else {
-						key
+					let key = match signer {
+						Some(signer) => signer.unwrap_page_key(&key, &nonce)?,
+						None => key,
 					};
 					let mut context = PageContext::new();
 					context.insert("key".into(), key);
