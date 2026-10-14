@@ -91,14 +91,14 @@ impl Site {
 	}
 
 	/// The status and body of a same-origin request, which carries the session cookie.
-	fn get(&self, path: &str, signature: Option<&str>) -> Result<(i32, String)> {
+	fn send(&self, method: &str, path: &str, signature: Option<&str>) -> Result<(i32, String)> {
 		let signature = signature
 			.map(|signature| format!("request.setRequestHeader('x-sig', '{signature}');"))
 			.unwrap_or_default();
 		let result = self.0.eval(&format!(
 			"(() => {{
 				const request = new XMLHttpRequest();
-				request.open('GET', '{path}', false);
+				request.open('{method}', '{path}', false);
 				request.setRequestHeader('Accept', 'application/json');
 				{signature}
 				request.send();
@@ -150,15 +150,19 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	let site = Site::open(chapter_key)?;
 	// The reader refuses a request without the guest session cookie, which only this
 	// call hands out; it is the one the site's pages make on load.
-	site.get("/api/auth/me", None)?;
+	site.send("GET", "/api/auth/me", None)?;
 
 	let path = format!("/api/manga/chapter/{chapter_key}");
 	// As on the site, a refused read is tried twice more with a fresh key.
 	let mut attempt = 1;
 	let mut new_session = false;
 	let (signer, chapter) = loop {
-		let signer = Signer::new(&read::<ReaderKey>(site.get("/api/manga/key", None)?)?)?;
-		let response = site.get(&path, Some(&signer.header(&path)))?;
+		let signer = Signer::new(&read::<ReaderKey>(site.send(
+			"GET",
+			"/api/manga/key",
+			None,
+		)?)?)?;
+		let response = site.send("GET", &path, Some(&signer.header(&path)))?;
 		if response.0 != 429 {
 			break (signer, read::<ReaderResponse>(response)?);
 		}
@@ -166,8 +170,8 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 			// A new guest session starts without the check, so one is tried before asking.
 			Retry::NewSession if !new_session => {
 				new_session = true;
-				site.0.delete_all_cookies()?;
-				site.get("/api/auth/me", None)?;
+				site.send("POST", "/api/auth/logout", None)?;
+				site.send("GET", "/api/auth/me", None)?;
 			}
 			Retry::NewSession => bail!(
 				"Toonkotsu wants you to confirm you're human. In Toonkotsu's settings, tap Pass Human Check, open any chapter and pass the check, then reopen this one."
