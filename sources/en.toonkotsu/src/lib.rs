@@ -20,7 +20,7 @@ use aidoku::{
 	prelude::*,
 };
 use api::{BASE_URL, BrowseParams, SORTS};
-use models::{ChapterEntry, Series, SeriesDetail};
+use models::{Series, SeriesDetail, chapter_list};
 
 struct Toonkotsu;
 
@@ -121,21 +121,14 @@ impl Source for Toonkotsu {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let detail: SeriesDetail = api::parse(api::series_request(&manga.key)?.send()?)?;
+		let SeriesDetail { series, chapters } =
+			api::parse(api::series_request(&manga.key)?.send()?)?;
 		if needs_chapters {
-			manga.chapters = Some(
-				detail
-					.chapters
-					.unwrap_or_default()
-					.into_iter()
-					.flat_map(ChapterEntry::into_chapters)
-					.collect(),
-			);
+			manga.chapters = Some(chapter_list(chapters.unwrap_or_default()));
 		}
 		if needs_details {
 			manga.copy_from(
-				detail
-					.series
+				series
 					.into_full_manga()
 					.ok_or_else(|| error!("Toonkotsu did not return this series"))?,
 			);

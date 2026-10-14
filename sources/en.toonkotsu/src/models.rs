@@ -4,7 +4,7 @@ use crate::{
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Viewer,
-	alloc::{String, Vec, format, string::ToString, vec},
+	alloc::{String, Vec, collections::BTreeSet, format, string::ToString, vec},
 };
 use serde::Deserialize;
 
@@ -241,6 +241,17 @@ pub struct LatestList {
 pub struct SeriesDetail {
 	pub series: Series,
 	pub chapters: Option<Vec<ChapterEntry>>,
+}
+
+/// Every upload once: a release can be listed under more than one chapter, and the site
+/// draws it once, so its id decides rather than where it was listed.
+pub fn chapter_list(entries: Vec<ChapterEntry>) -> Vec<Chapter> {
+	let mut seen: BTreeSet<String> = BTreeSet::new();
+	entries
+		.into_iter()
+		.flat_map(ChapterEntry::into_chapters)
+		.filter(|chapter| seen.insert(chapter.key.clone()))
+		.collect()
 }
 
 #[derive(Deserialize, Default)]

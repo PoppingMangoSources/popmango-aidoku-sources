@@ -1,6 +1,6 @@
 use crate::{
 	helpers::{key_from_query, key_from_url, split_label, split_range},
-	models::{ChapterEntry, Series},
+	models::{ChapterEntry, Series, chapter_list},
 };
 use aidoku::alloc::{String, Vec, vec};
 use aidoku_test::aidoku_test;
@@ -159,4 +159,20 @@ fn test_page_decryption() {
 	crate::reader::decrypt_page(&mut data, "AAECAwQFBgcICQoLDA0ODw", "oKGio6Slpqc")
 		.expect("decrypt");
 	assert_eq!(&data[..], b"Toonkotsu pages cross a block boundary!!");
+}
+
+#[aidoku_test]
+fn test_release_listed_twice_is_one_chapter() {
+	let entries: Vec<ChapterEntry> = serde_json::from_str(
+		r#"[
+			{"id": 1, "n": 1, "group": {"name": "Official"}, "alts": [{"id": 2, "group": {"name": "Rolia"}}]},
+			{"id": 3, "n": 2, "group": {"name": "Rolia"}, "alts": [{"id": 1, "group": {"name": "Official"}}]}
+		]"#,
+	)
+	.expect("entries");
+	let keys: Vec<String> = chapter_list(entries)
+		.into_iter()
+		.map(|chapter| chapter.key)
+		.collect();
+	assert_eq!(keys, ["1", "2", "3"]);
 }
