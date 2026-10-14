@@ -1,14 +1,16 @@
 use crate::{
 	helpers::{key_from_query, key_from_url, split_label, split_range},
-	models::{ChapterEntry, Series, chapter_list},
+	models::{Series, chapter_list},
 };
 use aidoku::alloc::{String, Vec, vec};
 use aidoku_test::aidoku_test;
 
 fn chapters(json: &str) -> Vec<aidoku::Chapter> {
-	serde_json::from_str::<ChapterEntry>(json)
-		.expect("chapter entry")
-		.into_chapters()
+	chapter_list(serde_json::from_str(json).expect("chapter entries"))
+}
+
+fn keys(list: &[aidoku::Chapter]) -> Vec<&str> {
+	list.iter().map(|chapter| chapter.key.as_str()).collect()
 }
 
 #[aidoku_test]
@@ -43,8 +45,8 @@ fn test_label_groups() {
 #[aidoku_test]
 fn test_chapter_from_entry() {
 	let list = chapters(
-		r#"{"id": 7, "label": "Chapter 2: Rain", "at": 1700000000000, "n": 2, "vol": "3",
-			"group": {"name": "Alpha"}}"#,
+		r#"[{"id": 7, "label": "Chapter 2: Rain", "at": 1700000000000, "n": 2, "vol": "3",
+			"group": {"name": "Alpha"}}]"#,
 	);
 	assert_eq!(list.len(), 1);
 	let chapter = &list[0];
@@ -63,37 +65,36 @@ fn test_chapter_from_entry() {
 #[aidoku_test]
 fn test_volume_zero_is_none() {
 	assert_eq!(
-		chapters(r#"{"id": 1, "n": 1, "vol": 0}"#)[0].volume_number,
+		chapters(r#"[{"id": 1, "n": 1, "vol": 0}]"#)[0].volume_number,
 		None
 	);
 	assert_eq!(
-		chapters(r#"{"id": 1, "n": 1, "vol": "0"}"#)[0].volume_number,
+		chapters(r#"[{"id": 1, "n": 1, "vol": "0"}]"#)[0].volume_number,
 		None
 	);
-	assert_eq!(chapters(r#"{"id": 1, "n": 1}"#)[0].volume_number, None);
+	assert_eq!(chapters(r#"[{"id": 1, "n": 1}]"#)[0].volume_number, None);
 	assert_eq!(
-		chapters(r#"{"id": 1, "n": 1, "vol": 2}"#)[0].volume_number,
+		chapters(r#"[{"id": 1, "n": 1, "vol": 2}]"#)[0].volume_number,
 		Some(2.0)
 	);
 }
 
 #[aidoku_test]
 fn test_title_naming_the_group_is_dropped() {
-	let list = chapters(r#"{"id": 1, "n": 1, "label": "Alpha", "group": {"name": "alpha"}}"#);
+	let list = chapters(r#"[{"id": 1, "n": 1, "label": "Alpha", "group": {"name": "alpha"}}]"#);
 	assert_eq!(list[0].title, None);
 }
 
 #[aidoku_test]
 fn test_alternates_keep_one_per_group() {
 	let list = chapters(
-		r#"{"id": 1, "n": 9, "group": {"name": "Alpha"}, "alts": [
+		r#"[{"id": 1, "n": 9, "group": {"name": "Alpha"}, "alts": [
 			{"id": 2, "group": {"name": "alpha"}},
 			{"id": 3, "group": {"name": "Beta"}},
 			{"id": 4, "label": "Chapter 9 [Beta]"}
-		]}"#,
+		]}]"#,
 	);
-	let keys: Vec<&str> = list.iter().map(|chapter| chapter.key.as_str()).collect();
-	assert_eq!(keys, ["1", "3"]);
+	assert_eq!(keys(&list), ["1", "3"]);
 	assert!(
 		list.iter()
 			.all(|chapter| chapter.chapter_number == Some(9.0))
@@ -163,16 +164,41 @@ fn test_page_decryption() {
 
 #[aidoku_test]
 fn test_release_listed_twice_is_one_chapter() {
-	let entries: Vec<ChapterEntry> = serde_json::from_str(
+	let list = chapters(
 		r#"[
 			{"id": 1, "n": 1, "group": {"name": "Official"}, "alts": [{"id": 2, "group": {"name": "Rolia"}}]},
 			{"id": 3, "n": 2, "group": {"name": "Rolia"}, "alts": [{"id": 1, "group": {"name": "Official"}}]}
 		]"#,
-	)
-	.expect("entries");
-	let keys: Vec<String> = chapter_list(entries)
-		.into_iter()
-		.map(|chapter| chapter.key)
-		.collect();
-	assert_eq!(keys, ["1", "2", "3"]);
+	);
+	assert_eq!(keys(&list), ["3", "1", "2"]);
+}
+
+#[aidoku_test]
+fn test_group_keeps_its_best_upload() {
+	let list = chapters(
+		r#"[
+			{"id": 1, "n": 1, "w": 720, "mb": 9.5, "group": {"name": "Rolia"}, "alts": [
+				{"id": 2, "w": 1200, "mb": 19.1, "group": {"name": "Rolia"}},
+				{"id": 3, "w": 720, "mb": 2.7, "group": {"name": "Luna"}}
+			]},
+			{"id": 4, "n": 1, "w": 720, "mb": 3.0, "group": {"name": "Luna"}}
+		]"#,
+	);
+	assert_eq!(keys(&list), ["2", "4"]);
+}
+
+#[aidoku_test]
+fn test_volumes_order_the_list() {
+	let list = chapters(
+		r#"[
+			{"id": 1, "n": 30},
+			{"id": 2, "n": 5, "vol": 2},
+			{"id": 3, "n": 2, "vol": 1},
+			{"id": 4, "n": 1, "vol": 3, "group": {"name": "Official"}},
+			{"id": 5, "n": 1, "vol": 1, "group": {"name": "Official"}},
+			{"id": 6, "vol": 2, "label": "Vol. 2", "group": {"name": "Official"}}
+		]"#,
+	);
+	assert_eq!(keys(&list), ["1", "4", "6", "2", "3", "5"]);
+	assert_eq!(list[2].title, None);
 }

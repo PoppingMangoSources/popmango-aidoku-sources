@@ -4,7 +4,13 @@ use crate::{
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Viewer,
-	alloc::{String, Vec, collections::BTreeSet, format, string::ToString, vec},
+	alloc::{
+		String, Vec,
+		collections::{BTreeMap, BTreeSet},
+		format,
+		string::ToString,
+		vec,
+	},
 };
 use serde::Deserialize;
 
@@ -120,6 +126,9 @@ pub struct Release {
 	pub label: Option<String>,
 	pub at: Option<i64>,
 	pub group: Option<Group>,
+	/// Page width in pixels and download size in megabytes, which rank a group's uploads.
+	pub w: Option<i64>,
+	pub mb: Option<f64>,
 }
 
 /// The site numbers a volume either way round.
@@ -184,34 +193,6 @@ impl ChapterEntry {
 	pub fn into_chapter(self) -> Chapter {
 		self.release.into_chapter(self.n, self.vol.as_ref())
 	}
-
-	/// The chapter's own upload, then the alternates, with only the first from each group:
-	/// an alternate can be the same group's upload mirrored from elsewhere.
-	pub fn into_chapters(self) -> Vec<Chapter> {
-		let ChapterEntry {
-			release,
-			n,
-			vol,
-			alts,
-		} = self;
-		let mut chapters: Vec<Chapter> = Vec::new();
-		for release in core::iter::once(release).chain(alts.unwrap_or_default()) {
-			let chapter = release.into_chapter(n, vol.as_ref());
-			let group = chapter.scanlators.as_ref().and_then(|names| names.first());
-			let seen = chapters.iter().any(|kept| {
-				let kept = kept.scanlators.as_ref().and_then(|names| names.first());
-				match (kept, group) {
-					(Some(kept), Some(group)) => kept.eq_ignore_ascii_case(group),
-					(None, None) => true,
-					_ => false,
-				}
-			});
-			if !seen {
-				chapters.push(chapter);
-			}
-		}
-		chapters
-	}
 }
 
 #[derive(Deserialize, Default)]
@@ -243,15 +224,67 @@ pub struct SeriesDetail {
 	pub chapters: Option<Vec<ChapterEntry>>,
 }
 
-/// Every upload once: a release can be listed under more than one chapter, and the site
-/// draws it once, so its id decides rather than where it was listed.
+/// One row per group for each chapter, as the site lists them: a group's other uploads of
+/// the same chapter are mirrors, of which the widest, then largest, is kept.
 pub fn chapter_list(entries: Vec<ChapterEntry>) -> Vec<Chapter> {
-	let mut seen: BTreeSet<String> = BTreeSet::new();
-	entries
-		.into_iter()
-		.flat_map(ChapterEntry::into_chapters)
-		.filter(|chapter| seen.insert(chapter.key.clone()))
-		.collect()
+	// A release can also be listed under more than one chapter.
+	let mut ids: BTreeSet<i64> = BTreeSet::new();
+	let mut slots: BTreeMap<String, usize> = BTreeMap::new();
+	let mut kept: Vec<((i64, f64), Chapter)> = Vec::new();
+	for ChapterEntry {
+		release,
+		n,
+		vol,
+		alts,
+	} in entries
+	{
+		for release in core::iter::once(release).chain(alts.unwrap_or_default()) {
+			if !ids.insert(release.id) {
+				continue;
+			}
+			let quality = (
+				release.w.unwrap_or_default(),
+				release.mb.unwrap_or_default(),
+			);
+			let chapter = release.into_chapter(n, vol.as_ref());
+			let group = chapter
+				.scanlators
+				.as_ref()
+				.and_then(|names| names.first())
+				.map(|name| name.to_lowercase());
+			// Unnumbered releases are told apart by their titles.
+			let title = chapter.chapter_number.is_none().then_some(&chapter.title);
+			let slot = format!(
+				"{:?} {:?} {group:?} {title:?}",
+				chapter.volume_number, chapter.chapter_number
+			);
+			match slots.get(&slot) {
+				Some(&index) => {
+					if quality > kept[index].0 {
+						kept[index] = (quality, chapter);
+					}
+				}
+				None => {
+					slots.insert(slot, kept.len());
+					kept.push((quality, chapter));
+				}
+			}
+		}
+	}
+	let mut chapters: Vec<Chapter> = kept.into_iter().map(|(_, chapter)| chapter).collect();
+	// Official releases restart their numbering each volume, so the list runs by volume, then
+	// number. Chapters not yet in a volume are the newest, and a whole volume heads its own.
+	let rank = |chapter: &Chapter| {
+		(
+			chapter.volume_number.unwrap_or(f32::INFINITY),
+			chapter.chapter_number.unwrap_or(f32::INFINITY),
+		)
+	};
+	chapters.sort_by(|a, b| {
+		let (a, b) = (rank(a), rank(b));
+		b.0.total_cmp(&a.0).then(b.1.total_cmp(&a.1))
+	});
+	chapters
 }
 
 #[derive(Deserialize, Default)]

@@ -95,7 +95,7 @@ impl BrowseParams {
 }
 
 /// Pornographic titles are kept out of the catalogue unless that rating is on.
-fn sfw() -> bool {
+pub fn sfw() -> bool {
 	!settings::content_ratings()
 		.iter()
 		.any(|rating| rating == "pornographic")

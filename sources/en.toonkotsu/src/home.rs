@@ -44,10 +44,11 @@ const SECTIONS: &[(&str, &str, Layout)] = &[
 /// the rest are browse with a sort or a set of the site's own.
 pub fn section_request(id: &str, page: i32) -> Result<Request> {
 	match id {
-		"views" | "trending" => ranking_request(id, &BrowseParams::new("latest", page)),
-		"gems" => discovery_request(id, &BrowseParams::new("latest", page)),
+		"views" => ranking_request(id, &BrowseParams::new("latest", page)),
+		"trending" | "gems" => discovery_request(id, &BrowseParams::new("latest", page)),
 		"latest" => json_request(format!(
-			"{BASE_URL}/cdn/v1/latest?page={page}&limit={PAGE_SIZE}"
+			"{BASE_URL}/cdn/v1/latest?page={page}&limit={PAGE_SIZE}{}",
+			if api::sfw() { "&sfw=1" } else { "" }
 		)),
 		"seasonal" | "completed" => {
 			let mut params = BrowseParams::new("latest", page);
