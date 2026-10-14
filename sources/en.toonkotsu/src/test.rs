@@ -1,5 +1,5 @@
 use crate::{
-	helpers::{key_from_query, key_from_url, split_label, split_range},
+	helpers::{key_from_query, key_from_url, split_label},
 	models::{Series, chapter_list},
 };
 use aidoku::alloc::{String, Vec, vec};
@@ -139,15 +139,6 @@ fn test_links() {
 }
 
 #[aidoku_test]
-fn test_ranges() {
-	assert_eq!(split_range("2018-2022"), ("2018".into(), "2022".into()));
-	assert_eq!(split_range(" 2020 "), ("2020".into(), "2020".into()));
-	assert_eq!(split_range("20-"), ("20".into(), String::new()));
-	assert_eq!(split_range("abc"), (String::new(), String::new()));
-}
-
-// ciphertext from `openssl enc -aes-128-ctr` with the nonce's eight bytes, then a zero counter
-#[aidoku_test]
 fn test_page_decryption() {
 	let mut data = [
 		143u8, 71, 251, 242, 85, 194, 201, 19, 18, 43, 140, 142, 74, 5, 10, 239, 3, 148, 93, 233,
@@ -222,4 +213,14 @@ fn test_main_only_skips_alternates() {
 		true,
 	);
 	assert_eq!(keys(&list), ["2351311", "1491694"]);
+}
+
+#[aidoku_test]
+fn test_tag_groups_follow_the_site_picker() {
+	use crate::filters::group_index;
+	assert_eq!(group_index("Romance", None), 0);
+	assert_eq!(group_index("Harem", None), 1);
+	assert_eq!(group_index("Office", Some("Setting-Scene")), 1);
+	assert_eq!(group_index("Smut", None), 2);
+	assert_eq!(group_index("Doujinshi", None), 3);
 }

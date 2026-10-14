@@ -11,15 +11,41 @@ use aidoku::{
 	alloc::{String, Vec, format, vec},
 };
 
-/// The catalogue files each tag under a category, and leaves the main genres without one.
-/// Every group filters the same parameter, so a reader can mix them freely.
-const GROUPS: &[(&str, &str, Option<&str>)] = &[
-	("genres", "Genres", None),
-	("themes", "Themes", Some("Theme")),
-	("cast", "Cast", Some("Cast")),
-	("setting", "Setting", Some("Setting")),
-	("format", "Format", Some("Technical")),
+/// The groups of the site's own tag picker. Every group filters the same parameter, so a
+/// reader can mix them freely.
+const GROUPS: &[(&str, &str)] = &[
+	("genres", "Genres"),
+	("themes", "Themes"),
+	("content", "Content"),
+	("format", "Format"),
 ];
+
+/// Uncategorised tags the site's picker files under themes rather than genres.
+const THEME_TAGS: &[&str] = &[
+	"School Life",
+	"Martial Arts",
+	"Harem",
+	"Isekai",
+	"Gender Bender",
+	"Mecha",
+	"Supernatural",
+	"Historical",
+];
+
+const CONTENT_TAGS: &[&str] = &["Ecchi", "Mature", "Smut", "Adult", "Hentai"];
+
+/// The picker reads every categorised tag as a theme, and leaves the main genres without one.
+pub(crate) fn group_index(name: &str, category: Option<&str>) -> usize {
+	if category.is_some_and(|category| !category.is_empty()) || THEME_TAGS.contains(&name) {
+		1
+	} else if CONTENT_TAGS.contains(&name) {
+		2
+	} else if name == "Doujinshi" {
+		3
+	} else {
+		0
+	}
+}
 
 /// The site only offers these once erotica is allowed.
 const EROTIC_TAGS: &[&str] = &["Hentai", "Adult", "Smut"];
@@ -59,21 +85,14 @@ impl DynamicFilters for Toonkotsu {
 			{
 				continue;
 			}
-			let category = facet.category.unwrap_or_default();
-			let index = GROUPS
-				.iter()
-				.position(|(_, _, prefix)| {
-					prefix.is_some_and(|prefix| category.starts_with(prefix))
-				})
-				.unwrap_or(if category.is_empty() { 0 } else { 1 });
-			grouped[index].push(facet.name);
+			grouped[group_index(&facet.name, facet.category.as_deref())].push(facet.name);
 		}
 
 		Ok(GROUPS
 			.iter()
 			.zip(grouped)
 			.filter(|(_, options)| !options.is_empty())
-			.map(|((id, title, _), mut options)| {
+			.map(|((id, title), mut options)| {
 				options.sort();
 				MultiSelectFilter {
 					id: (*id).into(),

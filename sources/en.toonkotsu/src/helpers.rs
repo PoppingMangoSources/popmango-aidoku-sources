@@ -1,19 +1,12 @@
 use crate::{api::BASE_URL, models::Series, settings};
 use aidoku::{
-	alloc::{String, borrow::ToOwned, format, string::ToString},
+	alloc::{String, borrow::ToOwned, format},
 	imports::html::Html,
 };
 
 /// Demographics have their own filter, and the site never offers these for browsing.
 const UNLISTED_TAGS: &[&str] = &[
-	"Shounen",
-	"Shoujo",
-	"Seinen",
-	"Josei",
-	"Lolicon",
-	"Shotacon",
-	"Other",
-	"Doujinshi",
+	"Shounen", "Shoujo", "Seinen", "Josei", "Lolicon", "Shotacon", "Other",
 ];
 
 pub fn is_unlisted_tag(tag: &str) -> bool {
@@ -101,27 +94,6 @@ pub fn key_from_url(url: &str) -> Option<String> {
 pub fn key_from_query(query: &str) -> Option<String> {
 	let query = query.trim();
 	query.contains("/title/").then(|| key_from_url(query))?
-}
-
-/// The site takes the ends of a range separately, and a lone value stands for both.
-pub fn split_range(value: &str) -> (String, String) {
-	let numeric = |value: &str| {
-		let value = value.trim();
-		value
-			.chars()
-			.all(|c| c.is_ascii_digit())
-			.then(|| value.to_string())
-	};
-	match value.split_once('-') {
-		Some((start, end)) => (
-			numeric(start).unwrap_or_default(),
-			numeric(end).unwrap_or_default(),
-		),
-		None => {
-			let value = numeric(value).unwrap_or_default();
-			(value.clone(), value)
-		}
-	}
 }
 
 /// The number in "Chapter 12", "Ch. 12", "#12" or "12", when that is all there is.

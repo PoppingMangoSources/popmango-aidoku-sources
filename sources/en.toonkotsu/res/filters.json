@@ -85,15 +85,15 @@
 		"placeholder": "e.g. Oda Eiichiro"
 	},
 	{
-		"type": "text",
+		"type": "range",
 		"id": "year",
 		"title": "Release Year",
-		"placeholder": "e.g. 2020 or 2018-2022"
+		"min": 1900
 	},
 	{
-		"type": "text",
+		"type": "range",
 		"id": "chapters",
 		"title": "Chapter Count",
-		"placeholder": "e.g. 50 or 20-100"
+		"min": 0
 	}
 ]

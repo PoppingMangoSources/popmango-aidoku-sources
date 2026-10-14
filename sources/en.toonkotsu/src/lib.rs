@@ -15,7 +15,7 @@ use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, ImageResponse,
 	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContext, PageImageProcessor,
 	Result, Source,
-	alloc::{String, Vec, format, vec},
+	alloc::{String, Vec, format, string::ToString, vec},
 	imports::{canvas::ImageRef, net::Request},
 	prelude::*,
 };
@@ -72,14 +72,21 @@ impl Source for Toonkotsu {
 					"exclude_mode" => params.exclude_mode = value,
 					_ => {}
 				},
-				FilterValue::Text { id, value } => match id.as_str() {
-					"author" => params.author = value,
-					"year" => (params.year_min, params.year_max) = helpers::split_range(&value),
-					"chapters" => {
-						(params.chapters_min, params.chapters_max) = helpers::split_range(&value);
+				FilterValue::Text { id, value } if id == "author" => params.author = value,
+				FilterValue::Range { id, from, to } => {
+					let bound = |value: Option<f32>| {
+						value
+							.map(|value| (value as i32).to_string())
+							.unwrap_or_default()
+					};
+					match id.as_str() {
+						"year" => (params.year_min, params.year_max) = (bound(from), bound(to)),
+						"chapters" => {
+							(params.chapters_min, params.chapters_max) = (bound(from), bound(to));
+						}
+						_ => {}
 					}
-					_ => {}
-				},
+				}
 				FilterValue::MultiSelect {
 					id,
 					included,
