@@ -117,25 +117,32 @@ fn read<T: DeserializeOwned>((status, body): (i32, String)) -> Result<T> {
 		.map_err(|_| error!("Toonkotsu sent reader data this source cannot read"))
 }
 
-/// A refused read asks to be signed again, names a wait, or wants the human check.
-fn retry_after(limit: ReaderLimit) -> Result<Option<i32>> {
+/// What a refused read needs before it is tried again.
+enum Retry {
+	Resign,
+	Wait(i32),
+	/// The human check, which belongs to the guest session rather than to the reader.
+	NewSession,
+}
+
+fn retry_for(limit: ReaderLimit) -> Result<Retry> {
 	if limit.code.as_deref() != Some("manga-limit") {
 		bail!("Toonkotsu refused to load this chapter (status 429)");
 	}
 	if limit.resign == Some(true) {
-		return Ok(None);
+		return Ok(Retry::Resign);
 	}
 	if limit.transient == Some(true) {
 		// The site's reader waits as long as it is told, up to ten seconds.
-		return Ok(Some(limit.retry_after_sec.unwrap_or(2).clamp(1, 10) as i32));
+		return Ok(Retry::Wait(
+			limit.retry_after_sec.unwrap_or(2).clamp(1, 10) as i32
+		));
 	}
 	if limit.reason.as_deref() == Some("wait") {
 		let seconds = limit.retry_after_sec.unwrap_or(600);
 		bail!("Toonkotsu is limiting reads right now. Try again in {seconds} seconds.");
 	}
-	bail!(
-		"Toonkotsu wants you to confirm you're human. In Toonkotsu's settings, tap Pass Human Check, open any chapter and pass the check, then reopen this one."
-	);
+	Ok(Retry::NewSession)
 }
 
 /// Each encrypted page carries its key and nonce in its context, for the image processor.
@@ -148,18 +155,28 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	let path = format!("/api/manga/chapter/{chapter_key}");
 	// As on the site, a refused read is tried twice more with a fresh key.
 	let mut attempt = 1;
+	let mut new_session = false;
 	let (signer, chapter) = loop {
 		let signer = Signer::new(&read::<ReaderKey>(site.get("/api/manga/key", None)?)?)?;
 		let response = site.get(&path, Some(&signer.header(&path)))?;
 		if response.0 != 429 {
 			break (signer, read::<ReaderResponse>(response)?);
 		}
-		let wait = retry_after(serde_json::from_str(&response.1).unwrap_or_default())?;
-		if attempt == 3 {
-			bail!("Toonkotsu is limiting reads right now. Try again in a moment.");
-		}
-		if let Some(seconds) = wait {
-			sleep(seconds);
+		match retry_for(serde_json::from_str(&response.1).unwrap_or_default())? {
+			// A new guest session starts without the check, so one is tried before asking.
+			Retry::NewSession if !new_session => {
+				new_session = true;
+				site.0.delete_all_cookies()?;
+				site.get("/api/auth/me", None)?;
+			}
+			Retry::NewSession => bail!(
+				"Toonkotsu wants you to confirm you're human. In Toonkotsu's settings, tap Pass Human Check, open any chapter and pass the check, then reopen this one."
+			),
+			_ if attempt == 3 => {
+				bail!("Toonkotsu is limiting reads right now. Try again in a moment.")
+			}
+			Retry::Resign => {}
+			Retry::Wait(seconds) => sleep(seconds),
 		}
 		attempt += 1;
 	};
