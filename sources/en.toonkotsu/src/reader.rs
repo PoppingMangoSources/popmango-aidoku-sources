@@ -7,7 +7,7 @@ use crate::{
 use aidoku::{
 	Page, PageContent, PageContext, Result,
 	alloc::{String, Vec, format, string::ToString},
-	imports::{js::WebView, std::sleep},
+	imports::{js::WebView, net::Request, std::sleep},
 	prelude::*,
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -122,7 +122,7 @@ enum Retry {
 	Resign,
 	Wait(i32),
 	/// The human check, which belongs to the guest session rather than to the reader.
-	NewSession,
+	Verify,
 }
 
 fn retry_for(limit: ReaderLimit) -> Result<Retry> {
@@ -142,7 +142,7 @@ fn retry_for(limit: ReaderLimit) -> Result<Retry> {
 		let seconds = limit.retry_after_sec.unwrap_or(600);
 		bail!("Toonkotsu is limiting reads right now. Try again in {seconds} seconds.");
 	}
-	Ok(Retry::NewSession)
+	Ok(Retry::Verify)
 }
 
 /// Each encrypted page carries its key and nonce in its context, for the image processor.
@@ -154,8 +154,8 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 
 	let path = format!("/api/manga/chapter/{chapter_key}");
 	// As on the site, a refused read is tried twice more with a fresh key.
-	let mut attempt = 1;
-	let mut new_session = false;
+	let mut retries = 0;
+	let mut checks = 0;
 	let (signer, chapter) = loop {
 		let signer = Signer::new(&read::<ReaderKey>(site.send(
 			"GET",
@@ -167,22 +167,37 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 			break (signer, read::<ReaderResponse>(response)?);
 		}
 		match retry_for(serde_json::from_str(&response.1).unwrap_or_default())? {
-			// A new guest session starts without the check, so one is tried before asking.
-			Retry::NewSession if !new_session => {
-				new_session = true;
-				site.0.delete_all_cookies()?;
-				site.send("GET", "/api/auth/me", None)?;
+			Retry::Verify => {
+				checks += 1;
+				match checks {
+					// A new guest session starts without the check.
+					1 => {
+						site.0.delete_all_cookies()?;
+						site.send("GET", "/api/auth/me", None)?;
+					}
+					// The site's own reader runs the check, which often passes without a tap,
+					// and unlocks the session; it is given a few seconds to.
+					2 => {
+						site.0.load_blocking(Request::get(format!(
+							"{BASE_URL}/chapter/{chapter_key}"
+						))?)?;
+						sleep(5);
+					}
+					3 | 4 => sleep(5),
+					_ => bail!(
+						"Toonkotsu wants you to confirm you're human. In Toonkotsu's settings, tap Pass Human Check, open any chapter and pass the check, then reopen this one."
+					),
+				}
 			}
-			Retry::NewSession => bail!(
-				"Toonkotsu wants you to confirm you're human. In Toonkotsu's settings, tap Pass Human Check, open any chapter and pass the check, then reopen this one."
-			),
-			_ if attempt == 3 => {
+			_ if retries == 2 => {
 				bail!("Toonkotsu is limiting reads right now. Try again in a moment.")
 			}
-			Retry::Resign => {}
-			Retry::Wait(seconds) => sleep(seconds),
+			Retry::Resign => retries += 1,
+			Retry::Wait(seconds) => {
+				retries += 1;
+				sleep(seconds);
+			}
 		}
-		attempt += 1;
 	};
 
 	let wrapped = match chapter.wrap.as_deref() {
