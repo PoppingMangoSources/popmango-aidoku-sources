@@ -53,3 +53,12 @@ pub fn hidden_tags() -> Vec<String> {
 pub fn deduplicate_chapters() -> bool {
 	defaults_get::<bool>("deduplicateChapters").unwrap_or_default()
 }
+
+pub fn show_upload_size() -> bool {
+	defaults_get::<bool>("showUploadSize").unwrap_or_default()
+}
+
+/// The home sections to load, or every one when the setting was never stored.
+pub fn home_sections() -> Option<Vec<String>> {
+	defaults_get::<Vec<String>>("homeSections")
+}

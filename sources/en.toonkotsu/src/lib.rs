@@ -134,6 +134,7 @@ impl Source for Toonkotsu {
 			manga.chapters = Some(chapter_list(
 				chapters.unwrap_or_default(),
 				settings::deduplicate_chapters(),
+				settings::show_upload_size(),
 			));
 		}
 		if needs_details {

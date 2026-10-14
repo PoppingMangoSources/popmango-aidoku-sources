@@ -1,6 +1,8 @@
 use crate::{
 	api::BASE_URL,
-	helpers::{clean_text, cover_url, is_unlisted_tag, manga_url, rating_id, split_label},
+	helpers::{
+		absolute_url, clean_text, cover_url, is_unlisted_tag, manga_url, rating_id, split_label,
+	},
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Viewer,
@@ -129,6 +131,8 @@ pub struct Release {
 	/// Page width in pixels and download size in megabytes, which rank a group's uploads.
 	pub w: Option<i64>,
 	pub mb: Option<f64>,
+	/// Only a chapter's own upload has a thumbnail; its alternates do not.
+	pub thumb: Option<String>,
 }
 
 /// The site numbers a volume either way round.
@@ -181,6 +185,7 @@ impl Release {
 			date_uploaded: self.at.map(|at| at / 1000),
 			scanlators: scanlator.map(|name| vec![name]),
 			language: Some("en".into()),
+			thumbnail: self.thumb.as_deref().map(absolute_url),
 			..Default::default()
 		}
 	}
@@ -222,10 +227,24 @@ pub struct SeriesDetail {
 	pub chapters: Option<Vec<ChapterEntry>>,
 }
 
+/// The download as the site quotes it: whole megabytes from a hundred up, one decimal below.
+fn size_label(mb: f64) -> Option<String> {
+	if mb <= 0.0 {
+		return None;
+	}
+	let size = if mb >= 100.0 {
+		format!("{mb:.0}")
+	} else {
+		format!("{mb:.1}")
+	};
+	Some(format!("{} MB", size.strip_suffix(".0").unwrap_or(&size)))
+}
+
 /// One row per group for each chapter, as the site lists them: a group's other uploads of
 /// the same chapter are mirrors, of which the widest, then largest, is kept. With `main_only`,
-/// a chapter is only the upload the site shows first for it.
-pub fn chapter_list(entries: Vec<ChapterEntry>, main_only: bool) -> Vec<Chapter> {
+/// a chapter is only the upload the site shows first for it. With `show_size`, a group's
+/// uploads of different sizes are each kept, with the size closing the title.
+pub fn chapter_list(entries: Vec<ChapterEntry>, main_only: bool, show_size: bool) -> Vec<Chapter> {
 	// A release can also be listed under more than one chapter.
 	let mut ids: BTreeSet<i64> = BTreeSet::new();
 	let mut slots: BTreeMap<String, usize> = BTreeMap::new();
@@ -250,7 +269,8 @@ pub fn chapter_list(entries: Vec<ChapterEntry>, main_only: bool) -> Vec<Chapter>
 				release.w.unwrap_or_default(),
 				release.mb.unwrap_or_default(),
 			);
-			let chapter = release.into_chapter(n, vol.as_ref());
+			let size = show_size.then(|| size_label(quality.1)).flatten();
+			let mut chapter = release.into_chapter(n, vol.as_ref());
 			let group = chapter
 				.scanlators
 				.as_ref()
@@ -259,9 +279,15 @@ pub fn chapter_list(entries: Vec<ChapterEntry>, main_only: bool) -> Vec<Chapter>
 			// Unnumbered releases are told apart by their titles.
 			let title = chapter.chapter_number.is_none().then_some(&chapter.title);
 			let slot = format!(
-				"{:?} {:?} {group:?} {title:?}",
+				"{:?} {:?} {group:?} {title:?} {size:?}",
 				chapter.volume_number, chapter.chapter_number
 			);
+			if let Some(size) = size {
+				chapter.title = Some(match chapter.title {
+					Some(title) => format!("{title} ({size})"),
+					None => size,
+				});
+			}
 			match slots.get(&slot) {
 				Some(&index) => {
 					if quality > kept[index].0 {

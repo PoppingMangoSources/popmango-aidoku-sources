@@ -6,6 +6,7 @@ use crate::{
 	},
 	helpers::allows,
 	models::{LatestList, Series},
+	settings,
 };
 use aidoku::{
 	Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link, Listing,
@@ -132,8 +133,17 @@ impl Home for Toonkotsu {
 	/// Every section loads on its own, so one the site fails to answer stays empty rather
 	/// than taking the rest of the page with it.
 	fn get_home(&self) -> Result<HomeLayout> {
+		let shown = settings::home_sections();
+		let sections: Vec<_> = SECTIONS
+			.iter()
+			.filter(|(id, ..)| {
+				shown
+					.as_ref()
+					.is_none_or(|shown| shown.iter().any(|value| value == id))
+			})
+			.collect();
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
-			components: SECTIONS
+			components: sections
 				.iter()
 				.map(|(_, name, layout)| HomeComponent {
 					title: Some(String::from(*name)),
@@ -148,11 +158,12 @@ impl Home for Toonkotsu {
 				.collect(),
 		}));
 
-		let requests = SECTIONS
+		let requests = sections
 			.iter()
 			.map(|(id, ..)| section_request(id, 1))
 			.collect::<Result<Vec<_>>>()?;
-		for ((id, name, layout), response) in SECTIONS.iter().zip(Request::send_all(requests)) {
+		for ((id, name, layout), response) in sections.into_iter().zip(Request::send_all(requests))
+		{
 			let Ok(value) = response
 				.map_err(Into::into)
 				.and_then(|response| fill(*layout, id, name, response))

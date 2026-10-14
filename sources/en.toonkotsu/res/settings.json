@@ -64,12 +64,65 @@
 	{
 		"type": "group",
 		"title": "Chapters",
-		"footer": "Lists only the upload the site shows first for each chapter, rather than one from every group.",
+		"footer": "Deduplicate Chapters lists only the upload the site shows first for each chapter, rather than one from every group. Upload Size keeps each of a group's uploads of a chapter, with its size at the end of the title, where otherwise only the best is listed.",
 		"items": [
 			{
 				"type": "switch",
 				"key": "deduplicateChapters",
 				"title": "Deduplicate Chapters",
+				"refreshes": [
+					"content"
+				]
+			},
+			{
+				"type": "switch",
+				"key": "showUploadSize",
+				"title": "Upload Size",
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Home",
+		"footer": "Turn off the sections you don't read to make Discover load faster.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "homeSections",
+				"title": "Sections",
+				"values": [
+					"views",
+					"trending",
+					"score",
+					"gems",
+					"latest",
+					"new",
+					"seasonal",
+					"completed"
+				],
+				"titles": [
+					"Most Read",
+					"Trending",
+					"Top Rated",
+					"Hidden Gems",
+					"Latest Updates",
+					"Recently Added",
+					"This Season",
+					"Completed"
+				],
+				"default": [
+					"views",
+					"trending",
+					"score",
+					"gems",
+					"latest",
+					"new",
+					"seasonal",
+					"completed"
+				],
 				"refreshes": [
 					"content"
 				]

@@ -6,7 +6,11 @@ use aidoku::alloc::{String, Vec, vec};
 use aidoku_test::aidoku_test;
 
 fn chapters(json: &str) -> Vec<aidoku::Chapter> {
-	chapter_list(serde_json::from_str(json).expect("chapter entries"), false)
+	chapter_list(
+		serde_json::from_str(json).expect("chapter entries"),
+		false,
+		false,
+	)
 }
 
 fn keys(list: &[aidoku::Chapter]) -> Vec<&str> {
@@ -211,6 +215,7 @@ fn test_main_only_skips_alternates() {
 		)
 		.expect("chapter entries"),
 		true,
+		false,
 	);
 	assert_eq!(keys(&list), ["2351311", "1491694"]);
 }
@@ -223,4 +228,32 @@ fn test_tag_groups_follow_the_site_picker() {
 	assert_eq!(group_index("Office", Some("Setting-Scene")), 1);
 	assert_eq!(group_index("Smut", None), 2);
 	assert_eq!(group_index("Doujinshi", None), 3);
+}
+
+#[aidoku_test]
+fn test_upload_sizes_keep_each_download() {
+	let list = chapter_list(
+		serde_json::from_str(
+			r#"[
+				{"id": 1, "n": 1, "label": "Friends", "w": 720, "mb": 9.5, "thumb": "/cdn/t/1/a.webp",
+					"group": {"name": "Rolia"}, "alts": [
+					{"id": 2, "w": 1200, "mb": 19.1, "group": {"name": "Rolia"}},
+					{"id": 3, "w": 1200, "mb": 19.1, "group": {"name": "Rolia"}},
+					{"id": 4, "label": "Vol. 2", "mb": 1274.3, "group": {"name": "Official"}}
+				]}
+			]"#,
+		)
+		.expect("chapter entries"),
+		false,
+		true,
+	);
+	assert_eq!(keys(&list), ["1", "2", "4"]);
+	assert_eq!(list[0].title.as_deref(), Some("Friends (9.5 MB)"));
+	assert_eq!(list[1].title.as_deref(), Some("19.1 MB"));
+	assert_eq!(list[2].title.as_deref(), Some("1274 MB"));
+	assert_eq!(
+		list[0].thumbnail.as_deref(),
+		Some("https://toonkotsu.com/cdn/t/1/a.webp")
+	);
+	assert_eq!(list[1].thumbnail, None);
 }
