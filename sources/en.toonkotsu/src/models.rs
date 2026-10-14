@@ -336,5 +336,6 @@ pub struct ReaderLimit {
 	pub code: Option<String>,
 	pub reason: Option<String>,
 	pub transient: Option<bool>,
+	pub resign: Option<bool>,
 	pub retry_after_sec: Option<i64>,
 }

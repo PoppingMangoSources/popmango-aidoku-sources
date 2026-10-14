@@ -60,5 +60,21 @@
 				]
 			}
 		]
+	},
+	{
+		"type": "group",
+		"title": "Human Check",
+		"footer": "Toonkotsu asks guests to confirm they're human after reading a while. When a chapter stops with that message, open this, read any chapter until the check appears, pass it, then close the page. Reset clears the session it kept.",
+		"items": [
+			{
+				"type": "login",
+				"method": "web",
+				"key": "verify",
+				"title": "Pass Human Check",
+				"logoutTitle": "Reset Session",
+				"url": "https://toonkotsu.com/",
+				"clearCookiesOnLogOut": true
+			}
+		]
 	}
 ]

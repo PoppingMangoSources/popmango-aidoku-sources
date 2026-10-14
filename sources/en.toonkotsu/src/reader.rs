@@ -1,18 +1,19 @@
 // reference: https://github.com/PoppingMangoSources/general-extensions-mangago/blob/592613dda3388f0e95c64bc5c42d4cf752ddb42f/src/Toonkotsu/utils.ts
 use crate::{
-	api::{self, BASE_URL, json_request},
+	api::BASE_URL,
 	helpers::absolute_url,
 	models::{ReaderKey, ReaderLimit, ReaderResponse},
 };
 use aidoku::{
 	Page, PageContent, PageContext, Result,
 	alloc::{String, Vec, format, string::ToString},
-	imports::net::{Request, Response},
+	imports::{js::WebView, std::sleep},
 	prelude::*,
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ctr::cipher::{KeyIvInit, StreamCipher};
 use hmac::{Mac, SimpleHmac};
+use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 
 /// The reader's signing secret, which the site ships in its player bundle.
@@ -74,45 +75,94 @@ impl Signer {
 	}
 }
 
-/// Guests are asked to pass a human check before reading on, which only the site's own
-/// reader can run; a temporary limit names its own wait instead.
-fn check_limit(response: Response) -> Result<Response> {
-	if response.status_code() != 429 {
-		return Ok(response);
+/// Reads go through the source's web view, whose cookies the verify sheet in settings
+/// shares, so a human check passed there unlocks the guest session reading uses.
+struct Site(WebView);
+
+impl Site {
+	fn open(chapter_key: &str) -> Result<Self> {
+		let web_view = WebView::new();
+		// Loaded under the chapter's own address, as the site's reader is.
+		web_view.load_html_blocking(
+			"<html></html>",
+			Some(&format!("{BASE_URL}/chapter/{chapter_key}")),
+		)?;
+		Ok(Self(web_view))
 	}
-	let limit = response.get_json_owned::<ReaderLimit>().unwrap_or_default();
+
+	/// The status and body of a same-origin request, which carries the session cookie.
+	fn get(&self, path: &str, signature: Option<&str>) -> Result<(i32, String)> {
+		let signature = signature
+			.map(|signature| format!("request.setRequestHeader('x-sig', '{signature}');"))
+			.unwrap_or_default();
+		let result = self.0.eval(&format!(
+			"(() => {{
+				const request = new XMLHttpRequest();
+				request.open('GET', '{path}', false);
+				request.setRequestHeader('Accept', 'application/json');
+				{signature}
+				request.send();
+				return JSON.stringify([request.status, request.responseText]);
+			}})()"
+		))?;
+		serde_json::from_str(&result).map_err(|_| error!("Toonkotsu's reader could not be reached"))
+	}
+}
+
+fn read<T: DeserializeOwned>((status, body): (i32, String)) -> Result<T> {
+	if !(200..300).contains(&status) {
+		bail!("Toonkotsu returned status {status}");
+	}
+	serde_json::from_str(&body)
+		.map_err(|_| error!("Toonkotsu sent reader data this source cannot read"))
+}
+
+/// A refused read asks to be signed again, names a wait, or wants the human check.
+fn retry_after(limit: ReaderLimit) -> Result<Option<i32>> {
 	if limit.code.as_deref() != Some("manga-limit") {
 		bail!("Toonkotsu refused to load this chapter (status 429)");
 	}
-	let waits = limit.reason.as_deref() == Some("wait");
-	if limit.transient == Some(true) || waits {
-		let seconds = limit
-			.retry_after_sec
-			.unwrap_or(if waits { 600 } else { 10 });
+	if limit.resign == Some(true) {
+		return Ok(None);
+	}
+	if limit.transient == Some(true) {
+		// The site's reader waits as long as it is told, up to ten seconds.
+		return Ok(Some(limit.retry_after_sec.unwrap_or(2).clamp(1, 10) as i32));
+	}
+	if limit.reason.as_deref() == Some("wait") {
+		let seconds = limit.retry_after_sec.unwrap_or(600);
 		bail!("Toonkotsu is limiting reads right now. Try again in {seconds} seconds.");
 	}
 	bail!(
-		"Toonkotsu wants you to confirm you're human. Open this chapter in the web view, pass the check, then reopen it."
+		"Toonkotsu wants you to confirm you're human. In Toonkotsu's settings, tap Pass Human Check, open any chapter and pass the check, then reopen this one."
 	);
 }
 
 /// Each encrypted page carries its key and nonce in its context, for the image processor.
 pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
-	let request = |path: &str| -> Result<Request> {
-		Ok(json_request(format!("{BASE_URL}{path}"))?
-			.header("Referer", &format!("{BASE_URL}/chapter/{chapter_key}")))
-	};
+	let site = Site::open(chapter_key)?;
 	// The reader refuses a request without the guest session cookie, which only this
 	// call hands out; it is the one the site's pages make on load.
-	request("/api/auth/me")?.send()?;
-	let key: ReaderKey = api::parse(check_limit(request("/api/manga/key")?.send()?)?)?;
-	let signer = Signer::new(&key)?;
+	site.get("/api/auth/me", None)?;
 
 	let path = format!("/api/manga/chapter/{chapter_key}");
-	let response = request(&path)?
-		.header("x-sig", &signer.header(&path))
-		.send()?;
-	let chapter: ReaderResponse = api::parse(check_limit(response)?)?;
+	// As on the site, a refused read is tried twice more with a fresh key.
+	let mut attempt = 1;
+	let (signer, chapter) = loop {
+		let signer = Signer::new(&read::<ReaderKey>(site.get("/api/manga/key", None)?)?)?;
+		let response = site.get(&path, Some(&signer.header(&path)))?;
+		if response.0 != 429 {
+			break (signer, read::<ReaderResponse>(response)?);
+		}
+		let wait = retry_after(serde_json::from_str(&response.1).unwrap_or_default())?;
+		if attempt == 3 {
+			bail!("Toonkotsu is limiting reads right now. Try again in a moment.");
+		}
+		if let Some(seconds) = wait {
+			sleep(seconds);
+		}
+		attempt += 1;
+	};
 
 	let wrapped = match chapter.wrap.as_deref() {
 		None | Some("") => false,
