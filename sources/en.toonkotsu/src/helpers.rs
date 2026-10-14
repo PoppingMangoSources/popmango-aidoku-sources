@@ -1,0 +1,158 @@
+use crate::{api::BASE_URL, models::Series, settings};
+use aidoku::{
+	alloc::{String, borrow::ToOwned, format, string::ToString},
+	imports::html::Html,
+};
+
+/// Demographics have their own filter, and the site never offers these for browsing.
+const UNLISTED_TAGS: &[&str] = &[
+	"Shounen",
+	"Shoujo",
+	"Seinen",
+	"Josei",
+	"Lolicon",
+	"Shotacon",
+	"Other",
+	"Doujinshi",
+];
+
+pub fn is_unlisted_tag(tag: &str) -> bool {
+	UNLISTED_TAGS.contains(&tag)
+}
+
+/// The site's own ladder: an adult flag or Hentai is pornographic, Smut and Adult are
+/// erotica, Ecchi and Mature are suggestive.
+pub fn rating_id(series: &Series) -> &'static str {
+	let tags = series.tags.as_deref().unwrap_or_default();
+	let tagged = |name: &str| tags.iter().any(|tag| tag == name);
+	if series.adult == Some(true) || tagged("Hentai") {
+		"pornographic"
+	} else if tagged("Smut") || tagged("Adult") {
+		"erotica"
+	} else if tagged("Ecchi") || tagged("Mature") {
+		"suggestive"
+	} else {
+		"safe"
+	}
+}
+
+pub fn allows(series: &Series) -> bool {
+	let rating = rating_id(series);
+	settings::content_ratings()
+		.iter()
+		.any(|value| value == rating)
+}
+
+pub fn absolute_url(path: &str) -> String {
+	let path = path.trim();
+	if path.starts_with("http") {
+		path.into()
+	} else if let Some(rest) = path.strip_prefix("//") {
+		format!("https://{rest}")
+	} else if path.starts_with('/') {
+		format!("{BASE_URL}{path}")
+	} else {
+		format!("{BASE_URL}/{path}")
+	}
+}
+
+/// Covers come at three widths under one path: a card is worth the middle one, the
+/// details page the largest.
+pub fn cover_url(cover: Option<&str>, large: bool) -> Option<String> {
+	let cover = cover.map(str::trim).filter(|cover| !cover.is_empty())?;
+	let wanted = if large { "/720.webp" } else { "/460.webp" };
+	let sized = ["/220.webp", "/460.webp", "/720.webp"]
+		.iter()
+		.find_map(|size| cover.strip_suffix(size))
+		.map_or_else(|| cover.to_owned(), |base| format!("{base}{wanted}"));
+	Some(absolute_url(&sized))
+}
+
+pub fn manga_url(key: &str, slug: Option<&str>) -> String {
+	match slug.filter(|slug| !slug.is_empty()) {
+		Some(slug) => format!("{BASE_URL}/title/{key}-{slug}"),
+		None => format!("{BASE_URL}/title/{key}"),
+	}
+}
+
+/// The catalogue passes HTML entities through in its text.
+pub fn clean_text(text: &str) -> String {
+	let text = text.trim();
+	if !text.contains('&') {
+		return text.into();
+	}
+	Html::unescape(text).unwrap_or_else(|| text.into())
+}
+
+/// A `/title/` path is `{key}-{slug}`, and a key is a lowercase letter then four
+/// lowercase letters or digits, which is what tells the two apart.
+pub fn key_from_url(url: &str) -> Option<String> {
+	let path = url.split("/title/").nth(1)?;
+	let key = path.split(['/', '-', '?', '#']).next()?;
+	(key.len() == 5
+		&& key.starts_with(|c: char| c.is_ascii_lowercase())
+		&& key
+			.chars()
+			.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()))
+	.then(|| key.into())
+}
+
+/// A pasted link opens the series it names; anything else is an ordinary search term.
+pub fn key_from_query(query: &str) -> Option<String> {
+	let query = query.trim();
+	query.contains("/title/").then(|| key_from_url(query))?
+}
+
+/// The site takes the ends of a range separately, and a lone value stands for both.
+pub fn split_range(value: &str) -> (String, String) {
+	let numeric = |value: &str| {
+		let value = value.trim();
+		value
+			.chars()
+			.all(|c| c.is_ascii_digit())
+			.then(|| value.to_string())
+	};
+	match value.split_once('-') {
+		Some((start, end)) => (
+			numeric(start).unwrap_or_default(),
+			numeric(end).unwrap_or_default(),
+		),
+		None => {
+			let value = numeric(value).unwrap_or_default();
+			(value.clone(), value)
+		}
+	}
+}
+
+/// The number in "Chapter 12", "Ch. 12", "#12" or "12", when that is all there is.
+fn numbering(value: &str) -> Option<f64> {
+	value
+		.trim()
+		.trim_start_matches(|c: char| c.is_ascii_alphabetic() || c == '.' || c == '#')
+		.trim()
+		.parse()
+		.ok()
+}
+
+/// A label reads "Chapter 12: Title [Group]", where neither the numbering nor the
+/// bracketed group is part of the title, and a title that only repeats the number is none.
+pub fn split_label(label: &str, number: Option<f64>) -> (Option<String>, Option<String>) {
+	let label = clean_text(label);
+	let (label, group) = match (label.strip_suffix(']'), label.rfind('[')) {
+		(Some(_), Some(open)) => (
+			label[..open].trim(),
+			Some(label[open + 1..label.len() - 1].trim()),
+		),
+		_ => (label.as_str(), None),
+	};
+	let title = match label.split_once([':', '-', '–', '—', '|']) {
+		Some((leading, rest)) if numbering(leading).is_some() => rest.trim(),
+		_ if numbering(label).is_some() => "",
+		_ => label,
+	};
+	(
+		(!title.is_empty() && (number.is_none() || numbering(title) != number))
+			.then(|| title.into()),
+		group.filter(|group| !group.is_empty()).map(Into::into),
+	)
+}

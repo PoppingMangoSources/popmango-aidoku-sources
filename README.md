@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-platform.svg?v=2" alt="iOS / iPadOS" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-aidoku.svg?v=2" alt="Aidoku 0.8+" height="28"/>
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=3" alt="23 sources" height="28"/>
+  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=4" alt="24 sources" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-unofficial.svg?v=2" alt="Best effort, not maintained 24/7" height="28"/>
 </p>
 
@@ -41,7 +41,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 ## Manga, Manhwa & Manhua
 
-**23 sources** are currently packaged in this repository.
+**24 sources** are currently packaged in this repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/mkissa.png" width="24" align="top"/>&nbsp; Mkissa &nbsp;<sub><a href="https://mkissa.to">mkissa.to</a></sub></h3>
 
@@ -114,6 +114,10 @@ If you want the complete, actively maintained set, use the Paperback repository.
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/templescan.png" width="24" align="top"/>&nbsp; Temple Scan &nbsp;<sub><a href="https://templetoons.com">templetoons.com</a></sub></h3>
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix">.aix (v8)</a></sub>
+
+<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.toonkotsu/res/icon.png" width="24" align="top"/>&nbsp; Toonkotsu &nbsp;<sub><a href="https://toonkotsu.com">toonkotsu.com</a></sub></h3>
+
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonkotsu-v1.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonkotsu-v1.aix">.aix (v1)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/valirscans.png" width="24" align="top"/>&nbsp; ValirScans &nbsp;<sub><a href="https://valirscans.org">valirscans.org</a></sub></h3>
 

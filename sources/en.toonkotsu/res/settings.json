@@ -1,0 +1,64 @@
+[
+	{
+		"type": "group",
+		"title": "Content",
+		"footer": "Applies to Discover, listings and search. Pornographic titles are only requested when that rating is on.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "contentRatings",
+				"title": "Content Ratings",
+				"values": [
+					"safe",
+					"suggestive",
+					"erotica",
+					"pornographic"
+				],
+				"titles": [
+					"Safe",
+					"Suggestive",
+					"Erotica",
+					"Pornographic"
+				],
+				"default": [
+					"safe",
+					"suggestive",
+					"erotica"
+				],
+				"refreshes": [
+					"content",
+					"filters"
+				]
+			},
+			{
+				"type": "multi-select",
+				"key": "types",
+				"title": "Types",
+				"values": [
+					"manga",
+					"manhwa",
+					"manhua",
+					"oel",
+					"other"
+				],
+				"titles": [
+					"Manga",
+					"Manhwa",
+					"Manhua",
+					"OEL",
+					"Other"
+				],
+				"default": [
+					"manga",
+					"manhwa",
+					"manhua",
+					"oel",
+					"other"
+				],
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	}
+]

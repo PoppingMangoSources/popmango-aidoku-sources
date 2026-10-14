@@ -1,0 +1,99 @@
+[
+	{
+		"type": "sort",
+		"id": "sort",
+		"canAscend": true,
+		"options": [
+			"Best Match",
+			"Latest Upload",
+			"Date Added",
+			"Rating",
+			"Popularity",
+			"Chapter Count",
+			"Release Year",
+			"Title"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "demographics",
+		"title": "Demographic",
+		"canExclude": false,
+		"options": [
+			"Shounen",
+			"Shoujo",
+			"Seinen",
+			"Josei",
+			"None"
+		],
+		"ids": [
+			"shounen",
+			"shoujo",
+			"seinen",
+			"josei",
+			"none"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "statuses",
+		"title": "Publication Status",
+		"canExclude": false,
+		"options": [
+			"Ongoing",
+			"Completed",
+			"Hiatus",
+			"Cancelled"
+		],
+		"ids": [
+			"Ongoing",
+			"Complete",
+			"Hiatus",
+			"Canceled"
+		]
+	},
+	{
+		"type": "select",
+		"id": "genre_mode",
+		"title": "Included Tags Must Match",
+		"options": [
+			"All",
+			"Any"
+		],
+		"ids": [
+			"all",
+			"any"
+		]
+	},
+	{
+		"type": "select",
+		"id": "exclude_mode",
+		"title": "Excluded Tags Must Match",
+		"options": [
+			"Any",
+			"All"
+		],
+		"ids": [
+			"any",
+			"all"
+		]
+	},
+	{
+		"type": "text",
+		"id": "author",
+		"title": "Author",
+		"placeholder": "e.g. Oda Eiichiro"
+	},
+	{
+		"type": "text",
+		"id": "year",
+		"title": "Release Year",
+		"placeholder": "e.g. 2020 or 2018-2022"
+	},
+	{
+		"type": "text",
+		"id": "chapters",
+		"title": "Chapter Count",
+		"placeholder": "e.g. 50 or 20-100"
+	}
+]
