@@ -31,11 +31,10 @@ enum Layout {
 const SECTIONS: &[(&str, &str, Layout)] = &[
 	("views", "Most Read", Layout::Featured),
 	("trending", "Trending", Layout::Ranked),
-	("score", "Top Rated", Layout::Row),
+	("seasonal", "This Season", Layout::Row),
 	("gems", "Hidden Gems", Layout::Row),
 	("latest", "Latest Updates", Layout::Chapters),
 	("new", "Recently Added", Layout::Row),
-	("seasonal", "This Season", Layout::Row),
 	("completed", "Completed", Layout::Row),
 ];
 
@@ -52,7 +51,7 @@ pub fn section_request(id: &str, page: i32) -> Result<Request> {
 			params.discovery = id.into();
 			browse_request(&params)
 		}
-		"score" | "new" => browse_request(&BrowseParams::new(id, page)),
+		"new" => browse_request(&BrowseParams::new(id, page)),
 		_ => bail!("Unknown listing"),
 	}
 }

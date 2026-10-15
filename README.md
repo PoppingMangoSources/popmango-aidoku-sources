@@ -117,7 +117,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.toonkotsu/res/icon.png" width="24" align="top"/>&nbsp; Toonkotsu &nbsp;<sub><a href="https://toonkotsu.com">toonkotsu.com</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonkotsu-v23.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonkotsu-v23.aix">.aix (v23)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonkotsu-v24.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonkotsu-v24.aix">.aix (v24)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/valirscans.png" width="24" align="top"/>&nbsp; ValirScans &nbsp;<sub><a href="https://valirscans.org">valirscans.org</a></sub></h3>
 

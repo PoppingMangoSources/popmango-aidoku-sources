@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.toonkotsu",
 		"name": "Toonkotsu",
-		"version": 23,
+		"version": 24,
 		"url": "https://toonkotsu.com",
 		"contentRating": 1,
 		"minAppVersion": "0.7.1",
@@ -20,8 +20,8 @@
 			"name": "Trending"
 		},
 		{
-			"id": "score",
-			"name": "Top Rated"
+			"id": "seasonal",
+			"name": "This Season"
 		},
 		{
 			"id": "gems",
@@ -30,10 +30,6 @@
 		{
 			"id": "new",
 			"name": "Recently Added"
-		},
-		{
-			"id": "seasonal",
-			"name": "This Season"
 		},
 		{
 			"id": "completed",

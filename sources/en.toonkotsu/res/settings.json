@@ -96,31 +96,28 @@
 				"values": [
 					"views",
 					"trending",
-					"score",
+					"seasonal",
 					"gems",
 					"latest",
 					"new",
-					"seasonal",
 					"completed"
 				],
 				"titles": [
 					"Most Read",
 					"Trending",
-					"Top Rated",
+					"This Season",
 					"Hidden Gems",
 					"Latest Updates",
 					"Recently Added",
-					"This Season",
 					"Completed"
 				],
 				"default": [
 					"views",
 					"trending",
-					"score",
+					"seasonal",
 					"gems",
 					"latest",
 					"new",
-					"seasonal",
 					"completed"
 				],
 				"refreshes": [
