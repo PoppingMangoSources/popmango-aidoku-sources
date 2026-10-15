@@ -6,15 +6,8 @@ use aidoku::{
 /// Pornographic titles are opt-in, as they are on the site.
 const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica"];
 
-/// The catalogue files a series by its original language, so a type filters as the
-/// languages it is written in.
-const TYPES: &[(&str, &[&str])] = &[
-	("manga", &["ja", "ja-ro"]),
-	("manhwa", &["ko", "ko-ro"]),
-	("manhua", &["zh", "zh-hk", "zh-ro"]),
-	("oel", &["en"]),
-	("other", &["xx"]),
-];
+/// The options under Original Languages in settings.json.
+const LANGUAGE_COUNT: usize = 9;
 
 fn stored_list(key: &str, default: &[&str]) -> Vec<String> {
 	defaults_get::<Vec<String>>(key)
@@ -25,27 +18,16 @@ pub fn content_ratings() -> Vec<String> {
 	stored_list("contentRatings", DEFAULT_RATINGS)
 }
 
-/// Original languages the selected types are written in, or none when every type is on,
-/// since the catalogue then has nothing to narrow.
+/// The original languages to browse, or none when every one is on, since the catalogue then
+/// has nothing to narrow.
 pub fn original_languages() -> Vec<String> {
-	let selected = stored_list(
-		"types",
-		&TYPES.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
-	);
-	if selected.len() >= TYPES.len() {
-		return Vec::new();
-	}
-	let languages: Vec<String> = TYPES
-		.iter()
-		.filter(|(id, _)| selected.iter().any(|value| value == id))
-		.flat_map(|(_, languages)| languages.iter().map(|language| (*language).into()))
-		.collect();
-	if languages.is_empty() {
+	match defaults_get::<Vec<String>>("originalLanguages") {
 		// The catalogue matches nothing for a language it doesn't know, which is what
-		// clearing every type asks for.
-		return vec!["none".into()];
+		// clearing every language asks for.
+		Some(languages) if languages.is_empty() => vec!["none".into()],
+		Some(languages) if languages.len() < LANGUAGE_COUNT => languages,
+		_ => Vec::new(),
 	}
-	languages
 }
 
 pub fn hidden_tags() -> Vec<String> {

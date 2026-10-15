@@ -43,6 +43,7 @@ pub struct BrowseParams {
 	pub exclude_mode: String,
 	pub demographics: Vec<String>,
 	pub statuses: Vec<String>,
+	pub types: Vec<String>,
 	pub original_languages: Vec<String>,
 	pub author: String,
 	pub year_min: String,
@@ -83,6 +84,7 @@ impl BrowseParams {
 		set("excludeMode", &self.exclude_mode);
 		set("demographic", &self.demographics.join(","));
 		set("status", &self.statuses.join(","));
+		set("type", &self.types.join(","));
 		set("originalLanguage", &self.original_languages.join(","));
 		set("author", &self.author);
 		set("yearFrom", &self.year_min);

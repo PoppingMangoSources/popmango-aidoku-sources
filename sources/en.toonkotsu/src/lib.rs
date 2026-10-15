@@ -100,6 +100,7 @@ impl Source for Toonkotsu {
 				} => match id.as_str() {
 					"demographics" => params.demographics = included,
 					"statuses" => params.statuses = included,
+					"types" => params.types = included,
 					// Every tag group filters the one pair of catalogue parameters.
 					_ if filters::GROUPS.iter().any(|(group, _)| *group == id) => {
 						params.included_genres.extend(included);

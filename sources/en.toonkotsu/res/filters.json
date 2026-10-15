@@ -36,6 +36,25 @@
 	},
 	{
 		"type": "multi-select",
+		"id": "types",
+		"title": "Type",
+		"options": [
+			"Manga",
+			"Manhwa",
+			"Manhua",
+			"OEL",
+			"Other"
+		],
+		"ids": [
+			"manga",
+			"manhwa",
+			"manhua",
+			"oel",
+			"other"
+		]
+	},
+	{
+		"type": "multi-select",
 		"id": "statuses",
 		"title": "Publication Status",
 		"options": [
