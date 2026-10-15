@@ -8,8 +8,6 @@ mod home;
 mod models;
 mod reader;
 mod settings;
-#[cfg(test)]
-mod test;
 
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, ImageResponse,
