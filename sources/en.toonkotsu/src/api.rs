@@ -59,7 +59,7 @@ impl BrowseParams {
 			sort: sort.into(),
 			order: "desc".into(),
 			excluded_genres: settings::hidden_tags(),
-			original_languages: settings::original_languages(),
+			types: settings::types(),
 			..Default::default()
 		}
 	}
@@ -137,7 +137,7 @@ pub fn discovery_request(metric: &str, params: &BrowseParams) -> Result<Request>
 		"metric": metric,
 	});
 	for (name, values) in [
-		("originalLanguage", &params.original_languages),
+		("type", &params.types),
 		("exclude", &params.excluded_genres),
 	] {
 		if !values.is_empty() {

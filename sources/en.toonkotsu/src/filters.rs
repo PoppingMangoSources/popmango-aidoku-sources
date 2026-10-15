@@ -57,9 +57,7 @@ fn listed_facets() -> Result<Vec<Facet>> {
 		.genres
 		.unwrap_or_default()
 		.into_iter()
-		.filter(|facet| {
-			!is_unlisted_tag(&facet.name) && facet.category.as_deref() != Some("Demographic")
-		})
+		.filter(|facet| !is_unlisted_tag(&facet.name))
 		.collect())
 }
 

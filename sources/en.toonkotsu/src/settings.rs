@@ -6,8 +6,8 @@ use aidoku::{
 /// Pornographic titles are opt-in, as they are on the site.
 const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica"];
 
-/// The options under Original Languages in settings.json.
-const LANGUAGE_COUNT: usize = 9;
+/// The options under Types in settings.json.
+const TYPE_COUNT: usize = 5;
 
 fn stored_list(key: &str, default: &[&str]) -> Vec<String> {
 	defaults_get::<Vec<String>>(key)
@@ -18,14 +18,14 @@ pub fn content_ratings() -> Vec<String> {
 	stored_list("contentRatings", DEFAULT_RATINGS)
 }
 
-/// The original languages to browse, or none when every one is on, since the catalogue then
-/// has nothing to narrow.
-pub fn original_languages() -> Vec<String> {
-	match defaults_get::<Vec<String>>("originalLanguages") {
-		// The catalogue matches nothing for a language it doesn't know, which is what
-		// clearing every language asks for.
-		Some(languages) if languages.is_empty() => vec!["none".into()],
-		Some(languages) if languages.len() < LANGUAGE_COUNT => languages,
+/// The types to browse, or none when every one is on, since the catalogue then has nothing
+/// to narrow.
+pub fn types() -> Vec<String> {
+	match defaults_get::<Vec<String>>("types") {
+		// The catalogue matches nothing for a type it doesn't know, which is what clearing
+		// every type asks for.
+		Some(types) if types.is_empty() => vec!["none".into()],
+		Some(types) if types.len() < TYPE_COUNT => types,
 		_ => Vec::new(),
 	}
 }

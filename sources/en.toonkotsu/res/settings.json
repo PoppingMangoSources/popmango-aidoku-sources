@@ -32,40 +32,28 @@
 			},
 			{
 				"type": "multi-select",
-				"key": "originalLanguages",
-				"title": "Original Languages",
+				"key": "types",
+				"title": "Types",
 				"values": [
-					"ja",
-					"ja-ro",
-					"ko",
-					"ko-ro",
-					"zh",
-					"zh-hk",
-					"zh-ro",
-					"en",
-					"xx"
+					"manga",
+					"manhwa",
+					"manhua",
+					"oel",
+					"other"
 				],
 				"titles": [
-					"Japanese",
-					"Japanese (Romanized)",
-					"Korean",
-					"Korean (Romanized)",
-					"Chinese",
-					"Chinese (Hong Kong)",
-					"Chinese (Romanized)",
-					"English",
+					"Manga",
+					"Manhwa",
+					"Manhua",
+					"OEL",
 					"Other"
 				],
 				"default": [
-					"ja",
-					"ja-ro",
-					"ko",
-					"ko-ro",
-					"zh",
-					"zh-hk",
-					"zh-ro",
-					"en",
-					"xx"
+					"manga",
+					"manhwa",
+					"manhua",
+					"oel",
+					"other"
 				],
 				"refreshes": [
 					"content"

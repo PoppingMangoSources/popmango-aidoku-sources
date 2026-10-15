@@ -36,21 +36,29 @@
 	},
 	{
 		"type": "multi-select",
-		"id": "types",
-		"title": "Type",
+		"id": "languages",
+		"title": "Original Language",
 		"options": [
-			"Manga",
-			"Manhwa",
-			"Manhua",
-			"OEL",
+			"Japanese",
+			"Japanese (Romanized)",
+			"Korean",
+			"Korean (Romanized)",
+			"Chinese",
+			"Chinese (Hong Kong)",
+			"Chinese (Romanized)",
+			"English",
 			"Other"
 		],
 		"ids": [
-			"manga",
-			"manhwa",
-			"manhua",
-			"oel",
-			"other"
+			"ja",
+			"ja-ro",
+			"ko",
+			"ko-ro",
+			"zh",
+			"zh-hk",
+			"zh-ro",
+			"en",
+			"xx"
 		]
 	},
 	{
