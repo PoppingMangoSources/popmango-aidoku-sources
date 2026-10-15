@@ -298,7 +298,6 @@ pub fn chapter_list(entries: Vec<ChapterEntry>, main_only: bool, show_size: bool
 pub struct Facet {
 	pub name: String,
 	pub category: Option<String>,
-	pub is_adult: Option<bool>,
 }
 
 #[derive(Deserialize, Default)]

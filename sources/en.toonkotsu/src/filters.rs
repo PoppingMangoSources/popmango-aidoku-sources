@@ -3,7 +3,6 @@ use crate::{
 	api::{self, BASE_URL, json_request},
 	helpers::is_unlisted_tag,
 	models::{Facet, Facets},
-	settings,
 };
 use aidoku::{
 	DynamicFilters, DynamicSettings, Filter, GroupSetting, MultiSelectFilter, MultiSelectSetting,
@@ -46,13 +45,12 @@ pub fn group_index(name: &str, category: Option<&str>) -> usize {
 	}
 }
 
-/// The site only offers these once erotica is allowed.
-const EROTIC_TAGS: &[&str] = &["Hentai", "Adult", "Smut"];
-
-/// Tags the site offers for browsing.
+/// Tags the site offers for browsing, leaving out the explicit ones unless pornographic titles
+/// are on, as the site does.
 fn listed_facets() -> Result<Vec<Facet>> {
+	let sfw = if api::sfw() { 1 } else { 0 };
 	let facets: Facets =
-		api::parse(json_request(format!("{BASE_URL}/cdn/v1/facets?sfw=0"))?.send()?)?;
+		api::parse(json_request(format!("{BASE_URL}/cdn/v1/facets?sfw={sfw}"))?.send()?)?;
 	Ok(facets
 		.genres
 		.unwrap_or_default()
@@ -63,21 +61,9 @@ fn listed_facets() -> Result<Vec<Facet>> {
 
 impl DynamicFilters for Toonkotsu {
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let ratings = settings::content_ratings();
-		let allows = |rating: &str| ratings.iter().any(|value| value == rating);
 		let mut grouped: Vec<Vec<String>> = vec![Vec::new(); GROUPS.len()];
 
 		for facet in listed_facets()? {
-			// The catalogue flags some tags adult, which the site only offers with that rating.
-			if facet.is_adult == Some(true) && !allows("pornographic") {
-				continue;
-			}
-			if EROTIC_TAGS.contains(&facet.name.as_str())
-				&& !allows("erotica")
-				&& !allows("pornographic")
-			{
-				continue;
-			}
 			grouped[group_index(&facet.name, facet.category.as_deref())].push(facet.name);
 		}
 
