@@ -141,7 +141,7 @@ pub struct ChapterEntry {
 }
 
 impl Release {
-	fn into_chapter(self, number: Option<f64>, volume: Option<&Volume>) -> Chapter {
+	pub fn into_chapter(self, number: Option<f64>, volume: Option<&Volume>) -> Chapter {
 		let (title, bracketed) = self
 			.label
 			.as_deref()
@@ -174,13 +174,6 @@ impl Release {
 			language: Some("en".into()),
 			..Default::default()
 		}
-	}
-}
-
-impl ChapterEntry {
-	/// The chapter's own upload, leaving out its alternates.
-	pub fn into_chapter(self) -> Chapter {
-		self.release.into_chapter(self.n, self.vol.as_ref())
 	}
 }
 

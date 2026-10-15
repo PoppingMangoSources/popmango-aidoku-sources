@@ -50,8 +50,10 @@ impl Source for Toonkotsu {
 				has_next_page: false,
 			});
 		}
-		let mut params = BrowseParams::new("relevance", page);
-		params.query = query.unwrap_or_default();
+		let mut params = BrowseParams {
+			query: query.unwrap_or_default(),
+			..BrowseParams::new("relevance", page)
+		};
 
 		for filter in filters {
 			match filter {

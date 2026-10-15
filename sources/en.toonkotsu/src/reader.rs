@@ -151,7 +151,7 @@ fn read<T: DeserializeOwned>((status, body): (i32, String)) -> Result<T> {
 enum Retry {
 	Resign,
 	Wait(i32),
-	/// The human check, which passing unlocks the session for.
+	/// Passing the human check unlocks the session.
 	Verify,
 }
 

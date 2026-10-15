@@ -21,7 +21,6 @@ use aidoku::{
 
 #[derive(Clone, Copy)]
 enum Layout {
-	/// The big scroller is the one component that renders a description and tags.
 	Featured,
 	Ranked,
 	Chapters,
@@ -40,7 +39,6 @@ const SECTIONS: &[(&str, &str, Layout)] = &[
 	("completed", "Completed", Layout::Row),
 ];
 
-/// Reader rankings, posted curated rankings, the latest feed, or browse.
 pub fn section_request(id: &str, page: i32) -> Result<Request> {
 	match id {
 		"views" => ranking_request(id, &BrowseParams::new("latest", page)),
@@ -93,7 +91,10 @@ fn latest_entries(response: Response) -> Result<Vec<MangaWithChapter>> {
 		}
 		entries.push(MangaWithChapter {
 			manga,
-			chapter: item.chapter.into_chapter(),
+			chapter: item
+				.chapter
+				.release
+				.into_chapter(item.chapter.n, item.chapter.vol.as_ref()),
 		});
 	}
 	Ok(entries)
@@ -102,11 +103,7 @@ fn latest_entries(response: Response) -> Result<Vec<MangaWithChapter>> {
 fn fill(layout: Layout, id: &str, name: &str, response: Response) -> Result<HomeComponentValue> {
 	Ok(match layout {
 		Layout::Featured => HomeComponentValue::BigScroller {
-			entries: api::series_page(response, Series::into_full_manga)?
-				.entries
-				.into_iter()
-				.take(10)
-				.collect(),
+			entries: api::series_page(response, Series::into_full_manga)?.entries,
 			auto_scroll_interval: None,
 		},
 		Layout::Ranked => HomeComponentValue::MangaList {

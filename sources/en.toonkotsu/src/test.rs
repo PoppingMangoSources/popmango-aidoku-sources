@@ -178,7 +178,7 @@ fn test_group_keeps_its_best_upload() {
 			{"id": 2351311, "n": 1, "vol": 1, "label": "Friends", "w": 3790, "mb": 238.6,
 				"group": {"name": "Official"}},
 			{"id": 1491694, "n": 1, "vol": 1, "label": "Chapter 1", "w": 1200, "mb": 19.1,
-				"group": {"name": "WeebCentral"}, "alts": [
+				"group": {"name": "Hive Scans"}, "alts": [
 				{"id": 2168860, "label": "Friends", "w": 3790, "mb": 238.6, "group": {"name": "Official"}},
 				{"id": 4176441, "label": "Chapter 1", "w": 720, "mb": 9.5, "group": {"name": "Rolia Scans"}},
 				{"id": 1268949, "label": "Chapter 1", "w": 1200, "mb": 19.1, "group": {"name": "Rolia Scans"}}
@@ -211,7 +211,7 @@ fn test_main_only_skips_alternates() {
 		serde_json::from_str(
 			r#"[
 				{"id": 2351311, "n": 1, "vol": 1, "group": {"name": "Official"}},
-				{"id": 1491694, "n": 1, "vol": 1, "group": {"name": "WeebCentral"}, "alts": [
+				{"id": 1491694, "n": 1, "vol": 1, "group": {"name": "Hive Scans"}, "alts": [
 					{"id": 2168860, "group": {"name": "Official"}},
 					{"id": 1268949, "group": {"name": "Rolia Scans"}}
 				]}
