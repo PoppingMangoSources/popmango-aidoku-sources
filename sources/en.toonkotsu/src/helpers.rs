@@ -1,10 +1,10 @@
 use crate::{api::BASE_URL, models::Series, settings};
 use aidoku::{
-	alloc::{String, borrow::ToOwned, format},
+	alloc::{String, format},
 	imports::html::Html,
 };
 
-/// Demographics have their own filter, and the site never offers these for browsing.
+/// Demographics have their own filter, and the site never offers the rest for browsing.
 const UNLISTED_TAGS: &[&str] = &[
 	"Shounen", "Shoujo", "Seinen", "Josei", "Lolicon", "Shotacon", "Other",
 ];
@@ -37,28 +37,21 @@ pub fn allows(series: &Series) -> bool {
 }
 
 pub fn absolute_url(path: &str) -> String {
-	let path = path.trim();
 	if path.starts_with("http") {
 		path.into()
-	} else if let Some(rest) = path.strip_prefix("//") {
-		format!("https://{rest}")
-	} else if path.starts_with('/') {
-		format!("{BASE_URL}{path}")
 	} else {
-		format!("{BASE_URL}/{path}")
+		format!("{BASE_URL}{path}")
 	}
 }
 
-/// Covers come at three widths under one path: a card is worth the middle one, the
-/// details page the largest.
+/// The catalogue serves the 460px cover; the 720px one sits beside it.
 pub fn cover_url(cover: Option<&str>, large: bool) -> Option<String> {
-	let cover = cover.map(str::trim).filter(|cover| !cover.is_empty())?;
-	let wanted = if large { "/720.webp" } else { "/460.webp" };
-	let sized = ["/220.webp", "/460.webp", "/720.webp"]
-		.iter()
-		.find_map(|size| cover.strip_suffix(size))
-		.map_or_else(|| cover.to_owned(), |base| format!("{base}{wanted}"));
-	Some(absolute_url(&sized))
+	let cover = absolute_url(cover.filter(|cover| !cover.is_empty())?);
+	Some(if large {
+		cover.replace("/460.webp", "/720.webp")
+	} else {
+		cover
+	})
 }
 
 pub fn manga_url(key: &str, slug: Option<&str>) -> String {
@@ -77,23 +70,24 @@ pub fn clean_text(text: &str) -> String {
 	Html::unescape(text).unwrap_or_else(|| text.into())
 }
 
-/// A `/title/` path is `{key}-{slug}`, and a key is a lowercase letter then four
-/// lowercase letters or digits, which is what tells the two apart.
-pub fn key_from_url(url: &str) -> Option<String> {
-	let path = url.split("/title/").nth(1)?;
-	let key = path.split(['/', '-', '?', '#']).next()?;
-	(key.len() == 5
+/// A series url is `/title/{key}-{slug}`, where a key is a lowercase letter then four
+/// lowercase letters or digits, and a chapter's adds `/{id}-chapter-{number}`.
+pub fn keys_from_url(url: &str) -> Option<(String, Option<String>)> {
+	let mut segments = url.split("/title/").nth(1)?.split(['/', '?', '#']);
+	let key = segments.next()?.split('-').next()?;
+	let is_key = key.len() == 5
 		&& key.starts_with(|c: char| c.is_ascii_lowercase())
 		&& key
 			.chars()
-			.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()))
-	.then(|| key.into())
-}
-
-/// A pasted link opens the series it names; anything else is an ordinary search term.
-pub fn key_from_query(query: &str) -> Option<String> {
-	let query = query.trim();
-	query.contains("/title/").then(|| key_from_url(query))?
+			.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit());
+	if !is_key {
+		return None;
+	}
+	let chapter = segments
+		.next()
+		.and_then(|segment| segment.split('-').next())
+		.filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()));
+	Some((key.into(), chapter.map(Into::into)))
 }
 
 /// The number in "Chapter 12", "Ch. 12", "#12" or "12", when that is all there is.

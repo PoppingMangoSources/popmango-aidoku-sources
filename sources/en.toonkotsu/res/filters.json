@@ -2,7 +2,6 @@
 	{
 		"type": "sort",
 		"id": "sort",
-		"canAscend": true,
 		"options": [
 			"Best Match",
 			"Updated Date",
@@ -20,7 +19,6 @@
 		"type": "multi-select",
 		"id": "demographics",
 		"title": "Demographic",
-		"canExclude": false,
 		"options": [
 			"Shounen",
 			"Shoujo",
@@ -40,7 +38,6 @@
 		"type": "multi-select",
 		"id": "statuses",
 		"title": "Publication Status",
-		"canExclude": false,
 		"options": [
 			"Ongoing",
 			"Completed",

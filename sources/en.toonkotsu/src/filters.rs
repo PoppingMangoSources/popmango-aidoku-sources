@@ -11,9 +11,8 @@ use aidoku::{
 	alloc::{String, Vec, format, vec},
 };
 
-/// The groups of the site's own tag picker. Every group filters the same parameter, so a
-/// reader can mix them freely.
-const GROUPS: &[(&str, &str)] = &[
+/// The site's tag picker groups, which all filter one parameter.
+pub const GROUPS: &[(&str, &str)] = &[
 	("genres", "Genres"),
 	("themes", "Themes"),
 	("content", "Content"),
@@ -35,7 +34,7 @@ const THEME_TAGS: &[&str] = &[
 const CONTENT_TAGS: &[&str] = &["Ecchi", "Mature", "Smut", "Adult", "Hentai"];
 
 /// The picker reads every categorised tag as a theme, and leaves the main genres without one.
-pub(crate) fn group_index(name: &str, category: Option<&str>) -> usize {
+pub fn group_index(name: &str, category: Option<&str>) -> usize {
 	if category.is_some_and(|category| !category.is_empty()) || THEME_TAGS.contains(&name) {
 		1
 	} else if CONTENT_TAGS.contains(&name) {
@@ -50,11 +49,7 @@ pub(crate) fn group_index(name: &str, category: Option<&str>) -> usize {
 /// The site only offers these once erotica is allowed.
 const EROTIC_TAGS: &[&str] = &["Hentai", "Adult", "Smut"];
 
-pub fn group_ids() -> impl Iterator<Item = &'static str> {
-	GROUPS.iter().map(|(id, ..)| *id)
-}
-
-/// Tags the site offers for browsing, fetched once per filter sheet or settings page.
+/// Tags the site offers for browsing.
 fn listed_facets() -> Result<Vec<Facet>> {
 	let facets: Facets =
 		api::parse(json_request(format!("{BASE_URL}/cdn/v1/facets?sfw=0"))?.send()?)?;
@@ -109,8 +104,7 @@ impl DynamicFilters for Toonkotsu {
 	}
 }
 
-/// The tag list lives on the site, so the hidden tags are offered from it rather than
-/// kept in `settings.json`.
+/// The tag list lives on the site, so hidden tags are offered from it.
 impl DynamicSettings for Toonkotsu {
 	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
 		let mut tags: Vec<String> = listed_facets()?

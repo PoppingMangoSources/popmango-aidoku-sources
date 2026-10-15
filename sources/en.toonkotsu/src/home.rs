@@ -28,8 +28,7 @@ enum Layout {
 	Row,
 }
 
-/// The home sections in the site's order: the id a listing opens with, its title, and
-/// how it is laid out.
+/// Home sections in the site's order: listing id, title and layout.
 const SECTIONS: &[(&str, &str, Layout)] = &[
 	("views", "Most Read", Layout::Featured),
 	("trending", "Trending", Layout::Ranked),
@@ -41,8 +40,7 @@ const SECTIONS: &[(&str, &str, Layout)] = &[
 	("completed", "Completed", Layout::Row),
 ];
 
-/// Reading rankings come from the site's own readers, the curated ones are posted, and
-/// the rest are browse with a sort or a set of the site's own.
+/// Reader rankings, posted curated rankings, the latest feed, or browse.
 pub fn section_request(id: &str, page: i32) -> Result<Request> {
 	match id {
 		"views" => ranking_request(id, &BrowseParams::new("latest", page)),
@@ -70,7 +68,7 @@ fn listing(id: &str, name: &str) -> Option<Listing> {
 }
 
 fn links(response: Response) -> Result<Vec<Link>> {
-	Ok(api::series_page(response, 1, Series::into_manga)?
+	Ok(api::series_page(response, Series::into_manga)?
 		.entries
 		.into_iter()
 		.map(Link::from)
@@ -104,7 +102,7 @@ fn latest_entries(response: Response) -> Result<Vec<MangaWithChapter>> {
 fn fill(layout: Layout, id: &str, name: &str, response: Response) -> Result<HomeComponentValue> {
 	Ok(match layout {
 		Layout::Featured => HomeComponentValue::BigScroller {
-			entries: api::series_page(response, 1, Series::into_full_manga)?
+			entries: api::series_page(response, Series::into_full_manga)?
 				.entries
 				.into_iter()
 				.take(10)
@@ -130,8 +128,7 @@ fn fill(layout: Layout, id: &str, name: &str, response: Response) -> Result<Home
 }
 
 impl Home for Toonkotsu {
-	/// Every section loads on its own, so one the site fails to answer stays empty rather
-	/// than taking the rest of the page with it.
+	/// Each section loads on its own, so one that fails stays empty without failing the page.
 	fn get_home(&self) -> Result<HomeLayout> {
 		let shown = settings::home_sections();
 		let sections: Vec<_> = SECTIONS

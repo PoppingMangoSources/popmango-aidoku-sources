@@ -1,5 +1,5 @@
 use crate::{
-	helpers::{key_from_query, key_from_url, split_label},
+	helpers::{keys_from_url, split_label},
 	models::{Series, chapter_list},
 };
 use aidoku::alloc::{String, Vec, vec};
@@ -104,7 +104,7 @@ fn test_alternates_keep_one_per_group() {
 #[aidoku_test]
 fn test_card_is_compact() {
 	let series: Series = serde_json::from_str(
-		r#"{"hid": "a1b2c", "slug": "some-title", "title": "Some Title", "cover": "/c/a1b2c/220.webp",
+		r#"{"hid": "a1b2c", "slug": "some-title", "title": "Some Title", "cover": "/cdn/c/a1b2c/x/460.webp",
 			"description": "Long text", "tags": ["Action"], "authors": ["Someone"]}"#,
 	)
 	.expect("series");
@@ -116,7 +116,7 @@ fn test_card_is_compact() {
 	);
 	assert_eq!(
 		manga.cover.as_deref(),
-		Some("https://toonkotsu.com/c/a1b2c/460.webp")
+		Some("https://toonkotsu.com/cdn/c/a1b2c/x/460.webp")
 	);
 	assert!(manga.description.is_none() && manga.tags.is_none() && manga.authors.is_none());
 }
@@ -130,16 +130,20 @@ fn test_series_without_key_is_skipped() {
 #[aidoku_test]
 fn test_links() {
 	assert_eq!(
-		key_from_url("https://toonkotsu.com/title/a1b2c-some-title"),
-		Some("a1b2c".into())
+		keys_from_url("https://toonkotsu.com/title/a1b2c-some-title"),
+		Some(("a1b2c".into(), None))
 	);
 	assert_eq!(
-		key_from_url("https://toonkotsu.com/title/a1b2c"),
-		Some("a1b2c".into())
+		keys_from_url("https://toonkotsu.com/title/a1b2c?page=2"),
+		Some(("a1b2c".into(), None))
 	);
-	assert_eq!(key_from_url("https://toonkotsu.com/title/Abcde"), None);
-	assert_eq!(key_from_url("https://toonkotsu.com/chapter/123"), None);
-	assert_eq!(key_from_query("solo leveling"), None);
+	assert_eq!(
+		keys_from_url("https://toonkotsu.com/title/a1b2c-some-title/897783-chapter-3"),
+		Some(("a1b2c".into(), Some("897783".into())))
+	);
+	assert_eq!(keys_from_url("https://toonkotsu.com/title/Abcde"), None);
+	assert_eq!(keys_from_url("https://toonkotsu.com/chapter/123"), None);
+	assert_eq!(keys_from_url("solo leveling"), None);
 }
 
 #[aidoku_test]

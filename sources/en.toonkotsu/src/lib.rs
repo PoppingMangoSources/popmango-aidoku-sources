@@ -35,7 +35,11 @@ impl Source for Toonkotsu {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		if let Some(key) = query.as_deref().and_then(helpers::key_from_query) {
+		if let Some((key, _)) = query
+			.as_deref()
+			.map(str::trim)
+			.and_then(helpers::keys_from_url)
+		{
 			let detail: SeriesDetail = api::parse(api::series_request(&key)?.send()?)?;
 			let entry = detail
 				.series
@@ -95,7 +99,7 @@ impl Source for Toonkotsu {
 					"demographics" => params.demographics = included,
 					"statuses" => params.statuses = included,
 					// Every tag group filters the one pair of catalogue parameters.
-					_ if filters::group_ids().any(|group| group == id) => {
+					_ if filters::GROUPS.iter().any(|(group, _)| *group == id) => {
 						params.included_genres.extend(included);
 						params.excluded_genres.extend(excluded);
 					}
@@ -114,11 +118,7 @@ impl Source for Toonkotsu {
 			params.sort = "latest".into();
 		}
 
-		api::series_page(
-			api::browse_request(&params)?.send()?,
-			page,
-			Series::into_manga,
-		)
+		api::series_page(api::browse_request(&params)?.send()?, Series::into_manga)
 	}
 
 	/// One request carries both the details and the chapter list.
@@ -155,7 +155,7 @@ impl Source for Toonkotsu {
 impl ListingProvider for Toonkotsu {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let response = home::section_request(&listing.id, page)?.send()?;
-		api::series_page(response, page, Series::into_manga)
+		api::series_page(response, Series::into_manga)
 	}
 }
 
@@ -185,7 +185,12 @@ impl PageImageProcessor for Toonkotsu {
 
 impl DeepLinkHandler for Toonkotsu {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		Ok(helpers::key_from_url(&url).map(|key| DeepLinkResult::Manga { key }))
+		Ok(
+			helpers::keys_from_url(&url).map(|(manga_key, chapter)| match chapter {
+				Some(key) => DeepLinkResult::Chapter { manga_key, key },
+				None => DeepLinkResult::Manga { key: manga_key },
+			}),
+		)
 	}
 }
 

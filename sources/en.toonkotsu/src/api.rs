@@ -15,9 +15,8 @@ use serde::de::DeserializeOwned;
 pub const BASE_URL: &str = "https://toonkotsu.com";
 pub const PAGE_SIZE: i32 = 42;
 
-/// The site's browse orderings, in the order `filters.json` labels them. Each takes its
-/// direction separately, as `order`. The site offers its upload and update dates, and its
-/// view and follow counts, as separate sorts that send the same ordering.
+/// Browse sorts in `filters.json` order, each with its direction sent as `order`. The site's
+/// upload and update dates, and its view and follow counts, send the same sort.
 pub const SORTS: &[&str] = &[
 	"relevance",
 	"latest",
@@ -119,15 +118,14 @@ pub fn browse_request(params: &BrowseParams) -> Result<Request> {
 	json_request(format!("{BASE_URL}/cdn/v1/browse?{}", params.query()))
 }
 
-/// Rankings the site builds from its own readers, which browse does not serve.
+/// Reader rankings, which browse does not serve.
 pub fn ranking_request(metric: &str, params: &BrowseParams) -> Result<Request> {
 	let mut query = params.query();
 	query.push("metric", Some(metric));
 	json_request(format!("{BASE_URL}/api/v1/rankings?{query}"))
 }
 
-/// The site's curated rankings take the browse parameters posted as a body rather than
-/// a query string.
+/// Curated rankings take their parameters as a posted body.
 pub fn discovery_request(metric: &str, params: &BrowseParams) -> Result<Request> {
 	let mut body = serde_json::json!({
 		"limit": PAGE_SIZE,
@@ -168,27 +166,12 @@ pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 	response.get_json_owned::<T>()
 }
 
-/// The catalogue states its own paging; a full page standing for more is the last resort.
-fn has_next_page(list: &SeriesList, page: i32) -> bool {
-	if let Some(has_next) = list.has_next_page {
-		return has_next;
-	}
-	if let Some(total) = list.total {
-		return i64::from(page) * list.limit.unwrap_or(PAGE_SIZE.into()) < total;
-	}
-	list.items
-		.as_ref()
-		.is_some_and(|items| items.len() as i32 >= PAGE_SIZE)
-}
-
-/// Paging is read before the ratings filter runs, so a page it empties still leads on.
+/// Paging comes from the catalogue, so a page the ratings filter empties still leads on.
 pub fn series_page(
 	response: Response,
-	page: i32,
 	into_manga: fn(Series) -> Option<Manga>,
 ) -> Result<MangaPageResult> {
 	let list: SeriesList = parse(response)?;
-	let has_next_page = has_next_page(&list, page);
 	Ok(MangaPageResult {
 		entries: list
 			.items
@@ -197,6 +180,6 @@ pub fn series_page(
 			.filter(allows)
 			.filter_map(into_manga)
 			.collect(),
-		has_next_page,
+		has_next_page: list.has_next_page,
 	})
 }

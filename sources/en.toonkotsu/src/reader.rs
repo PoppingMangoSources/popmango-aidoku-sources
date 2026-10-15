@@ -1,4 +1,3 @@
-// reference: https://github.com/PoppingMangoSources/general-extensions-mangago/blob/592613dda3388f0e95c64bc5c42d4cf752ddb42f/src/Toonkotsu/utils.ts
 use crate::{
 	api::BASE_URL,
 	helpers::absolute_url,
@@ -38,7 +37,7 @@ fn xor_cycle(data: &[u8], mask: &[u8]) -> Vec<u8> {
 /// that signs chapter requests and unwraps the page keys.
 struct Signer {
 	key: Vec<u8>,
-	/// How far the site's clock runs ahead of the web view's, as the site's reader keeps it.
+	/// How far the site's clock runs ahead of the web view's.
 	offset: i64,
 }
 
@@ -95,14 +94,14 @@ impl Site {
 	}
 
 	/// The status and body of a same-origin request, which carries the session cookie.
-	fn send(&self, method: &str, path: &str, signature: Option<&str>) -> Result<(i32, String)> {
+	fn get(&self, path: &str, signature: Option<&str>) -> Result<(i32, String)> {
 		let signature = signature
 			.map(|signature| format!("request.setRequestHeader('x-sig', '{signature}');"))
 			.unwrap_or_default();
 		let result = self.0.eval(&format!(
 			"(() => {{
 				const request = new XMLHttpRequest();
-				request.open('{method}', '{path}', false);
+				request.open('GET', '{path}', false);
 				request.setRequestHeader('Accept', 'application/json');
 				{signature}
 				request.send();
@@ -181,14 +180,13 @@ fn retry_for(limit: ReaderLimit) -> Result<Retry> {
 
 pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	let site = Site::open(chapter_key)?;
-	// The reader refuses a request without the guest session cookie, which only this
-	// call hands out; it is the one the site's pages make on load.
-	site.send("GET", "/api/auth/me", None)?;
+	// The reader refuses requests without the guest session cookie this call hands out.
+	site.get("/api/auth/me", None)?;
 
 	let path = format!("/api/manga/chapter/{chapter_key}");
 	// The site serves a chapter's page keys to an unsigned request, unmasked, so a signed
 	// read is only the fallback for a refused or masked reply.
-	if let Ok(chapter) = read::<ReaderResponse>(site.send("GET", &path, None)?)
+	if let Ok(chapter) = read::<ReaderResponse>(site.get(&path, None)?)
 		&& chapter.wrap.as_deref().is_none_or(str::is_empty)
 	{
 		return chapter_pages(chapter, None);
@@ -202,7 +200,7 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	let (signer, chapter) = loop {
 		let response = match signer.take() {
 			None => {
-				let response = site.send("GET", "/api/manga/key", None)?;
+				let response = site.get("/api/manga/key", None)?;
 				if response.0 != 429 {
 					signer = Some(Signer::new(&read(response)?, site.clock()?)?);
 					continue;
@@ -210,7 +208,7 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 				response
 			}
 			Some(kept) => {
-				let response = site.send("GET", &path, Some(&kept.header(&path, site.clock()?)))?;
+				let response = site.get(&path, Some(&kept.header(&path, site.clock()?)))?;
 				if response.0 != 429 {
 					break (kept, read::<ReaderResponse>(response)?);
 				}

@@ -33,14 +33,6 @@ pub struct Series {
 }
 
 impl Series {
-	fn key(&self) -> Option<String> {
-		self.hid
-			.as_deref()
-			.map(str::trim)
-			.filter(|hid| !hid.is_empty())
-			.map(Into::into)
-	}
-
 	fn content_rating(&self) -> ContentRating {
 		match rating_id(self) {
 			"safe" => ContentRating::Safe,
@@ -51,20 +43,21 @@ impl Series {
 
 	/// What a card shows; the rest arrives with the details.
 	pub fn into_manga(self) -> Option<Manga> {
-		let key = self.key()?;
+		let content_rating = self.content_rating();
+		let key = self.hid.filter(|hid| !hid.is_empty())?;
 		Some(Manga {
 			url: Some(manga_url(&key, self.slug.as_deref())),
 			cover: cover_url(self.cover.as_deref(), false),
 			title: clean_text(&self.title),
-			content_rating: self.content_rating(),
+			content_rating,
 			key,
 			..Default::default()
 		})
 	}
 
 	pub fn into_full_manga(self) -> Option<Manga> {
-		let key = self.key()?;
 		let content_rating = self.content_rating();
+		let key = self.hid.filter(|hid| !hid.is_empty())?;
 		let spoilers = self.spoiler_tags.unwrap_or_default();
 		let tags: Vec<String> = self
 			.tags
@@ -83,8 +76,6 @@ impl Series {
 			url: Some(manga_url(&key, self.slug.as_deref())),
 			cover: cover_url(self.cover.as_deref(), true),
 			title: clean_text(&self.title),
-			// The site credits one set of people for both roles.
-			artists: (!authors.is_empty()).then(|| authors.clone()),
 			authors: (!authors.is_empty()).then_some(authors),
 			description: self
 				.description
@@ -197,9 +188,7 @@ impl ChapterEntry {
 #[serde(default, rename_all = "camelCase")]
 pub struct SeriesList {
 	pub items: Option<Vec<Series>>,
-	pub limit: Option<i64>,
-	pub total: Option<i64>,
-	pub has_next_page: Option<bool>,
+	pub has_next_page: bool,
 }
 
 #[derive(Deserialize, Default)]
@@ -235,10 +224,9 @@ fn size_label(mb: f64) -> Option<String> {
 	Some(format!("{} MB", size.strip_suffix(".0").unwrap_or(&size)))
 }
 
-/// One row per group for each chapter, as the site lists them: a group's other uploads of
-/// the same chapter are mirrors, of which the widest, then largest, is kept. With `main_only`,
-/// a chapter is only the upload the site shows first for it. With `show_size`, a group's
-/// uploads of different sizes are each kept, with the size closing the title.
+/// One row per group for each chapter, keeping a group's widest, then largest, upload.
+/// `main_only` keeps only the upload the site lists first; `show_size` keeps each size, named
+/// in the title.
 pub fn chapter_list(entries: Vec<ChapterEntry>, main_only: bool, show_size: bool) -> Vec<Chapter> {
 	// A release can also be listed under more than one chapter.
 	let mut ids: BTreeSet<i64> = BTreeSet::new();

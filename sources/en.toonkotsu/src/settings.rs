@@ -8,7 +8,7 @@ const DEFAULT_RATINGS: &[&str] = &["safe", "suggestive", "erotica"];
 
 /// The catalogue files a series by its original language, so a type filters as the
 /// languages it is written in.
-pub const TYPES: &[(&str, &[&str])] = &[
+const TYPES: &[(&str, &[&str])] = &[
 	("manga", &["ja", "ja-ro"]),
 	("manhwa", &["ko", "ko-ro"]),
 	("manhua", &["zh", "zh-hk", "zh-ro"]),
@@ -25,17 +25,13 @@ pub fn content_ratings() -> Vec<String> {
 	stored_list("contentRatings", DEFAULT_RATINGS)
 }
 
-pub fn types() -> Vec<String> {
-	stored_list(
-		"types",
-		&TYPES.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
-	)
-}
-
 /// Original languages the selected types are written in, or none when every type is on,
 /// since the catalogue then has nothing to narrow.
 pub fn original_languages() -> Vec<String> {
-	let selected = types();
+	let selected = stored_list(
+		"types",
+		&TYPES.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+	);
 	if selected.len() >= TYPES.len() {
 		return Vec::new();
 	}
