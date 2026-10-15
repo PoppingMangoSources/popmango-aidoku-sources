@@ -1,5 +1,5 @@
 use aidoku::{
-	alloc::{String, Vec},
+	alloc::{String, Vec, vec},
 	imports::defaults::defaults_get,
 };
 
@@ -35,11 +35,17 @@ pub fn original_languages() -> Vec<String> {
 	if selected.len() >= TYPES.len() {
 		return Vec::new();
 	}
-	TYPES
+	let languages: Vec<String> = TYPES
 		.iter()
 		.filter(|(id, _)| selected.iter().any(|value| value == id))
 		.flat_map(|(_, languages)| languages.iter().map(|language| (*language).into()))
-		.collect()
+		.collect();
+	if languages.is_empty() {
+		// The catalogue matches nothing for a language it doesn't know, which is what
+		// clearing every type asks for.
+		return vec!["none".into()];
+	}
+	languages
 }
 
 pub fn hidden_tags() -> Vec<String> {
