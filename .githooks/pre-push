@@ -1,0 +1,32 @@
+#!/bin/sh
+# Runs the gates for every source this push changes, so a red build is caught here rather
+# than after main has published it. `git push --no-verify` skips them.
+#
+# Enable in a fresh clone with:  git config core.hooksPath .githooks
+
+set -e
+
+[ -z "$CI" ] || exit 0
+
+root=$(git rev-parse --show-toplevel)
+base=$(git merge-base HEAD origin/main 2>/dev/null || echo HEAD~1)
+changed=$(git diff --name-only "$base" HEAD -- sources | cut -d/ -f2 | sort -u)
+
+for id in $changed; do
+	dir="$root/sources/$id"
+	[ -f "$dir/Cargo.toml" ] || continue
+	echo "pre-push: $id"
+	(
+		cd "$dir"
+		cargo fmt --all -- --check
+		if cargo clippy --release --target wasm32-unknown-unknown 2>&1 | grep -E '^(warning|error)'; then
+			echo "pre-push: clippy is not clean for $id" >&2
+			exit 1
+		fi
+		aidoku package >/dev/null
+		aidoku verify package.aix
+	)
+done
+
+python3 "$root/scripts/check-sources.py" --base "$base"
+echo "pre-push: all gates green"

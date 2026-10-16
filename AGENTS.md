@@ -1,7 +1,12 @@
 # Working on these sources
 
-Notes gathered while getting `multi.xcomic` through review on Aidoku-Community
-sources PR 735. Written down so the next source doesn't have to relearn it.
+Notes gathered while getting `multi.xcomic` (PR 735) and `en.toonkotsu` (PR 815) through
+review on Aidoku-Community sources. Written down so the next source doesn't have to
+relearn it.
+
+`CLAUDE.md` is an identical copy of this file, and CI fails when they differ — edit both or
+neither. The step-by-step workflow, from recon to review rounds, is the `aidoku-source`
+skill in `.claude/skills/`; the scripts it drives are in `scripts/` (section 9).
 
 Items marked **(verified)** were checked against aidoku-rs, the community sources or
 CI config. Items marked **(inferred)** are read from reviewer comments or a single
@@ -75,6 +80,9 @@ CI does not run them (only package, verify and clippy), so they're a local tool
 rather than a gate. Worth adding for anything whose behaviour is hard to eyeball,
 which is most of what went wrong in #735.
 
+Nothing upstream requires them: `en.toonkotsu` went up without its `test.rs` and the
+test dev-dependencies, and `main` was changed to match so `src/` stays identical.
+
 ---
 
 ## 2. The aidoku-rs API in practice
@@ -126,9 +134,22 @@ SwiftSoup behind CSS selectors: `select`, `select_first`, `text`, `attr`.
 `attr("abs:src")` resolves a relative url against the document, which saves doing
 it by hand. Attribute selectors (`a[href^='/x']`) work and are used widely.
 
+### Tag and author search (verified)
+
+`"config": { "supportsTagSearch": true }` in `source.json` makes a tag on a series page
+tappable. The app then calls search with `FilterValue::Select { id: "genre", value: <tag
+name> }`; route that value wherever the site takes tags. Genres declared statically in
+`filters.json` get this by default; **dynamic genres don't** (kkantan on #815), so a
+source with `DynamicFilters` must opt in. `multi.lanraragi`, `ja.soraraw`, `en.madokami`,
+`multi.ehentai` and `multi.hitomi` all handle the `"genre"` arm.
+
+`supportsAuthorSearch` does the same for authors, arriving as
+`FilterValue::Text { id: "author" }` — free if the source already has an author text
+filter with that id.
+
 ---
 
-## 3. Review feedback from #735
+## 3. Review feedback from #735 and #815
 
 Each of these was a real comment. They generalise.
 
@@ -151,6 +172,17 @@ Also from the wider repo: **excessive `clone` is the single most common review
 comment.** Take `&str` parameters, iterate by reference, and remember `format!`
 doesn't need an owned input.
 
+### From #815 (`en.toonkotsu`)
+
+| What was flagged | The rule |
+|---|---|
+| `language: Some("en")` on every chapter | Don't set a chapter's language on a single-language source. |
+| "Does this not support the filtered types setting?" on the latest feed | Every home feed honours the same settings as browse. Find out what the feed endpoint accepts (section 4) before deciding between sending the parameters and filtering locally. |
+| Dynamic genres without `supportsTagSearch` | Opt in and handle the `"genre"` select (section 2). |
+
+The fixes went up as a separate `fix(<id>): address review feedback` commit with a
+one- or two-sentence body, and each comment got a one- or two-sentence reply.
+
 ---
 
 ## 4. Reviewing behaviour and request cost, not just shape
@@ -172,6 +204,14 @@ Reading the diff is not enough. For each change, walk through:
 - **Errors and fallbacks**: non-2xx, malformed JSON, an API error array, missing
   data, an empty page list — each should fail clearly rather than silently produce
   an empty object.
+
+**Probe before concluding.** When the sandbox can't reach the site, ask for a probe
+from the site's own DevTools console (`.claude/skills/aidoku-source/references/console-probes.md`)
+instead of reasoning from a reference client. Send `Accept: application/json` and put a
+timeout on every request: without the header, Toonkotsu's filtered latest-feed
+requests hung and looked exactly like "this endpoint takes no filters" — with it they
+answered in 200 ms, correctly filtered. Include a value that should match nothing; an
+unchanged result means the parameter is ignored.
 
 Two failure modes that cost the most:
 
@@ -249,6 +289,20 @@ nothing rather than the full list. Sending an explicit "all" list to an inclusiv
 API parameter silently drops every record with a null value in that field, which is
 mostly newly added entries.
 
+The opposite end matters too: a setting the reader **cleared** must show nothing, not
+everything. If the API has no "none" value, send one it can't match — Toonkotsu answers an
+unknown `type` or `originalLanguage` with zero results (verified by probe), so a cleared
+Types setting sends `type=none`. Don't add an empty-search special case when a sentinel does it.
+
+**Moving an axis between a setting and a filter renames the setting key.** Old stored
+values keep their old meaning; reusing the key sends them under the new one (stored
+type ids sent as language codes match nothing).
+
+**Let the site gate adult content where it can.** If an endpoint has its own safe mode
+(Toonkotsu's `facets?sfw=1`), ask it rather than keeping a local list of adult tags —
+`zh.noyacg` does the same with its `allow-adult` header. Most sources never hide tags
+at all (`en.comix`, `multi.xcomic`); only ratings affect results.
+
 ### `DynamicSettings` (verified)
 
 Only three sources use it, and the legitimate case is genuinely dynamic content —
@@ -297,6 +351,10 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
 - `defaults_get::<Vec<String>>(key)` returns `None` when unset and `Some(vec![])`
   when the reader cleared it. Keep those distinct — collapsing them means
   unchecking every box silently re-enables everything.
+- `aidoku verify` computes the minimum app version from the imports the wasm uses and
+  fails if `minAppVersion` is lower. The WebView calls (`delete_all_cookies`,
+  `set_rule_list`, `add_user_script`) need **0.9.0**; without them, kkantan has asked
+  for `"0.7.1"` on other PRs.
 
 ---
 
@@ -321,28 +379,60 @@ an API quirk, a constraint, an ordering that matters.
 
 ## 9. This repo's workflow
 
-- Work on `main`. Version-bump `res/source.json` and update the two `.aix` links in
-  `README.md` for the source you touched — edit **only that source's line**, a
-  loose `sed` will catch another source whose label happens to match.
+- Work on `main`. **Every push that changes a source publishes it, so every such push
+  bumps it**: `scripts/bump.sh <id>` raises `res/source.json` and the two `.aix` links on
+  that source's README row — anchored on the source id, so another source whose label
+  happens to match is left alone.
 - Commits are authored **and** committed by
   `Popmango Extensions <297959108+PoppingMangoSources@users.noreply.github.com>`,
-  and **unsigned**:
+  **unsigned**, with a conventional subject and a one- or two-sentence body.
+  `--reset-author` only works with `--amend`; for a new commit set the author through
+  the environment:
 
   ```sh
+  GIT_AUTHOR_NAME="Popmango Extensions" \
+  GIT_AUTHOR_EMAIL="297959108+PoppingMangoSources@users.noreply.github.com" \
   git -c commit.gpgsign=false \
       -c user.name="Popmango Extensions" \
       -c user.email="297959108+PoppingMangoSources@users.noreply.github.com" \
-      commit --no-gpg-sign --reset-author -m "fix(multi.xcomic): ..."
+      commit --no-gpg-sign -m "fix(multi.xcomic): ..." -m "One or two sentences."
   ```
 
-- No AI attribution in commit messages, PR bodies or code comments.
-- For an upstream PR branch, the source's `version` stays **1** — it's a new source
-  there. Our `main` keeps its own incrementing version, since our users have it
-  installed and a version going backwards means they never get an update.
-- Keep `src/` byte-identical between `main` and the PR branch; check with
-  `git diff <main-sha> -- sources/<id>/src`.
-- Force-push the PR branch with `--force-with-lease=<ref>:<expected-sha>`, never a
-  bare `--force`.
+- No AI attribution in commit messages, PR bodies or code comments. No other sources or
+  third-party clients named in code comments or test data.
+- Don't open a PR or post on one unless asked; draft the text for the person to post.
+
+### Gates
+
+- `git config core.hooksPath .githooks` once per clone. The pre-push hook runs fmt,
+  clippy, `aidoku package` + `verify` for every source the push changes, then
+  `scripts/check-sources.py`.
+- `scripts/check-sources.py [--base <ref>] [ids…]` checks the rules that need no network:
+  tab-indented JSON, final newlines, no `"multi"` language, redundant filter defaults,
+  decorative dividers, `page_size` above 5, chapter `language` on single-language
+  sources, `defaults_get` outside `settings.rs`, README row in step with `source.json`, a
+  version bump since `<ref>`, and `CLAUDE.md` identical to this file. CI
+  (`check.yaml`) runs it on the sources each push changes. Run with no arguments it
+  reports the backlog in older sources — fix those when you're in the source anyway.
+
+### Upstream PRs
+
+- `scripts/new-source.sh <id> <Name> <url>` scaffolds through `aidoku init`, removes the
+  nested repository it creates, and prints the README row.
+- `scripts/pr-branch.sh <id> [--push]` builds `feat/<id>` from `upstream/main` in a
+  separate worktree: the source copied from `main` (`.cargo`, `Cargo.toml`,
+  `Cargo.lock`, `res`, `src` — no `package.aix`, no README), `version` set to **1**, one
+  `feat: add <id>` commit, gates run. It refuses if the branch touches anything outside
+  the source or differs from `main` beyond the version. Our `main` keeps its own
+  incrementing version, since our users have it installed and a version going
+  backwards means they never get an update.
+- Review rounds: fix on `main` (with a bump), then
+  `scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<body>" --push`
+  adds one commit on top of what origin holds. PRs are squashed on merge, so the extra
+  commits only make the round easier to review.
+- Pushes to the PR branch always use `--force-with-lease=<ref>:<expected-sha>`, never a
+  bare `--force`. The person may push to it too (they did on #815), so fetch before
+  building on it.
 
 ## 10. xcomic specifics
 
@@ -387,7 +477,65 @@ theirs field by field before changing anything. Both times something was wrong i
 was a parameter we sent and they didn't, not the endpoint or the sort key.
 ---
 
-## 11. Templates
+## 11. Toonkotsu specifics
+
+Kept here because the API is undocumented. Everything below was confirmed by console
+probes or captures unless marked.
+
+- JSON throughout: the catalogue under `/cdn/v1/`, reader and rankings under `/api/`.
+  Send `Accept: application/json` on every request — see section 4 for what happens
+  without it.
+- **Keys** are the 5-character `hid` (a lowercase letter, then four lowercase letters or
+  digits). Series url `/title/{hid}-{slug}`; chapter url
+  `/title/{hid}-{slug}/{id}-chapter-{n}`, and `/chapter/{id}` resolves too. Both deep-link.
+- **Browse** `/cdn/v1/browse`: `q`, `sort`, `order`, `status`, `demographic`, `genres`,
+  `exclude`, `genreMode`, `excludeMode`, `type`, `originalLanguage`, `author`,
+  `yearFrom`/`yearTo`, `chaptersMin`/`chaptersMax`, `discovery`, `sfw=1`. Every list
+  endpoint returns `hasNextPage`.
+  - Sort ids: `relevance`, `latest` (updated and uploaded date), `new` (created),
+    `score`, `popular` (views and follows), `chapters`, `year`, `title`. The site lists
+    sorts that send the same id; they were kept because the person asked for every site
+    sort, and a reviewer may question them.
+  - `status` is capitalised: `Ongoing`, `Complete`, `Hiatus`, `Canceled`. Lowercase
+    shipped broken once.
+  - `type` (case-insensitive): `manga`, `manhwa`, `manhua`, `oel`, `other`.
+  - `originalLanguage` takes a comma list. Live codes are `ja`, `ko`, `zh`, `en`; the
+    `-ro` codes are placeholders the site keeps for later, and `zh-hk`/`zh-ro` answer as
+    `zh`. About 3,400 titles have none of the four.
+- **Latest** `/cdn/v1/latest` lists every new chapter, so dedupe per title. It honours
+  `type`, `exclude` and `sfw` (probed); the search filters don't apply to it.
+- **Facets** `/cdn/v1/facets?sfw=0|1`: `genres` (456 with `sfw=0`, ~390 with `sfw=1`;
+  the 67 explicit ones carry `isAdult`), `types`, `statuses`, `years`. The site's picker
+  shows categorised tags under Theme, including `Kids`, which is categorised as a
+  demographic.
+- **Rankings** `/api/v1/rankings`: `GET ?metric=views` for Most Read; `POST
+  {"params": {"discovery": …, "metric": …}}` for trending and hidden gems.
+- **Details** `/cdn/v1/series/{hid}` carries the chapter list in the same response.
+  Entries have `id`, `n`, `label`, `vol`, `at` (milliseconds), `w`, `mb`, `group`, and
+  `alts` (other uploads, without `n`/`vol`). Official releases restart numbering each
+  volume, whole-volume uploads have no `n`, and one group can upload a chapter twice —
+  keep its widest, then largest, upload.
+- **Reader.** `/api/auth/me` hands out the guest `sid` cookie. The unsigned
+  `/api/manga/chapter/{id}` usually returns the page keys unmasked; the signed
+  fallback fetches `/api/manga/key` and sends `x-sig`. Pages are AES-CTR (64-bit
+  big-endian counter) with a per-page key and nonce.
+- **Read limits** come back as 429 with `code: "manga-limit"`: `resign: true` wants a
+  fresh key, `transient: true` a short wait (`retryAfterSec`), `reason: "wait"` a long
+  one, and `reason: "verify"` a human check. The limit is per IP or device, not per
+  session. `verify` wants a Turnstile check, which the site's reader posts to
+  `/api/manga/unlock` and which often passes unattended in a hidden WebView. Detect the
+  unlock from the page's resource timing — **never modify the check page**: injecting a
+  content blocker and a fetch hook made nothing load at all.
+- The WebView calls push `minAppVersion` to 0.9.0 (section 7).
+
+### Reference implementations
+
+- keiyoushi `src/en/toonkotsu` — Kotlin. Its Latest is browse with `sort=latest`; its
+  Type filter is built from the facets.
+- `PoppingMangoSources/popmango-extensions-mana`, `src/Toonkotsu` — our own Mana source;
+  where the unsigned reader path came from.
+
+## 12. Templates
 
 Sixteen of them live in `templates/` upstream, for sites that share a common
 engine or theme:
@@ -426,12 +574,12 @@ template if nothing fits.
 
 ---
 
-## 12. Where to look
+## 13. Where to look
 
 No links here on purpose — search the Aidoku-Community sources repo by these names.
 
 **Reviews worth rereading before submitting.** PRs 726, 531, 624, 646, 690 (two
-rounds) and 603. Recurring themes across them: consume owned values instead of
+rounds), 603, and our own 735 and 815. Recurring themes across them: consume owned values instead of
 cloning, inline single-use helpers, use the API's own ordering, avoid unnecessary
 dynamic settings, keep search results compact, send partial chapter results,
 construct queries correctly, and handle only deep links you can actually resolve.
@@ -445,7 +593,8 @@ query, one named query per home section), `zh.komiic` (GraphQL), `multi.kagane`,
 (`PageImageProcessor`), `en.comix` (exclusion-style settings, webview),
 `en.weebcentral`, `en.chikari` (novels alongside manga), `multi.ehentai` (separate
 listing and detail types), `multi.cubari` (`RefCell` state), `zh.zaimanhua`
-(legitimate `DynamicSettings`). `en.elftoon` is 28 lines — a template consumer, and
+(legitimate `DynamicSettings`), `zh.noyacg` (the site gates adult tags),
+`multi.lanraragi` and `ja.soraraw` (tag search). `en.elftoon` is 28 lines — a template consumer, and
 the fastest way to see how thin a templated source can be.
 
 **The reviewer.** kkantan reviews most of these. Reading their own commits and past

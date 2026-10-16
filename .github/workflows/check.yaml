@@ -1,0 +1,42 @@
+name: Check source rules
+
+# The AGENTS.md rules that need no network or toolchain: tab-indented JSON, final newlines,
+# no "multi" language, no decorative dividers, page sizes, settings read in settings.rs,
+# README rows in step with source.json, a version bump on every changed source, and
+# CLAUDE.md identical to AGENTS.md. Only the sources a change touches are checked.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed sources
+        # Read from the environment: a ref name on a fork's pull request is attacker-chosen.
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            base="origin/$BASE_REF"
+          elif [ -n "$BEFORE" ] && git cat-file -e "$BEFORE" 2>/dev/null; then
+            base="$BEFORE"
+          else
+            base="HEAD~1"
+          fi
+          python3 scripts/check-sources.py --base "$base"
