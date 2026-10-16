@@ -171,7 +171,6 @@ impl Release {
 			// The catalogue times its uploads in milliseconds.
 			date_uploaded: self.at.map(|at| at / 1000),
 			scanlators: scanlator.map(|name| vec![name]),
-			language: Some("en".into()),
 			..Default::default()
 		}
 	}

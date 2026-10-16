@@ -72,14 +72,25 @@ fn links(response: Response) -> Result<Vec<Link>> {
 		.collect())
 }
 
-/// The feed lists every new chapter, where the site shows each title once, at its newest.
+/// The site shows each title once, at its newest; the feed takes no filters.
 fn latest_entries(response: Response) -> Result<Vec<MangaWithChapter>> {
+	let types = settings::types();
+	let hidden_tags = settings::hidden_tags();
 	let mut entries: Vec<MangaWithChapter> = Vec::new();
 	for item in api::parse::<LatestList>(response)?
 		.items
 		.unwrap_or_default()
 	{
-		if !allows(&item.series) {
+		let series = &item.series;
+		let kind = series.kind.as_deref().unwrap_or_default().to_lowercase();
+		if !allows(series)
+			|| (!types.is_empty() && !types.contains(&kind))
+			|| series
+				.tags
+				.iter()
+				.flatten()
+				.any(|tag| hidden_tags.contains(tag))
+		{
 			continue;
 		}
 		let Some(manga) = item.series.into_manga() else {
