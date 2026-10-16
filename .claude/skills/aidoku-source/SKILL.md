@@ -108,5 +108,13 @@ scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<one or tw
 ```
 
 Draft a one- or two-sentence reply per comment for the person to post; do not post on the
-PR yourself. When a comment asks "does X not support Y", answer it with a console probe, not
+PR yourself.
+
+After the PR is merged, later changes go up from the same branch name as an update:
+
+```sh
+scripts/pr-branch.sh <id> --update "feat(<id>): <what>" "<one or two sentences>" --push
+```
+
+It restarts the branch from `upstream/main` and sets the version to upstream's plus one. When a comment asks "does X not support Y", answer it with a console probe, not
 from a reference client.

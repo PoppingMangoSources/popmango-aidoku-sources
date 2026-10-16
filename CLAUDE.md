@@ -183,6 +183,10 @@ doesn't need an owned input.
 The fixes went up as a separate `fix(<id>): address review feedback` commit with a
 one- or two-sentence body, and each comment got a one- or two-sentence reply.
 
+On approval kkantan suggested, for later, a **content rating filter in search that
+overrides the setting** (as `multi.mangadex` has) and a **"Has chapters" toggle**, both
+matching the website. Expect the same on any source whose site offers them.
+
 ---
 
 ## 4. Reviewing behaviour and request cost, not just shape
@@ -428,7 +432,11 @@ an API quirk, a constraint, an ordering that matters.
   backwards means they never get an update.
 - Review rounds: fix on `main` (with a bump), then
   `scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<body>" --push`
-  adds one commit on top of what origin holds. PRs are squashed on merge, so the extra
+  adds one commit on top of what origin holds; it keeps whatever version the branch has.
+- After a merge, a later change to the source is a new PR from the same branch name:
+  `scripts/pr-branch.sh <id> --update "feat(<id>): …" "<body>" --push` restarts
+  `feat/<id>` from `upstream/main` (it only does so once origin's branch is merged) and
+  sets `version` to upstream's plus one. PRs are squashed on merge, so the extra
   commits only make the round easier to review.
 - Pushes to the PR branch always use `--force-with-lease=<ref>:<expected-sha>`, never a
   bare `--force`. The person may push to it too (they did on #815), so fetch before
@@ -502,6 +510,9 @@ probes or captures unless marked.
   - `originalLanguage` takes a comma list. Live codes are `ja`, `ko`, `zh`, `en`; the
     `-ro` codes are placeholders the site keeps for later, and `zh-hk`/`zh-ro` answer as
     `zh`. About 3,400 titles have none of the four.
+- "Has chapters" on the site is a page parameter (`/manga/browse?hasChapters=true`);
+  browse ignores `hasChapters`, so the source's toggle sends `chaptersMin=1`. Every title
+  had a chapter when probed, but the catalogue is new.
 - **Latest** `/cdn/v1/latest` lists every new chapter, so dedupe per title. It honours
   `type`, `exclude` and `sfw` (probed); the search filters don't apply to it.
 - **Facets** `/cdn/v1/facets?sfw=0|1`: `genres` (456 with `sfw=0`, ~390 with `sfw=1`;
