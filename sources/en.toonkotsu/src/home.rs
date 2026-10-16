@@ -59,21 +59,24 @@ fn listing(id: &str, name: &str) -> Option<Listing> {
 }
 
 fn links(response: Response) -> Result<Vec<Link>> {
-	Ok(api::series_page(response, Series::into_manga)?
-		.entries
-		.into_iter()
-		.map(Link::from)
-		.collect())
+	Ok(
+		api::series_page(response, &settings::content_ratings(), Series::into_manga)?
+			.entries
+			.into_iter()
+			.map(Link::from)
+			.collect(),
+	)
 }
 
 /// The feed lists every new chapter, where the site shows each title once, at its newest.
 fn latest_entries(response: Response) -> Result<Vec<MangaWithChapter>> {
+	let ratings = settings::content_ratings();
 	let mut entries: Vec<MangaWithChapter> = Vec::new();
 	for item in api::parse::<LatestList>(response)?
 		.items
 		.unwrap_or_default()
 	{
-		if !allows(&item.series) {
+		if !allows(&item.series, &ratings) {
 			continue;
 		}
 		let Some(manga) = item.series.into_manga() else {
@@ -96,7 +99,12 @@ fn latest_entries(response: Response) -> Result<Vec<MangaWithChapter>> {
 fn fill(layout: Layout, id: &str, name: &str, response: Response) -> Result<HomeComponentValue> {
 	Ok(match layout {
 		Layout::Featured => HomeComponentValue::BigScroller {
-			entries: api::series_page(response, Series::into_full_manga)?.entries,
+			entries: api::series_page(
+				response,
+				&settings::content_ratings(),
+				Series::into_full_manga,
+			)?
+			.entries,
 			auto_scroll_interval: None,
 		},
 		Layout::Ranked => HomeComponentValue::MangaList {

@@ -50,6 +50,7 @@ pub struct BrowseParams {
 	pub year_max: String,
 	pub chapters_min: String,
 	pub chapters_max: String,
+	pub ratings: Vec<String>,
 }
 
 impl BrowseParams {
@@ -60,6 +61,7 @@ impl BrowseParams {
 			order: "desc".into(),
 			excluded_genres: settings::hidden_tags(),
 			types: settings::types(),
+			ratings: settings::content_ratings(),
 			..Default::default()
 		}
 	}
@@ -91,17 +93,15 @@ impl BrowseParams {
 		set("yearTo", &self.year_max);
 		set("chaptersMin", &self.chapters_min);
 		set("chaptersMax", &self.chapters_max);
-		if sfw() {
+		if sfw(&self.ratings) {
 			set("sfw", "1");
 		}
 		query
 	}
 }
 
-pub fn sfw() -> bool {
-	!settings::content_ratings()
-		.iter()
-		.any(|rating| rating == "pornographic")
+pub fn sfw(ratings: &[String]) -> bool {
+	!ratings.iter().any(|rating| rating == "pornographic")
 }
 
 fn site_headers(request: Request) -> Request {
@@ -125,6 +125,7 @@ pub fn latest_request(page: i32) -> Result<Request> {
 		page,
 		types: settings::types(),
 		excluded_genres: settings::hidden_tags(),
+		ratings: settings::content_ratings(),
 		..Default::default()
 	};
 	json_request(format!("{BASE_URL}/cdn/v1/latest?{}", params.query()))
@@ -142,7 +143,7 @@ pub fn discovery_request(metric: &str, params: &BrowseParams) -> Result<Request>
 	let mut body = serde_json::json!({
 		"limit": PAGE_SIZE,
 		"page": params.page,
-		"sfw": sfw(),
+		"sfw": sfw(&params.ratings),
 		"discovery": metric,
 		"metric": metric,
 	});
@@ -181,6 +182,7 @@ pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 /// Paging comes from the catalogue, so a page the ratings filter empties still leads on.
 pub fn series_page(
 	response: Response,
+	ratings: &[String],
 	into_manga: fn(Series) -> Option<Manga>,
 ) -> Result<MangaPageResult> {
 	let list: SeriesList = parse(response)?;
@@ -189,7 +191,7 @@ pub fn series_page(
 			.items
 			.unwrap_or_default()
 			.into_iter()
-			.filter(allows)
+			.filter(|series| allows(series, ratings))
 			.filter_map(into_manga)
 			.collect(),
 		has_next_page: list.has_next_page,
