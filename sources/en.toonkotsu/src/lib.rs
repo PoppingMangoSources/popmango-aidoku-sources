@@ -52,6 +52,7 @@ impl Source for Toonkotsu {
 			query: query.unwrap_or_default(),
 			..BrowseParams::new("relevance", page)
 		};
+		let mut has_chapters = false;
 
 		for filter in filters {
 			match filter {
@@ -110,8 +111,16 @@ impl Source for Toonkotsu {
 					}
 					_ => {}
 				},
+				FilterValue::Check { id, value } if id == "has_chapters" => {
+					has_chapters = value == 1
+				}
 				_ => {}
 			}
+		}
+
+		// Browse has no chapter flag, so a minimum of one chapter stands in for it.
+		if has_chapters && params.chapters_min.parse::<i32>().unwrap_or_default() < 1 {
+			params.chapters_min = "1".into();
 		}
 
 		// A hidden tag the search asks for is shown for that search.

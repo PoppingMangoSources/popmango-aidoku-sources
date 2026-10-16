@@ -139,5 +139,10 @@
 		"id": "chapters",
 		"title": "Chapter Count",
 		"min": 0
+	},
+	{
+		"type": "check",
+		"id": "has_chapters",
+		"title": "Has Chapters"
 	}
 ]
