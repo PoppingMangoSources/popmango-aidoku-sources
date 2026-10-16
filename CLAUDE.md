@@ -510,6 +510,10 @@ probes or captures unless marked.
   - `originalLanguage` takes a comma list. Live codes are `ja`, `ko`, `zh`, `en`; the
     `-ro` codes are placeholders the site keeps for later, and `zh-hk`/`zh-ro` answer as
     `zh`. About 3,400 titles have none of the four.
+- Content ratings: `sfw=1` is the only rating control the API has — it ignores
+  `contentRating`, and the site's own search sends just `sfw=1` whatever ratings are
+  picked (probed). Safe, Suggestive and Erotica are told apart from the tags, so they are
+  filtered after the page arrives.
 - "Has chapters" sends `hasChapters=true`, as the site's search does. Every title had a
   chapter when probed, so the flag changed no totals then, but the catalogue is new.
 - **Latest** `/cdn/v1/latest` lists every new chapter, so dedupe per title. It honours
