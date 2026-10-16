@@ -17,7 +17,7 @@
 	},
 	{
 		"type": "multi-select",
-		"id": "rating",
+		"id": "ratings",
 		"title": "Content Rating",
 		"usesTagStyle": true,
 		"options": [

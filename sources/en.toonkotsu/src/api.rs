@@ -126,11 +126,8 @@ pub fn browse_request(params: &BrowseParams) -> Result<Request> {
 /// The latest feed takes the settings but not the search filters.
 pub fn latest_request(page: i32) -> Result<Request> {
 	let params = BrowseParams {
-		page,
-		types: settings::types(),
-		excluded_genres: settings::hidden_tags(),
-		ratings: settings::content_ratings(),
-		..Default::default()
+		order: String::new(),
+		..BrowseParams::new("", page)
 	};
 	json_request(format!("{BASE_URL}/cdn/v1/latest?{}", params.query()))
 }

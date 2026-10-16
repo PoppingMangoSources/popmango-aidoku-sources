@@ -101,7 +101,7 @@ impl Source for Toonkotsu {
 					"demographics" => params.demographics = included,
 					"statuses" => params.statuses = included,
 					// Overrides the content ratings setting for this search.
-					"rating" => params.ratings = included,
+					"ratings" => params.ratings = included,
 					"languages" => params.original_languages = included,
 					// Every tag group filters the one pair of catalogue parameters.
 					_ if filters::GROUPS.iter().any(|(group, _)| *group == id) => {
