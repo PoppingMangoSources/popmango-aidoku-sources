@@ -1,9 +1,6 @@
 use crate::{
 	Toonkotsu,
-	api::{
-		self, BASE_URL, BrowseParams, PAGE_SIZE, browse_request, discovery_request, json_request,
-		ranking_request,
-	},
+	api::{self, BrowseParams, browse_request, discovery_request, latest_request, ranking_request},
 	helpers::allows,
 	models::{LatestList, Series},
 	settings,
@@ -42,10 +39,7 @@ pub fn section_request(id: &str, page: i32) -> Result<Request> {
 	match id {
 		"views" => ranking_request(id, &BrowseParams::new("latest", page)),
 		"trending" | "gems" => discovery_request(id, &BrowseParams::new("latest", page)),
-		"latest" => json_request(format!(
-			"{BASE_URL}/cdn/v1/latest?page={page}&limit={PAGE_SIZE}{}",
-			if api::sfw() { "&sfw=1" } else { "" }
-		)),
+		"latest" => latest_request(page),
 		"seasonal" | "completed" => {
 			let mut params = BrowseParams::new("latest", page);
 			params.discovery = id.into();
@@ -72,25 +66,14 @@ fn links(response: Response) -> Result<Vec<Link>> {
 		.collect())
 }
 
-/// The site shows each title once, at its newest; the feed takes no filters.
+/// The feed lists every new chapter, where the site shows each title once, at its newest.
 fn latest_entries(response: Response) -> Result<Vec<MangaWithChapter>> {
-	let types = settings::types();
-	let hidden_tags = settings::hidden_tags();
 	let mut entries: Vec<MangaWithChapter> = Vec::new();
 	for item in api::parse::<LatestList>(response)?
 		.items
 		.unwrap_or_default()
 	{
-		let series = &item.series;
-		let kind = series.kind.as_deref().unwrap_or_default().to_lowercase();
-		if !allows(series)
-			|| (!types.is_empty() && !types.contains(&kind))
-			|| series
-				.tags
-				.iter()
-				.flatten()
-				.any(|tag| hidden_tags.contains(tag))
-		{
+		if !allows(&item.series) {
 			continue;
 		}
 		let Some(manga) = item.series.into_manga() else {
