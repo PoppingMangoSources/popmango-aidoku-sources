@@ -143,9 +143,9 @@ name> }`; route that value wherever the site takes tags. Genres declared statica
 source with `DynamicFilters` must opt in. `multi.lanraragi`, `ja.soraraw`, `en.madokami`,
 `multi.ehentai` and `multi.hitomi` all handle the `"genre"` arm.
 
-`supportsAuthorSearch` does the same for authors, arriving as
-`FilterValue::Text { id: "author" }` — free if the source already has an author text
-filter with that id.
+`supportsAuthorSearch` and `supportsArtistSearch` are only for sources **without** an
+`author`/`artist` text filter (aidoku-rs book); a source that has one gets author search
+from it, so setting the flag as well is redundant.
 
 ---
 
