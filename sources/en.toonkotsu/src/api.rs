@@ -98,7 +98,6 @@ impl BrowseParams {
 	}
 }
 
-/// Pornographic titles are kept out of the catalogue unless that rating is on.
 pub fn sfw() -> bool {
 	!settings::content_ratings()
 		.iter()

@@ -118,7 +118,6 @@ fn fill(layout: Layout, id: &str, name: &str, response: Response) -> Result<Home
 }
 
 impl Home for Toonkotsu {
-	/// Each section loads on its own, so one that fails stays empty without failing the page.
 	fn get_home(&self) -> Result<HomeLayout> {
 		let shown = settings::home_sections();
 		let sections: Vec<_> = SECTIONS

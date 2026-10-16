@@ -17,7 +17,6 @@ use serde::Deserialize;
 #[derive(Deserialize, Default)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Series {
-	/// The id every url and request uses.
 	pub hid: Option<String>,
 	pub slug: Option<String>,
 	pub title: String,
