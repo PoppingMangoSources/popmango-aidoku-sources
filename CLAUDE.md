@@ -510,9 +510,8 @@ probes or captures unless marked.
   - `originalLanguage` takes a comma list. Live codes are `ja`, `ko`, `zh`, `en`; the
     `-ro` codes are placeholders the site keeps for later, and `zh-hk`/`zh-ro` answer as
     `zh`. About 3,400 titles have none of the four.
-- "Has chapters" on the site is a page parameter (`/manga/browse?hasChapters=true`);
-  browse ignores `hasChapters`, so the source's toggle sends `chaptersMin=1`. Every title
-  had a chapter when probed, but the catalogue is new.
+- "Has chapters" sends `hasChapters=true`, as the site's search does. Every title had a
+  chapter when probed, so the flag changed no totals then, but the catalogue is new.
 - **Latest** `/cdn/v1/latest` lists every new chapter, so dedupe per title. It honours
   `type`, `exclude` and `sfw` (probed); the search filters don't apply to it.
 - **Facets** `/cdn/v1/facets?sfw=0|1`: `genres` (456 with `sfw=0`, ~390 with `sfw=1`;

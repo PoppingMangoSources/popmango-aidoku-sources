@@ -51,6 +51,7 @@ pub struct BrowseParams {
 	pub chapters_min: String,
 	pub chapters_max: String,
 	pub ratings: Vec<String>,
+	pub has_chapters: bool,
 }
 
 impl BrowseParams {
@@ -66,7 +67,7 @@ impl BrowseParams {
 		}
 	}
 
-	/// The site skips an empty parameter and spells a true one as `1`.
+	/// The site skips an empty parameter.
 	fn query(&self) -> QueryParameters {
 		let mut query = QueryParameters::new();
 		let mut set = |name: &str, value: &str| {
@@ -95,6 +96,9 @@ impl BrowseParams {
 		set("chaptersMax", &self.chapters_max);
 		if sfw(&self.ratings) {
 			set("sfw", "1");
+		}
+		if self.has_chapters {
+			set("hasChapters", "true");
 		}
 		query
 	}
