@@ -1,5 +1,5 @@
 use crate::{
-	api::BASE_URL,
+	api::{self, BASE_URL, json_request},
 	helpers::absolute_url,
 	models::{ReaderKey, ReaderLimit, ReaderResponse},
 };
@@ -178,14 +178,38 @@ fn retry_for(limit: ReaderLimit) -> Result<Retry> {
 	Ok(Retry::Verify)
 }
 
-pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
-	let site = Site::open(chapter_key)?;
+/// The unsigned read over a plain request, when the site answers it with unmasked keys.
+fn plain_chapter(path: &str) -> Option<ReaderResponse> {
 	// The reader refuses requests without the guest session cookie this call hands out.
-	site.get("/api/auth/me", None)?;
+	json_request(format!("{BASE_URL}/api/auth/me"))
+		.ok()?
+		.send()
+		.ok()?;
+	let chapter: ReaderResponse = api::parse(
+		json_request(format!("{BASE_URL}{path}"))
+			.ok()?
+			.send()
+			.ok()?,
+	)
+	.ok()?;
+	chapter
+		.wrap
+		.as_deref()
+		.is_none_or(str::is_empty)
+		.then_some(chapter)
+}
 
+pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 	let path = format!("/api/manga/chapter/{chapter_key}");
-	// The site serves a chapter's page keys to an unsigned request, unmasked, so a signed
-	// read is only the fallback for a refused or masked reply.
+	// Most chapters come back unmasked to a plain request; the web view, whose cookies a
+	// passed human check unlocks, is only for a refused or masked reply.
+	if let Some(chapter) = plain_chapter(&path) {
+		return chapter_pages(chapter, None);
+	}
+
+	let site = Site::open(chapter_key)?;
+	site.get("/api/auth/me", None)?;
+	// The same read again with the web view's cookies, then a signed one as the last resort.
 	if let Ok(chapter) = read::<ReaderResponse>(site.get(&path, None)?)
 		&& chapter.wrap.as_deref().is_none_or(str::is_empty)
 	{
