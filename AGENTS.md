@@ -531,15 +531,21 @@ probes or captures unless marked.
   keep its widest, then largest, upload.
 - **Reader.** `/api/auth/me` hands out the guest `sid` cookie. The unsigned
   `/api/manga/chapter/{id}` usually returns the page keys unmasked; the signed
-  fallback fetches `/api/manga/key` and sends `x-sig`. Pages are AES-CTR (64-bit
+  fallback fetches `/api/manga/key` and sends `x-sig`. All of them go through the web
+  view (see below). Pages are AES-CTR (64-bit
   big-endian counter) with a per-page key and nonce.
 - **Read limits** come back as 429 with `code: "manga-limit"`: `resign: true` wants a
   fresh key, `transient: true` a short wait (`retryAfterSec`), `reason: "wait"` a long
-  one, and `reason: "verify"` a human check. The limit is per IP or device, not per
-  session. `verify` wants a Turnstile check, which the site's reader posts to
+  one, and `reason: "verify"` a human check. The site says the limit is per IP or device, but
+  in practice the unlock follows the web view's session. `verify` wants a Turnstile check, which the site's reader posts to
   `/api/manga/unlock` and which often passes unattended in a hidden WebView. Detect the
   unlock from the page's resource timing — **never modify the check page**: injecting a
   content blocker and a fetch hook made nothing load at all.
+- **Keep every reader request inside the web view.** v38 tried the unsigned read over
+  a plain request first and fell back to the web view when refused; in the app, the human
+  check then never passed and reading looped on "Confirm you're human". Plain requests
+  carry a different session from the web view the check unlocks, so the two must not be
+  mixed. Reverted in v39.
 - The WebView calls push `minAppVersion` to 0.9.0 (section 7).
 
 ### Reference implementations
