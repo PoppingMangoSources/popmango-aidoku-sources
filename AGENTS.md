@@ -414,6 +414,8 @@ an API quirk, a constraint, an ordering that matters.
       commit --no-gpg-sign -m "fix(multi.xcomic): ..." -m "One or two sentences."
   ```
 
+- No issue or PR numbers (`#123`) and no links in commit messages: GitHub turns them into
+  links and posts a reference on the upstream thread. Name the change in words instead.
 - No AI attribution in commit messages, PR bodies or code comments. No other sources or
   third-party clients named in code comments or test data.
 - Don't open a PR or post on one unless asked; draft the text for the person to post.
