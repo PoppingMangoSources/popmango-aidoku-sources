@@ -17,8 +17,6 @@ pub const PAGE_SIZE: i32 = 35;
 /// The site rejects a list of more ids than this.
 const MAX_IDS: usize = 50;
 
-const RATINGS: &[&str] = &["Safe", "Suggestive", "Erotica", "Pornographic"];
-
 /// Sort fields in `res/filters.json` order.
 pub const SORTS: &[&str] = &[
 	"",
@@ -120,84 +118,20 @@ pub fn format_title(title: &str, source: Option<&str>, edition: Option<&str>) ->
 	title
 }
 
-/// The group some uploads name at the end of a chapter title, as in "Chapter 3 [Group]" or
-/// "Chapter 3 - Volume 1 (Group)", after any trailing `{…}` notes.
-pub fn inline_group(title: &str) -> Option<&str> {
-	let mut title = title.trim_end();
-	while let Some(rest) = title.strip_suffix('}') {
-		title = rest.rsplit_once('{')?.0.trim_end();
-	}
-	if !title
-		.get(..8)
-		.is_some_and(|prefix| prefix.eq_ignore_ascii_case("chapter "))
-	{
-		return None;
-	}
-	let group = if let Some(rest) = title.strip_suffix(']') {
-		rest.rsplit_once('[')?.1
-	} else {
-		let rest = title.strip_suffix(')')?;
-		let (head, group) = rest.rsplit_once('(')?;
-		let head = head.to_ascii_lowercase();
-		if !head.contains("volume") || !head.contains('-') || group.contains(')') {
-			return None;
-		}
-		group
-	};
-	Some(group.trim()).filter(|group| !group.is_empty())
-}
-
-/// The site rates by age band plus a pornographic flag; series without them carry the older
-/// single rating.
-pub fn rating(
-	age: Option<&str>,
-	pornographic: Option<bool>,
-	legacy: Option<&str>,
-) -> Option<&'static str> {
-	if pornographic == Some(true) {
-		return Some("Pornographic");
-	}
+/// The site rates by age band, with a flag on the pornographic titles in the 18+ band.
+pub fn content_rating(age: Option<&str>, pornographic: Option<bool>) -> ContentRating {
 	match age {
-		Some("Safe") => Some("Safe"),
-		Some("FifteenPlus") => Some("Suggestive"),
-		Some("EighteenPlus") => Some("Erotica"),
-		_ => RATINGS
-			.iter()
-			.copied()
-			.find(|rating| legacy.is_some_and(|legacy| legacy.eq_ignore_ascii_case(rating))),
-	}
-}
-
-pub fn content_rating(rating: Option<&str>) -> ContentRating {
-	match rating {
+		_ if pornographic == Some(true) => ContentRating::NSFW,
 		Some("Safe") => ContentRating::Safe,
-		Some("Suggestive") => ContentRating::Suggestive,
-		Some(_) => ContentRating::NSFW,
-		None => ContentRating::Unknown,
+		Some("FifteenPlus") => ContentRating::Suggestive,
+		Some("EighteenPlus") => ContentRating::NSFW,
+		_ => ContentRating::Unknown,
 	}
 }
 
-/// The age bands to ask for, and the flag that splits pornographic titles out of the 18+ band.
-fn rating_query(ratings: &[String]) -> (Vec<&'static str>, Option<bool>) {
-	let mut bands = Vec::new();
-	for rating in ratings {
-		let band = match rating.as_str() {
-			"Safe" => "Safe",
-			"Suggestive" => "FifteenPlus",
-			_ => "EighteenPlus",
-		};
-		if !bands.contains(&band) {
-			bands.push(band);
-		}
-	}
-	let pornographic = if !ratings.iter().any(|rating| rating == "Pornographic") {
-		Some(false)
-	} else if ratings.len() == 1 {
-		Some(true)
-	} else {
-		None
-	};
-	(bands, pornographic)
+/// Leaves pornographic titles out unless they're turned on; the API includes them by default.
+fn pornographic() -> Option<bool> {
+	(!settings::show_pornographic()).then_some(false)
 }
 
 pub fn parse_status(s: &str) -> MangaStatus {
@@ -275,8 +209,8 @@ pub struct SearchParams {
 	pub sort: &'static str,
 	pub ascending: bool,
 	pub exact_match: bool,
-	/// Overrides the content rating setting when not empty.
-	pub ratings: Vec<String>,
+	/// Overrides the age rating setting when not empty.
+	pub age_ratings: Vec<String>,
 	pub formats: Vec<String>,
 	pub upload_statuses: Vec<String>,
 	pub publication_statuses: Vec<String>,
@@ -303,13 +237,13 @@ impl SearchParams {
 
 	/// The search request, or `None` when the settings leave nothing to match.
 	pub fn request(self, base_url: &str, page: i32, size: i32) -> Result<Option<Request>> {
-		let ratings = if self.ratings.is_empty() {
-			settings::content_ratings()
+		let age_ratings = if self.age_ratings.is_empty() {
+			settings::age_ratings()
 		} else {
-			self.ratings
+			self.age_ratings
 		};
 		let source_types = settings::source_types();
-		if ratings.is_empty() || source_types.as_ref().is_some_and(Vec::is_empty) {
+		if age_ratings.is_empty() || source_types.as_ref().is_some_and(Vec::is_empty) {
 			return Ok(None);
 		}
 
@@ -326,9 +260,8 @@ impl SearchParams {
 		if let Some(types) = source_types {
 			body.insert("source_type".into(), json!(types));
 		}
-		let (bands, pornographic) = rating_query(&ratings);
-		body.insert("age_rating".into(), json!(bands));
-		if let Some(pornographic) = pornographic {
+		body.insert("age_rating".into(), json!(age_ratings));
+		if let Some(pornographic) = pornographic() {
 			body.insert("is_pornographic".into(), json!(pornographic));
 		}
 		if let Some(disturbing) = self.disturbing {
@@ -404,39 +337,35 @@ impl SearchParams {
 /// The chart takes the rating and language settings as query parameters, or `None` when they
 /// leave nothing to match.
 pub fn trending_request(base_url: &str, limit: i32) -> Result<Option<Request>> {
-	let ratings = settings::content_ratings();
-	if ratings.is_empty() {
+	let age_ratings = settings::age_ratings();
+	if age_ratings.is_empty() {
 		return Ok(None);
 	}
-	let (bands, pornographic) = rating_query(&ratings);
 	let mut url = api_url(
 		base_url,
 		&format!(
 			"/series/trending?limit={limit}&age_rating={}",
-			bands.join(",")
+			age_ratings.join(",")
 		),
 	);
 	let languages = settings::languages();
 	if languages.len() <= 5 {
 		url.push_str(&format!("&lang={}", languages.join(",")));
 	}
-	if let Some(pornographic) = pornographic {
+	if let Some(pornographic) = pornographic() {
 		url.push_str(&format!("&is_pornographic={pornographic}"));
 	}
 	Ok(Some(get(base_url, &url)?))
 }
 
-/// The chart's 18+ band and a language list over its limit of five are narrowed here instead.
+/// The chart takes at most five languages, so a longer list is narrowed here instead.
 pub fn trending_entries(response: TrendingResponse) -> Vec<SeriesSummary> {
-	let ratings = settings::content_ratings();
 	let languages = settings::languages();
 	response
 		.items
 		.into_iter()
 		.filter(|item| {
-			let rating = item.series.rating().unwrap_or("Erotica");
 			!item.hidden_by_filter
-				&& ratings.iter().any(|allowed| allowed == rating)
 				&& (languages.len() <= 5
 					|| item
 						.series

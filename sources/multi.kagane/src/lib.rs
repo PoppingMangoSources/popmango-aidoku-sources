@@ -100,7 +100,7 @@ impl Source for Kagane {
 						params.genres.included = included;
 						params.genres.excluded = excluded;
 					}
-					"ratings" => params.ratings = included,
+					"age_ratings" => params.age_ratings = included,
 					"format" => params.formats = included,
 					"status" => params.upload_statuses = included,
 					"publication_status" => params.publication_statuses = included,
@@ -221,11 +221,8 @@ impl Source for Kagane {
 			manga.url = Some(format!("{base_url}/series/{}", manga.key));
 			manga.status = parse_status(&detail.upload_status);
 			manga.viewer = parse_viewer(detail.format.as_deref());
-			manga.content_rating = content_rating(rating(
-				detail.age_rating.as_deref(),
-				detail.is_pornographic,
-				detail.content_rating.as_deref(),
-			));
+			manga.content_rating =
+				content_rating(detail.age_rating.as_deref(), detail.is_pornographic);
 			manga.description = detail
 				.description
 				.as_deref()

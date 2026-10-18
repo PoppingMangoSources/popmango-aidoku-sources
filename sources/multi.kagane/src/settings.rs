@@ -3,7 +3,7 @@ use aidoku::{
 	imports::defaults::defaults_get,
 };
 
-pub const DEFAULT_BASE_URL: &str = "https://kagane.org";
+pub const DEFAULT_BASE_URL: &str = "https://kagane.cx";
 
 const SOURCE_TYPES: &[&str] = &["Official", "Unofficial", "Mixed"];
 
@@ -37,9 +37,13 @@ pub fn languages() -> Vec<String> {
 		.unwrap_or_else(|| vec!["en".into()])
 }
 
-pub fn content_ratings() -> Vec<String> {
-	defaults_get::<Vec<String>>("contentRating")
-		.unwrap_or_else(|| vec!["Safe".into(), "Suggestive".into()])
+pub fn age_ratings() -> Vec<String> {
+	defaults_get::<Vec<String>>("ageRatings")
+		.unwrap_or_else(|| vec!["Safe".into(), "FifteenPlus".into()])
+}
+
+pub fn show_pornographic() -> bool {
+	flag("showPornographic")
 }
 
 /// The source types to ask for, or none when every one is on, since nothing is then narrowed.

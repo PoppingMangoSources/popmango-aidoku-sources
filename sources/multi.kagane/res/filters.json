@@ -20,18 +20,23 @@
 	{
 		"type": "check",
 		"id": "exact_match",
-		"title": "Exact Title Match"
+		"title": "Exact Title Match",
+		"hideFromHeader": true
 	},
 	{
 		"type": "multi-select",
-		"id": "ratings",
-		"title": "Content Rating",
+		"id": "age_ratings",
+		"title": "Age Rating",
 		"usesTagStyle": true,
 		"options": [
 			"Safe",
-			"Suggestive",
-			"Erotica",
-			"Pornographic"
+			"15+",
+			"18+"
+		],
+		"ids": [
+			"Safe",
+			"FifteenPlus",
+			"EighteenPlus"
 		]
 	},
 	{
@@ -110,7 +115,8 @@
 			"any",
 			"exclude",
 			"only"
-		]
+		],
+		"hideFromHeader": true
 	},
 	{
 		"type": "select",
@@ -123,7 +129,8 @@
 		"ids": [
 			"all",
 			"any"
-		]
+		],
+		"hideFromHeader": true
 	},
 	{
 		"type": "text",
@@ -142,7 +149,8 @@
 		"ids": [
 			"all",
 			"any"
-		]
+		],
+		"hideFromHeader": true
 	},
 	{
 		"type": "text",

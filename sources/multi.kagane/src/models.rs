@@ -6,7 +6,7 @@ use aidoku::{
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::helpers::{content_rating, format_title, inline_group, rating};
+use crate::helpers::{content_rating, format_title};
 
 fn default_true() -> bool {
 	true
@@ -41,7 +41,6 @@ pub struct SeriesSummary {
 	pub source_id: Option<String>,
 	pub age_rating: Option<String>,
 	pub is_pornographic: Option<bool>,
-	pub content_rating: Option<String>,
 	pub translated_language: Option<String>,
 	#[serde(default)]
 	pub latest_chapters: Vec<LatestChapter>,
@@ -57,14 +56,6 @@ pub struct LatestChapter {
 }
 
 impl SeriesSummary {
-	pub fn rating(&self) -> Option<&'static str> {
-		rating(
-			self.age_rating.as_deref(),
-			self.is_pornographic,
-			self.content_rating.as_deref(),
-		)
-	}
-
 	/// `sources` is empty unless the source's name is shown in titles.
 	pub fn into_manga(self, base_url: &str, sources: &[UploadSource]) -> Manga {
 		let source = self
@@ -72,7 +63,7 @@ impl SeriesSummary {
 			.as_deref()
 			.and_then(|id| sources.iter().find(|source| source.source_id == id));
 		Manga {
-			content_rating: content_rating(self.rating()),
+			content_rating: content_rating(self.age_rating.as_deref(), self.is_pornographic),
 			title: format_title(
 				&self.title,
 				source.map(|source| source.title.as_str()),
@@ -122,7 +113,6 @@ pub struct SeriesDetail {
 	pub description: Option<String>,
 	pub upload_status: String,
 	pub format: Option<String>,
-	pub content_rating: Option<String>,
 	pub age_rating: Option<String>,
 	pub is_pornographic: Option<bool>,
 	pub source_id: Option<String>,
@@ -262,7 +252,7 @@ impl BookIndex {
 			.filter_map(|row| {
 				let key = text(row, id)?;
 				let name = text(row, title).map(str::trim).unwrap_or_default();
-				let mut scanlators: Vec<String> = match uploader {
+				let scanlators: Vec<String> = match uploader {
 					Some(uploader) => vec![uploader.into()],
 					None => cell(row, group_ix)
 						.and_then(Value::as_array)
@@ -272,13 +262,6 @@ impl BookIndex {
 						.map(|group| group.title.clone())
 						.collect(),
 				};
-				if let Some(group) = inline_group(name) {
-					scanlators = if scanlators.is_empty() {
-						vec![group.into()]
-					} else {
-						vec![format!("{} ({group})", scanlators.join(", "))]
-					};
-				}
 				let chapter = Chapter {
 					key: key.into(),
 					title: (!name.is_empty()).then(|| name.into()),
