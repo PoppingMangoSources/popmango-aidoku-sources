@@ -63,6 +63,10 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.galaxymanga-v9.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.galaxymanga-v9.aix">.aix (v9)</a></sub>
 
+<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/multi.kagane/res/icon.png" width="24" align="top"/>&nbsp; Kagane &nbsp;<sub><a href="https://kagane.cx">kagane.cx</a></sub></h3>
+
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.kagane-v5.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.kagane-v5.aix">.aix (v5)</a></sub>
+
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/kaliscan.png" width="24" align="top"/>&nbsp; KaliScan &nbsp;<sub><a href="https://kaliscan.io">kaliscan.io</a></sub></h3>
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.kaliscan-v14.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.kaliscan-v14.aix">.aix (v14)</a></sub>
