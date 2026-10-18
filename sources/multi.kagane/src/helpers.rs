@@ -70,6 +70,15 @@ pub fn find_source<'a>(sources: &'a [UploadSource], id: Option<&str>) -> Option<
 		.find(|source| Some(source.source_id.as_str()) == id)
 }
 
+/// The title, followed by its source's name when `sources` holds it.
+pub fn source_title(title: &str, sources: &[UploadSource], id: Option<&str>) -> String {
+	let title = title.trim();
+	match find_source(sources, id) {
+		Some(source) => format!("{title} [{}]", source.title),
+		None => String::from(title),
+	}
+}
+
 /// How the series' chapters are credited: its source, ticked when it publishes officially.
 pub fn scanlator(source: &UploadSource) -> String {
 	match source.source_type.as_deref() {

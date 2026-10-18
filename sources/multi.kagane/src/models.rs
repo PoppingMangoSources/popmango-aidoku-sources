@@ -6,7 +6,7 @@ use aidoku::{
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::helpers::{api_base, base_url, find_source};
+use crate::helpers::{api_base, base_url, source_title};
 
 fn default_true() -> bool {
 	true
@@ -44,12 +44,8 @@ pub struct LatestChapter {
 impl SearchItem {
 	/// `sources` is empty unless titles name their source.
 	pub fn into_manga(self, sources: &[UploadSource]) -> Manga {
-		let title = String::from(self.title.trim());
 		Manga {
-			title: match find_source(sources, self.source_id.as_deref()) {
-				Some(source) => format!("{title} [{}]", source.title),
-				None => title,
-			},
+			title: source_title(&self.title, sources, self.source_id.as_deref()),
 			cover: self
 				.cover_image_id
 				.map(|id| format!("{}/image/{id}", api_base())),

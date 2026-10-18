@@ -137,11 +137,9 @@ impl Source for Kagane {
 		let sources = parse_sources(responses.next());
 
 		if needs_details {
-			let title = String::from(det.title.trim());
-			manga.title = match find_source(&sources, det.source_id.as_deref()) {
-				Some(source) if show_source => format!("{title} [{}]", source.title),
-				_ => title,
-			};
+			// The sources may be here only to credit chapters.
+			let title_sources = if show_source { sources.as_slice() } else { &[] };
+			manga.title = source_title(&det.title, title_sources, det.source_id.as_deref());
 			manga.cover = det
 				.series_covers
 				.first()
