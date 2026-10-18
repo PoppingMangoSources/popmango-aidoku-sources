@@ -663,3 +663,9 @@ Confirmed by console probes on kagane.si unless marked.
 - Lookups: `POST /search/staff?size=8 {name}` and `GET /groups/search?q=&limit=8` both
   answer; the search body takes the resolved id as `staff`/`groups` `{values: [id]}`.
 - `GET /series/trending` answers ten entries, but the section was dropped on request.
+- **Upstream history** (`git log upstream/main -- sources/multi.kagane`; PR heads fetch as
+  `refs/pull/<n>/head`): #603 added it, and its review moved the request helpers into
+  `helpers.rs`, replaced a languages setting with the app's languages, cut clones, and
+  dropped `supportsTagSearch` because the static genre filter already makes tags
+  tappable. #632, #811 moved the domain (`kagane.to` → `kagane.org`); #728 added the
+  sort list and the relevance fallback to `total_views` for browsing.
