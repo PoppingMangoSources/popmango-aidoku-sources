@@ -1,6 +1,6 @@
 use aidoku::{
-	Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link, Listing,
-	ListingKind, MangaWithChapter, Result,
+	Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Listing, ListingKind,
+	Result,
 	alloc::{String, Vec},
 	imports::{
 		net::{Request, Response},
@@ -11,8 +11,8 @@ use aidoku::{
 use crate::{
 	Kagane,
 	filters::hidden_tag_ids,
-	helpers::{SearchParams, parse, sources, sources_request},
-	models::{SearchResponse, SeriesSummary, UploadSource},
+	helpers::{SearchParams, allows, parse, sources, sources_request},
+	models::{SearchResponse, UploadSource},
 	settings,
 };
 
@@ -67,25 +67,24 @@ fn fill(
 	response: Response,
 	base_url: &str,
 	sources: &[UploadSource],
+	ratings: &[String],
 ) -> Result<HomeComponentValue> {
-	let links = |series: Vec<SeriesSummary>| -> Vec<Link> {
-		series
-			.into_iter()
-			.map(|series| series.into_manga(base_url, sources).into())
-			.collect()
-	};
+	let series = parse::<SearchResponse>(response)?
+		.content
+		.into_iter()
+		.filter(|series| allows(ratings, series.rating()));
 	Ok(match layout {
 		Layout::Row => HomeComponentValue::Scroller {
-			entries: links(parse::<SearchResponse>(response)?.content),
+			entries: series
+				.map(|series| series.into_manga(base_url, sources).into())
+				.collect(),
 			listing: listing(id, name),
 		},
 		Layout::Chapters => HomeComponentValue::MangaChapterList {
 			page_size: Some(5),
-			entries: parse::<SearchResponse>(response)?
-				.content
-				.into_iter()
+			entries: series
 				.filter_map(|series| series.into_manga_with_chapter(base_url, sources))
-				.collect::<Vec<MangaWithChapter>>(),
+				.collect(),
 			listing: listing(id, name),
 		},
 	})
@@ -111,16 +110,18 @@ impl Home for Kagane {
 
 		let hidden_tags = hidden_tag_ids(&base_url)?;
 		let mut requests = Vec::new();
+		let mut ratings = Vec::new();
 		for (_, _, sort, _) in sections {
 			let request = SearchParams {
 				hidden_tags: hidden_tags.clone(),
 				..SearchParams::sorted(sort)
 			}
 			.request(&base_url, 1, ROW_SIZE)?;
-			let Some(request) = request else {
+			let Some((request, section_ratings)) = request else {
 				return Ok(HomeLayout::default());
 			};
 			requests.push(request);
+			ratings = section_ratings;
 		}
 		let show_source = settings::show_source();
 		if show_source {
@@ -138,10 +139,9 @@ impl Home for Kagane {
 			Vec::new()
 		};
 		for ((id, name, _, layout), response) in sections.into_iter().zip(responses) {
-			let Ok(value) = response
-				.map_err(Into::into)
-				.and_then(|response| fill(layout, id, name, response, &base_url, &sources))
-			else {
+			let Ok(value) = response.map_err(Into::into).and_then(|response| {
+				fill(layout, id, name, response, &base_url, &sources, &ratings)
+			}) else {
 				continue;
 			};
 			send_partial_result(&HomePartialResult::Component(HomeComponent {

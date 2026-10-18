@@ -100,7 +100,11 @@ pub fn uploader(sources: &[UploadSource], id: Option<&str>) -> Option<String> {
 	let source = sources
 		.iter()
 		.find(|source| Some(source.source_id.as_str()) == id)?;
-	Some(if source.source_type.as_deref() == Some("Official") {
+	let official = source
+		.source_type
+		.as_deref()
+		.is_some_and(|kind| kind.eq_ignore_ascii_case("official"));
+	Some(if official {
 		format!("{} ✓", source.title)
 	} else {
 		source.title.clone()
@@ -119,14 +123,32 @@ pub fn format_title(title: &str, source: Option<&str>, edition: Option<&str>) ->
 }
 
 /// The site rates by age band, with a flag on the pornographic titles in the 18+ band.
-pub fn content_rating(age: Option<&str>, pornographic: Option<bool>) -> ContentRating {
-	match age {
-		_ if pornographic == Some(true) => ContentRating::NSFW,
-		Some("Safe") => ContentRating::Safe,
-		Some("FifteenPlus") => ContentRating::Suggestive,
-		Some("EighteenPlus") => ContentRating::NSFW,
-		_ => ContentRating::Unknown,
+pub fn rating(age: Option<&str>, pornographic: Option<bool>) -> Option<&'static str> {
+	if pornographic == Some(true) {
+		return Some("Pornographic");
 	}
+	match age? {
+		"Safe" => Some("Safe"),
+		"FifteenPlus" => Some("Suggestive"),
+		"EighteenPlus" => Some("Erotica"),
+		_ => None,
+	}
+}
+
+pub fn content_rating(rating: Option<&str>) -> ContentRating {
+	match rating {
+		Some("Safe") => ContentRating::Safe,
+		Some("Suggestive") => ContentRating::Suggestive,
+		Some(_) => ContentRating::NSFW,
+		None => ContentRating::Unknown,
+	}
+}
+
+/// The 18+ band can't be asked for without either Erotica or Pornographic, so a page is
+/// checked again here; an unrated series counts as Erotica.
+pub fn allows(ratings: &[String], rating: Option<&str>) -> bool {
+	let rating = rating.unwrap_or("Erotica");
+	ratings.iter().any(|allowed| allowed == rating)
 }
 
 /// The age bands for the ratings offered, and the flag that tells Erotica from Pornographic
@@ -254,8 +276,14 @@ impl SearchParams {
 		}
 	}
 
-	/// The search request, or `None` when the settings leave nothing to match.
-	pub fn request(self, base_url: &str, page: i32, size: i32) -> Result<Option<Request>> {
+	/// The search request with the ratings it asks for, or `None` when the settings leave
+	/// nothing to match.
+	pub fn request(
+		self,
+		base_url: &str,
+		page: i32,
+		size: i32,
+	) -> Result<Option<(Request, Vec<String>)>> {
 		let ratings = if self.ratings.is_empty() {
 			settings::content_ratings()
 		} else {
@@ -350,6 +378,6 @@ impl SearchParams {
 		if self.exact_match {
 			url.push_str("&exact_match=true");
 		}
-		Ok(Some(post(base_url, &url, &Value::Object(body))?))
+		Ok(Some((post(base_url, &url, &Value::Object(body))?, ratings)))
 	}
 }

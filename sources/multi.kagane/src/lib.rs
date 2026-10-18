@@ -28,8 +28,8 @@ fn empty_page() -> MangaPageResult {
 	}
 }
 
-fn search_page(base_url: &str, request: Option<Request>) -> Result<MangaPageResult> {
-	let Some(request) = request else {
+fn search_page(base_url: &str, request: Option<(Request, Vec<String>)>) -> Result<MangaPageResult> {
+	let Some((request, ratings)) = request else {
 		return Ok(empty_page());
 	};
 	let (response, sources) = send_with_sources(base_url, request)?;
@@ -38,6 +38,7 @@ fn search_page(base_url: &str, request: Option<Request>) -> Result<MangaPageResu
 		entries: response
 			.content
 			.into_iter()
+			.filter(|series| allows(&ratings, series.rating()))
 			.map(|series| series.into_manga(base_url, &sources))
 			.collect(),
 		has_next_page: !response.last,
@@ -216,10 +217,17 @@ impl Source for Kagane {
 				.first()
 				.map(|cover| api_url(&base_url, &format!("/image/{}", cover.image_id)));
 			manga.url = Some(format!("{base_url}/series/{}", manga.key));
-			manga.status = parse_status(&detail.upload_status);
+			// The series' own status, or the uploads' when the site has none.
+			manga.status = parse_status(
+				detail
+					.publication_status
+					.as_deref()
+					.or(detail.upload_status.as_deref())
+					.unwrap_or_default(),
+			);
 			manga.viewer = parse_viewer(detail.format.as_deref());
 			manga.content_rating =
-				content_rating(detail.age_rating.as_deref(), detail.is_pornographic);
+				content_rating(rating(detail.age_rating.as_deref(), detail.is_pornographic));
 			manga.description = detail
 				.description
 				.as_deref()
@@ -299,7 +307,10 @@ impl Source for Kagane {
 			.send()?,
 		)?;
 
-		let cache_url = challenge.cache_url;
+		let cache_url = challenge
+			.cache_url
+			.filter(|url| !url.is_empty())
+			.unwrap_or_else(|| base_url.clone());
 		let token = challenge.access_token;
 		let mut pages: Vec<(i32, Page)> = challenge
 			.manifest
@@ -350,9 +361,16 @@ impl DeepLinkHandler for Kagane {
 		};
 		let path = path.split(['?', '#']).next().unwrap_or_default();
 		let mut segments = path.split('/').filter(|segment| !segment.is_empty());
-		let Some(key) = segments.next() else {
+		let Some(segment) = segments.next() else {
 			return Ok(None);
 		};
+		// The site can put a slug before the series id.
+		let key = segment
+			.len()
+			.checked_sub(36)
+			.and_then(|start| segment.get(start..))
+			.filter(|id| id.split('-').map(str::len).eq([8, 4, 4, 4, 12]))
+			.unwrap_or(segment);
 		Ok(Some(match (segments.next(), segments.next()) {
 			(Some("reader"), Some(chapter)) => DeepLinkResult::Chapter {
 				manga_key: key.into(),

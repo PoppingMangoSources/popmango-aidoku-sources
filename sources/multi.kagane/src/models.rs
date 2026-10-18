@@ -6,7 +6,7 @@ use aidoku::{
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::helpers::{content_rating, format_title};
+use crate::helpers::{content_rating, format_title, rating};
 
 fn default_true() -> bool {
 	true
@@ -42,6 +42,10 @@ pub struct LatestChapter {
 }
 
 impl SeriesSummary {
+	pub fn rating(&self) -> Option<&'static str> {
+		rating(self.age_rating.as_deref(), self.is_pornographic)
+	}
+
 	/// `sources` is empty unless the source's name is shown in titles.
 	pub fn into_manga(self, base_url: &str, sources: &[UploadSource]) -> Manga {
 		let source = self
@@ -49,7 +53,7 @@ impl SeriesSummary {
 			.as_deref()
 			.and_then(|id| sources.iter().find(|source| source.source_id == id));
 		Manga {
-			content_rating: content_rating(self.age_rating.as_deref(), self.is_pornographic),
+			content_rating: content_rating(self.rating()),
 			title: format_title(
 				&self.title,
 				source.map(|source| source.title.as_str()),
@@ -97,7 +101,8 @@ impl SeriesSummary {
 pub struct SeriesDetail {
 	pub title: String,
 	pub description: Option<String>,
-	pub upload_status: String,
+	pub upload_status: Option<String>,
+	pub publication_status: Option<String>,
 	pub format: Option<String>,
 	pub age_rating: Option<String>,
 	pub is_pornographic: Option<bool>,
@@ -277,7 +282,7 @@ pub struct IntegrityResponse {
 #[derive(Deserialize)]
 pub struct ChallengeResponse {
 	pub access_token: String,
-	pub cache_url: String,
+	pub cache_url: Option<String>,
 	pub manifest: Option<ManifestData>,
 }
 
