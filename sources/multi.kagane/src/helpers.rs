@@ -8,7 +8,7 @@ use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
 use crate::{
-	models::{SeriesSummary, SourceList, TrendingResponse, UploadSource},
+	models::{SourceList, UploadSource},
 	settings,
 };
 
@@ -129,9 +129,28 @@ pub fn content_rating(age: Option<&str>, pornographic: Option<bool>) -> ContentR
 	}
 }
 
-/// Leaves pornographic titles out unless they're turned on; the API includes them by default.
-fn pornographic() -> Option<bool> {
-	(!settings::show_pornographic()).then_some(false)
+/// The age bands for the ratings offered, and the flag that tells Erotica from Pornographic
+/// within the 18+ band.
+fn rating_query(ratings: &[String]) -> (Vec<&'static str>, Option<bool>) {
+	let mut bands = Vec::new();
+	for rating in ratings {
+		let band = match rating.as_str() {
+			"Safe" => "Safe",
+			"Suggestive" => "FifteenPlus",
+			_ => "EighteenPlus",
+		};
+		if !bands.contains(&band) {
+			bands.push(band);
+		}
+	}
+	let pornographic = if !ratings.iter().any(|rating| rating == "Pornographic") {
+		Some(false)
+	} else if ratings.len() == 1 {
+		Some(true)
+	} else {
+		None
+	};
+	(bands, pornographic)
 }
 
 pub fn parse_status(s: &str) -> MangaStatus {
@@ -209,8 +228,8 @@ pub struct SearchParams {
 	pub sort: &'static str,
 	pub ascending: bool,
 	pub exact_match: bool,
-	/// Overrides the age rating setting when not empty.
-	pub age_ratings: Vec<String>,
+	/// Overrides the content rating setting when not empty.
+	pub ratings: Vec<String>,
 	pub formats: Vec<String>,
 	pub upload_statuses: Vec<String>,
 	pub publication_statuses: Vec<String>,
@@ -237,13 +256,13 @@ impl SearchParams {
 
 	/// The search request, or `None` when the settings leave nothing to match.
 	pub fn request(self, base_url: &str, page: i32, size: i32) -> Result<Option<Request>> {
-		let age_ratings = if self.age_ratings.is_empty() {
-			settings::age_ratings()
+		let ratings = if self.ratings.is_empty() {
+			settings::content_ratings()
 		} else {
-			self.age_ratings
+			self.ratings
 		};
 		let source_types = settings::source_types();
-		if age_ratings.is_empty() || source_types.as_ref().is_some_and(Vec::is_empty) {
+		if ratings.is_empty() || source_types.as_ref().is_some_and(Vec::is_empty) {
 			return Ok(None);
 		}
 
@@ -260,8 +279,9 @@ impl SearchParams {
 		if let Some(types) = source_types {
 			body.insert("source_type".into(), json!(types));
 		}
-		body.insert("age_rating".into(), json!(age_ratings));
-		if let Some(pornographic) = pornographic() {
+		let (bands, pornographic) = rating_query(&ratings);
+		body.insert("age_rating".into(), json!(bands));
+		if let Some(pornographic) = pornographic {
 			body.insert("is_pornographic".into(), json!(pornographic));
 		}
 		if let Some(disturbing) = self.disturbing {
@@ -332,51 +352,4 @@ impl SearchParams {
 		}
 		Ok(Some(post(base_url, &url, &Value::Object(body))?))
 	}
-}
-
-/// The chart takes the rating and language settings as query parameters, or `None` when they
-/// leave nothing to match.
-pub fn trending_request(base_url: &str, limit: i32) -> Result<Option<Request>> {
-	let age_ratings = settings::age_ratings();
-	if age_ratings.is_empty() {
-		return Ok(None);
-	}
-	let mut url = api_url(
-		base_url,
-		&format!(
-			"/series/trending?limit={limit}&age_rating={}",
-			age_ratings.join(",")
-		),
-	);
-	let languages = settings::languages();
-	if languages.len() <= 5 {
-		url.push_str(&format!("&lang={}", languages.join(",")));
-	}
-	if let Some(pornographic) = pornographic() {
-		url.push_str(&format!("&is_pornographic={pornographic}"));
-	}
-	Ok(Some(get(base_url, &url)?))
-}
-
-/// The chart takes at most five languages, so a longer list is narrowed here instead.
-pub fn trending_entries(response: TrendingResponse) -> Vec<SeriesSummary> {
-	let languages = settings::languages();
-	response
-		.items
-		.into_iter()
-		.filter(|item| {
-			!item.hidden_by_filter
-				&& (languages.len() <= 5
-					|| item
-						.series
-						.translated_language
-						.as_deref()
-						.is_some_and(|language| {
-							languages
-								.iter()
-								.any(|allowed| allowed.eq_ignore_ascii_case(language))
-						}))
-		})
-		.map(|item| item.series)
-		.collect()
 }

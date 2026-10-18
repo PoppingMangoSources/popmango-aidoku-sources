@@ -2,35 +2,22 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "Applies to Discover, listings and search. Pornographic titles fall under 18+ and also need Pornographic turned on. An age rating picked in search overrides these for that search.",
+		"footer": "Applies to Discover, listings and search. A content rating picked in search overrides these for that search.",
 		"items": [
 			{
 				"type": "multi-select",
-				"key": "ageRatings",
-				"title": "Age Ratings",
+				"key": "contentRating",
+				"title": "Content Rating",
 				"values": [
 					"Safe",
-					"FifteenPlus",
-					"EighteenPlus"
-				],
-				"titles": [
-					"Safe",
-					"15+",
-					"18+"
+					"Suggestive",
+					"Erotica",
+					"Pornographic"
 				],
 				"default": [
 					"Safe",
-					"FifteenPlus"
+					"Suggestive"
 				],
-				"refreshes": [
-					"content",
-					"listings"
-				]
-			},
-			{
-				"type": "switch",
-				"key": "showPornographic",
-				"title": "Pornographic",
 				"refreshes": [
 					"content",
 					"listings"

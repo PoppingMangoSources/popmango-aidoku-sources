@@ -25,18 +25,14 @@
 	},
 	{
 		"type": "multi-select",
-		"id": "age_ratings",
-		"title": "Age Rating",
+		"id": "ratings",
+		"title": "Content Rating",
 		"usesTagStyle": true,
 		"options": [
 			"Safe",
-			"15+",
-			"18+"
-		],
-		"ids": [
-			"Safe",
-			"FifteenPlus",
-			"EighteenPlus"
+			"Suggestive",
+			"Erotica",
+			"Pornographic"
 		]
 	},
 	{

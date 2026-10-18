@@ -11,7 +11,7 @@ use aidoku::{
 use crate::{
 	Kagane,
 	filters::hidden_tag_ids,
-	helpers::{SearchParams, parse, sources, sources_request, trending_entries, trending_request},
+	helpers::{SearchParams, parse, sources, sources_request},
 	models::{SearchResponse, SeriesSummary, UploadSource},
 	settings,
 };
@@ -19,34 +19,37 @@ use crate::{
 /// The size the site's own rows ask for.
 const ROW_SIZE: i32 = 20;
 
-/// The site's chart shows ten.
-const TRENDING_SIZE: i32 = 10;
-
 #[derive(Clone, Copy)]
 enum Layout {
-	Ranked,
 	Row,
 	Chapters,
 }
 
-/// The popular row's title and sort, from the period picked in settings.
-pub fn popular() -> (&'static str, &'static str) {
-	match settings::popular_period().as_str() {
+/// Home rows: listing id, title, sort and layout. The popular row's period is a setting.
+fn sections() -> [(&'static str, &'static str, &'static str, Layout); 3] {
+	let (popular_name, popular_sort) = match settings::popular_period().as_str() {
 		"today" => ("Popular Today", "avg_views_today"),
 		"month" => ("Popular This Month", "avg_views_month"),
 		"all" => ("Popular All Time", "avg_views"),
 		_ => ("Popular This Week", "avg_views_week"),
-	}
+	};
+	[
+		("popular", popular_name, popular_sort, Layout::Row),
+		("added", "Recently Added", "created_at", Layout::Row),
+		(
+			"updated",
+			"Recently Updated",
+			"updated_at",
+			Layout::Chapters,
+		),
+	]
 }
 
-/// The sort behind each listing a home row links to.
 pub fn listing_sort(id: &str) -> Option<&'static str> {
-	match id {
-		"popular" => Some(popular().1),
-		"added" => Some("created_at"),
-		"updated" => Some("updated_at"),
-		_ => None,
-	}
+	sections()
+		.into_iter()
+		.find(|(section, ..)| *section == id)
+		.map(|(_, _, sort, _)| sort)
 }
 
 fn listing(id: &str, name: &str) -> Option<Listing> {
@@ -72,12 +75,6 @@ fn fill(
 			.collect()
 	};
 	Ok(match layout {
-		Layout::Ranked => HomeComponentValue::MangaList {
-			ranking: true,
-			page_size: Some(5),
-			entries: links(trending_entries(parse(response)?)),
-			listing: listing(id, name),
-		},
 		Layout::Row => HomeComponentValue::Scroller {
 			entries: links(parse::<SearchResponse>(response)?.content),
 			listing: listing(id, name),
@@ -97,20 +94,14 @@ fn fill(
 impl Home for Kagane {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let base_url = settings::base_url();
-		let sections = [
-			("trending", "Trending This Week", Layout::Ranked),
-			("popular", popular().0, Layout::Row),
-			("added", "Recently Added", Layout::Row),
-			("updated", "Recently Updated", Layout::Chapters),
-		];
+		let sections = sections();
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: sections
 				.iter()
-				.map(|(_, name, layout)| HomeComponent {
+				.map(|(_, name, _, layout)| HomeComponent {
 					title: Some(String::from(*name)),
 					subtitle: None,
 					value: match layout {
-						Layout::Ranked => HomeComponentValue::empty_manga_list(),
 						Layout::Row => HomeComponentValue::empty_scroller(),
 						Layout::Chapters => HomeComponentValue::empty_manga_chapter_list(),
 					},
@@ -120,21 +111,16 @@ impl Home for Kagane {
 
 		let hidden_tags = hidden_tag_ids(&base_url)?;
 		let mut requests = Vec::new();
-		let mut shown = Vec::new();
-		for section @ (id, ..) in sections {
-			let request = match listing_sort(id) {
-				Some(sort) => SearchParams {
-					hidden_tags: hidden_tags.clone(),
-					..SearchParams::sorted(sort)
-				}
-				.request(&base_url, 1, ROW_SIZE)?,
-				None => trending_request(&base_url, TRENDING_SIZE)?,
-			};
+		for (_, _, sort, _) in sections {
+			let request = SearchParams {
+				hidden_tags: hidden_tags.clone(),
+				..SearchParams::sorted(sort)
+			}
+			.request(&base_url, 1, ROW_SIZE)?;
 			let Some(request) = request else {
 				return Ok(HomeLayout::default());
 			};
 			requests.push(request);
-			shown.push(section);
 		}
 		let show_source = settings::show_source();
 		if show_source {
@@ -151,7 +137,7 @@ impl Home for Kagane {
 		} else {
 			Vec::new()
 		};
-		for ((id, name, layout), response) in shown.into_iter().zip(responses) {
+		for ((id, name, _, layout), response) in sections.into_iter().zip(responses) {
 			let Ok(value) = response
 				.map_err(Into::into)
 				.and_then(|response| fill(layout, id, name, response, &base_url, &sources))

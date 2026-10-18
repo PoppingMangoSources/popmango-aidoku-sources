@@ -19,9 +19,6 @@ mod settings;
 use helpers::*;
 use models::*;
 
-/// The most the chart's listing asks for; it has no further pages.
-const TRENDING_LISTING_SIZE: i32 = 50;
-
 struct Kagane;
 
 fn empty_page() -> MangaPageResult {
@@ -100,7 +97,7 @@ impl Source for Kagane {
 						params.genres.included = included;
 						params.genres.excluded = excluded;
 					}
-					"age_ratings" => params.age_ratings = included,
+					"ratings" => params.ratings = included,
 					"format" => params.formats = included,
 					"status" => params.upload_statuses = included,
 					"publication_status" => params.publication_statuses = included,
@@ -336,20 +333,7 @@ impl ListingProvider for Kagane {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let base_url = settings::base_url();
 		let Some(sort) = home::listing_sort(&listing.id) else {
-			if page > 1 {
-				return Ok(empty_page());
-			}
-			let Some(request) = trending_request(&base_url, TRENDING_LISTING_SIZE)? else {
-				return Ok(empty_page());
-			};
-			let (response, sources) = send_with_sources(&base_url, request)?;
-			return Ok(MangaPageResult {
-				entries: trending_entries(parse(response)?)
-					.into_iter()
-					.map(|series| series.into_manga(&base_url, &sources))
-					.collect(),
-				has_next_page: false,
-			});
+			bail!("Unknown listing");
 		};
 		let params = SearchParams {
 			hidden_tags: filters::hidden_tag_ids(&base_url)?,

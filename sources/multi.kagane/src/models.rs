@@ -21,19 +21,6 @@ pub struct SearchResponse {
 }
 
 #[derive(Deserialize)]
-pub struct TrendingResponse {
-	#[serde(default)]
-	pub items: Vec<TrendingItem>,
-}
-
-#[derive(Deserialize)]
-pub struct TrendingItem {
-	#[serde(default)]
-	pub hidden_by_filter: bool,
-	pub series: SeriesSummary,
-}
-
-#[derive(Deserialize)]
 pub struct SeriesSummary {
 	pub series_id: String,
 	pub title: String,
@@ -41,7 +28,6 @@ pub struct SeriesSummary {
 	pub source_id: Option<String>,
 	pub age_rating: Option<String>,
 	pub is_pornographic: Option<bool>,
-	pub translated_language: Option<String>,
 	#[serde(default)]
 	pub latest_chapters: Vec<LatestChapter>,
 }
