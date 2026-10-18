@@ -91,7 +91,13 @@ impl Source for Kagane {
 			}
 		}
 
-		let url = search_url(query.as_deref(), page, sort_idx, ascending);
+		let query = query.filter(|query| !query.is_empty());
+		// Relevance means nothing without a title, so browsing falls back to the most viewed.
+		let sort = match SORT_PARAMS.get(sort_idx).copied().unwrap_or_default() {
+			"" if query.is_none() => "total_views",
+			sort => sort,
+		};
+		let url = search_url(page, 35, sort, ascending);
 		let body = build_search_body(query.as_deref(), search)?;
 		search_page(&url, body)
 	}
@@ -268,13 +274,10 @@ impl ListingProvider for Kagane {
 			"Recently Updated" => "updated_at",
 			_ => bail!("Unknown listing"),
 		};
-		let url = format!(
-			"{}/search/series?page={}&size=35&sort={},desc",
-			api_base(),
-			page - 1,
-			sort
-		);
-		search_page(&url, build_search_body(None, SearchFilters::default())?)
+		search_page(
+			&search_url(page, 35, sort, false),
+			build_search_body(None, SearchFilters::default())?,
+		)
 	}
 }
 
@@ -310,16 +313,10 @@ impl Home for Kagane {
 				.collect(),
 		}));
 
-		let api = api_base();
 		let body = build_search_body(None, SearchFilters::default())?;
 		let mut requests = SECTIONS
 			.iter()
-			.map(|(_, sort, _)| {
-				api_post(
-					&format!("{api}/search/series?page=0&size=20&sort={sort},desc"),
-					body.clone(),
-				)
-			})
+			.map(|(_, sort, _)| api_post(&search_url(1, 20, sort, false), body.clone()))
 			.collect::<Result<Vec<_>>>()?;
 		let show_source = show_source();
 		if show_source {

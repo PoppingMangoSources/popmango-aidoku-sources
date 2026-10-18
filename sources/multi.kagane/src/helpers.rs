@@ -39,15 +39,12 @@ pub const SORT_PARAMS: &[&str] = &[
 	"created_at",      // 7: Date Added
 ];
 
-pub fn search_url(query: Option<&str>, page: i32, sort_idx: usize, ascending: bool) -> String {
-	let query = query.filter(|q| !q.is_empty());
-	let mut url = format!("{}/search/series?page={}&size=35", api_base(), page - 1);
-	let sort = SORT_PARAMS.get(sort_idx).copied().unwrap_or_default();
+/// An empty sort asks for relevance.
+pub fn search_url(page: i32, size: i32, sort: &str, ascending: bool) -> String {
+	let mut url = format!("{}/search/series?page={}&size={size}", api_base(), page - 1);
 	if !sort.is_empty() {
 		let order = if ascending { "asc" } else { "desc" };
 		url.push_str(&format!("&sort={sort},{order}"));
-	} else if query.is_none() {
-		url.push_str("&sort=total_views,desc");
 	}
 	url
 }
