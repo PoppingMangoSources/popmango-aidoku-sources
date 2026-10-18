@@ -1,23 +1,51 @@
 #![no_std]
 
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent, HomeComponentValue,
-	HomeLayout, ImageRequestProvider, Link, Listing, ListingKind, ListingProvider, Manga,
-	MangaPageResult, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
-	alloc::{format, string::String, vec, vec::Vec},
-	imports::{
-		net::{Request, TimeUnit, set_rate_limit},
-		std::parse_date,
-	},
+	BaseUrlProvider, Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider,
+	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result,
+	Source,
+	alloc::{String, Vec, format, vec},
+	imports::net::{Request, TimeUnit, set_rate_limit},
 	prelude::*,
 };
+use serde_json::json;
 
+mod filters;
 mod helpers;
+mod home;
 mod models;
+mod settings;
+
 use helpers::*;
 use models::*;
 
+/// The most the chart's listing asks for; it has no further pages.
+const TRENDING_LISTING_SIZE: i32 = 50;
+
 struct Kagane;
+
+fn empty_page() -> MangaPageResult {
+	MangaPageResult {
+		entries: Vec::new(),
+		has_next_page: false,
+	}
+}
+
+fn search_page(base_url: &str, request: Option<Request>) -> Result<MangaPageResult> {
+	let Some(request) = request else {
+		return Ok(empty_page());
+	};
+	let (response, sources) = send_with_sources(base_url, request)?;
+	let response: SearchResponse = parse(response)?;
+	Ok(MangaPageResult {
+		entries: response
+			.content
+			.into_iter()
+			.map(|series| series.into_manga(base_url, &sources))
+			.collect(),
+		has_next_page: !response.last,
+	})
+}
 
 impl Source for Kagane {
 	fn new() -> Self {
@@ -31,51 +59,101 @@ impl Source for Kagane {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let mut sort_idx = 0usize;
-		let mut statuses: Vec<String> = Vec::new();
-		let mut formats: Vec<String> = Vec::new();
-		let mut genres_inc: Vec<String> = Vec::new();
-		let mut genres_exc: Vec<String> = Vec::new();
+		let base_url = settings::base_url();
+		let mut params = SearchParams {
+			query: query.map(|query| query.trim().into()).unwrap_or_default(),
+			..Default::default()
+		};
+		let mut tapped: Option<String> = None;
+		let mut typed_tags = String::new();
 
 		for filter in filters {
 			match filter {
-				FilterValue::Sort { index, .. } => {
-					sort_idx = index as usize;
+				FilterValue::Sort {
+					index, ascending, ..
+				} => {
+					params.sort = SORTS.get(index as usize).copied().unwrap_or_default();
+					params.ascending = ascending;
 				}
-				FilterValue::MultiSelect { id, included, .. } if id == "status" => {
-					statuses = included;
+				FilterValue::Check { id, value } if id == "exact_match" => {
+					params.exact_match = value == 1;
 				}
-				FilterValue::MultiSelect { id, included, .. } if id == "format" => {
-					formats = included;
-				}
+				FilterValue::Select { id, value } => match id.as_str() {
+					"genre" => tapped = Some(value),
+					"genre_mode" => params.genres.match_any = value == "any",
+					"tag_mode" => params.tags.match_any = value == "any",
+					"disturbing" => {
+						params.disturbing = match value.as_str() {
+							"only" => Some(true),
+							"exclude" => Some(false),
+							_ => None,
+						}
+					}
+					_ => {}
+				},
 				FilterValue::MultiSelect {
 					id,
 					included,
 					excluded,
-				} if id == "genre" => {
-					genres_inc = included;
-					genres_exc = excluded;
+				} => match id.as_str() {
+					"genres" => {
+						params.genres.included = included;
+						params.genres.excluded = excluded;
+					}
+					"ratings" => params.ratings = included,
+					"format" => params.formats = included,
+					"status" => params.upload_statuses = included,
+					"publication_status" => params.publication_statuses = included,
+					"original_language" => params.original_languages = included,
+					"sources" => params.sources = included,
+					_ => {}
+				},
+				FilterValue::Text { id, value } => {
+					let value = value.trim();
+					if value.is_empty() {
+						continue;
+					}
+					match id.as_str() {
+						"tags" => typed_tags = value.into(),
+						"author" => params.staff = Some(filters::staff_id(&base_url, value)?),
+						"group" => params.group = Some(filters::group_id(&base_url, value)?),
+						_ => {}
+					}
 				}
+				FilterValue::Range { id, from, to } => params.ranges.push((id, from, to)),
 				_ => {}
 			}
 		}
 
-		let url = search_url(query.as_deref(), page, sort_idx);
-		let body = build_search_body(
-			query.as_deref(),
-			&statuses,
-			&formats,
-			&genres_inc,
-			&genres_exc,
-		);
-		let resp: SearchResponse = api_post(&url, body)?.json_owned()?;
+		// A tapped tag on a series page may be one of its genres or one of its tags.
+		if let Some(name) = &tapped
+			&& let Some(genre) = filters::genres(&base_url)?
+				.into_iter()
+				.find(|genre| genre.genre_name.eq_ignore_ascii_case(name))
+		{
+			params.genres.included.push(genre.id);
+			tapped = None;
+		}
+		let browsing = params.query.is_empty();
+		let hide_tags = browsing && !settings::hidden_tags().is_empty();
+		if tapped.is_some() || !typed_tags.is_empty() || hide_tags {
+			let tags = filters::tags(&base_url)?;
+			if let Some(name) = tapped {
+				let ids = filters::tag_ids(&tags, &name);
+				if ids.is_empty() {
+					bail!("Kagane has no genre or tag named {name}");
+				}
+				params.tags.included.extend(ids);
+			}
+			let (included, excluded) = filters::typed_tags(&tags, &typed_tags)?;
+			params.tags.included.extend(included);
+			params.tags.excluded.extend(excluded);
+			if hide_tags {
+				params.hidden_tags = filters::hidden_ids(&tags);
+			}
+		}
 
-		let has_next_page = !resp.last;
-		let entries = resp.content.into_iter().map(Manga::from).collect();
-		Ok(MangaPageResult {
-			entries,
-			has_next_page,
-		})
+		search_page(&base_url, params.request(&base_url, page, PAGE_SIZE)?)
 	}
 
 	fn get_manga_update(
@@ -84,33 +162,81 @@ impl Source for Kagane {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let det: SeriesDetail =
-			api_get(&format!("{API_BASE}/series/{}", manga.key))?.json_owned()?;
+		let base_url = settings::base_url();
+		let show_source = settings::show_source();
+		// Chapters are credited to the series' source, so they need its details and the sources.
+		let mut requests = vec![get(
+			&base_url,
+			&api_url(&base_url, &format!("/series/{}", manga.key)),
+		)?];
+		if needs_chapters {
+			requests.push(get(
+				&base_url,
+				&api_url(
+					&base_url,
+					&format!("/series/{}/books/index?fields=List", manga.key),
+				),
+			)?);
+		}
+		let needs_sources = needs_chapters || show_source;
+		if needs_sources {
+			requests.push(sources_request(&base_url)?);
+		}
+		let mut responses = Request::send_all(requests).into_iter();
+		let mut next = || {
+			responses
+				.next()
+				.ok_or_else(|| error!("Kagane sent no response"))
+		};
+		let detail: SeriesDetail = parse(next()??)?;
+		let index: Option<BookIndex> = if needs_chapters {
+			Some(parse(next()??)?)
+		} else {
+			None
+		};
+		let sources = if needs_sources {
+			next()?.ok().map(helpers::sources).unwrap_or_default()
+		} else {
+			Vec::new()
+		};
 
 		if needs_details {
-			manga.title = String::from(det.title.trim());
-			manga.cover = det
+			let source = detail
+				.source_id
+				.as_deref()
+				.filter(|_| show_source)
+				.and_then(|id| sources.iter().find(|source| source.source_id == id));
+			manga.title = format_title(
+				&detail.title,
+				source.map(|source| source.title.as_str()),
+				detail
+					.edition_info
+					.as_deref()
+					.filter(|_| settings::show_edition()),
+			);
+			manga.cover = detail
 				.series_covers
 				.first()
-				.map(|c| format!("{API_BASE}/image/{}", c.image_id));
-			manga.url = Some(format!("{BASE_URL}/series/{}", manga.key));
-			manga.status = parse_status(&det.upload_status);
-			manga.viewer = parse_viewer(det.format.as_deref());
-			manga.content_rating = parse_content_rating(det.content_rating.as_deref());
+				.map(|cover| api_url(&base_url, &format!("/image/{}", cover.image_id)));
+			manga.url = Some(format!("{base_url}/series/{}", manga.key));
+			manga.status = parse_status(&detail.upload_status);
+			manga.viewer = parse_viewer(detail.format.as_deref());
+			manga.content_rating = content_rating(rating(
+				detail.age_rating.as_deref(),
+				detail.is_pornographic,
+				detail.content_rating.as_deref(),
+			));
+			manga.description = detail
+				.description
+				.as_deref()
+				.map(str::trim)
+				.filter(|description| !description.is_empty())
+				.map(Into::into);
 
-			if let Some(desc) = det.description {
-				let trimmed = desc.trim();
-				if !trimmed.is_empty() {
-					manga.description = Some(String::from(trimmed));
-				}
-			}
-
-			// Consume series_staff once, partitioning into authors/artists so the
-			// names don't need to be cloned. A staff member credited for both
-			// story and art lands in both lists.
+			// A staff member credited for both story and art lands in both lists.
 			let mut authors: Vec<String> = Vec::new();
 			let mut artists: Vec<String> = Vec::new();
-			for staff in det.series_staff {
+			for staff in detail.series_staff {
 				let role = staff.role.to_lowercase();
 				let is_author = role.contains("author") || role.contains("story");
 				let is_artist = role.contains("artist") || role.contains("art");
@@ -124,244 +250,150 @@ impl Source for Kagane {
 					(false, false) => {}
 				}
 			}
-			if !authors.is_empty() {
-				manga.authors = Some(authors);
-			}
-			if !artists.is_empty() {
-				manga.artists = Some(artists);
-			}
+			manga.authors = (!authors.is_empty()).then_some(authors);
+			manga.artists = (!artists.is_empty()).then_some(artists);
 
-			// The site lists genres and (separate) tags; surface both together,
-			// skipping any flagged as spoilers.
-			let tags: Vec<String> = det
+			let show_spoilers = settings::show_spoiler_tags();
+			let tags: Vec<String> = detail
 				.genres
 				.into_iter()
-				.filter(|g| !g.is_spoiler)
-				.map(|g| g.genre_name)
+				.filter(|genre| show_spoilers || !genre.is_spoiler)
+				.map(|genre| genre.genre_name)
 				.chain(
-					det.tags
+					detail
+						.tags
 						.into_iter()
-						.filter(|t| !t.is_spoiler)
-						.map(|t| t.tag_name),
+						.filter(|tag| show_spoilers || !tag.is_spoiler)
+						.map(|tag| tag.tag_name),
 				)
 				.collect();
-			if !tags.is_empty() {
-				manga.tags = Some(tags);
-			}
+			manga.tags = (!tags.is_empty()).then_some(tags);
 		}
 
-		if needs_chapters {
-			// API returns chapters oldest-first; reverse the iterator for
-			// newest-first display.
-			let chapters: Vec<Chapter> = det
-				.series_books
-				.into_iter()
-				.rev()
-				.map(|book| {
-					let url = format!("{BASE_URL}/series/{}/reader/{}", manga.key, book.book_id);
-					let scanlators: Vec<String> =
-						book.groups.into_iter().map(|g| g.title).collect();
-					Chapter {
-						key: book.book_id,
-						chapter_number: book.chapter_no.as_deref().and_then(|s| s.parse().ok()),
-						volume_number: book.volume_no.as_deref().and_then(|s| s.parse().ok()),
-						title: {
-							let t = book.title.trim();
-							if t.is_empty() {
-								None
-							} else {
-								Some(String::from(t))
-							}
-						},
-						date_uploaded: book.created_at.as_deref().and_then(|s| {
-							let s = s.split_once('.').map_or(s, |(b, _)| b);
-							parse_date(format!("{s}Z"), "yyyy-MM-dd'T'HH:mm:ss'Z'")
-						}),
-						scanlators: if scanlators.is_empty() {
-							None
-						} else {
-							Some(scanlators)
-						},
-						url: Some(url),
-						..Default::default()
-					}
-				})
-				.collect();
-			manga.chapters = Some(chapters);
+		if let Some(index) = index {
+			let uploader = uploader(&sources, detail.source_id.as_deref());
+			manga.chapters = Some(index.into_chapters(&base_url, &manga.key, uploader.as_deref()));
 		}
 
 		Ok(manga)
 	}
 
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		// Step 1: obtain a short-lived integrity token
-		let integrity: IntegrityResponse = Request::post(format!("{BASE_URL}/api/integrity"))?
+		let base_url = settings::base_url();
+		let data_saver = settings::data_saver();
+		let integrity: IntegrityResponse = parse(
+			site_request(
+				Request::post(format!("{base_url}/api/integrity"))?,
+				&base_url,
+			)
 			.header("Content-Type", "application/json")
-			.header("Origin", BASE_URL)
-			.header("Referer", &format!("{BASE_URL}/"))
 			.body(String::new())
-			.json_owned()?;
+			.send()?,
+		)?;
 
-		// Step 2: exchange the integrity token for an access token + page manifest
-		let challenge: ChallengeResponse = Request::post(format!(
-			"{API_BASE}/books/{}?is_datasaver=false",
-			chapter.key
-		))?
-		.header("Content-Type", "application/json")
-		.header("Origin", BASE_URL)
-		.header("Referer", &format!("{BASE_URL}/"))
-		.header("x-integrity-token", &integrity.token)
-		.body(String::from("{}"))
-		.json_owned()?;
+		// The integrity token buys an access token and the page manifest.
+		let challenge: ChallengeResponse = parse(
+			post(
+				&base_url,
+				&api_url(
+					&base_url,
+					&format!("/books/{}?is_datasaver={data_saver}", chapter.key),
+				),
+				&json!({}),
+			)?
+			.header("x-integrity-token", &integrity.token)
+			.send()?,
+		)?;
 
 		let cache_url = challenge.cache_url;
 		let token = challenge.access_token;
-
-		let mut pages: Vec<(i32, Page)> = match challenge.manifest {
-			Some(manifest) => manifest
-				.pages
-				.into_iter()
-				.map(|p| {
-					let ext = p.ext.unwrap_or_else(|| String::from("jxl"));
-					let url = format!(
-						"{cache_url}/api/v2/books/page/{}/{}.{ext}?token={token}",
-						chapter.key, p.page_id
-					);
-					(
-						p.page_no,
-						Page {
-							content: PageContent::url(url),
-							..Default::default()
-						},
-					)
-				})
-				.collect(),
-			None => Vec::new(),
-		};
-
-		pages.sort_by_key(|(n, _)| *n);
-		Ok(pages.into_iter().map(|(_, p)| p).collect())
+		let mut pages: Vec<(i32, Page)> = challenge
+			.manifest
+			.map(|manifest| manifest.pages)
+			.unwrap_or_default()
+			.into_iter()
+			.map(|page| {
+				let ext = page.ext.as_deref().unwrap_or("jxl");
+				let url = format!(
+					"{cache_url}/api/v2/books/page/{}/{}.{ext}?token={token}&is_datasaver={data_saver}",
+					chapter.key, page.page_id
+				);
+				(
+					page.page_no,
+					Page {
+						content: PageContent::url(url),
+						..Default::default()
+					},
+				)
+			})
+			.collect();
+		if pages.is_empty() {
+			bail!("Kagane returned no pages for this chapter");
+		}
+		pages.sort_by_key(|(number, _)| *number);
+		Ok(pages.into_iter().map(|(_, page)| page).collect())
 	}
 }
 
 impl ListingProvider for Kagane {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let sort = match listing.id.as_str() {
-			"Recently Added" => "created_at",
-			"Recently Updated" => "updated_at",
-			_ => "avg_views_week", // Popular This Week
+		let base_url = settings::base_url();
+		let Some(sort) = home::listing_sort(&listing.id) else {
+			if page > 1 {
+				return Ok(empty_page());
+			}
+			let Some(request) = trending_request(&base_url, TRENDING_LISTING_SIZE)? else {
+				return Ok(empty_page());
+			};
+			let (response, sources) = send_with_sources(&base_url, request)?;
+			return Ok(MangaPageResult {
+				entries: trending_entries(parse(response)?)
+					.into_iter()
+					.map(|series| series.into_manga(&base_url, &sources))
+					.collect(),
+				has_next_page: false,
+			});
 		};
-		let url = format!(
-			"{API_BASE}/search/series?page={}&size=35&sort={},desc",
-			page - 1,
-			sort
-		);
-		let body = build_search_body(None, &[], &[], &[], &[]);
-		let resp: SearchResponse = api_post(&url, body)?.json_owned()?;
-
-		let has_next_page = !resp.last;
-		let entries = resp.content.into_iter().map(Manga::from).collect();
-		Ok(MangaPageResult {
-			entries,
-			has_next_page,
-		})
-	}
-}
-
-impl Home for Kagane {
-	fn get_home(&self) -> Result<HomeLayout> {
-		let pop_url = format!("{API_BASE}/search/series?page=0&size=20&sort=avg_views_week,desc");
-		let added_url = format!("{API_BASE}/search/series?page=0&size=20&sort=created_at,desc");
-		let updated_url = format!("{API_BASE}/search/series?page=0&size=20&sort=updated_at,desc");
-		let body = build_search_body(None, &[], &[], &[], &[]);
-
-		let popular: Vec<Link> = api_post(&pop_url, body.clone())?
-			.json_owned::<SearchResponse>()?
-			.content
-			.into_iter()
-			.map(|s| Manga::from(s).into())
-			.collect();
-
-		let recently_added: Vec<Link> = api_post(&added_url, body.clone())?
-			.json_owned::<SearchResponse>()?
-			.content
-			.into_iter()
-			.map(|s| Manga::from(s).into())
-			.collect();
-
-		let recently_updated: Vec<MangaWithChapter> = api_post(&updated_url, body)?
-			.json_owned::<SearchResponse>()?
-			.content
-			.into_iter()
-			.filter_map(|s| MangaWithChapter::try_from(s).ok())
-			.collect();
-
-		Ok(HomeLayout {
-			components: vec![
-				HomeComponent {
-					title: Some(String::from("Popular This Week")),
-					subtitle: None,
-					value: HomeComponentValue::Scroller {
-						entries: popular,
-						listing: Some(Listing {
-							id: String::from("Popular This Week"),
-							name: String::from("Popular This Week"),
-							kind: ListingKind::Default,
-						}),
-					},
-				},
-				HomeComponent {
-					title: Some(String::from("Recently Added")),
-					subtitle: None,
-					value: HomeComponentValue::Scroller {
-						entries: recently_added,
-						listing: Some(Listing {
-							id: String::from("Recently Added"),
-							name: String::from("Recently Added"),
-							kind: ListingKind::Default,
-						}),
-					},
-				},
-				HomeComponent {
-					title: Some(String::from("Recently Updated")),
-					subtitle: None,
-					value: HomeComponentValue::MangaChapterList {
-						entries: recently_updated,
-						page_size: None,
-						listing: Some(Listing {
-							id: String::from("Recently Updated"),
-							name: String::from("Recently Updated"),
-							kind: ListingKind::Default,
-						}),
-					},
-				},
-			],
-		})
+		let params = SearchParams {
+			hidden_tags: filters::hidden_tag_ids(&base_url)?,
+			..SearchParams::sorted(sort)
+		};
+		search_page(&base_url, params.request(&base_url, page, PAGE_SIZE)?)
 	}
 }
 
 impl DeepLinkHandler for Kagane {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		let prefix = format!("{BASE_URL}/series/");
-		if let Some(rest) = url.strip_prefix(&prefix) {
-			let slug = rest.split('/').next().unwrap_or(rest);
-			let slug = slug.split('?').next().unwrap_or(slug);
-			let slug = slug.split('#').next().unwrap_or(slug);
-			if !slug.is_empty() {
-				return Ok(Some(DeepLinkResult::Manga {
-					key: String::from(slug),
-				}));
-			}
-		}
-		Ok(None)
+		let Some((_, path)) = url.split_once("/series/") else {
+			return Ok(None);
+		};
+		let path = path.split(['?', '#']).next().unwrap_or_default();
+		let mut segments = path.split('/').filter(|segment| !segment.is_empty());
+		let Some(key) = segments.next() else {
+			return Ok(None);
+		};
+		Ok(Some(match (segments.next(), segments.next()) {
+			(Some("reader"), Some(chapter)) => DeepLinkResult::Chapter {
+				manga_key: key.into(),
+				key: chapter.into(),
+			},
+			_ => DeepLinkResult::Manga { key: key.into() },
+		}))
 	}
 }
 
 impl ImageRequestProvider for Kagane {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
+		let base_url = settings::base_url();
 		Ok(Request::get(url)?
-			.header("Origin", BASE_URL)
-			.header("Referer", &format!("{BASE_URL}/")))
+			.header("Origin", &base_url)
+			.header("Referer", &format!("{base_url}/")))
+	}
+}
+
+impl BaseUrlProvider for Kagane {
+	fn get_base_url(&self) -> Result<String> {
+		Ok(settings::base_url())
 	}
 }
 
@@ -369,6 +401,9 @@ register_source!(
 	Kagane,
 	ListingProvider,
 	Home,
+	DynamicFilters,
+	DynamicSettings,
 	DeepLinkHandler,
-	ImageRequestProvider
+	ImageRequestProvider,
+	BaseUrlProvider
 );

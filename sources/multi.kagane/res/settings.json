@@ -2,22 +2,135 @@
 	{
 		"type": "group",
 		"title": "Content",
+		"footer": "Applies to Discover, listings and search. A content rating picked in search overrides these for that search.",
 		"items": [
 			{
 				"type": "multi-select",
 				"key": "contentRating",
 				"title": "Content Rating",
-				"values": ["Safe", "Suggestive", "Erotica", "Pornographic"],
-				"default": ["Safe", "Suggestive"],
-				"refreshes": ["content"]
+				"values": [
+					"Safe",
+					"Suggestive",
+					"Erotica",
+					"Pornographic"
+				],
+				"default": [
+					"Safe",
+					"Suggestive"
+				],
+				"refreshes": [
+					"content",
+					"listings"
+				]
 			},
 			{
 				"type": "multi-select",
 				"key": "sourceType",
 				"title": "Source Type",
-				"values": ["Official", "Unofficial", "Mixed"],
-				"default": ["Official", "Unofficial", "Mixed"],
-				"refreshes": ["content"]
+				"values": [
+					"Official",
+					"Unofficial",
+					"Mixed"
+				],
+				"default": [
+					"Official",
+					"Unofficial",
+					"Mixed"
+				],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Hidden Tags",
+		"footer": "Titles carrying any of these tags are left out of Discover, listings and browsing, but not out of a title search. Enter each tag's name as the site shows it.",
+		"items": [
+			{
+				"type": "editable-list",
+				"key": "hiddenTags",
+				"title": "Add Hidden Tag",
+				"lineLimit": 1,
+				"inline": true,
+				"placeholder": "Tag name",
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Titles",
+		"footer": "The source and edition tell apart the uploads of one series. Spoiler tags are hidden from series pages unless shown here.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "showSource",
+				"title": "Show Source in Title",
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "switch",
+				"key": "showEdition",
+				"title": "Show Edition in Title",
+				"refreshes": [
+					"content"
+				]
+			},
+			{
+				"type": "switch",
+				"key": "showSpoilerTags",
+				"title": "Show Spoiler Tags",
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Discover",
+		"items": [
+			{
+				"type": "select",
+				"key": "popularPeriod",
+				"title": "Popular Section",
+				"values": [
+					"today",
+					"week",
+					"month",
+					"all"
+				],
+				"titles": [
+					"Popular Today",
+					"Popular This Week",
+					"Popular This Month",
+					"Popular All Time"
+				],
+				"default": "week",
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Reader",
+		"footer": "Data Saver loads smaller page images.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "dataSaver",
+				"title": "Data Saver"
 			}
 		]
 	}
