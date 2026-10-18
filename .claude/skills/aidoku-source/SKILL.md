@@ -49,6 +49,7 @@ that shipped:
 - [ ] Every site filter present; dynamic genres → `supportsTagSearch` plus a
       `FilterValue::Select { id: "genre" }` arm; an author filter → `supportsAuthorSearch`
 - [ ] No `language` on chapters of a single-language source
+- [ ] Toggles and other secondary filters set `"hideFromHeader": true`
 - [ ] Every home feed honours the same settings as browse — check what the feed endpoint
       accepts before filtering locally
 - [ ] Home components `page_size` ≤ 5; one request per section; no per-card fan-out

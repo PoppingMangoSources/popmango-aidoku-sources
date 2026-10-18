@@ -87,6 +87,8 @@ def check_filters_json(path: Path) -> None:
             fail(path, f"sort {name!r} sets the default the framework already uses")
         if item.get("type") == "multi-select" and item.get("canExclude") is False:
             fail(path, f"multi-select {name!r} sets canExclude false, which is the default")
+        if item.get("type") == "check" and not item.get("hideFromHeader"):
+            fail(path, f"check {name!r} shows in the filters header; set hideFromHeader")
 
 
 SECTION_BANNER = re.compile(r"^\s*//+\s*[-=*#~]{3,}")

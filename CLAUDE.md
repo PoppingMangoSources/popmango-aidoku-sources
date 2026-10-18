@@ -187,6 +187,16 @@ On approval kkantan suggested, for later, a **content rating filter in search th
 overrides the setting** (as `multi.mangadex` has) and a **"Has chapters" toggle**, both
 matching the website. Expect the same on any source whose site offers them.
 
+### From #821 (`en.toonkotsu` filters)
+
+| What was flagged | The rule |
+|---|---|
+| The "Has Chapters" check sat in the filters header | Set `"hideFromHeader": true` on toggles and other secondary options, so the header keeps to the main filters. |
+
+kkantan pushed that fix to our branch themselves (`chore: hide has chapters filter from header`)
+and merged it, so the change reached `main` afterwards as a sync rather than as our commit.
+Fetch the PR branch after a review: a reviewer's commit there is the fix to copy back.
+
 ---
 
 ## 4. Reviewing behaviour and request cost, not just shape
@@ -345,6 +355,8 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
 - `SortFilter.default` is `Option<SortFilterDefault>` defaulting to `None`, which
   already means index 0 and not ascending. Setting it explicitly *is* redundant.
 - `MultiSelectFilter` has `uses_tag_style`, default `false`.
+- Every filter has `hide_from_header` (`hideFromHeader` in JSON), unset by default, so a
+  filter shows in the header unless told otherwise.
 - `Manga` has no field for alternate titles, original language, year or score.
   Don't fetch them.
 - `Chapter` has `volume_number`, `locked`, `thumbnail` and `language` — easy to
@@ -412,7 +424,8 @@ an API quirk, a constraint, an ordering that matters.
   clippy, `aidoku package` + `verify` for every source the push changes, then
   `scripts/check-sources.py`.
 - `scripts/check-sources.py [--base <ref>] [ids…]` checks the rules that need no network:
-  tab-indented JSON, final newlines, no `"multi"` language, redundant filter defaults,
+  tab-indented JSON, final newlines, no `"multi"` language, redundant filter defaults, check
+  filters left in the header,
   decorative dividers, `page_size` above 5, chapter `language` on single-language
   sources, `defaults_get` outside `settings.rs`, README row in step with `source.json`, a
   version bump since `<ref>`, and `CLAUDE.md` identical to this file. CI
@@ -599,7 +612,7 @@ template if nothing fits.
 No links here on purpose — search the Aidoku-Community sources repo by these names.
 
 **Reviews worth rereading before submitting.** PRs 726, 531, 624, 646, 690 (two
-rounds), 603, and our own 735 and 815. Recurring themes across them: consume owned values instead of
+rounds), 603, and our own 735, 815 and 821. Recurring themes across them: consume owned values instead of
 cloning, inline single-use helpers, use the API's own ordering, avoid unnecessary
 dynamic settings, keep search results compact, send partial chapter results,
 construct queries correctly, and handle only deep links you can actually resolve.

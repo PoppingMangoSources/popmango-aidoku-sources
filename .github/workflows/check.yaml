@@ -1,9 +1,10 @@
 name: Check source rules
 
 # The AGENTS.md rules that need no network or toolchain: tab-indented JSON, final newlines,
-# no "multi" language, no decorative dividers, page sizes, settings read in settings.rs,
-# README rows in step with source.json, a version bump on every changed source, and
-# CLAUDE.md identical to AGENTS.md. Only the sources a change touches are checked.
+# no "multi" language, check filters hidden from the header, no decorative dividers, page
+# sizes, settings read in settings.rs, README rows in step with source.json, a version bump
+# on every changed source, and CLAUDE.md identical to AGENTS.md. Only the sources a change
+# touches are checked.
 
 on:
   push:
