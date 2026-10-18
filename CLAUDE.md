@@ -634,3 +634,31 @@ the fastest way to see how thin a templated source can be.
 review comments is the fastest way to predict what they'll ask for — the patterns
 in section 3 came from doing exactly that.
 
+
+---
+
+## 14. Kagane specifics
+
+`multi.kagane` lives upstream only; our changes go up from `fix/kagane-chapter-fetch`.
+Confirmed by console probes on kagane.si unless marked.
+
+- Mirrors: kagane.cx (default), kagane.si, kagane.moe, kagane.net serve the same catalogue
+  (kagane.si probed). kagane.org was dropped. API under `{base}/api/v2`.
+- **Chapters** come from `GET /series/{id}/books/index?fields=List` — rows of values in
+  the order `fields` names, groups as indices into `groups`; order by `sort_no`, since
+  chapter numbers restart. The series endpoint no longer lists books. (inferred from
+  issue #816 and the reference clients)
+- **Ratings** are `age_rating` (`Safe`, `FifteenPlus`, `EighteenPlus`) plus
+  `is_pornographic`. `is_pornographic: false` gives 18+ without pornographic titles,
+  `true` only pornographic ones, absent both. The source keeps the old four names
+  (Safe, Suggestive, Erotica, Pornographic) and maps them, as keiyoushi does.
+- **Search** `POST /search/series?page=<0-based>&size=&sort=<field>,asc|desc`, answering
+  `{content, last}`. Sorts `rating`, `popular_now` and ascending order work. Bodies take
+  `current_books`/`start_year` as `{min, max}`, `original_language` codes (an unknown one
+  matches nothing), and `publication_status` from `Ongoing`, `Hiatus`, `Completed`,
+  `Abandoned` (anything else is a 400 naming the variants).
+- More than 50 ids in one list answers `400 {"error":"too_many_values"}`, so the source
+  stops with its own message first. `/sources/list` has 315 sources, so it bites.
+- Lookups: `POST /search/staff?size=8 {name}` and `GET /groups/search?q=&limit=8` both
+  answer; the search body takes the resolved id as `staff`/`groups` `{values: [id]}`.
+- `GET /series/trending` answers ten entries, but the section was dropped on request.

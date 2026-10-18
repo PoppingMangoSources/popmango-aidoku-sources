@@ -15,6 +15,9 @@ Rules that each cost a round trip once:
 - **Include a value that should match nothing** (`zzz`) and one that should narrow
   (`manhwa`). Same result for both means the parameter is ignored.
 - **Print a total or a count**, so sums can be compared against the unfiltered total.
+- **Keep the printed label out of the request.** A Kagane probe appended its label to the
+  url (`size=5 books 1-3`), and every case answered "invalid digit" — a probe bug that read
+  as the API refusing the parameter.
 
 ## Does an endpoint honour a parameter?
 
