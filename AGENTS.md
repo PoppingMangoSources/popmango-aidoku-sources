@@ -643,7 +643,8 @@ in section 3 came from doing exactly that.
 Confirmed by console probes on kagane.si unless marked.
 
 - Mirrors: kagane.cx (default), kagane.si, kagane.moe, kagane.net serve the same catalogue
-  (kagane.si probed). kagane.org was dropped. API under `{base}/api/v2`.
+  (kagane.si probed). kagane.org now opens a page that picks one of those four, so it is
+  listed last. API under `{base}/api/v2`; the selected url is read as `defaults_get("url")`.
 - **Chapters** come from `GET /series/{id}/books/index?fields=List` — rows of values in
   the order `fields` names, groups as indices into `groups`; order by `sort_no`, since
   chapter numbers restart. The series endpoint no longer lists books. (inferred from
