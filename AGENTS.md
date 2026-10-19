@@ -81,7 +81,7 @@ rather than a gate. Worth adding for anything whose behaviour is hard to eyeball
 which is most of what went wrong in #735.
 
 Nothing upstream requires them: `en.toonkotsu` went up without its `test.rs` and the
-test dev-dependencies, and `main` was changed to match so `src/` stays identical.
+test dev-dependencies.
 
 ---
 
@@ -502,6 +502,7 @@ was a parameter we sent and they didn't, not the endpoint or the sort key.
 
 ## 11. Toonkotsu specifics
 
+`en.toonkotsu` lives upstream only; it was removed from `main` once merged there.
 Kept here because the API is undocumented. Everything below was confirmed by console
 probes or captures unless marked.
 
