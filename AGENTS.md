@@ -666,6 +666,10 @@ Confirmed by console probes on kagane.si unless marked.
 - Lookups: `POST /search/staff?size=8 {name}` and `GET /groups/search?q=&limit=8` both
   answer; the search body takes the resolved id as `staff`/`groups` `{values: [id]}`.
 - `GET /series/trending` answers ten entries, but the section was dropped on request.
+- Search results carry `upload_status`, `age_rating`, `is_pornographic`, `format`, and
+  `genre_list`/`tag_list` (`{id, name}`) and `staff_list` (`{id, name, role}`); the bare
+  `genres`/`tags`/`staff` are ids only. No description, so the big scroller shows everything
+  else from the search response.
 - **Upstream history** (`git log upstream/main -- sources/multi.kagane`; PR heads fetch as
   `refs/pull/<n>/head`): #603 added it, and its review moved the request helpers into
   `helpers.rs`, replaced a languages setting with the app's languages, cut clones, and
