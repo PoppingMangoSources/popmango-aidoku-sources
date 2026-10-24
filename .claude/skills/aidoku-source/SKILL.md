@@ -5,7 +5,7 @@ description: Create, fix or submit an Aidoku source in this repo. Use when addin
 
 # Building Aidoku sources
 
-`AGENTS.md` (identical to `CLAUDE.md`) holds the rules and why they exist. This skill is the
+`AGENTS.md` (which `CLAUDE.md` loads) holds the rules and why they exist. This skill is the
 order to apply them in. Work in phases; each depends on facts the one before established.
 
 ## Phase 1 — Recon
@@ -56,6 +56,14 @@ that shipped:
 - [ ] Settings read only in `settings.rs`; a cleared multi-select means "nothing", not "all"
 - [ ] Moving an axis between settings and filters renames the setting key
 - [ ] `bail!` over `Err(error!())`; consume owned values instead of cloning
+- [ ] JSON types and their `From` impls in `models.rs`, free functions in `helpers.rs`
+- [ ] `.json_owned()` rather than `.string()` plus `serde_json::from_str`; `parse_date`
+      rather than a hand-written parser; no `JsContext` where a Rust crate does the job
+- [ ] No empty-query test, no neither-flag guard, no `!included.is_empty()` in a
+      multi-select arm, no trait registered just to return `Unimplemented`
+- [ ] A per-page failure fails the page list or leaves the page unprocessed, never drops it
+- [ ] Regexes compiled once in a `static`; fixed sets as arrays
+- [ ] A rebranded site keeps its id and sets `breakingChangeVersion` in `config`
 - [ ] Comments: terse, why only, no other sources or third parties named, no dividers
 
 ## Phase 4 — Verify
@@ -64,9 +72,11 @@ From the source directory:
 
 ```sh
 cargo fmt --all
-cargo clippy --release --target wasm32-unknown-unknown   # never --all-targets
-aidoku package && aidoku verify package.aix
+cargo clippy --target wasm32-unknown-unknown -- -D warnings   # never --all-targets
+RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 ```
+
+These are CI's commands (AGENTS.md §1), so a source that passes here passes upstream.
 
 Then from the repo root: `scripts/check-sources.py <id>`.
 
@@ -117,5 +127,8 @@ After the PR is merged, later changes go up from the same branch name as an upda
 scripts/pr-branch.sh <id> --update "feat(<id>): <what>" "<one or two sentences>" --push
 ```
 
-It restarts the branch from `upstream/main` and sets the version to upstream's plus one. When a comment asks "does X not support Y", answer it with a console probe, not
+It restarts the branch from `upstream/main` and sets the version to upstream's plus one.
+That needs the source on `main`. Sources that live only upstream (`multi.kagane`,
+`en.toonkotsu`) get a branch cut straight from `upstream/main` instead, with upstream's
+version plus one and the same gates. When a comment asks "does X not support Y", answer it with a console probe, not
 from a reference client.

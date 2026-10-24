@@ -12,6 +12,7 @@ Exits non-zero when any rule fails. Each failure names the file and the rule.
 
 import json
 import re
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -63,6 +64,10 @@ def check_source_json(path: Path, source_id: str) -> dict:
     if not isinstance(info, dict):
         return {}
     meta = info.get("info", {})
+    if "breakingChangeVersion" in meta:
+        fail(path, "breakingChangeVersion belongs in the top-level config object, not info")
+    if "minAppVersion" not in meta:
+        fail(path, 'has no minAppVersion; "0.7.1" unless verify asks for more')
     if meta.get("id") != source_id:
         fail(path, f"info.id is {meta.get('id')!r}, the folder is {source_id!r}")
     if "multi" in meta.get("languages", []):
@@ -91,9 +96,39 @@ def check_filters_json(path: Path) -> None:
             fail(path, f"check {name!r} shows in the filters header; set hideFromHeader")
 
 
+def check_icon(path: Path) -> None:
+    if not path.exists():
+        fail(path, "is missing")
+        return
+    header = path.read_bytes()[:24]
+    if header[:8] != b"\x89PNG\r\n\x1a\n":
+        fail(path, "is not a PNG")
+    elif struct.unpack(">II", header[16:24]) != (128, 128):
+        fail(path, "is {}x{}; icons are 128x128".format(*struct.unpack(">II", header[16:24])))
+
+
 SECTION_BANNER = re.compile(r"^\s*//+\s*[-=*#~]{3,}")
 PAGE_SIZE = re.compile(r"page_size:\s*Some\((\d+)\)")
 CHAPTER_LANGUAGE = re.compile(r"\blanguage:\s*Some\(")
+# Rules from review comments on other contributors' PRs (AGENTS.md section 3).
+LINE_RULES = [
+    (
+        re.compile(r"!needs_details\s*&&\s*!needs_chapters|!needs_chapters\s*&&\s*!needs_details"),
+        "guards against neither flag being set; get_manga_update is never called that way",
+    ),
+    (
+        re.compile(r"\bquery[\w.()]*\.(?:filter|map)\(\|\w+\|\s*!\w+\.is_empty\(\)"),
+        "checks for an empty query; the app passes None instead",
+    ),
+    (
+        re.compile(r"AidokuError::(?:message|Message)\("),
+        "builds an error by hand; use error! or bail!",
+    ),
+    (
+        re.compile(r"AidokuError::Unimplemented"),
+        "returns Unimplemented; leave the trait out of register_source! instead",
+    ),
+]
 
 
 def check_rust(source: Path, single_language: bool) -> None:
@@ -113,6 +148,9 @@ def check_rust(source: Path, single_language: bool) -> None:
                 fail(path, f"{where} sets a chapter language on a single-language source")
             if has_settings and path.name != "settings.rs" and "defaults_get" in line:
                 fail(path, f"{where} reads a setting outside settings.rs")
+            for pattern, message in LINE_RULES:
+                if pattern.search(line):
+                    fail(path, f"{where} {message}")
 
 
 def readme_version(source_id: str) -> int | None:
@@ -144,6 +182,7 @@ def check_source(source_id: str, base: str | None) -> None:
         else:
             check_text_file(source / name)
     info = check_source_json(source / "res" / "source.json", source_id)
+    check_icon(source / "res" / "icon.png")
     for name in ("filters.json",):
         if (source / "res" / name).exists():
             check_filters_json(source / "res" / name)
@@ -171,9 +210,9 @@ def main() -> int:
         del args[index : index + 2]
     names = args or (changed_sources(base) if base else sorted(p.name for p in SOURCES.iterdir()))
 
-    agents, claude = ROOT / "AGENTS.md", ROOT / "CLAUDE.md"
-    if claude.exists() and agents.read_bytes() != claude.read_bytes():
-        fail(claude, "differs from AGENTS.md; keep the two identical")
+    claude = ROOT / "CLAUDE.md"
+    if claude.read_text() != "@AGENTS.md\n":
+        fail(claude, "should hold only @AGENTS.md, so the rules live in one file")
 
     for name in names:
         check_source(name, base)
