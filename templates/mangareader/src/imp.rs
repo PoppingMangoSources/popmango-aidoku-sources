@@ -1,19 +1,26 @@
-use super::{helper::ElementImageAttr, parser, Params};
+use super::{
+	Params,
+	helper::{ElementImageAttr, stacked_page_count},
+	parser,
+};
 use aidoku::{
-	alloc::{borrow::Cow, String, Vec},
-	helpers::uri::{encode_uri_component, QueryParameters},
+	Chapter, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue, HomeLayout,
+	ImageResponse, Listing, Manga, MangaPageResult, MangaWithChapter, Page, PageContent,
+	PageContext, Result,
+	alloc::{String, Vec, borrow::Cow, string::ToString},
+	canvas::Rect,
+	helpers::uri::{QueryParameters, encode_uri_component},
 	imports::{
-		canvas::ImageRef,
-		error::AidokuError,
+		canvas::{Canvas, ImageRef},
 		html::{Element, Html},
 		net::Request,
 		std::send_partial_result,
 	},
 	prelude::*,
-	Chapter, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue, HomeLayout,
-	ImageResponse, Listing, Manga, MangaPageResult, MangaWithChapter, Page, PageContent,
-	PageContext, Result,
 };
+
+// a stacked chapter holds a couple of images at most; past this, skip the measuring requests
+const STACKED_IMAGE_LIMIT: usize = 4;
 
 pub trait Impl {
 	fn new() -> Self;
@@ -147,27 +154,47 @@ pub trait Impl {
 		let html_text = json["html"].as_str().unwrap_or_default();
 		let html = Html::parse_fragment(html_text)?;
 
-		Ok(html
+		let images: Vec<String> = html
 			.select(&params.page_selector)
 			.map(|els| {
 				els.filter_map(|el| {
 					let url = el
 						.img_attr()
 						.or_else(|| el.select_first("img").and_then(|img| img.img_attr()))?;
-					Some(Page {
-						content: if el.has_class("shuffled") {
-							let mut context = PageContext::default();
-							context.insert("shuffled".into(), "1".into());
-							PageContent::url_context(url.trim(), context)
-						} else {
-							PageContent::url(url.trim())
-						},
-						..Default::default()
-					})
+					Some(String::from(url.trim()))
 				})
-				.collect::<Vec<_>>()
+				.collect()
 			})
-			.unwrap_or_default())
+			.unwrap_or_default();
+
+		let measure = params.stacked_page_ratio.is_some() && images.len() <= STACKED_IMAGE_LIMIT;
+		let mut pages = Vec::with_capacity(images.len());
+		for url in images {
+			let slices = match params.stacked_page_ratio {
+				Some(ratio) if measure => stacked_page_count(&url, ratio),
+				_ => 1,
+			};
+
+			if slices < 2 {
+				pages.push(Page {
+					content: PageContent::url(url),
+					..Default::default()
+				});
+				continue;
+			}
+
+			for slice in 0..slices {
+				let mut context = PageContext::default();
+				context.insert("slice".into(), slice.to_string());
+				context.insert("slices".into(), slices.to_string());
+				pages.push(Page {
+					content: PageContent::url_context(url.clone(), context),
+					..Default::default()
+				});
+			}
+		}
+
+		Ok(pages)
 	}
 
 	fn get_manga_list(
@@ -190,7 +217,7 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let html = Request::get(format!("{}/home", params.base_url))?.html()?;
+		let html = Request::get(format!("{}{}", params.base_url, params.home_path))?.html()?;
 
 		let mut components = Vec::new();
 
@@ -212,7 +239,7 @@ pub trait Impl {
 								title: link.attr("title")?,
 								cover: el
 									.select_first(".deslide-poster img")
-									.and_then(|e| e.attr("src")),
+									.and_then(|e| e.img_attr()),
 								description: el
 									.select_first(".sc-detail > .scd-item")
 									.and_then(|e| e.text()),
@@ -247,7 +274,9 @@ pub trait Impl {
 										title: e
 											.select_first(".anime-name, .manga-name")?
 											.text()?,
-										cover: e.select_first(".manga-poster img")?.attr("src"),
+										cover: e
+											.select_first(".manga-poster img")
+											.and_then(|img| img.img_attr()),
 										..Default::default()
 									}
 									.into(),
@@ -294,7 +323,9 @@ pub trait Impl {
 												.map(|s| s.into())
 												.unwrap_or(link_href),
 											title: e.select_first(".manga-name")?.text()?,
-											cover: e.select_first(".manga-poster img")?.attr("src"),
+											cover: e
+												.select_first(".manga-poster img")
+												.and_then(|img| img.img_attr()),
 											..Default::default()
 										},
 										chapter: Chapter {
@@ -348,7 +379,9 @@ pub trait Impl {
 												.strip_prefix(params.base_url.as_ref())?
 												.into(),
 											title: e.select_first(".manga-name")?.text()?,
-											cover: e.select_first(".manga-poster img")?.attr("src"),
+											cover: e
+												.select_first(".manga-poster img")
+												.and_then(|img| img.img_attr()),
 											..Default::default()
 										}
 										.into(),
@@ -384,10 +417,35 @@ pub trait Impl {
 	fn process_page_image(
 		&self,
 		_params: &Params,
-		_response: ImageResponse,
-		_context: Option<PageContext>,
+		response: ImageResponse,
+		context: Option<PageContext>,
 	) -> Result<ImageRef> {
-		Err(AidokuError::Unimplemented)
+		let Some(context) = context else {
+			return Ok(response.image);
+		};
+		let number = |key: &str| context.get(key).and_then(|value| value.parse::<u32>().ok());
+		let (Some(slice), Some(slices)) = (number("slice"), number("slices")) else {
+			return Ok(response.image);
+		};
+		if slices < 2 || slice >= slices {
+			return Ok(response.image);
+		}
+
+		let width = response.image.width();
+		let height = response.image.height() as u32;
+		// integer rows: the app rounds a fractional rect, doubling or dropping a row at the seam
+		let top = height * slice / slices;
+		let bottom = height * (slice + 1) / slices;
+		let (top, slice_height) = (top as f32, (bottom - top) as f32);
+
+		// before the AidokuRunner fix in e44d774 a canvas shorter than the image drew nothing
+		let mut canvas = Canvas::new(width, slice_height);
+		canvas.copy_image(
+			&response.image,
+			Rect::new(0.0, top, width, slice_height),
+			Rect::new(0.0, 0.0, width, slice_height),
+		);
+		Ok(canvas.get_image())
 	}
 
 	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {

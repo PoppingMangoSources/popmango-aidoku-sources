@@ -5,9 +5,9 @@ use crate::{
 	models::*,
 };
 use aidoku::{
-	Chapter, ContentRating, DeepLinkResult, Filter, FilterValue, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, Listing, Manga, MangaPageResult, MangaStatus,
-	MangaWithChapter, MultiSelectFilter, Page, PageContent, PageContext, Result, Viewer,
+	Chapter, ContentRating, DeepLinkResult, Filter, FilterValue, HomeComponent, HomeComponentValue,
+	HomeLayout, Link, Listing, Manga, MangaPageResult, MangaStatus, MangaWithChapter,
+	MultiSelectFilter, Page, PageContent, PageContext, Result, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{element::ElementHelpers, string::StripPrefixOrSelf},
 	imports::{
