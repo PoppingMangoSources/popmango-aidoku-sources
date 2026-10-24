@@ -1,6 +1,6 @@
 #!/bin/sh
-# Runs the gates for every source this push changes, so a red build is caught here rather
-# than after main has published it. `git push --no-verify` skips them.
+# Runs CI's gates for every source and template this push changes, so a red build is caught
+# here rather than after main has published it. `git push --no-verify` skips them.
 #
 # Enable in a fresh clone with:  git config core.hooksPath .githooks
 
@@ -10,21 +10,21 @@ set -e
 
 root=$(git rev-parse --show-toplevel)
 base=$(git merge-base HEAD origin/main 2>/dev/null || echo HEAD~1)
-changed=$(git diff --name-only "$base" HEAD -- sources | cut -d/ -f2 | sort -u)
+changed=$(git diff --name-only "$base" HEAD -- sources templates | cut -d/ -f1-2 | sort -u)
 
-for id in $changed; do
-	dir="$root/sources/$id"
+# The same commands as CI's lint and verify jobs.
+for crate in $changed; do
+	dir="$root/$crate"
 	[ -f "$dir/Cargo.toml" ] || continue
-	echo "pre-push: $id"
+	echo "pre-push: $crate"
 	(
 		cd "$dir"
-		cargo fmt --all -- --check
-		if cargo clippy --release --target wasm32-unknown-unknown 2>&1 | grep -E '^(warning|error)'; then
-			echo "pre-push: clippy is not clean for $id" >&2
-			exit 1
-		fi
-		aidoku package >/dev/null
-		aidoku verify package.aix
+		cargo fmt --check
+		cargo clippy --target wasm32-unknown-unknown -- -D warnings
+		case $crate in sources/*)
+			RUSTFLAGS=-Dwarnings aidoku package >/dev/null
+			aidoku verify package.aix
+		esac
 	)
 done
 
