@@ -1,12 +1,13 @@
 # Working on these sources
 
-Notes gathered while getting `multi.xcomic` (PR 735) and `en.toonkotsu` (PR 815) through
-review on Aidoku-Community sources. Written down so the next source doesn't have to
-relearn it.
+Notes gathered while getting `multi.xcomic` (PR 735), `en.toonkotsu` (PRs 815 and 821) and
+the Kagane rework (PR 827) merged into Aidoku-Community sources, plus what kkantan asks of
+other contributors. Written down so the next source doesn't have to relearn it.
 
-`CLAUDE.md` is an identical copy of this file, and CI fails when they differ — edit both or
-neither. The step-by-step workflow, from recon to review rounds, is the `aidoku-source`
-skill in `.claude/skills/`; the scripts it drives are in `scripts/` (section 9).
+This file is the only copy of the rules: `CLAUDE.md` holds just `@AGENTS.md`, which loads
+it. The step-by-step workflow, from recon to review rounds, is the `aidoku-source` skill in
+`.claude/skills/` (also reachable as `.agents/skills/`); the scripts it drives are in
+`scripts/` (section 9).
 
 Items marked **(verified)** were checked against aidoku-rs, the community sources or
 CI config. Items marked **(inferred)** are read from reviewer comments or a single
@@ -22,7 +23,9 @@ only a summary.
 
 - **Conventional Commits.** PRs are squashed on merge, so the PR title *is* the
   commit message: `feat: add en.mangago`, `fix(vi.cmanga): update url`.
-- **One concern per PR.** Two unrelated sources belong in two PRs.
+- **One concern per PR.** Two unrelated sources belong in two PRs. A new template is the
+  exception that goes the other way: include the sources that use it, or stack their PRs
+  on it, so the template is shown working (#824).
 - Compiles with no warnings; `cargo fmt` run; `cargo clippy` clean; every file ends
   with a newline; **JSON indented with tabs**.
 - `rustfmt.toml` upstream sets `hard_tabs`, `use_try_shorthand`,
@@ -53,15 +56,24 @@ licence to skip reading the diff.
 
 ### CI (verified)
 
-`pr.yaml` runs `aidoku package` then `aidoku verify` per changed source.
-`clippy.yaml` runs `cargo clippy` and turns **any** annotation into a failure.
+Upstream's `pr.yaml` has three jobs, each over what a PR changes:
 
-Locally, from the source directory:
+- **Verify** — each changed source: `aidoku package` with `RUSTFLAGS=-Dwarnings`, then
+  `aidoku verify`.
+- **Lint** — each changed source and template: `cargo fmt --check` and
+  `cargo clippy -- -D warnings`; any warning fails.
+- **JSON** — tabs only, final newline, for every file under `res/`.
+
+Rust is pinned (`1.99.0`) and the CLI comes from `.github/actions/install-aidoku-cli`, which
+installs aidoku-rs at its latest commit. This repo carries the same files, so the checks a PR
+meets upstream are the ones our pushes meet here; `pr.yaml` also runs on pushes to `main`.
+
+Locally, from the source directory (the pre-push hook runs exactly these):
 
 ```sh
-cargo fmt --all
-cargo clippy --release --target wasm32-unknown-unknown
-aidoku package && aidoku verify package.aix
+cargo fmt --check
+cargo clippy --target wasm32-unknown-unknown -- -D warnings
+RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 ```
 
 **Do not add `--all-targets`** (verified) — it pulls in targets with no
@@ -82,6 +94,14 @@ which is most of what went wrong in #735.
 
 Nothing upstream requires them: `en.toonkotsu` went up without its `test.rs` and the
 test dev-dependencies.
+
+To run them, install the runner once (`cargo install --git https://github.com/Aidoku/aidoku-rs
+aidoku-test-runner`); `.cargo/config.toml` already names it, so `cargo test` in the source
+directory runs every `#[aidoku_test]`. The runner simulates most of the app, not all of it.
+
+For behaviour only the app shows, `aidoku logcat` starts a log server; enter its url in the
+app's Advanced settings under Log Server and every `println!` from a device on the same
+network streams to the terminal.
 
 ---
 
@@ -147,9 +167,27 @@ source with `DynamicFilters` must opt in. `multi.lanraragi`, `ja.soraraw`, `en.m
 `author`/`artist` text filter (aidoku-rs book); a source that has one gets author search
 from it, so setting the flag as well is redundant.
 
+The CLI's schema is precise about the interaction: when the source has an `isGenre` select
+or multi-select, only the tags among its options are tappable, flag or not. The flag makes
+**every** tag tappable only for a source without such a filter. So a source with static genres
+and a separate tag list (Kagane) can't make the other tags tappable this way.
+
+### Other `source.json` config keys (verified, CLI schema)
+
+- `hidesFiltersWhileSearching` — set it when the site ignores filters alongside a query, and
+  then don't read the filters on that path (#637).
+- `breakingChangeVersion` — goes in the top-level `config`, **not** `info` (#828). Users
+  below it are asked to migrate. When a site is rebranded or rewritten, keep the old source
+  id and set this, rather than adding a new id (#828).
+- `allowsBaseUrlSelect` — mirrors in `urls`, the chosen one read as `defaults_get("url")`.
+- `maximumParallelRequests` — caps parallel requests, such as page downloads.
+
 ---
 
-## 3. Review feedback from #735 and #815
+## 3. Review feedback
+
+Our own reviews first, then what kkantan asked of other contributors. `scripts/check-sources.py`
+catches the mechanical ones; the rest are for reading the diff.
 
 Each of these was a real comment. They generalise.
 
@@ -196,6 +234,49 @@ matching the website. Expect the same on any source whose site offers them.
 kkantan pushed that fix to our branch themselves (`chore: hide has chapters filter from header`)
 and merged it, so the change reached `main` afterwards as a sync rather than as our commit.
 Fetch the PR branch after a review: a reviewer's commit there is the fix to copy back.
+
+### From #827 (`multi.kagane` rework)
+
+| What was flagged | The rule |
+|---|---|
+| `query.filter(\|q\| !q.is_empty())` | The app passes `None` for an empty search; never test for an empty string. |
+| A big scroller with only titles and covers | Fill whatever the listing response already carries — authors, status, rating, tags. Fetch descriptions only if the site gives them without a request per card. |
+
+Merged as `fix(multi.kagane): update for new api and add filters`: one title naming the fix
+and the features, lowercase, like other merged multi-change titles.
+
+### From other contributors' PRs
+
+What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is site-specific.
+
+| What was flagged | The rule |
+|---|---|
+| Everything in `lib.rs` | JSON types in `models.rs`, free functions in `helpers.rs`; `lib.rs` keeps the trait impls. |
+| `fn into_manga(self)` / hand-built `Chapter` in a loop | `impl From<Item> for Manga` (and `Chapter`) in `models.rs`, then `.map(Into::into)`. |
+| `AidokuError::message(..)`, `.map_err(\|_\| ..)` on `Request::post` | `error!`/`bail!`. Don't remap a request error: `Request::get`/`post` only fails on a bad url, and `send` already gives a network error. |
+| `.string()?` then `serde_json::from_str` | `.json_owned()` or `.send()?.json()`. |
+| A hand-written ISO date parser | `parse_date` with a format string. |
+| HMAC signing in `JsContext` | Do it in Rust with a `no_std` crate. `JsContext` is discouraged, and its async eval needs an app version most readers don't have. |
+| `Home` registered returning `Unimplemented` | Leave the trait out of `register_source!`. |
+| `if !needs_details && !needs_chapters` | Never happens; delete it. |
+| `query.as_deref().map(\|q\| !q.is_empty())` | `query.is_some()`. |
+| `if !included.is_empty()` in a multi-select arm | A multi-select with nothing chosen isn't sent at all. |
+| `url.starts_with(base)` then slicing | `strip_prefix`. |
+| Matching status strings as-is | Lowercase first; the site's casing varies. |
+| A name→id map in Rust for a filter | Put the ids in `filters.json` (`ids`). |
+| `canExclude` left on where the API can't exclude | Allow exclusion only where the site takes it. |
+| A description that can be `""` | `.filter(\|d\| !d.is_empty())` so it's `None`. |
+| Two code paths for query and no query | Find the one endpoint that takes both; a site's own search API usually does. |
+| Listings that are really search options (Uncensored, Raw) | Make them search filters. |
+| Scraping `__NEXT_DATA__` when an API exists | Use the API; check what keiyoushi's source calls. |
+| A source on a known theme written from scratch | Make it a template (section 12). |
+| A rebranded site added under a new id | Keep the old id and set `breakingChangeVersion` in `config`. |
+| `Vec<Regex>` built per call | Compile once in a `static` with `spin::Lazy`; a fixed set is an array (`[Regex; 3]`), not a `Vec`. |
+| Pages silently dropped when a per-page key fails | Fail the page list with the error, or return the page unprocessed so the reader sees which one broke. |
+| A per-item cache on the source struct | Drop it unless the site makes it necessary; the reference client didn't need it. |
+| `"HQ-now"`, `struct Theblank` | The site's own name and spelling, in `source.json` and the struct name. |
+| No `minAppVersion` | `"0.7.1"`, unless verify asks for more. |
+| Comments marked resolved without a change | Every comment gets a change or a reply; reviewers check. |
 
 ---
 
@@ -422,17 +503,19 @@ an API quirk, a constraint, an ordering that matters.
 
 ### Gates
 
-- `git config core.hooksPath .githooks` once per clone. The pre-push hook runs fmt,
-  clippy, `aidoku package` + `verify` for every source the push changes, then
+- `git config core.hooksPath .githooks` once per clone. The pre-push hook runs CI's lint and
+  verify commands (section 1) for every source and template the push changes, then
   `scripts/check-sources.py`.
 - `scripts/check-sources.py [--base <ref>] [ids…]` checks the rules that need no network:
-  tab-indented JSON, final newlines, no `"multi"` language, redundant filter defaults, check
-  filters left in the header,
-  decorative dividers, `page_size` above 5, chapter `language` on single-language
-  sources, `defaults_get` outside `settings.rs`, README row in step with `source.json`, a
-  version bump since `<ref>`, and `CLAUDE.md` identical to this file. CI
-  (`check.yaml`) runs it on the sources each push changes. Run with no arguments it
-  reports the backlog in older sources — fix those when you're in the source anyway.
+  tab-indented JSON, final newlines, no `"multi"` language, `minAppVersion` present,
+  `breakingChangeVersion` in `config`, a 128×128 icon, redundant filter defaults, check
+  filters left in the header, decorative dividers, `page_size` above 5, chapter `language`
+  on single-language sources, `defaults_get` outside `settings.rs`, the review-comment
+  patterns section 3 lists (an empty-query test, a neither-flag guard, a hand-built
+  `AidokuError`, `Unimplemented`), README row in step with `source.json`, a version bump
+  since `<ref>`, and `CLAUDE.md` holding only `@AGENTS.md`. CI (`check.yaml`) runs it on the
+  sources each push changes. Run with no arguments it reports the backlog in older sources —
+  fix those when you're in the source anyway.
 
 ### Upstream PRs
 
@@ -502,7 +585,8 @@ was a parameter we sent and they didn't, not the endpoint or the sort key.
 
 ## 11. Toonkotsu specifics
 
-`en.toonkotsu` lives upstream only; it was removed from `main` once merged there.
+`en.toonkotsu` lives upstream only; it was removed from `main` once merged there, and a later
+change is a new branch from `upstream/main`, as for Kagane.
 Kept here because the API is undocumented. Everything below was confirmed by console
 probes or captures unless marked.
 
@@ -614,8 +698,8 @@ template if nothing fits.
 
 No links here on purpose — search the Aidoku-Community sources repo by these names.
 
-**Reviews worth rereading before submitting.** PRs 726, 531, 624, 646, 690 (two
-rounds), 603, and our own 735, 815 and 821. Recurring themes across them: consume owned values instead of
+**Reviews worth rereading before submitting.** PRs 726, 531, 624, 637, 646, 690 (two
+rounds), 603, 824, 828, 833, 835, and our own 735, 815, 821 and 827. Recurring themes across them: consume owned values instead of
 cloning, inline single-use helpers, use the API's own ordering, avoid unnecessary
 dynamic settings, keep search results compact, send partial chapter results,
 construct queries correctly, and handle only deep links you can actually resolve.
@@ -642,7 +726,8 @@ in section 3 came from doing exactly that.
 
 ## 14. Kagane specifics
 
-`multi.kagane` lives upstream only; our changes go up from `fix/kagane-chapter-fetch`.
+`multi.kagane` lives upstream only. The rework merged as #827; a later change is a new
+branch from `upstream/main` (it isn't on our `main`, so `scripts/pr-branch.sh` can't copy it).
 Confirmed by console probes on kagane.si unless marked.
 
 - Mirrors: kagane.cx (default), kagane.si, kagane.moe, kagane.net serve the same catalogue
