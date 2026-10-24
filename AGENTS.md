@@ -476,7 +476,10 @@ an API quirk, a constraint, an ordering that matters.
 
 ## 9. This repo's workflow
 
-- Work on `main`. **Every push that changes a source publishes it, so every such push
+- Work on `main` and push to `main`. Any other branch gets a conventional name —
+  `feat/<id>`, `fix/<id>`, `chore/<topic>`, `docs/<topic>` — and **never a `claude/` prefix**,
+  whatever a tool suggests.
+- **Every push that changes a source publishes it, so every such push
   bumps it**: `scripts/bump.sh <id>` raises `res/source.json` and the two `.aix` links on
   that source's README row — anchored on the source id, so another source whose label
   happens to match is left alone.
@@ -657,12 +660,17 @@ probes or captures unless marked.
 
 ## 12. Templates
 
-Sixteen of them live in `templates/` upstream, for sites that share a common
+Eighteen of them live in `templates/` upstream, for sites that share a common
 engine or theme:
 
 `madara`, `wpcomics`, `gigaviewer`, `mangathemesia`, `iken`, `mangareader`,
 `libgroup`, `mangabox`, `liliana`, `guya`, `mmrcms`, `tukutema`, `ezmanhwa`,
-`pizzareader`, `madtheme`, `mangaworld`.
+`pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`.
+
+Our `templates/` is upstream's copy, except `madara`, `madtheme` and `mangathemesia`, which
+carry additions our sources use (shared detail parsing, a home page and a chapter-list
+fallback, listings and dynamic filters). When syncing, take upstream's files for every other
+template and bring only upstream's own changes into those three.
 
 **Check for one before writing a source from scratch.** Two ways: see whether the
 matching keiyoushi extension declares a `themePkg`, or run the site through a
