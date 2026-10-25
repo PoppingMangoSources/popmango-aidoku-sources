@@ -668,8 +668,9 @@ engine or theme:
 `pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`.
 
 Our `templates/` is upstream's copy, except `madara`, `madtheme` and `mangathemesia`, which
-carry additions our sources use (shared detail parsing, a home page and a chapter-list
-fallback, listings and dynamic filters). When syncing, take upstream's files for every other
+carry additions our sources use (shared detail parsing, listings and dynamic filters). The
+`madtheme` ones (a home page and a chapter-list fallback) were for Kaliscan, which now sits on
+the `dead-sources` branch with Galaxy Manga and OManga. When syncing, take upstream's files for every other
 template and bring only upstream's own changes into those three.
 
 **Check for one before writing a source from scratch.** Two ways: see whether the
