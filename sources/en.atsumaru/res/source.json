@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.atsumaru",
 		"name": "Atsumaru",
-		"version": 2,
+		"version": 3,
 		"url": "https://atsu.moe",
 		"contentRating": 1,
 		"languages": [
@@ -33,10 +33,6 @@
 		{
 			"id": "recentlyAdded",
 			"name": "Recently Added"
-		},
-		{
-			"id": "novels",
-			"name": "Novels"
 		}
 	]
 }
