@@ -173,14 +173,18 @@ name> }`; route that value wherever the site takes tags. Genres declared statica
 source with `DynamicFilters` must opt in. `multi.lanraragi`, `ja.soraraw`, `en.madokami`,
 `multi.ehentai` and `multi.hitomi` all handle the `"genre"` arm.
 
+The app decides which tags are tappable in AidokuRunner's `Source.matchingGenreFilter`.
+With the flag set, **every** tag is tappable and sends the `"genre"` select above, even when
+the source also has an `isGenre` filter. Without it, only tags among the options of a
+**static** `isGenre` select or multi-select are tappable. Those send that filter's own value
+(its id, if it has `ids`), as a multi-select include or a select. Dynamic filters are never
+checked. So a source with static genres and a separate tag list (Kagane, Atsumaru) can make
+every tag tappable by setting the flag. It then resolves the name itself: `en.atsumaru` looks
+it up in the site's filter list, because its search only matches tags by id.
+
 `supportsAuthorSearch` and `supportsArtistSearch` are only for sources **without** an
 `author`/`artist` text filter (aidoku-rs book); a source that has one gets author search
 from it, so setting the flag as well is redundant.
-
-The CLI's schema is precise about the interaction: when the source has an `isGenre` select
-or multi-select, only the tags among its options are tappable, flag or not. The flag makes
-**every** tag tappable only for a source without such a filter. So a source with static genres
-and a separate tag list (Kagane) can't make the other tags tappable this way.
 
 ### Other `source.json` config keys (verified, CLI schema)
 
