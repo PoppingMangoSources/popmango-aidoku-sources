@@ -51,7 +51,15 @@ Replace `res/icon.png` (128×128, opaque, margin around the mark).
 Follow AGENTS.md §2 and §6 for layout. Checklist, each item a real review comment or a bug
 that shipped:
 
-- [ ] Search and listing cards carry key, title, cover (and status/rating) only
+- [ ] Every card carries key, title, cover (and status/rating) only: search results,
+      listings, a pasted-link result, and the `Scroller`, `MangaList` and `MangaChapterList`
+      rows, which are `Link::from(compact Manga)` with no subtitle. Only `BigScroller` shows
+      details (AGENTS.md §3)
+- [ ] `MangaChapterList` only when the feed names a real chapter
+- [ ] A filter on the same axis as a setting overrides it for that search, never repeats it
+- [ ] No dead code: nothing silenced with `allow`/`expect`, no sort the API already does, no
+      field or helper left over from removed behaviour (AGENTS.md §8)
+- [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it out of the submission
 - [ ] `status`, `content_rating`, `viewer` set on details when the site has them
 - [ ] `send_partial_result` only when chapters need a second request
 - [ ] `DeepLinkHandler` for series **and** chapter urls; series and chapter urls resolve
@@ -87,10 +95,17 @@ cargo clippy --target wasm32-unknown-unknown -- -D warnings   # never --all-targ
 RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 ```
 
+`scripts/verify-source.sh <dir>` runs these with the extra dead-code lints from
+`scripts/source-lints.sh`, and lints the test module too; use it rather than the bare commands.
+
 These cover the Rust/package baseline (AGENTS.md §1). Also run the independent scope
 check and behavioral tests; compilation alone cannot establish upstream readiness.
 
 Then from the repo root: `scripts/check-sources.py <id>`.
+
+Then read AGENTS.md §3 top to bottom against the diff, one row at a time, and say which rows
+you checked. Passing the scripts isn't the same as following the rules: rows showing
+"Manhwa · ★ 8.3" went to `main` with every gate green.
 
 Run the tests in the source directory (`cargo test`, after installing `aidoku-test-runner`
 once) and lint them with `cargo clippy --tests --target wasm32-unknown-unknown -- -D

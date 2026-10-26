@@ -104,8 +104,10 @@ one. Cover browse paging, every sort and filter, each content rating on its own,
 multi-select setting (must show nothing), a filter overriding its setting, details, a
 chapters-only update, pages, deep links and a key the site doesn't know. Check results against
 the site's own data rather than only for being non-empty. Name no other sources, clients or
-groups in test data. Upstream doesn't require tests (`en.toonkotsu` went up without them), but
-they go up with the source.
+groups in test data. **Tests stay on `main`:** `scripts/pr-branch.sh` leaves `src/test.rs` and
+its `#[cfg(test)] mod test;` line out of the submission and fails if either reaches it. Upstream
+doesn't require tests (`en.toonkotsu` went up without them); the dev-dependencies stay, as on
+most upstream sources.
 
 Running them:
 
@@ -114,6 +116,8 @@ Running them:
   directory runs every `#[aidoku_test]`; `scripts/verify-source.sh <dir> --test` runs the
   gates and then the tests. `cargo clippy --tests --target wasm32-unknown-unknown -- -D
   warnings` lints the test module, which the plain clippy gate skips.
+- `verify-source.sh` also lints the test module when a source has one (`cargo clippy --tests`),
+  with the same dead-code lints as the source (section 8).
 - `.github/workflows/test.yaml` (**Source tests**) runs them for every source a push to
   `main` changes, and on demand from the Actions tab for named ids, or every source with
   tests when none are named. It is a report, not a gate: the tests call the live site, so a
@@ -215,14 +219,22 @@ from it, so setting the flag as well is redundant.
 Our own reviews first, then what kkantan asked of other contributors. `scripts/check-sources.py`
 catches the mechanical ones; the rest are for reading the diff.
 
+**Before every push of a source, read this whole section against the diff, row by row.** A
+rule here was broken again after it was written down: `en.atsumaru` went to `main` showing
+"Manhwa · ★ 8.3" under every home row, and a pasted-link search returned a series' full
+details. Passing CI doesn't mean a rule was followed; the owner found these in the app.
+
 Each of these was a real comment. They generalise.
 
 | What was flagged | The rule |
 |---|---|
 | Search returned tags + descriptions | Search/listing results carry **key, title, cover** and optionally status and content rating. Everything else is filled in by `get_manga_update`. |
+| Home rows showed "Manhwa · ★ 8.3" (our own miss, `en.atsumaru`) | The same rule covers every card: search, listings, `Scroller`, `MangaList`, `MangaChapterList` and a pasted-link result. Build rows as `Link::from(compact Manga)`, never with a `subtitle`. **Only `BigScroller` shows details.** |
+| A "chapter" invented for `MangaChapterList` from a feed with no chapters | Use `MangaChapterList` only when the feed carries a real chapter; otherwise the section is a `Scroller`. |
+| A pasted link answered with the full series | Look the series up the way a search card is built — one compact request — and fall back to text search when it isn't found. |
 | Explicit `"default"` on a sort filter | Don't set what the framework already defaults to. |
 | Icon filled the whole canvas | Leave margin; aim for something closer to the site's favicon. 128×128, fully opaque. |
-| A translated-languages filter | If the app's own languages setting covers it, the filter is redundant. Don't ship both a filter and a setting for the same axis. |
+| A translated-languages filter | If the app's own languages setting covers it, the filter is redundant. Don't ship both a filter and a setting for the same axis unless the filter **overrides** the setting for that search. kkantan asked for that with content ratings (#815); `en.atsumaru` does it for content types too, since readers filter novels and comics per search. A filter that only repeats a setting, or is silently ANDed with it, is the redundant kind. |
 | Genre filter presentation | Genre multi-selects should set `uses_tag_style`. |
 | 14 listings | Listings that are just search sorts don't need to exist. Keep the ones home sections link to. |
 | A helper sat in `lib.rs` | Key/url helpers belong in `helpers.rs`. |
@@ -456,10 +468,13 @@ is short-lived, so a cache dies with it.
   tags** — so it's legitimate to fetch a description for it. `multi.mangadex` does
   exactly this. Give it its own query rather than a boolean on the shared one;
   `ru.senkuro` has a named query per home section.
-- `Scroller` and `MangaList` take `Link`s and show neither.
-- `MangaChapterList` renders a relative timestamp from the chapter's date.
+- `Scroller` and `MangaList` take `Link`s and show neither. They are cards: give them
+  `Link::from(compact Manga)` and nothing else — no type, score, view count or author line.
+- `MangaChapterList` renders a relative timestamp from the chapter's date. Only for a feed
+  that names the chapter; never invent one from the series.
 - `Link::from(Manga)` derives its subtitle from authors, falling back to
-  description — with a compact payload it's always `None`.
+  description — with a compact payload it's always `None`, which is what a row should show.
+  Don't set a subtitle yourself; `check-sources.py` fails a `Link` that does.
 - `HomePartialResult` + `send_partial_result` let one failed section not kill the
   whole page. Worth doing when there are several independent sections.
 
@@ -515,6 +530,25 @@ an API quirk, a constraint, an ordering that matters.
 
 ---
 
+### Dead code
+
+Delete it; never silence it. `-D warnings` already fails unused functions, constants, fields
+and imports, even `pub` ones in private modules. What it doesn't fail, and what has shipped:
+
+- **Lints that are off by default.** `extern crate alloc;` sat in `en.atsumaru` unused, since
+  everything goes through `aidoku::alloc`, and `unused_extern_crates` is allow-by-default.
+  `scripts/source-lints.sh` turns that and the other unused/needless lints on for every source.
+- **Silenced warnings.** `#[allow(dead_code)]`, `#[expect(unused…)]` and a test that exists only
+  to "use" a type all hide code that should go. `check-sources.py` fails the attributes.
+- **Code the compiler can't see is pointless.** A sort that repeats the API's own order (the
+  site already lists chapters newest first and pages in order), a field kept only for a
+  display that was removed, a fallback for an error shape the site never sends (probe it), a
+  one-line wrapper around one call, and a helper called once. Check each against a live
+  response or a reference before keeping it.
+- **After a removal, follow it through.** Taking out a row subtitle removed its label helper,
+  three feed fields and the chapter row they fed. Re-run the lints and re-read the files the
+  removal touched.
+
 ## 9. This repo's workflow
 
 - Work on `main` and push to `main`. Any other branch gets a conventional name —
@@ -558,10 +592,13 @@ an API quirk, a constraint, an ordering that matters.
   filters left in the header, decorative dividers, `page_size` above 5, chapter `language`
   on single-language sources, `defaults_get` outside `settings.rs`, the review-comment
   patterns section 3 lists (an empty-query test, a neither-flag guard, a hand-built
-  `AidokuError`, `Unimplemented`), README row in step with `source.json`, a version bump
+  `AidokuError`, `Unimplemented`), a home-row `Link` given a subtitle, a series' full details
+  fetched inside search, an `allow`/`expect` that silences an unused-code warning, README row in step with `source.json`, a version bump
   since `<ref>`, and byte-identical `AGENTS.md`/`CLAUDE.md` plus matching physical skill trees. CI (`check.yaml`) runs it on the
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway.
+- `scripts/source-lints.sh` holds the dead-code lints (section 8) that `verify-source.sh` and
+  CI's `lint-crates.sh` add to every source's clippy run, templates excepted.
 - Before pushing a source with tests, run `cargo test` in it; the hook doesn't, since the
   tests need the live site. **Source tests** (`test.yaml`) runs them after the push (section 1).
 
@@ -877,6 +914,14 @@ reaches the site, unless marked.
   JSON API under `/api/` and a Typesense search at `/collections/manga/documents/search`. So
   the sources to compare against are the JSON-API ones — `en.toonkotsu`, `multi.kagane`,
   `en.chikari` (also novels), `en.comix`, `multi.mangadex` — not the HTML or GraphQL ones.
+- **What it shows.** Details only in the big scroller (Popular This Week), filled from one
+  search lookup. Every other row, listing and search card is key, title, cover, status and
+  rating. Recently Updated is a plain row, since the feed names no chapter.
+- **Filters vs settings.** Content Types and Content Ratings are settings, and both are also
+  search filters that override the setting for one search (the owner's call: readers pick
+  novels or one comic type from Discover). The site's tag groups are **not**
+  search filters (the owner's call): a tapped tag still searches by its id, and each group
+  has a Hidden Tags list in settings.
 - **Search** is Typesense: `q` (`*` for none), `filter_by`, `sort_by`, `page`, `per_page`,
   `include_fields`. `filter_by` takes `&&`, `||` and parentheses; values are backtick-quoted
   (escape backticks and backslashes). `tags` holds genre names, `genreIds`/`tagIds` the ids;
