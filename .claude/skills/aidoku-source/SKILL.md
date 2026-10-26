@@ -163,6 +163,12 @@ scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<one or tw
 Draft a one- or two-sentence reply per comment for the person to post; do not post on the
 PR yourself.
 
+Every comment, and every correction the person makes, also becomes a rule: a row in AGENTS.md
+§3, decided from the implementing code, plus a `check-sources.py` rule with a test when it can
+be detected, calibrated with `scripts/calibrate-rules.sh` (AGENTS.md §9, "How a rule gets
+into this file"). Fix the same pattern everywhere in the source before pushing, not just the
+line the reviewer pointed at.
+
 After the PR is merged, later changes go up from the same branch name as an update:
 
 ```sh

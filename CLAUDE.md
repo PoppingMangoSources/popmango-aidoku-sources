@@ -235,7 +235,7 @@ Each of these was a real comment. They generalise.
 | Explicit `"default"` on a sort filter | Don't set what the framework already defaults to. |
 | Icon filled the whole canvas | Leave margin; aim for something closer to the site's favicon. 128×128, fully opaque. |
 | A translated-languages filter | If the app's own languages setting covers it, the filter is redundant. Don't ship both a filter and a setting for the same axis unless the filter **overrides** the setting for that search. kkantan asked for that with content ratings (#815); `en.atsumaru` does it for content types too, since readers filter novels and comics per search. A filter that only repeats a setting, or is silently ANDed with it, is the redundant kind. |
-| Genre filter presentation | Genre multi-selects should set `uses_tag_style`. |
+| Genre filter presentation | Genre multi-selects show as tags. In `filters.json`, `isGenre` already implies `usesTagStyle` (AidokuRunner decodes the default from `isGenre`), so don't set it there; a `MultiSelectFilter` built in Rust defaults to `false` and must set `uses_tag_style: true`. |
 | 14 listings | Listings that are just search sorts don't need to exist. Keep the ones home sections link to. |
 | A helper sat in `lib.rs` | Key/url helpers belong in `helpers.rs`. |
 | `String::new()` / `Vec::new()` everywhere | `#[derive(Default)]` on the struct, then `..Default::default()`. |
@@ -302,7 +302,7 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
 | `url.starts_with(base)` then slicing | `strip_prefix`. |
 | Matching status strings as-is | Lowercase first; the site's casing varies. |
 | A name→id map in Rust for a filter | Put the ids in `filters.json` (`ids`). |
-| `canExclude` left on where the API can't exclude | Allow exclusion only where the site takes it. |
+| `canExclude` left on where the API can't exclude | Allow exclusion only where the site takes it. It defaults to `false` both in `filters.json` and in Rust, so omit it rather than writing `false`. |
 | A description that can be `""` | `.filter(\|d\| !d.is_empty())` so it's `None`. |
 | Two code paths for query and no query | Find the one endpoint that takes both; a site's own search API usually does. |
 | Listings that are really search options (Uncensored, Raw) | Make them search filters. |
@@ -491,7 +491,10 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
   variants you must set `canAscend: false` explicitly — that is not redundant.
 - `SortFilter.default` is `Option<SortFilterDefault>` defaulting to `None`, which
   already means index 0 and not ascending. Setting it explicitly *is* redundant.
-- `MultiSelectFilter` has `uses_tag_style`, default `false`.
+- `MultiSelectFilter` has `uses_tag_style`, default `false` in Rust. For `filters.json` the app
+  decodes `usesTagStyle` as `isGenre` and `canExclude` as `false` when absent (AidokuRunner
+  `Models/Filter.swift`, `MultiSelectFilter.init(from:)`), so on a JSON genre filter both are
+  redundant. Upstream writes `"canExclude": false` 73 times; it is harmless but unnecessary.
 - Every filter has `hide_from_header` (`hideFromHeader` in JSON), unset by default, so a
   filter shows in the header unless told otherwise.
 - `Manga` has no field for alternate titles, original language, year or score.
@@ -557,7 +560,8 @@ and imports, even `pub` ones in private modules. What it doesn't fail, and what 
 - **Every push that changes a source publishes it, so every such push
   bumps it**: `scripts/bump.sh <id>` raises `res/source.json` and the two `.aix` links on
   that source's README row — anchored on the source id, so another source whose label
-  happens to match is left alone.
+  happens to match is left alone. It bumps once per push: run again while the source is
+  already above `origin/main`'s version, and it says so and changes nothing.
 - Commits are authored **and** committed by
   `Popmango Extensions <297959108+PoppingMangoSources@users.noreply.github.com>`,
   **unsigned**, with a conventional subject and a one- or two-sentence body.
@@ -579,6 +583,32 @@ and imports, even `pub` ones in private modules. What it doesn't fail, and what 
   third-party clients named in code comments or test data.
 - Don't open a PR or post on one unless asked; draft the text for the person to post.
 
+### How a rule gets into this file and the checker
+
+This file and `check-sources.py` are only as good as their least accurate rule. A wrong rule
+does damage twice: it fails correct code, and people trust it over the evidence. Every rule here
+went in one of these ways, and new ones go in the same way:
+
+1. **A review comment or an owner's correction becomes a section 3 row in the same commit as
+   the fix**, quoting what was flagged. A rule from a single PR is marked (inferred) until a
+   second review or the implementing code confirms it.
+2. **Decide it from the code that implements the behaviour, not the comment's wording.** The
+   app decodes `filters.json` in AidokuRunner and the Rust structs live in aidoku-rs; read
+   them (both clone anonymously) and cite the file. "Set `can_exclude` to false" on #824 read
+   like "the default is true", but the decoder says `false`.
+3. **If it can be detected without the network, add it to `check-sources.py` with a test in
+   `scripts/tests/test_check_sources.py`** — one case it fails and one legitimate case it
+   passes.
+4. **Calibrate it**: `scripts/calibrate-rules.sh "<rule text>"`. If it fails merged upstream
+   code, look at what it fails. Old code kkantan never reviewed is backlog; a recent merge
+   that kkantan approved means the rule is too broad, so narrow it (the silenced-warning rule
+   allows a commented exception because an untagged serde enum needs its field) or drop it
+   (an author-search flag beside an author filter was merged in `multi.nhentai`, so that is
+   not a rule).
+5. **When evidence contradicts a rule, fix the rule in the same commit**, and say where the
+   old wording was wrong. Section 2's tag-search paragraph and section 3's tag-style row were
+   both corrected that way.
+
 ### Gates
 
 - `scripts/install-hooks.sh` once per clone from the tooling checkout on `main`. It installs
@@ -593,10 +623,15 @@ and imports, even `pub` ones in private modules. What it doesn't fail, and what 
   on single-language sources, `defaults_get` outside `settings.rs`, the review-comment
   patterns section 3 lists (an empty-query test, a neither-flag guard, a hand-built
   `AidokuError`, `Unimplemented`), a home-row `Link` given a subtitle, a series' full details
-  fetched inside search, an `allow`/`expect` that silences an unused-code warning, README row in step with `source.json`, a version bump
+  fetched inside search, an `allow`/`expect` that silences an unused-code warning without a
+  comment above it, `usesTagStyle` on a JSON genre filter, a `Cargo.toml` without upstream's
+  release profile, an `#[aidoku_test]` that asserts nothing, README row in step with `source.json`, a version bump
   since `<ref>`, and byte-identical `AGENTS.md`/`CLAUDE.md` plus matching physical skill trees. CI (`check.yaml`) runs it on the
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway.
+- `scripts/calibrate-rules.sh [rule text]` runs `check-sources.py` over every merged upstream
+  source and counts failures per rule (or lists the sources one rule fails). CI's
+  `check.yaml` prints it in the job summary on every push.
 - `scripts/source-lints.sh` holds the dead-code lints (section 8) that `verify-source.sh` and
   CI's `lint-crates.sh` add to every source's clippy run, templates excepted.
 - Before pushing a source with tests, run `cargo test` in it; the hook doesn't, since the
