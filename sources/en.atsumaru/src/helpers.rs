@@ -1,5 +1,5 @@
 use crate::{
-	api::{BASE_URL, CDN_URL, allows},
+	api::{BASE_URL, CDN_URL},
 	models::{ChapterItem, Scanlator},
 	settings::Keep,
 };
@@ -76,6 +76,10 @@ pub fn cover_url(path: &str) -> String {
 
 pub fn page_url(path: &str) -> String {
 	format!("{CDN_URL}/{}", static_path(path))
+}
+
+pub fn allows(values: &[String], value: &str) -> bool {
+	values.iter().any(|allowed| allowed == value)
 }
 
 pub fn is_novel(medium: Option<&str>) -> bool {
@@ -160,7 +164,7 @@ pub fn manga_status(status: Option<&str>) -> MangaStatus {
 }
 
 /// Drops a leading "Chapter 12" that the app already shows from the number.
-pub fn chapter_title(title: String, number: Option<f32>) -> Option<String> {
+pub fn chapter_title(title: &str, number: Option<f32>) -> Option<String> {
 	let trimmed = title.trim();
 	if number.is_some() {
 		let lower = trimmed.to_ascii_lowercase();
@@ -193,6 +197,10 @@ pub fn arrange_chapters(
 				.is_none_or(|group| !excluded.contains(&group.name.to_lowercase()))
 		});
 	}
+	// The site lists chapters newest first, so only deduplicating needs a sort.
+	let Some(keep) = keep else {
+		return chapters;
+	};
 	// Uploads without a scored group rank last.
 	let score = |chapter: &ChapterItem| {
 		chapter
@@ -207,24 +215,22 @@ pub fn arrange_chapters(
 			(None, None) => Ordering::Equal,
 		};
 		let by_keep = match keep {
-			Some(Keep::HighestRated) => score(b).cmp(&score(a)),
-			Some(Keep::MostPages) => b.page_count.cmp(&a.page_count),
-			_ => Ordering::Equal,
+			Keep::HighestRated => score(b).cmp(&score(a)),
+			Keep::MostPages => b.page_count.cmp(&a.page_count),
+			Keep::Newest => Ordering::Equal,
 		};
 		by_number
 			.then(by_keep)
 			.then(b.created_at.cmp(&a.created_at))
 	});
-	if keep.is_some() {
-		// The sort put the upload to keep first among its duplicates.
-		chapters.dedup_by(|later, kept| later.number.is_some() && later.number == kept.number);
-	}
+	// The sort put the upload to keep first among its duplicates.
+	chapters.dedup_by(|later, kept| later.number.is_some() && later.number == kept.number);
 	chapters
 }
 
 /// Whether a feed item fits the Content Types setting, which the feed can't fully apply.
 pub fn feed_allows(kind: Option<&str>, medium: Option<&str>, types: &[String]) -> bool {
-	if medium == Some("Novel") {
+	if is_novel(medium) {
 		allows(types, "Novel")
 	} else {
 		kind.is_some_and(|kind| allows(types, kind))

@@ -3,21 +3,15 @@ use crate::helpers::{
 	manga_url, media_label, viewer,
 };
 use aidoku::{
-	Chapter, ContentRating, Link, Manga, MangaPageResult, MangaWithChapter,
+	Chapter, ContentRating, Link, Manga, MangaPageResult, MangaStatus, MangaWithChapter,
 	alloc::{String, Vec, format, vec},
 };
 use serde::Deserialize;
 
+/// Search errors carry a message; the other endpoints don't.
 #[derive(Deserialize)]
 pub struct ErrorBody {
-	message: Option<String>,
-	error: Option<String>,
-}
-
-impl ErrorBody {
-	pub fn reason(self) -> Option<String> {
-		self.message.or(self.error)
-	}
+	pub message: String,
 }
 
 #[derive(Deserialize)]
@@ -97,25 +91,24 @@ impl FeedItem {
 			.or(self.image.as_deref())
 			.map(cover_url);
 		let manga = self.into_manga(label_novels);
-		let Some(document) = document else {
-			return Manga {
-				description: Some(details.join(" · ")),
-				tags: Some(tags),
-				viewer,
-				cover,
-				..manga
-			};
+		let (content_rating, status, synopsis, authors) = match document {
+			Some(document) => {
+				let content_rating = document.content_rating();
+				tags.extend(document.tags);
+				(
+					content_rating,
+					manga_status(document.status.as_deref()),
+					document.synopsis.filter(|synopsis| !synopsis.is_empty()),
+					Some(document.authors).filter(|authors| !authors.is_empty()),
+				)
+			}
+			None => (manga.content_rating, MangaStatus::Unknown, None, None),
 		};
-		let content_rating = document.content_rating();
-		tags.extend(document.tags);
 		Manga {
 			content_rating,
-			status: manga_status(document.status.as_deref()),
-			description: document
-				.synopsis
-				.filter(|synopsis| !synopsis.is_empty())
-				.or_else(|| Some(details.join(" · "))),
-			authors: Some(document.authors).filter(|authors| !authors.is_empty()),
+			status,
+			description: synopsis.or_else(|| Some(details.join(" · "))),
+			authors,
 			tags: Some(tags),
 			viewer,
 			cover,
@@ -301,17 +294,17 @@ impl MangaInfo {
 	/// `rating` comes from search, since the page has none.
 	pub fn into_manga(self, label_novels: bool, rating: Option<SearchDocument>) -> Manga {
 		let novel = self.is_novel();
-		let content_rating = match rating {
-			Some(document) => document.content_rating(),
-			None => {
+		let content_rating = rating.map_or_else(
+			|| {
 				let genres = self
 					.genres
 					.iter()
 					.map(|genre| genre.id.as_str())
 					.collect::<Vec<_>>();
 				content_rating(self.is_adult, None, &genres)
-			}
-		};
+			},
+			|document| document.content_rating(),
+		);
 		let (artists, authors): (Vec<_>, Vec<_>) = self
 			.authors
 			.into_iter()
@@ -396,6 +389,7 @@ impl ChapterItem {
 			url: Some(chapter_url(manga_id, &self.id, novel)),
 			title: self
 				.title
+				.as_deref()
 				.and_then(|title| chapter_title(title, self.number)),
 			chapter_number: self.number,
 			date_uploaded: self.created_at.map(|ms| ms / 1000),
@@ -420,8 +414,6 @@ pub struct ReadChapter {
 #[derive(Deserialize)]
 pub struct PageItem {
 	pub image: String,
-	#[serde(default)]
-	pub number: i32,
 }
 
 #[derive(Deserialize)]

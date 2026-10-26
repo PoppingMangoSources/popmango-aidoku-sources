@@ -1,5 +1,5 @@
 use crate::{
-	helpers::{ADULT_GENRES, HENTAI, spotlight_genre},
+	helpers::{ADULT_GENRES, HENTAI, allows, spotlight_genre},
 	models::{ErrorBody, SearchResponse},
 	settings::{self, CONTENT_TYPES, RATINGS},
 };
@@ -17,6 +17,7 @@ pub const CDN_URL: &str = "https://cdn.atsu.moe/static";
 pub const FEED_LIMIT: i32 = 24;
 const SEARCH_LIMIT: i32 = 40;
 const SEARCH_URL: &str = "https://atsu.moe/collections/manga/documents/search";
+pub const FILTERS_URL: &str = "https://atsu.moe/api/explore/availableFilters";
 
 // The site's own search weighting.
 const QUERY_BY: &str = "title,englishTitle,otherNames,authors,acronyms";
@@ -54,13 +55,9 @@ pub fn request(url: &str) -> Result<Request> {
 pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
-		match response
-			.get_json_owned::<ErrorBody>()
-			.ok()
-			.and_then(ErrorBody::reason)
-		{
-			Some(reason) => bail!("Atsumaru: {reason}"),
-			None => bail!("Atsumaru returned status {status}"),
+		match response.get_json_owned::<ErrorBody>() {
+			Ok(body) => bail!("Atsumaru: {}", body.message),
+			Err(_) => bail!("Atsumaru returned status {status}"),
 		}
 	}
 	response.get_json_owned()
@@ -80,10 +77,6 @@ fn list<S: AsRef<str>>(values: &[S]) -> String {
 		.map(|value| quote(value.as_ref()))
 		.collect::<Vec<_>>();
 	format!("[{}]", quoted.join(","))
-}
-
-pub fn allows(ratings: &[String], rating: &str) -> bool {
-	ratings.iter().any(|value| value == rating)
 }
 
 /// Genres the ratings leave out, standing in for titles the site hasn't rated.
@@ -364,8 +357,4 @@ pub fn read_url(manga_id: &str, chapter_id: &str, novel: bool) -> String {
 		"read/chapter"
 	};
 	api_url(path, &[("mangaId", manga_id), ("chapterId", chapter_id)])
-}
-
-pub fn filters_url() -> String {
-	format!("{BASE_URL}/api/explore/availableFilters")
 }

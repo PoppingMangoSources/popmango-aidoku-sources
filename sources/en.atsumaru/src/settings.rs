@@ -51,7 +51,6 @@ pub fn home_sections() -> Option<Vec<String>> {
 	defaults_get::<Vec<String>>("homeSections")
 }
 
-#[derive(Clone, Copy)]
 pub enum Keep {
 	HighestRated,
 	Newest,

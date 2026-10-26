@@ -1,0 +1,646 @@
+#![expect(clippy::unwrap_used)]
+
+use super::*;
+use aidoku::{
+	ContentRating, DynamicFilters, DynamicSettings, Home, MangaStatus, Viewer,
+	alloc::{format, string::ToString},
+	imports::defaults::{DefaultValue, defaults_set},
+};
+use aidoku_test::aidoku_test;
+use serde::Deserialize;
+
+const COMIC: &str = "n86El";
+const NOVEL: &str = "slh2";
+// Has the Adult and Smut genres but no rating from the site.
+const UNRATED_ADULT: &str = "XyKI";
+
+#[derive(Deserialize)]
+struct Found {
+	hits: Vec<Hit>,
+}
+
+#[derive(Deserialize)]
+struct Hit {
+	document: Doc,
+}
+
+/// The fields the assertions check, looked up separately from what the source requested.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Doc {
+	id: String,
+	#[serde(default)]
+	is_adult: bool,
+	mb_content_rating: Option<String>,
+	#[serde(default)]
+	genre_ids: Vec<String>,
+	#[serde(default)]
+	tag_ids: Vec<String>,
+	medium: Option<String>,
+	#[serde(rename = "type")]
+	kind: Option<String>,
+	#[serde(default)]
+	official_translation: bool,
+}
+
+impl Doc {
+	fn has_genre(&self, id: &str) -> bool {
+		self.genre_ids.iter().any(|genre| genre == id)
+	}
+
+	fn has_tag(&self, id: &str) -> bool {
+		self.tag_ids.iter().any(|tag| tag == id)
+	}
+
+	fn is_novel(&self) -> bool {
+		self.medium.as_deref() == Some("Novel")
+	}
+
+	fn tier(&self) -> &'static str {
+		let rating = self.mb_content_rating.as_deref();
+		if self.is_adult || rating == Some("Pornographic") || self.has_genre("10") {
+			"Pornographic"
+		} else if rating == Some("Erotica") || self.has_genre("46") || self.has_genre("41") {
+			"Erotica"
+		} else if rating == Some("Suggestive") {
+			"Suggestive"
+		} else {
+			"Safe"
+		}
+	}
+}
+
+fn docs(result: &MangaPageResult) -> Vec<Doc> {
+	if result.entries.is_empty() {
+		return Vec::new();
+	}
+	let ids = result
+		.entries
+		.iter()
+		.map(|manga| manga.key.as_str())
+		.collect::<Vec<_>>();
+	let url = api::lookup_url(
+		&ids,
+		"id,isAdult,mbContentRating,genreIds,tagIds,medium,type,officialTranslation",
+	);
+	get::<Found>(&url)
+		.unwrap()
+		.hits
+		.into_iter()
+		.map(|hit| hit.document)
+		.collect()
+}
+
+fn keys(result: &MangaPageResult) -> Vec<String> {
+	result
+		.entries
+		.iter()
+		.map(|manga| manga.key.clone())
+		.collect()
+}
+
+fn strings(values: &[&str]) -> DefaultValue {
+	DefaultValue::StringArray(values.iter().map(|value| (*value).into()).collect())
+}
+
+fn clear(keys: &[&str]) {
+	for key in keys {
+		defaults_set(key, DefaultValue::Null);
+	}
+}
+
+fn search(query: Option<&str>, filters: Vec<FilterValue>) -> MangaPageResult {
+	Atsumaru::new()
+		.get_search_manga_list(query.map(Into::into), 1, filters)
+		.unwrap()
+}
+
+fn multi(id: &str, included: &[&str]) -> FilterValue {
+	FilterValue::MultiSelect {
+		id: id.into(),
+		included: included.iter().map(|value| (*value).into()).collect(),
+		excluded: Vec::new(),
+	}
+}
+
+fn select(id: &str, value: &str) -> FilterValue {
+	FilterValue::Select {
+		id: id.into(),
+		value: value.into(),
+	}
+}
+
+fn sort(index: i32) -> FilterValue {
+	FilterValue::Sort {
+		id: "sort".into(),
+		index,
+		ascending: false,
+	}
+}
+
+fn listing(id: &str, page: i32) -> MangaPageResult {
+	Atsumaru::new()
+		.get_manga_list(
+			Listing {
+				id: id.into(),
+				..Default::default()
+			},
+			page,
+		)
+		.unwrap()
+}
+
+fn manga(key: &str) -> Manga {
+	Manga {
+		key: key.into(),
+		..Default::default()
+	}
+}
+
+#[aidoku_test]
+fn browse_pages() {
+	let first = search(None, Vec::new());
+	let second = Atsumaru::new()
+		.get_search_manga_list(None, 2, Vec::new())
+		.unwrap();
+	assert_eq!(first.entries.len(), 40);
+	assert!(first.has_next_page);
+	assert_ne!(keys(&first), keys(&second));
+	// Pornographic titles are off by default.
+	for doc in docs(&first) {
+		assert_ne!(doc.tier(), "Pornographic", "{}", doc.id);
+	}
+}
+
+#[aidoku_test]
+fn text_search() {
+	for query in [
+		"stellar swordmaster",
+		"re:zero",
+		"별을 품은",
+		"solo-leveling & more",
+	] {
+		search(Some(query), Vec::new());
+	}
+	assert!(keys(&search(Some("stellar swordmaster"), Vec::new())).contains(&COMIC.to_string()));
+	assert!(
+		search(Some("qqqqqqqqqqqqqqxj"), Vec::new())
+			.entries
+			.is_empty()
+	);
+}
+
+#[aidoku_test]
+fn pasted_links() {
+	for url in [
+		"https://atsu.moe/manga/n86El",
+		"https://atsu.moe/read/n86El/3uheUh",
+		" https://atsu.moe/manga/n86El ",
+	] {
+		assert_eq!(
+			keys(&search(Some(url), Vec::new())),
+			[COMIC.to_string()],
+			"{url}"
+		);
+	}
+	assert_eq!(
+		keys(&search(Some("https://atsu.moe/novel/slh2"), Vec::new())),
+		[NOVEL.to_string()]
+	);
+	// A link to a series the site doesn't have is searched as text.
+	search(Some("https://atsu.moe/manga/zzzzzz"), Vec::new());
+}
+
+#[aidoku_test]
+fn sorts() {
+	for index in 0..7 {
+		assert!(
+			!search(None, vec![sort(index)]).entries.is_empty(),
+			"{index}"
+		);
+	}
+	// A sort picked alongside a query replaces relevance.
+	assert_ne!(
+		keys(&search(Some("sword"), Vec::new())),
+		keys(&search(Some("sword"), vec![sort(6)]))
+	);
+}
+
+#[aidoku_test]
+fn genres() {
+	let all = search(None, vec![multi("genre", &["39", "9"])]);
+	let any = search(
+		None,
+		vec![multi("genre", &["39", "9"]), select("genre_match", "any")],
+	);
+	assert_ne!(keys(&all), keys(&any));
+	for doc in docs(&all) {
+		assert!(doc.has_genre("39") && doc.has_genre("9"), "{}", doc.id);
+	}
+}
+
+#[aidoku_test]
+fn tapped_tags() {
+	// Martial Arts is a genre, Isekai a tag; names arrive in any case.
+	let martial = search(None, vec![select("genre", "martial arts")]);
+	let isekai = search(None, vec![select("genre", "Isekai")]);
+	assert!(!martial.entries.is_empty() && !isekai.entries.is_empty());
+	assert!(docs(&martial).iter().all(|doc| doc.has_genre("29")));
+	assert!(docs(&isekai).iter().all(|doc| doc.has_tag("94")));
+}
+
+#[aidoku_test]
+fn tags() {
+	assert!(Atsumaru::new().get_dynamic_filters().unwrap().len() >= 18);
+	let isekai = search(None, vec![multi("tags/Settings", &["94"])]);
+	assert!(!isekai.entries.is_empty());
+	assert!(docs(&isekai).iter().all(|doc| doc.has_tag("94")));
+	let without = search(
+		None,
+		vec![FilterValue::MultiSelect {
+			id: "tags/Settings".into(),
+			included: Vec::new(),
+			excluded: vec!["94".into()],
+		}],
+	);
+	assert!(docs(&without).iter().all(|doc| !doc.has_tag("94")));
+}
+
+#[aidoku_test]
+fn other_filters() {
+	let author = |name: &str| {
+		search(
+			None,
+			vec![FilterValue::Text {
+				id: "author".into(),
+				value: name.into(),
+			}],
+		)
+	};
+	assert!(keys(&author("Hong Daeui")).contains(&COMIC.to_string()));
+	// Quotes and backslashes are escaped rather than breaking the query.
+	assert!(author("zzqq nobody`\\").entries.is_empty());
+	let ranged = search(
+		None,
+		vec![
+			FilterValue::Range {
+				id: "year".into(),
+				from: Some(2020.0),
+				to: Some(2021.0),
+			},
+			FilterValue::Range {
+				id: "chapters".into(),
+				from: Some(100.0),
+				to: None,
+			},
+		],
+	);
+	assert!(!ranged.entries.is_empty());
+	let official = search(
+		None,
+		vec![FilterValue::Check {
+			id: "official".into(),
+			value: 1,
+		}],
+	);
+	assert!(!official.entries.is_empty());
+	assert!(docs(&official).iter().all(|doc| doc.official_translation));
+}
+
+#[aidoku_test]
+fn content_ratings() {
+	for rating in ["Safe", "Suggestive", "Erotica", "Pornographic"] {
+		defaults_set("contentRatings", strings(&[rating]));
+		let searched = search(None, Vec::new());
+		let feed = listing("popular", 1);
+		clear(&["contentRatings"]);
+		assert!(!searched.entries.is_empty(), "{rating}");
+		for doc in docs(&searched) {
+			assert_eq!(doc.tier(), rating, "search {}", doc.id);
+		}
+		// The feeds can't tell unrated titles apart, so Safe is the one tier they may add.
+		for doc in docs(&feed) {
+			let tier = doc.tier();
+			assert!(tier == rating || tier == "Safe", "feed {} {tier}", doc.id);
+		}
+	}
+	// A rating picked in the filter overrides the setting.
+	let picked = search(None, vec![multi("rating", &["Pornographic"])]);
+	assert!(!picked.entries.is_empty());
+	assert!(docs(&picked).iter().all(|doc| doc.tier() == "Pornographic"));
+	defaults_set("contentRatings", strings(&[]));
+	let searched = search(None, Vec::new());
+	let feed = listing("popular", 1);
+	clear(&["contentRatings"]);
+	assert!(searched.entries.is_empty() && feed.entries.is_empty());
+}
+
+#[aidoku_test]
+fn unrated_titles_rated_from_genres() {
+	let found =
+		|| keys(&search(Some("SON OF THE HERO KING"), Vec::new())).contains(&UNRATED_ADULT.into());
+	assert!(found());
+	defaults_set("contentRatings", strings(&["Safe", "Suggestive"]));
+	let hidden = !found();
+	clear(&["contentRatings"]);
+	assert!(hidden);
+	// Hentai needs Pornographic, which is off by default.
+	assert!(
+		search(None, vec![multi("genre", &["10"])])
+			.entries
+			.is_empty()
+	);
+}
+
+#[aidoku_test]
+fn adult_only() {
+	defaults_set("adultOnly", DefaultValue::Bool(true));
+	let searched = search(None, Vec::new());
+	let feed = listing("popular", 1);
+	let picked = search(None, vec![multi("rating", &["Safe"])]);
+	clear(&["adultOnly"]);
+	assert!(!searched.entries.is_empty() && !feed.entries.is_empty());
+	for doc in docs(&searched).iter().chain(&docs(&feed)) {
+		assert_eq!(doc.tier(), "Pornographic", "{}", doc.id);
+	}
+	// A rating picked in the filter overrides it.
+	assert!(!picked.entries.is_empty());
+	assert!(docs(&picked).iter().all(|doc| doc.tier() == "Safe"));
+}
+
+#[aidoku_test]
+fn content_types() {
+	let under = |types: &[&str], results: fn() -> Vec<MangaPageResult>| {
+		defaults_set("contentTypes", strings(types));
+		let results = results();
+		clear(&["contentTypes"]);
+		results
+	};
+	let novels = under(&["Novel"], || {
+		vec![
+			search(None, Vec::new()),
+			listing("popular", 1),
+			listing("rising", 1),
+		]
+	});
+	for result in &novels {
+		assert!(!result.entries.is_empty());
+		assert!(docs(result).iter().all(Doc::is_novel));
+	}
+	let manga = under(&["Manga"], || {
+		vec![search(None, Vec::new()), listing("popular", 1)]
+	});
+	for result in &manga {
+		assert!(!result.entries.is_empty());
+		assert!(
+			docs(result)
+				.iter()
+				.all(|doc| !doc.is_novel() && doc.kind.as_deref() == Some("Manga"))
+		);
+	}
+	let mixed = under(&["Manwha", "Novel"], || {
+		vec![search(None, Vec::new()), listing("hotUpdates", 1)]
+	});
+	for result in &mixed {
+		assert!(
+			docs(result)
+				.iter()
+				.all(|doc| doc.is_novel() || doc.kind.as_deref() == Some("Manwha"))
+		);
+	}
+	let none = under(&[], || {
+		vec![
+			search(None, Vec::new()),
+			listing("popular", 1),
+			listing("novels", 1),
+		]
+	});
+	assert!(none.iter().all(|result| result.entries.is_empty()));
+	// A type picked in the filter overrides the setting.
+	let picked = under(&["Novel"], || {
+		vec![search(None, vec![multi("type", &["Manga"])])]
+	});
+	assert!(
+		docs(&picked[0])
+			.iter()
+			.all(|doc| !doc.is_novel() && doc.kind.as_deref() == Some("Manga"))
+	);
+}
+
+#[aidoku_test]
+fn exclusions() {
+	assert_eq!(Atsumaru::new().get_dynamic_settings().unwrap().len(), 1);
+	defaults_set("hiddenGenres", strings(&["39"]));
+	defaults_set("hiddenTags.Settings", strings(&["94"]));
+	let results = [
+		search(None, Vec::new()),
+		listing("popular", 1),
+		listing("recentlyUpdated", 1),
+		listing("novels", 1),
+	];
+	let asked = search(None, vec![multi("genre", &["39"])]);
+	clear(&["hiddenGenres", "hiddenTags.Settings"]);
+	for result in &results {
+		assert!(!result.entries.is_empty());
+		for doc in docs(result) {
+			assert!(!doc.has_genre("39") && !doc.has_tag("94"), "{}", doc.id);
+		}
+	}
+	// A search that asks for a hidden genre shows it.
+	assert!(!asked.entries.is_empty());
+	assert!(docs(&asked).iter().all(|doc| doc.has_genre("39")));
+}
+
+#[aidoku_test]
+fn listings() {
+	for id in [
+		"popular",
+		"recentlyUpdated",
+		"hotUpdates",
+		"rising",
+		"topRated",
+		"genreSpotlight",
+		"hotArrivals",
+		"mostBookmarked",
+		"mostTalkedAbout",
+		"novels",
+		"recentlyAdded",
+		"hiddenGems",
+		"bingeWorthy",
+		"mostPolarizing",
+	] {
+		let first = listing(id, 1);
+		assert!(!first.entries.is_empty() && first.has_next_page, "{id}");
+		assert_ne!(keys(&first), keys(&listing(id, 2)), "{id}");
+	}
+	assert!(
+		Atsumaru::new()
+			.get_manga_list(
+				Listing {
+					id: "nope".into(),
+					..Default::default()
+				},
+				1
+			)
+			.is_err()
+	);
+}
+
+#[aidoku_test]
+fn home() {
+	Atsumaru::new().get_home().unwrap();
+	defaults_set("homeSections", strings(&["rising"]));
+	Atsumaru::new().get_home().unwrap();
+	defaults_set("homeSections", strings(&[]));
+	Atsumaru::new().get_home().unwrap();
+	clear(&["homeSections"]);
+}
+
+#[aidoku_test]
+fn comic() {
+	let source = Atsumaru::new();
+	let details = source.get_manga_update(manga(COMIC), true, false).unwrap();
+	assert_eq!(details.title, "The Stellar Swordmaster");
+	assert_eq!(details.url.as_deref(), Some("https://atsu.moe/manga/n86El"));
+	assert_eq!(details.content_rating, ContentRating::Safe);
+	assert_eq!(details.status, MangaStatus::Ongoing);
+	assert_eq!(details.viewer, Viewer::Webtoon);
+	assert!(details.authors.is_some() && details.artists.is_some());
+	assert!(details.description.is_some() && details.chapters.is_none());
+
+	let updated = source.get_manga_update(manga(COMIC), false, true).unwrap();
+	assert!(updated.title.is_empty());
+	let chapters = updated.chapters.unwrap();
+	assert!(chapters.len() > 200);
+	for chapter in &chapters {
+		let url = chapter.url.as_deref().unwrap();
+		assert!(url.starts_with("https://atsu.moe/read/n86El/") && chapter.language.is_none());
+	}
+
+	let pages = source
+		.get_page_list(details, chapters.into_iter().next().unwrap())
+		.unwrap();
+	assert!(!pages.is_empty());
+	for page in pages {
+		assert!(
+			matches!(page.content, PageContent::Url(url, _) if url.starts_with("https://cdn.atsu.moe/static/pages/"))
+		);
+	}
+}
+
+#[aidoku_test]
+fn chapter_settings() {
+	let chapters = || {
+		Atsumaru::new()
+			.get_manga_update(manga(COMIC), false, true)
+			.unwrap()
+			.chapters
+			.unwrap()
+	};
+	let unique = |list: &[Chapter]| {
+		let mut numbers = list
+			.iter()
+			.filter_map(|chapter| chapter.chapter_number.map(f32::to_bits))
+			.collect::<Vec<_>>();
+		let total = numbers.len();
+		numbers.sort_unstable();
+		numbers.dedup();
+		numbers.len() == total
+	};
+	let all = chapters();
+	assert!(!unique(&all));
+
+	defaults_set("deduplicateChapters", DefaultValue::Bool(true));
+	for keep in ["rated", "newest", "pages"] {
+		defaults_set("deduplicateKeep", DefaultValue::String(keep.into()));
+		let list = chapters();
+		assert!(unique(&list) && list.len() > 100, "{keep}");
+	}
+	clear(&["deduplicateChapters", "deduplicateKeep"]);
+
+	let group = all[0].scanlators.as_ref().unwrap()[0].clone();
+	defaults_set(
+		"excludedScanlators",
+		strings(&[&format!("{}, nobody", group.to_uppercase())]),
+	);
+	let filtered = chapters();
+	clear(&["excludedScanlators"]);
+	assert!(filtered.len() < all.len());
+	assert!(filtered.iter().all(|chapter| {
+		chapter
+			.scanlators
+			.as_ref()
+			.is_none_or(|names| names[0] != group)
+	}));
+}
+
+#[aidoku_test]
+fn novel() {
+	let source = Atsumaru::new();
+	let novel = source.get_manga_update(manga(NOVEL), true, true).unwrap();
+	assert_eq!(novel.url.as_deref(), Some("https://atsu.moe/novel/slh2"));
+	let chapter = novel.chapters.as_ref().unwrap().last().unwrap().clone();
+	assert!(
+		chapter
+			.url
+			.as_deref()
+			.unwrap()
+			.starts_with("https://atsu.moe/novel/slh2/")
+	);
+	let pages = source.get_page_list(novel, chapter).unwrap();
+	assert_eq!(pages.len(), 1);
+	assert!(matches!(&pages[0].content, PageContent::Text(text) if text.len() > 1000));
+
+	defaults_set("labelNovels", DefaultValue::Bool(true));
+	let labelled = source.get_manga_update(manga(NOVEL), true, false).unwrap();
+	clear(&["labelNovels"]);
+	assert!(labelled.title.ends_with(" (Novel)"));
+}
+
+#[aidoku_test]
+fn unknown_series() {
+	let error = Atsumaru::new()
+		.get_manga_update(manga("zzzzzz"), true, true)
+		.unwrap_err();
+	assert!(format!("{error:?}").contains("no longer on Atsumaru"));
+}
+
+#[aidoku_test]
+fn deep_links() {
+	let source = Atsumaru::new();
+	let link = |url: &str| source.handle_deep_link(url.into()).unwrap();
+	assert!(
+		matches!(link("https://atsu.moe/manga/n86El"), Some(DeepLinkResult::Manga { key }) if key == COMIC)
+	);
+	assert!(
+		matches!(link("https://atsu.moe/novel/slh2"), Some(DeepLinkResult::Manga { key }) if key == NOVEL)
+	);
+	assert!(matches!(
+		link("https://atsu.moe/read/n86El/3uheUh"),
+		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == COMIC && key == "3uheUh"
+	));
+	assert!(matches!(
+		link("https://atsu.moe/novel/slh2/5nDftC?p=1"),
+		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == NOVEL && key == "5nDftC"
+	));
+	assert!(link("https://atsu.moe/explore").is_none());
+	assert!(link("https://atsu.moe/read/n86El").is_none());
+}
+
+#[aidoku_test]
+fn chapter_titles() {
+	use helpers::chapter_title;
+	assert_eq!(chapter_title("Chapter 143", Some(143.0)), None);
+	assert_eq!(
+		chapter_title("Chapter 1 - Crimson", Some(1.0)).as_deref(),
+		Some("Crimson")
+	);
+	assert_eq!(
+		chapter_title("Chapters of Fate", Some(1.0)).as_deref(),
+		Some("Chapters of Fate")
+	);
+	assert_eq!(
+		chapter_title("Chapter 5", None).as_deref(),
+		Some("Chapter 5")
+	);
+}

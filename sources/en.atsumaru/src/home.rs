@@ -2,7 +2,7 @@ use crate::{
 	Atsumaru,
 	api::{FEATURED_FIELDS, FEED_LIMIT, Search, feed_url, get, lookup_url, parse, request},
 	helpers::{feed_allows, spotlight_genre},
-	models::{FeedItem, FeedResponse, SearchDocument, SearchResponse},
+	models::{FeedItem, FeedResponse, SearchResponse},
 	settings,
 };
 use aidoku::{
@@ -23,10 +23,21 @@ enum Layout {
 	Row,
 }
 
+impl Layout {
+	fn empty(self) -> HomeComponentValue {
+		match self {
+			Self::Featured => HomeComponentValue::empty_big_scroller(),
+			Self::Chapters => HomeComponentValue::empty_manga_chapter_list(),
+			Self::Ranked => HomeComponentValue::empty_manga_list(),
+			Self::Row => HomeComponentValue::empty_scroller(),
+		}
+	}
+}
+
 const NOVELS: &str = "novels";
 const SPOTLIGHT: &str = "genreSpotlight";
 
-/// Listing id, title, subtitle and layout; the ids double as listing ids.
+/// Id, title, subtitle and layout; each id is also the id of the section's listing.
 const SECTIONS: [(&str, &str, Option<&str>, Layout); 14] = [
 	(
 		"popular",
@@ -89,14 +100,6 @@ const SECTIONS: [(&str, &str, Option<&str>, Layout); 14] = [
 	("mostPolarizing", "Most Polarizing", None, Layout::Row),
 ];
 
-fn title(id: &str, title: &str) -> String {
-	if id == SPOTLIGHT {
-		format!("{title}: {}", spotlight_genre())
-	} else {
-		title.into()
-	}
-}
-
 fn section_request(id: &str, page: i32) -> Result<Option<Request>> {
 	if id == NOVELS {
 		let search = Search::novels();
@@ -138,17 +141,6 @@ pub fn listing_page(id: &str, page: i32) -> Result<MangaPageResult> {
 	})
 }
 
-/// The feed has no descriptions or authors, so one search request fills them in.
-fn featured_documents(items: &[FeedItem]) -> Vec<SearchDocument> {
-	let ids = items
-		.iter()
-		.map(|item| item.id.as_str())
-		.collect::<Vec<_>>();
-	get::<SearchResponse>(&lookup_url(&ids, FEATURED_FIELDS))
-		.map(|response| response.hits.into_iter().map(|hit| hit.document).collect())
-		.unwrap_or_default()
-}
-
 fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<HomeComponentValue> {
 	let label_novels = settings::label_novels();
 	let listing = Some(Listing {
@@ -172,7 +164,20 @@ fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<Home
 	let (items, _) = feed_items(response)?;
 	Ok(match layout {
 		Layout::Featured => {
-			let mut documents = featured_documents(&items);
+			// The feed has no descriptions or authors, so one search request fills them in.
+			let ids = items
+				.iter()
+				.map(|item| item.id.as_str())
+				.collect::<Vec<_>>();
+			let mut documents = get::<SearchResponse>(&lookup_url(&ids, FEATURED_FIELDS))
+				.map(|response| {
+					response
+						.hits
+						.into_iter()
+						.map(|hit| hit.document)
+						.collect::<Vec<_>>()
+				})
+				.unwrap_or_default();
 			HomeComponentValue::BigScroller {
 				entries: items
 					.into_iter()
@@ -214,15 +219,6 @@ fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<Home
 	})
 }
 
-fn empty(layout: Layout) -> HomeComponentValue {
-	match layout {
-		Layout::Featured => HomeComponentValue::empty_big_scroller(),
-		Layout::Chapters => HomeComponentValue::empty_manga_chapter_list(),
-		Layout::Ranked => HomeComponentValue::empty_manga_list(),
-		Layout::Row => HomeComponentValue::empty_scroller(),
-	}
-}
-
 impl Home for Atsumaru {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let shown = settings::home_sections();
@@ -236,7 +232,12 @@ impl Home for Atsumaru {
 				continue;
 			}
 			if let Some(request) = section_request(id, 1)? {
-				sections.push((id, title(id, name), subtitle, layout));
+				let name: String = if id == SPOTLIGHT {
+					format!("{name}: {}", spotlight_genre())
+				} else {
+					name.into()
+				};
+				sections.push((id, name, subtitle, layout));
 				requests.push(request);
 			}
 		}
@@ -248,7 +249,7 @@ impl Home for Atsumaru {
 				.map(|(_, name, subtitle, layout)| HomeComponent {
 					title: Some(name.clone()),
 					subtitle: subtitle.map(Into::into),
-					value: empty(*layout),
+					value: layout.empty(),
 				})
 				.collect(),
 		}));

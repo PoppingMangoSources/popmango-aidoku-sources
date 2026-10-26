@@ -1,6 +1,7 @@
 use crate::{
 	Atsumaru,
-	api::{filters_url, get},
+	api::{FILTERS_URL, get},
+	helpers::allows,
 	models::{AvailableFilters, TagOption},
 	settings,
 };
@@ -37,23 +38,17 @@ pub const GROUPS: [&str; 19] = [
 const DEMOGRAPHICS: &str = "Audience Demographics";
 
 /// Explicit tags are offered only when pornographic titles are, as the site does.
-fn grouped_tags(mut tags: Vec<TagOption>) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
-	let explicit = settings::adult_only()
-		|| settings::content_ratings()
-			.iter()
-			.any(|rating| rating == "Pornographic");
-	let position = |tag: &TagOption| GROUPS.iter().position(|group| *group == tag.group);
-	tags.retain(|tag| (explicit || !tag.adult) && position(tag).is_some());
-	tags.sort_by(|a, b| {
-		position(a)
-			.cmp(&position(b))
-			.then_with(|| a.name.cmp(&b.name))
-	});
+fn grouped_tags(tags: Vec<TagOption>) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
+	let explicit = settings::adult_only() || allows(&settings::content_ratings(), "Pornographic");
+	let mut tags = tags
+		.into_iter()
+		.filter(|tag| explicit || !tag.adult)
+		.filter_map(|tag| Some((GROUPS.iter().position(|group| *group == tag.group)?, tag)))
+		.collect::<Vec<_>>();
+	tags.sort_by(|(a, a_tag), (b, b_tag)| a.cmp(b).then_with(|| a_tag.name.cmp(&b_tag.name)));
 	let mut groups: Vec<(&'static str, Vec<String>, Vec<String>)> = Vec::new();
-	for tag in tags {
-		let Some(group) = position(&tag).map(|index| GROUPS[index]) else {
-			continue;
-		};
+	for (index, tag) in tags {
+		let group = GROUPS[index];
 		match groups.last_mut() {
 			Some((current, ids, names)) if *current == group => {
 				ids.push(tag.id);
@@ -67,7 +62,7 @@ fn grouped_tags(mut tags: Vec<TagOption>) -> Vec<(&'static str, Vec<String>, Vec
 
 /// Genre and tag ids for tag names, as a tapped tag arrives; search only matches tags by id.
 pub fn tag_ids(names: &[String]) -> Result<(Vec<String>, Vec<String>)> {
-	let AvailableFilters { genres, tags } = get(&filters_url())?;
+	let AvailableFilters { genres, tags } = get(FILTERS_URL)?;
 	let wanted = |name: &str| names.iter().any(|wanted| wanted.eq_ignore_ascii_case(name));
 	Ok((
 		genres
@@ -85,7 +80,7 @@ pub fn tag_ids(names: &[String]) -> Result<(Vec<String>, Vec<String>)> {
 impl DynamicFilters for Atsumaru {
 	// The site has thousands of tags and adds more, so they come from its filter list.
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let tags = get::<AvailableFilters>(&filters_url())?.tags;
+		let tags = get::<AvailableFilters>(FILTERS_URL)?.tags;
 		let mut filters = grouped_tags(tags)
 			.into_iter()
 			.filter(|(group, ..)| *group != DEMOGRAPHICS)
@@ -121,7 +116,7 @@ impl DynamicFilters for Atsumaru {
 /// The genre and tag lists live on the site, so the exclusions are offered from them.
 impl DynamicSettings for Atsumaru {
 	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
-		let AvailableFilters { genres, tags } = get(&filters_url())?;
+		let AvailableFilters { genres, tags } = get(FILTERS_URL)?;
 		let refreshes = || Some(vec!["content".into(), "listings".into()]);
 		let (genre_ids, genre_names): (Vec<String>, Vec<String>) = genres
 			.into_iter()

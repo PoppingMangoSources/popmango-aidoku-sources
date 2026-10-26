@@ -1,6 +1,4 @@
 #![no_std]
-extern crate alloc;
-
 mod api;
 mod filters;
 mod helpers;
@@ -207,11 +205,10 @@ impl Source for Atsumaru {
 			}]);
 		}
 
-		let mut pages = get::<ReadResponse>(&url)?.read_chapter.pages;
+		let pages = get::<ReadResponse>(&url)?.read_chapter.pages;
 		if pages.is_empty() {
 			bail!("This chapter has no pages");
 		}
-		pages.sort_by_key(|page| page.number);
 		Ok(pages
 			.into_iter()
 			.map(|page| Page {
@@ -245,3 +242,6 @@ register_source!(
 	DynamicSettings,
 	DeepLinkHandler
 );
+
+#[cfg(test)]
+mod test;
