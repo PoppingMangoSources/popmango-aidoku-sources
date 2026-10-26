@@ -132,12 +132,35 @@ LINE_RULES = [
 ]
 
 
+LINK_BLOCK = re.compile(r"\bLink\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
+LINK_SUBTITLE = re.compile(r"\bsubtitle\b(?!:\s*None)")
+SEARCH_BODY = re.compile(r"fn get_search_manga_list\b(.*?)(?=\n\tfn |\n\}\n)", re.S)
+
+
+def check_cards(path: Path, text: str) -> None:
+    """Search results and home rows carry key, title, cover, status and rating only."""
+    for block in LINK_BLOCK.finditer(text):
+        if LINK_SUBTITLE.search(block.group(1)):
+            line = text.count("\n", 0, block.start()) + 1
+            fail(path, f"line {line} gives a home row a subtitle; only the big scroller shows details")
+    body = SEARCH_BODY.search(text)
+    if body and "get_manga_update(" in body.group(1):
+        fail(path, "search returns a series' full details as a card; look it up compactly instead")
+
+
+SILENCED = re.compile(r"#!?\[\s*(?:allow|expect)\s*\([^)]*\b(?:dead_code|unused\w*)")
+
+
 def check_rust(source: Path, single_language: bool) -> None:
     has_settings = (source / "src" / "settings.rs").exists()
     for path in sorted((source / "src").rglob("*.rs")):
         check_text_file(path)
+        for number, line in enumerate(path.read_text().splitlines(), 1):
+            if SILENCED.search(line):
+                fail(path, f"line {number} silences an unused-code warning; delete the code instead")
         if path.name == "test.rs":
             continue
+        check_cards(path, path.read_text())
         for number, line in enumerate(path.read_text().splitlines(), 1):
             where = f"line {number}"
             if SECTION_BANNER.match(line):

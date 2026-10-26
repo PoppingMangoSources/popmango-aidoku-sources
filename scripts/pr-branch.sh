@@ -75,13 +75,18 @@ case $mode in
 esac
 rm -rf "$work/$source"
 git archive "$snapshot" "$source" | tar -x -C "$work"
-python3 - "$work/$source/res/source.json" "$version" <<'PY'
-import json, sys
+# Tests stay on main: they call the live site, and the submission is the source alone.
+python3 - "$work/$source" "$version" <<'PY'
+import json, re, sys
 from pathlib import Path
-path = Path(sys.argv[1])
+source, version = Path(sys.argv[1]), int(sys.argv[2])
+path = source / "res/source.json"
 data = json.loads(path.read_text())
-data["info"]["version"] = int(sys.argv[2])
+data["info"]["version"] = version
 path.write_text(json.dumps(data, indent="\t", ensure_ascii=False) + "\n")
+(source / "src/test.rs").unlink(missing_ok=True)
+lib = source / "src/lib.rs"
+lib.write_text(re.sub(r"\n*#\[cfg\(test\)\]\nmod test;\n", "\n", lib.read_text()))
 PY
 git -C "$work" add -A -- "$source"
 git -C "$work" diff --cached --quiet && { echo "No source changes to submit." >&2; exit 1; }
@@ -96,13 +101,18 @@ python3 "$tooling/scripts/check-upstream-scope.py" --repo "$work" --source "$id"
 python3 "$tooling/scripts/check-sources.py" --repo "$work" --upstream "$id"
 "$tooling/scripts/verify-source.sh" "$work/$source"
 python3 - "$root" "$snapshot" "$work" "$source" <<'PY'
-import json, subprocess, sys
+import json, re, subprocess, sys
 root, snapshot, work, source = sys.argv[1:]
+metadata, lib, test = (source + "/" + name for name in ("res/source.json", "src/lib.rs", "src/test.rs"))
 def tree(repo, ref):
-    return subprocess.check_output(["git", "-C", repo, "ls-tree", "-r", ref, "--", source], text=True).splitlines()
-before, after = tree(root, snapshot), tree(work, "HEAD")
-metadata = source + "/res/source.json"
-assert [r for r in before if not r.endswith("\t" + metadata)] == [r for r in after if not r.endswith("\t" + metadata)], "source files drifted"
+    rows = subprocess.check_output(["git", "-C", repo, "ls-tree", "-r", ref, "--", source], text=True).splitlines()
+    return [row for row in rows if row.split("\t")[1] not in (metadata, lib, test)]
+assert tree(root, snapshot) == tree(work, "HEAD"), "source files drifted"
+def show(repo, ref, path):
+    return subprocess.check_output(["git", "-C", repo, "show", ref + ":" + path], text=True)
+expected = re.sub(r"\n*#\[cfg\(test\)\]\nmod test;\n", "\n", show(root, snapshot, lib))
+assert show(work, "HEAD", lib) == expected, "lib.rs drifted beyond the test module"
+assert subprocess.run(["git", "-C", work, "cat-file", "-e", "HEAD:" + test], capture_output=True).returncode != 0, "test.rs reached the submission"
 def info(repo, ref):
     data = json.loads(subprocess.check_output(["git", "-C", repo, "show", ref + ":" + metadata]))
     data["info"].pop("version")

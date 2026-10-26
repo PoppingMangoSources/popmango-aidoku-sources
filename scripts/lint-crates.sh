@@ -2,6 +2,7 @@
 # Read one crate path per line; retain exit codes, annotations and diagnostics on failure.
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
+source "$root/scripts/source-lints.sh"
 logs=$(mktemp -d)
 trap 'rm -rf "$logs"' EXIT
 failed=0
@@ -11,7 +12,9 @@ while IFS= read -r crate; do
     index=$((index + 1))
     echo "::group::Linting $crate"
     if ! (cd "$crate"; cargo fmt --check); then failed=1; fi
-    if ! (cd "$crate"; cargo clippy --target wasm32-unknown-unknown --message-format=json -- -D warnings) > "$logs/$index.json"; then failed=1; fi
+    extra=()
+    case "$crate" in sources/*) extra=("${SOURCE_LINTS[@]}") ;; esac
+    if ! (cd "$crate"; cargo clippy --target wasm32-unknown-unknown --message-format=json -- -D warnings "${extra[@]}") > "$logs/$index.json"; then failed=1; fi
     if ! jq --arg WORKING_DIRECTORY "$crate" -rsf "$root/.github/workflows/supporting/annotations.jq" "$logs/$index.json"; then failed=1; fi
     echo "::endgroup::"
 done
