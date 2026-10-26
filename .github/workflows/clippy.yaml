@@ -1,0 +1,48 @@
+name: Lint Rust sources
+on:
+  push:
+    branches: [main, "feat/**", "fix/**", "chore/**"]
+    paths: ["sources/**", "templates/**", "scripts/**", ".github/workflows/clippy.yaml", ".github/workflows/supporting/**"]
+  pull_request:
+    paths: ["sources/**", "templates/**", "scripts/**", ".github/workflows/clippy.yaml", ".github/workflows/supporting/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clippy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.99.0"
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git/db
+            sources/**/target
+            templates/**/target
+          key: clippy-${{ runner.os }}-1.99.0-${{ github.sha }}
+          restore-keys: clippy-${{ runner.os }}-1.99.0-
+      - name: Lint changed sources and templates
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          base="$BASE_SHA"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base=$(git merge-base HEAD origin/main)
+          fi
+          python3 scripts/changed-crates.py --base "$base" | bash scripts/lint-crates.sh

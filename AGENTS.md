@@ -4,10 +4,16 @@ Notes gathered while getting `multi.xcomic` (PR 735), `en.toonkotsu` (PRs 815 an
 the Kagane rework (PR 827) merged into Aidoku-Community sources, plus what kkantan asks of
 other contributors. Written down so the next source doesn't have to relearn it.
 
-This file is the only copy of the rules: `CLAUDE.md` holds just `@AGENTS.md`, which loads
-it. The step-by-step workflow, from recon to review rounds, is the `aidoku-source` skill in
-`.claude/skills/` (also reachable as `.agents/skills/`); the scripts it drives are in
-`scripts/` (section 9).
+`AGENTS.md` and `CLAUDE.md` are identical, complete copies of these rules. Both agents
+must read the source workflow before creating or submitting a source:
+
+- [.claude/skills/aidoku-source/SKILL.md](.claude/skills/aidoku-source/SKILL.md)
+- [.agents/skills/aidoku-source/SKILL.md](.agents/skills/aidoku-source/SKILL.md)
+
+The two skill trees are physical copies, including their references. After editing either
+instruction set, synchronize the copies with `python3 scripts/sync-agent-docs.py` (edit
+`AGENTS.md` and `.claude/skills` first). CI and the pre-push hook fail on drift. This is
+intentional duplication so each client can read the full instructions directly.
 
 Items marked **(verified)** were checked against aidoku-rs, the community sources or
 CI config. Items marked **(inferred)** are read from reviewer comments or a single
@@ -56,7 +62,8 @@ licence to skip reading the diff.
 
 ### CI (verified)
 
-Upstream's `pr.yaml` has three jobs, each over what a PR changes:
+Upstream's `pr.yaml` has three jobs, each over what a PR changes (the compatibility
+baseline, not a replacement for this fork's additional review gates):
 
 - **Verify** — each changed source: `aidoku package` with `RUSTFLAGS=-Dwarnings`, then
   `aidoku verify`.
@@ -65,8 +72,11 @@ Upstream's `pr.yaml` has three jobs, each over what a PR changes:
 - **JSON** — tabs only, final newline, for every file under `res/`.
 
 Rust is pinned (`1.99.0`) and the CLI comes from `.github/actions/install-aidoku-cli`, which
-installs aidoku-rs at its latest commit. This repo carries the same files, so the checks a PR
-meets upstream are the ones our pushes meet here; `pr.yaml` also runs on pushes to `main`.
+installs aidoku-rs at its latest commit. This fork keeps packaging/JSON checks in `pr.yaml`, plus a separate `clippy.yaml`
+with formatting, warning failures, inline diagnostics and an aggregate tool-version summary.
+`check.yaml` adds our source rules, mirror checks, workflow linting and guard regression tests.
+Template changes also check their source consumers. Passing these is necessary, but does not
+prove the site's behavior or upstream branch isolation.
 
 Locally, from the source directory (the pre-push hook runs exactly these):
 
@@ -506,7 +516,9 @@ an API quirk, a constraint, an ordering that matters.
 
 ### Gates
 
-- `git config core.hooksPath .githooks` once per clone. The pre-push hook runs CI's lint and
+- `scripts/install-hooks.sh` once per clone from the tooling checkout on `main`. It installs
+  an absolute hooks path so the same hook works in clean upstream worktrees; keep that
+  checkout available. Scope validation runs before source/toolchain checks. The pre-push hook runs CI's lint and
   verify commands (section 1) for every source and template the push changes, then
   `scripts/check-sources.py`.
 - `scripts/check-sources.py [--base <ref>] [ids…]` checks the rules that need no network:
@@ -516,7 +528,7 @@ an API quirk, a constraint, an ordering that matters.
   on single-language sources, `defaults_get` outside `settings.rs`, the review-comment
   patterns section 3 lists (an empty-query test, a neither-flag guard, a hand-built
   `AidokuError`, `Unimplemented`), README row in step with `source.json`, a version bump
-  since `<ref>`, and `CLAUDE.md` holding only `@AGENTS.md`. CI (`check.yaml`) runs it on the
+  since `<ref>`, and byte-identical `AGENTS.md`/`CLAUDE.md` plus matching physical skill trees. CI (`check.yaml`) runs it on the
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway.
 
@@ -525,10 +537,11 @@ an API quirk, a constraint, an ordering that matters.
 - `scripts/new-source.sh <id> <Name> <url>` scaffolds through `aidoku init`, removes the
   nested repository it creates, and prints the README row.
 - `scripts/pr-branch.sh <id> [--push]` builds `feat/<id>` from `upstream/main` in a
-  separate worktree: the source copied from `main` (`.cargo`, `Cargo.toml`,
+  separate worktree: the source copied from a committed snapshot (`HEAD` by default;
+  `--from <ref>` explicitly selects another) (`.cargo`, `Cargo.toml`,
   `Cargo.lock`, `res`, `src` — no `package.aix`, no README), `version` set to **1**, one
   `feat: add <id>` commit, gates run. It refuses if the branch touches anything outside
-  the source or differs from `main` beyond the version. Our `main` keeps its own
+  the source or differs from the selected snapshot beyond the version. Our `main` keeps its own
   incrementing version, since our users have it installed and a version going
   backwards means they never get an update.
 - Review rounds: fix on `main` (with a bump), then
@@ -539,6 +552,27 @@ an API quirk, a constraint, an ordering that matters.
   `feat/<id>` from `upstream/main` (it only does so once origin's branch is merged) and
   sets `version` to upstream's plus one. PRs are squashed on merge, so the extra
   commits only make the round easier to review.
+- Before any submission push, independently run
+  `python3 scripts/check-upstream-scope.py --source <id> --head <ref>` after fetching
+  canonical upstream. It checks the merge-base diff **and every submission commit**, not
+  `origin/main`. README/website/workflow edits, other sources, generated files, merge commits,
+  wrong ids and wrong submission versions fail. A clean final diff cannot conceal unrelated
+  commits that were later reverted.
+- Submission branches are `feat/<id>` or `fix/<id>`; the existing
+  `fix/kagane-chapter-fetch` maps to `multi.kagane`. Use `chore/<topic>` for tooling and
+  preserved snapshots. Do not put custom fork checks or docs onto an upstream source branch.
+- `upstream-scope.yaml` runs from `main` on main pushes, on demand, and every half hour.
+  It reads all submission refs without executing their code and attaches an
+  **Upstream source scope** status to each head. This independently catches API/browser
+  pushes that bypass local hooks. Scheduled checks can be delayed by GitHub; they report
+  failures, not a repository protection rule. Require that status in a ruleset if immediate
+  merge blocking is wanted. No protection settings are changed by these scripts.
+- To reconstruct a contaminated branch, use
+  `scripts/pr-branch.sh <id> --from <saved-ref> --rebuild [--push]`. It preserves the old
+  branch as `chore/<id>-before-rebuild-<sha>` before replacing it. Ordinary runs refuse
+  to replace an unmerged branch. No source behavior is changed during reconstruction.
+- Review rounds preserve the submission version; updates of sources already upstream use
+  exactly upstream's version plus one. Fork publication versions advance independently.
 - Pushes to the PR branch always use `--force-with-lease=<ref>:<expected-sha>`, never a
   bare `--force`. The person may push to it too (they did on #815), so fetch before
   building on it.
@@ -770,3 +804,32 @@ Confirmed by console probes on kagane.si unless marked.
   dropped `supportsTagSearch` because the static genre filter already makes tags
   tappable. #632, #811 moved the domain (`kagane.to` → `kagane.org`); #728 added the
   sort list and the relevance fallback to `total_views` for browsing.
+
+
+## 15. Evidence before submission
+
+Read the synchronized skill reference
+[references/source-review.md](.claude/skills/aidoku-source/references/source-review.md)
+for official code locations, runner limitations, reviewer comment permalinks and the test
+matrix. Use the `.agents/skills/aidoku-source/references/source-review.md` copy from Codex.
+
+- Keep **source-code facts**, **live API observations**, **runner results** and **in-app
+  results** separate in the review summary. A build is not an end-to-end source test.
+- Use the merged `en.toonkotsu`, `multi.xcomic` and Kagane rework as accepted patterns for
+  the behavior they actually implement. Their merged status is not a permanent guarantee
+  about every API, nor a reason to copy old code without checking the current library.
+- Review complete source branches against fresh upstream before pushing; review main
+  publication changes against the fork. Report both boundaries explicitly when both change.
+- Answer each reviewer thread with a code change or a reasoned reply. Verify the final
+  code before calling a comment addressed. Do not mark discussions resolved for the person.
+- Run `scripts/verify-source.sh <source-directory> [--test]` for fmt, warning-failing
+  Clippy, packaging and schema/WASM verification; `--test` additionally runs aidoku tests.
+  Install `aidoku-test-runner` first. Use tests for meaningful parsers, key/url mappings,
+  pagination, cleared settings and error behavior. Live tests are opt-in because connectivity
+  and site protection are environment-dependent; never silently exclude failures.
+- For WebView/cookies/reader rendering, use an actual Aidoku device or simulator. The Rust
+  test runner has stubbed WebView imports. The app's `AidokuTests/Support/TestableSource.swift`
+  is an app test double, not an executable harness for arbitrary third-party source WASM.
+- Caching, `sccache`, artifact retention and compiler versions affect speed/diagnostics;
+  none establish correctness. Do not restore an old cache or compiler action as a substitute
+  for a missing behavioral or scope check. Preserve diagnostics when a build fails.

@@ -1,26 +1,16 @@
-def annotation_level(x):
-  if x == "help" or x == "note" then 
-    "notice" 
-  elif x == "warning" then 
-    "warning" 
-  else 
-    "error"
-  end;
-
-def sanitize(x):
-    x 
-    | gsub("%"; "%25")
-    | gsub("\n"; "%0A")
-    | gsub("\r"; "%0D");
-
-.[] 
-  | select(.reason == "compiler-message" and .message.code and .message.spans[].is_primary)
-  | .message
-  | (.spans[] | select(.is_primary)) as $span
-  | "::\(annotation_level(.level)) "
-    + "file=\($WORKING_DIRECTORY)/\($span.file_name | gsub("\\\\"; "/")),"
-    + "line=\($span.line_start),"
-    + "endLine=\($span.line_end),"
-    + "col=\($span.column_start),"
-    + "endColumn=\($span.column_end),"
-    + "title=\(.message)::\(sanitize(.rendered))"
+def sanitize:
+  tostring | gsub("%"; "%25") | gsub("\n"; "%0A") | gsub("\r"; "%0D");
+def property:
+  sanitize | gsub(","; "%2C") | gsub(":"; "%3A");
+def level:
+  if . == "help" or . == "note" then "notice"
+  elif . == "warning" then "warning" else "error" end;
+.[]
+| select(.reason == "compiler-message")
+| .message
+| . as $message
+| .spans[] | select(.is_primary)
+| "::\($message.level | level) "
+  + "file=\(($WORKING_DIRECTORY + "/" + (.file_name | gsub("\\\\"; "/"))) | property),"
+  + "line=\(.line_start),endLine=\(.line_end),col=\(.column_start),endColumn=\(.column_end),"
+  + "title=\($message.message | property)::\(($message.rendered // $message.message) | sanitize)"

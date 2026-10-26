@@ -5,8 +5,15 @@ description: Create, fix or submit an Aidoku source in this repo. Use when addin
 
 # Building Aidoku sources
 
-`AGENTS.md` (which `CLAUDE.md` loads) holds the rules and why they exist. This skill is the
+`AGENTS.md` and the identical full `CLAUDE.md` holds the rules and why they exist. This skill is the
 order to apply them in. Work in phases; each depends on facts the one before established.
+The physical `.agents/skills/aidoku-source` copy must match this tree; run
+`python3 scripts/sync-agent-docs.py` after editing and `--check` before committing.
+Read [source-review.md](references/source-review.md) for official references and the test matrix.
+
+Before coding, declare the destination: fork publication (`main`) or upstream submission
+(`feat/<id>`/`fix/<id>` from canonical upstream). Never create a submission by branching
+from the fork's main. Keep the tooling checkout available while working in clean worktrees.
 
 ## Phase 1 — Recon
 
@@ -47,7 +54,8 @@ that shipped:
 - [ ] `send_partial_result` only when chapters need a second request
 - [ ] `DeepLinkHandler` for series **and** chapter urls; series and chapter urls resolve
 - [ ] Every site filter present; dynamic genres → `supportsTagSearch` plus a
-      `FilterValue::Select { id: "genre" }` arm; an author filter → `supportsAuthorSearch`
+      `FilterValue::Select { id: "genre" }` arm; use `supportsAuthorSearch` only without
+      an explicit author text filter (likewise for artists)
 - [ ] No `language` on chapters of a single-language source
 - [ ] Toggles and other secondary filters set `"hideFromHeader": true`
 - [ ] Every home feed honours the same settings as browse — check what the feed endpoint
@@ -76,12 +84,14 @@ cargo clippy --target wasm32-unknown-unknown -- -D warnings   # never --all-targ
 RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 ```
 
-These are CI's commands (AGENTS.md §1), so a source that passes here passes upstream.
+These cover the Rust/package baseline (AGENTS.md §1). Also run the independent scope
+check and behavioral tests; compilation alone cannot establish upstream readiness.
 
 Then from the repo root: `scripts/check-sources.py <id>`.
 
-`git config core.hooksPath .githooks` once per clone makes `git push` run all of this for
-every source the push changes.
+`scripts/install-hooks.sh` once from the main tooling checkout keeps the hook available
+in upstream worktrees. It validates pushed submission refs against upstream before running
+the source gates. Do not bypass it because the destination tree lacks fork scripts.
 
 This sandbox usually cannot reach the sites. Say so rather than calling a change verified,
 and ask for a console probe or an in-app check when behaviour matters.
@@ -102,11 +112,21 @@ no AI attribution (AGENTS.md §9).
 ```sh
 scripts/pr-branch.sh <id>            # feat/<id> from upstream/main, one "feat: add <id>" commit
 scripts/pr-branch.sh <id> --push     # same, then push with a lease
+# Use --from <committed-ref> when the source snapshot is on another branch.
 ```
 
-The script copies the source from `main`, sets `version` to 1, runs the gates, and refuses
-if the branch touches anything outside `sources/<id>` or differs from main beyond the
-version. The person opens the PR; do not open it unless asked.
+The script copies the source from the selected committed snapshot (`HEAD` by default), sets `version` to 1, runs the gates, and refuses
+if the branch touches anything outside `sources/<id>` or differs from the snapshot beyond the
+version. It validates both the final diff and the commit history against upstream.
+Before a manual push, fetch canonical upstream and run:
+
+```sh
+python3 /path/to/tooling/scripts/check-upstream-scope.py --repo . --source <id>
+```
+
+If a branch is contaminated, preserve it and use `--rebuild --from <saved-ref>`. Never
+cherry-pick a commit that includes README, workflow or unrelated source changes. Keep
+the backup until the reconstructed source has been tested and the person no longer needs it. The person opens the PR; do not open it unless asked.
 
 Before opening it, reread the reviews AGENTS.md §13 lists and predict kkantan's comments.
 
@@ -128,7 +148,18 @@ scripts/pr-branch.sh <id> --update "feat(<id>): <what>" "<one or two sentences>"
 ```
 
 It restarts the branch from `upstream/main` and sets the version to upstream's plus one.
-That needs the source on `main`. Sources that live only upstream (`multi.kagane`,
+Select the intended committed source with `--from <ref>` when it is not on `main`. Sources that live only upstream (`multi.kagane`,
 `en.toonkotsu`) get a branch cut straight from `upstream/main` instead, with upstream's
 version plus one and the same gates. When a comment asks "does X not support Y", answer it with a console probe, not
 from a reference client.
+
+
+## Phase 8 — Review evidence
+
+Record the upstream base SHA, source snapshot SHA, prepared head SHA, changed-path scope,
+fmt/Clippy/package/verify results, runner test results and remaining in-app checks. Check
+pagination with a second page, filters with a value that should match nothing, each content
+rating independently, missing/locked chapters, pasted URLs, deep links and page-list errors.
+Count requests per operation and identify any per-item fan-out. Consult the reference's
+reviewer evidence, then reread the final diff and every prior review thread before resubmission.
+Do not claim a live test passed when network access or WebView support prevented execution.

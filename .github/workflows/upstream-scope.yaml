@@ -1,0 +1,40 @@
+name: Upstream source scope
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Submission branch to inspect (blank checks all)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: upstream-source-scope
+  cancel-in-progress: false
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    steps:
+      # This workflow lives on main: clean submission branches have no fork tooling.
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch submission refs and canonical upstream
+        run: |
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          git fetch https://github.com/Aidoku-Community/sources.git main:refs/remotes/upstream/main
+      - name: Inspect trees and history; publish commit status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SCOPE_BRANCH: ${{ inputs.branch }}
+        run: python3 scripts/report-upstream-scope.py

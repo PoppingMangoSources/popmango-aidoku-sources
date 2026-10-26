@@ -3,13 +3,13 @@ name: Check source rules
 # The AGENTS.md rules that need no network or toolchain: tab-indented JSON, final newlines,
 # no "multi" language, check filters hidden from the header, no decorative dividers, page
 # sizes, settings read in settings.rs, README rows in step with source.json, a version bump
-# on every changed source, patterns reviewers keep flagging, 128x128 icons, and CLAUDE.md
-# pointing at AGENTS.md. Only the sources a change touches are checked.
+# on every changed source, patterns reviewers keep flagging, 128x128 icons, and matching AGENTS.md/CLAUDE.md
+# and matching physical skill copies. Only the sources a change touches are checked.
 
 on:
   push:
     branches:
-      - main
+      - "**"
   pull_request:
 
 concurrency:
@@ -41,3 +41,6 @@ jobs:
             base="HEAD~1"
           fi
           python3 scripts/check-sources.py --base "$base"
+      - name: Exercise workflow guard regressions
+        run: python3 -m unittest discover -s scripts/tests -v
+      - uses: docker://rhysd/actionlint:1.7.7

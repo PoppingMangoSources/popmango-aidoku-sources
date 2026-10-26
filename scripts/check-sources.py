@@ -10,6 +10,7 @@ Usage:
 Exits non-zero when any rule fails. Each failure names the file and the rule.
 """
 
+import argparse
 import json
 import re
 import struct
@@ -53,7 +54,7 @@ def check_json(path: Path) -> object:
         fail(path, f"is not valid JSON ({error})")
         return None
     for number, line in enumerate(text.splitlines(), 1):
-        if line.startswith(" "):
+        if re.match(r"^\t* +", line):
             fail(path, f"line {number} is indented with spaces; JSON is indented with tabs")
             break
     return value
@@ -101,7 +102,7 @@ def check_icon(path: Path) -> None:
         fail(path, "is missing")
         return
     header = path.read_bytes()[:24]
-    if header[:8] != b"\x89PNG\r\n\x1a\n":
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
         fail(path, "is not a PNG")
     elif struct.unpack(">II", header[16:24]) != (128, 128):
         fail(path, "is {}x{}; icons are 128x128".format(*struct.unpack(">II", header[16:24])))
@@ -172,7 +173,7 @@ def check_version_bump(source: Path, version: int, base: str) -> None:
         fail(path, f"version {version} was not bumped from {base}")
 
 
-def check_source(source_id: str, base: str | None) -> None:
+def check_source(source_id: str, base: str | None, upstream: bool = False) -> None:
     source = SOURCES / source_id
     if not (source / "Cargo.toml").exists():
         return
@@ -192,6 +193,10 @@ def check_source(source_id: str, base: str | None) -> None:
     check_rust(source, len(languages) == 1)
 
     version = info.get("info", {}).get("version")
+    if upstream:
+        if base and isinstance(version, int):
+            check_version_bump(source, version, base)
+        return
     shown = readme_version(source_id)
     if shown is None:
         fail(ROOT / "README.md", f"has no row for {source_id}")
@@ -202,20 +207,22 @@ def check_source(source_id: str, base: str | None) -> None:
 
 
 def main() -> int:
-    args = sys.argv[1:]
-    base = None
-    if "--base" in args:
-        index = args.index("--base")
-        base = args[index + 1]
-        del args[index : index + 2]
-    names = args or (changed_sources(base) if base else sorted(p.name for p in SOURCES.iterdir()))
-
-    claude = ROOT / "CLAUDE.md"
-    if claude.read_text() != "@AGENTS.md\n":
-        fail(claude, "should hold only @AGENTS.md, so the rules live in one file")
-
+    global ROOT, SOURCES
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base")
+    parser.add_argument("--repo", type=Path, default=ROOT)
+    parser.add_argument("--upstream", action="store_true", help="Source rules only; no fork README or agent files")
+    parser.add_argument("sources", nargs="*")
+    args = parser.parse_args()
+    ROOT = args.repo.resolve()
+    SOURCES = ROOT / "sources"
+    names = args.sources or (changed_sources(args.base) if args.base else sorted(p.name for p in SOURCES.iterdir()))
+    if not args.upstream:
+        result = subprocess.run([sys.executable, str(ROOT / "scripts/sync-agent-docs.py"), "--check"], capture_output=True, text=True)
+        if result.returncode:
+            failures.append(result.stdout.strip() or result.stderr.strip())
     for name in names:
-        check_source(name, base)
+        check_source(name, args.base, args.upstream)
 
     for failure in failures:
         print(f"FAIL {failure}")

@@ -72,8 +72,17 @@ jobs:
           single-commit: true
 
       - name: Uploading packages as artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: packages
           path: public/sources/*.aix
+          if-no-files-found: ignore
+
+      - name: Upload source list for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-list
+          path: public
           if-no-files-found: ignore

@@ -4,17 +4,22 @@ on:
   push:
     branches:
       - main
+      - "feat/**"
+      - "fix/**"
+      - "chore/**"
     paths:
       - "sources/**"
       - "templates/**"
       - ".github/actions/install-aidoku-cli/**"
       - ".github/workflows/pr.yaml"
+      - "scripts/**"
   pull_request:
     paths:
       - "sources/**"
       - "templates/**"
       - ".github/actions/install-aidoku-cli/**"
       - ".github/workflows/pr.yaml"
+      - "scripts/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -24,18 +29,18 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: read
+
 jobs:
   verify-sources:
     name: Verify sources
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Get changed files
-        id: files
-        uses: Ana06/get-changed-files@v2.3.0
         with:
-          format: json
+          fetch-depth: 0
+          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -56,150 +61,50 @@ jobs:
 
       - uses: ./.github/actions/install-aidoku-cli
 
-      - name: Build sources
+      - name: Build and verify changed source packages
         env:
-          CHANGED_FILES: ${{ steps.files.outputs.added_modified }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           RUSTFLAGS: -Dwarnings
         run: |
           set -euo pipefail
-
-          readarray -t sources < <(
-            jq -r '.[]' <<< "$CHANGED_FILES" |
-              awk -F/ 'NF >= 2 && $1 == "sources" { print $1 "/" $2 }' |
-              sort -u
-          )
-
-          for source in "${sources[@]}"; do
+          base="$BASE_SHA"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git merge-base HEAD origin/main); fi
+          mkdir -p "$RUNNER_TEMP/source-packages"
+          python3 scripts/changed-crates.py --base "$base" --sources-only > "$RUNNER_TEMP/changed-sources"
+          while IFS= read -r source; do
             echo "::group::Packaging $source"
-            (
-              cd "$source"
-              aidoku package
-            )
+            (cd "$source"; aidoku package; test -s package.aix; aidoku verify package.aix)
+            cp "$source/package.aix" "$RUNNER_TEMP/source-packages/$(basename "$source").aix"
             echo "::endgroup::"
-          done
-
-      - name: Test if sources are valid
-        run: aidoku verify sources/*/package.aix
-
-      - name: Flatten packages directory
-        run: aidoku build sources/*/package.aix
-
+          done < "$RUNNER_TEMP/changed-sources"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: packages
-          path: public/sources/*.aix
+          path: ${{ runner.temp }}/source-packages/*.aix
           if-no-files-found: ignore
-
-  rust-lint:
-    name: Rust formatting and Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Get changed files
-        id: files
-        uses: Ana06/get-changed-files@v2.3.0
-        with:
-          format: json
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: "1.99.0"
-          components: clippy, rustfmt
-          targets: wasm32-unknown-unknown
-
-      - name: Cache rust stuff
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            sources/**/target
-            templates/**/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
-      - name: Lint changed crates
-        env:
-          CHANGED_FILES: ${{ steps.files.outputs.added_modified }}
-        run: |
-          set -uo pipefail
-
-          failed=0
-          readarray -t changed_files < <(jq -r '.[]' <<< "$CHANGED_FILES")
-          readarray -t crates < <(
-            printf '%s\n' "${changed_files[@]}" |
-              cut -d/ -f1-2 |
-              sort -u |
-              grep -E '^(sources|templates)/' || true
-          )
-
-          for crate in "${crates[@]}"; do
-            echo "::group::Linting $crate"
-
-            if ! (
-              cd "$crate"
-              cargo fmt --check
-            ); then
-              failed=1
-              echo "::error file=$crate/Cargo.toml,title=Rust formatting::Run cargo fmt in $crate."
-            fi
-
-            annotations_file="$(mktemp "$RUNNER_TEMP/clippy.XXXXXX.json")"
-
-            if ! (
-              cd "$crate"
-              cargo clippy \
-                --target wasm32-unknown-unknown \
-                --message-format=json \
-                -- -D warnings
-            ) > "$annotations_file"; then
-              failed=1
-            fi
-
-            if ! jq \
-              --arg WORKING_DIRECTORY "$crate" \
-              -rsf "$GITHUB_WORKSPACE/.github/workflows/supporting/annotations.jq" \
-              "$annotations_file"; then
-              echo "::error file=$crate/Cargo.toml,title=Clippy annotation processing failed::Unable to process Clippy JSON output."
-              failed=1
-            fi
-
-            rm -f "$annotations_file"
-
-            echo "::endgroup::"
-          done
-
-          if (( failed )); then
-            exit 1
-          fi
 
   json-format:
     name: JSON formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Get changed files
-        id: files
-        uses: Ana06/get-changed-files@v2.3.0
         with:
-          format: json
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check JSON format
         env:
-          CHANGED_FILES: ${{ steps.files.outputs.added_modified }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
 
           failed=0
 
-          readarray -t sources < <(
-            jq -r '.[]' <<< "$CHANGED_FILES" |
-              awk -F/ 'NF >= 2 && $1 == "sources" { print $1 "/" $2 }' |
-              sort -u
-          )
+          base="$BASE_SHA"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git merge-base HEAD origin/main); fi
+          python3 scripts/changed-crates.py --base "$base" --sources-only > "$RUNNER_TEMP/changed-sources"
+          readarray -t sources < "$RUNNER_TEMP/changed-sources"
 
           for source in "${sources[@]}"; do
             [[ -d "$source/res" ]] || continue

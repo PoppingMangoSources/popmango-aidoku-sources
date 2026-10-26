@@ -1,121 +1,119 @@
 #!/usr/bin/env bash
-# Builds the branch an upstream Aidoku-Community PR is opened from, in a separate worktree so
-# the current checkout is left alone. The source is copied from main and the gates run before
-# anything is pushed.
-#
-# Usage:
-#   scripts/pr-branch.sh <id>                               a new source: "feat: add <id>", version 1
-#   scripts/pr-branch.sh <id> --update "<subject>" "<body>"  a source already upstream: its version + 1
-#   scripts/pr-branch.sh <id> --fix "<subject>" "<body>"     a review round: one more commit on top
-#   add --push to push it (with a lease on what origin holds)
-
+# Prepare an upstream submission from a committed snapshot; leave its checkout alone.
+# Usage: scripts/pr-branch.sh <id> [--from <ref>] [--branch <name>] [--push]
+# Add --update "<subject>" "<body>" for an existing upstream source,
+# --fix "<subject>" "<body>" for a review round, or --rebuild to preserve and replace a branch.
 set -euo pipefail
-
-usage() {
-	sed -n '5,10p' "$0" | sed 's/^# \{0,1\}//'
-	exit 1
-}
-
-[ $# -ge 1 ] || usage
-id=$1
+root=$(git rev-parse --show-toplevel)
+tooling=$(cd "$(dirname "$0")/.." && pwd)
+id=${1:?provide a source id}
 shift
+snapshot=HEAD
+branch="feat/$id"
 mode=new
-subject=
+subject="feat: add $id"
 body=
 push=false
+rebuild=false
 while [ $# -gt 0 ]; do
-	case $1 in
-	--fix | --update)
-		[ $# -ge 3 ] || usage
-		mode=${1#--}
-		subject=$2
-		body=$3
-		shift 3
-		;;
-	--push)
-		push=true
-		shift
-		;;
-	*) usage ;;
-	esac
+    case $1 in
+        --from) snapshot=${2:?provide a ref}; shift 2 ;;
+        --branch) branch=${2:?provide a branch}; shift 2 ;;
+        --fix|--update) mode=${1#--}; subject=${2:?provide a subject}; body=${3:?provide a body}; shift 3 ;;
+        --push) push=true; shift ;;
+        --rebuild) rebuild=true; shift ;;
+        *) echo "unknown option: $1" >&2; exit 1 ;;
+    esac
 done
-
-root=$(git rev-parse --show-toplevel)
-branch="feat/$id"
+[[ "$id" =~ ^([a-z]{2,3}|multi)\.[a-z0-9][a-z0-9.-]*$ ]] || { echo "invalid source id" >&2; exit 1; }
+git check-ref-format --branch "$branch" >/dev/null
+destination=$(python3 -c 'import runpy,sys; print(runpy.run_path(sys.argv[1])["source_for_branch"](sys.argv[2]) or "")' "$tooling/scripts/check-upstream-scope.py" "$branch")
+[ "$destination" = "$id" ] || { echo "Destination must be a recognized submission branch for $id; refusing $branch." >&2; exit 1; }
 source="sources/$id"
-[ -f "$root/$source/Cargo.toml" ] || { echo "no $source on this branch" >&2; exit 1; }
-
-export GIT_AUTHOR_NAME="Popmango Extensions"
-export GIT_AUTHOR_EMAIL="297959108+PoppingMangoSources@users.noreply.github.com"
-export GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME
-export GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
-commit() { git -c commit.gpgsign=false commit -q --no-gpg-sign "$@"; }
-
-main=$(git -C "$root" rev-parse HEAD)
-git -C "$root" fetch -q upstream main
-lease=$(git -C "$root" ls-remote origin "refs/heads/$branch" | cut -f1)
-
-work=$(mktemp -d)
-trap 'git -C "$root" worktree remove --force "$work" >/dev/null 2>&1 || true' EXIT
-
-# A branch whose PR was merged is restarted from upstream rather than built on.
-merged=false
+snapshot=$(git rev-parse --verify "$snapshot^{commit}")
+git cat-file -e "$snapshot:$source/Cargo.toml"
+git diff --quiet -- "$source" && git diff --cached --quiet -- "$source" || { echo "Commit source changes before preparing a submission." >&2; exit 1; }
+git fetch -q https://github.com/Aidoku-Community/sources.git main:refs/remotes/upstream/main
+lease=$(git ls-remote origin "refs/heads/$branch" | cut -f1)
 if [ -n "$lease" ]; then
-	git -C "$root" fetch -q origin "$branch"
-	git -C "$root" merge-base --is-ancestor "$lease" upstream/main && merged=true
+    git fetch -q origin "refs/heads/$branch"
 fi
 if [ "$mode" = fix ]; then
-	[ -n "$lease" ] && ! $merged || { echo "origin has no open $branch to add a commit to" >&2; exit 1; }
-	git -C "$root" worktree add -q -B "$branch" "$work" "origin/$branch"
+    [ -n "$lease" ] || { echo "no existing submission branch" >&2; exit 1; }
+    python3 "$tooling/scripts/check-upstream-scope.py" --repo "$root" --head "$lease" --source "$id"
+    base=$lease
 else
-	[ -z "$lease" ] || $merged || { echo "origin has an unmerged $branch; use --fix for a review round" >&2; exit 1; }
-	git -C "$root" worktree add -q -B "$branch" "$work" upstream/main
+    base=$(git rev-parse upstream/main)
+    if [ -n "$lease" ] && ! $rebuild; then
+        if ! git merge-base --is-ancestor "$lease" "$base" && ! git diff --quiet "$lease" "$base" -- "$source"; then
+            echo "Existing unmerged branch: use --fix, or --rebuild to preserve it and start fresh." >&2
+            exit 1
+        fi
+    fi
 fi
-
-cd "$work"
+if $rebuild && [ -n "$lease" ]; then
+    backup="chore/$id-before-rebuild-${lease:0:8}"
+    git update-ref "refs/heads/$backup" "$lease"
+    if $push; then
+        git push --force-with-lease="refs/heads/$backup:" origin "$lease:refs/heads/$backup"
+    fi
+    echo "Preserved $lease as $backup"
+fi
+work=$(mktemp -d)
+trap 'git -C "$root" worktree remove --force "$work" >/dev/null 2>&1 || true' EXIT
+git worktree add -q --detach "$work" "$base"
 case $mode in
-new)
-	[ ! -e "$source" ] || { echo "$source is already upstream; use --update" >&2; exit 1; }
-	version=1
-	;;
-update)
-	[ -e "$source" ] || { echo "$source is not upstream yet; open it as a new source" >&2; exit 1; }
-	version=$(($(sed -nE 's/.*"version": ([0-9]+),.*/\1/p' "$source/res/source.json" | head -1) + 1))
-	;;
-fix) version=$(sed -nE 's/.*"version": ([0-9]+),.*/\1/p' "$source/res/source.json" | head -1) ;;
+    new)
+        if git cat-file -e "upstream/main:$source/res/source.json" 2>/dev/null; then
+            echo "Source already upstream: use --update." >&2; exit 1
+        fi
+        version=1 ;;
+    update)
+        version=$(git show "upstream/main:$source/res/source.json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["info"]["version"] + 1)') ;;
+    fix)
+        version=$(git show "$lease:$source/res/source.json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["info"]["version"])') ;;
 esac
-# Only what an upstream source directory holds: no package.aix, no target, no README row.
-rm -rf "$source"
-mkdir -p "$source"
-git checkout -q "$main" -- \
-	"$source/.cargo" "$source/Cargo.toml" "$source/Cargo.lock" "$source/res" "$source/src"
-sed -i -E "0,/\"version\": [0-9]+,/s//\"version\": $version,/" "$source/res/source.json"
-git add -A "$source"
-
-if [ "$mode" = new ]; then
-	commit -m "feat: add $id"
-else
-	git diff --cached --quiet && { echo "nothing to commit: the source already matches main" >&2; exit 1; }
-	commit -m "$subject" -m "$body"
-fi
-
-(
-	cd "$source"
-	cargo fmt --all -- --check
-	cargo clippy --release --target wasm32-unknown-unknown 2>&1 | tee /dev/stderr | grep -qE '^(warning|error)' && exit 1
-	aidoku package >/dev/null
-	aidoku verify package.aix
-	rm -f package.aix
-)
-
-others=$(git diff --name-only upstream/main HEAD | grep -v "^$source/" || true)
-[ -z "$others" ] || { echo "the branch touches files outside $source:" >&2; echo "$others" >&2; exit 1; }
-drift=$(git diff "$main" HEAD -- "$source" | grep -E '^[+-][^+-]' | grep -vE '"version": [0-9]+,' || true)
-[ -z "$drift" ] || { echo "the branch differs from main beyond the version:" >&2; echo "$drift" >&2; exit 1; }
-
-git log --oneline upstream/main..HEAD
+rm -rf "$work/$source"
+git archive "$snapshot" "$source" | tar -x -C "$work"
+python3 - "$work/$source/res/source.json" "$version" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+data["info"]["version"] = int(sys.argv[2])
+path.write_text(json.dumps(data, indent="\t", ensure_ascii=False) + "\n")
+PY
+git -C "$work" add -A -- "$source"
+git -C "$work" diff --cached --quiet && { echo "No source changes to submit." >&2; exit 1; }
+export GIT_AUTHOR_NAME="Popmango Extensions"
+export GIT_AUTHOR_EMAIL="297959108+PoppingMangoSources@users.noreply.github.com"
+export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+message=(-m "$subject")
+[ -z "$body" ] || message+=(-m "$body")
+git -C "$work" -c commit.gpgsign=false commit -q --no-gpg-sign "${message[@]}"
+python3 "$tooling/scripts/check-upstream-scope.py" --repo "$work" --source "$id" --branch "$branch"
+python3 "$tooling/scripts/check-sources.py" --repo "$work" --upstream "$id"
+"$tooling/scripts/verify-source.sh" "$work/$source"
+python3 - "$root" "$snapshot" "$work" "$source" <<'PY'
+import json, subprocess, sys
+root, snapshot, work, source = sys.argv[1:]
+def tree(repo, ref):
+    return subprocess.check_output(["git", "-C", repo, "ls-tree", "-r", ref, "--", source], text=True).splitlines()
+before, after = tree(root, snapshot), tree(work, "HEAD")
+metadata = source + "/res/source.json"
+assert [r for r in before if not r.endswith("\t" + metadata)] == [r for r in after if not r.endswith("\t" + metadata)], "source files drifted"
+def info(repo, ref):
+    data = json.loads(subprocess.check_output(["git", "-C", repo, "show", ref + ":" + metadata]))
+    data["info"].pop("version")
+    return data
+assert info(root, snapshot) == info(work, "HEAD"), "source metadata drifted beyond version"
+PY
+sha=$(git -C "$work" rev-parse HEAD)
 if $push; then
-	git push --force-with-lease="$branch:$lease" origin "$branch"
+    git -C "$work" push --force-with-lease="refs/heads/$branch:$lease" origin "HEAD:refs/heads/$branch"
 else
-	echo "Ready. Push with: git push --force-with-lease=$branch:$lease origin $branch"
+    prepared="chore/$id-prepared-${sha:0:8}"
+    git update-ref "refs/heads/$prepared" "$sha"
+    echo "Validated $sha; retained as $prepared. Re-run with --push to publish the submission."
 fi
