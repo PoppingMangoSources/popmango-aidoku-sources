@@ -93,6 +93,8 @@ def check_filters_json(path: Path) -> None:
             fail(path, f"sort {name!r} sets the default the framework already uses")
         if item.get("type") == "multi-select" and item.get("canExclude") is False:
             fail(path, f"multi-select {name!r} sets canExclude false, which is the default")
+        if item.get("type") in ("multi-select", "select") and item.get("isGenre") and item.get("usesTagStyle") is True:
+            fail(path, f"{name!r} sets usesTagStyle, which isGenre already implies")
         if item.get("type") == "check" and not item.get("hideFromHeader"):
             fail(path, f"check {name!r} shows in the filters header; set hideFromHeader")
 
@@ -155,9 +157,13 @@ def check_rust(source: Path, single_language: bool) -> None:
     has_settings = (source / "src" / "settings.rs").exists()
     for path in sorted((source / "src").rglob("*.rs")):
         check_text_file(path)
-        for number, line in enumerate(path.read_text().splitlines(), 1):
-            if SILENCED.search(line):
-                fail(path, f"line {number} silences an unused-code warning; delete the code instead")
+        lines = path.read_text().splitlines()
+        for number, line in enumerate(lines, 1):
+            # A justified exception, such as a field serde needs to tell untagged variants
+            # apart, carries a comment on the line above.
+            justified = number > 1 and lines[number - 2].strip().startswith("//")
+            if SILENCED.search(line) and not justified:
+                fail(path, f"line {number} silences an unused-code warning; delete the code, or comment why it must stay")
         if path.name == "test.rs":
             continue
         check_cards(path, path.read_text())
@@ -196,6 +202,27 @@ def check_version_bump(source: Path, version: int, base: str) -> None:
         fail(path, f"version {version} was not bumped from {base}")
 
 
+RELEASE_PROFILE = ('panic = "abort"', 'opt-level = "s"', "strip = true", "lto = true")
+AIDOKU_TEST = re.compile(r"#\[aidoku_test\]\s*fn (\w+)\(\)[^{]*\{(.*?)\n\}", re.S)
+
+
+def check_cargo(path: Path) -> None:
+    """Every upstream source builds with the same release profile."""
+    text = path.read_text()
+    release = text.split("[profile.release]", 1)[1] if "[profile.release]" in text else ""
+    missing = [line for line in RELEASE_PROFILE if line not in release]
+    if missing:
+        fail(path, f"[profile.release] lacks {', '.join(missing)}, which every upstream source sets")
+
+
+def check_tests(source: Path) -> None:
+    """A test that asserts nothing passes whatever the source does."""
+    for path in sorted((source / "src").rglob("*.rs")):
+        for test in AIDOKU_TEST.finditer(path.read_text()):
+            if not re.search(r"\bassert|\.unwrap(?:_err)?\(|\.expect\(", test.group(2)):
+                fail(path, f"test {test.group(1)} asserts nothing")
+
+
 def check_source(source_id: str, base: str | None, upstream: bool = False) -> None:
     source = SOURCES / source_id
     if not (source / "Cargo.toml").exists():
@@ -205,6 +232,8 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
             fail(source, f"has no {name}")
         else:
             check_text_file(source / name)
+    check_cargo(source / "Cargo.toml")
+    check_tests(source)
     info = check_source_json(source / "res" / "source.json", source_id)
     check_icon(source / "res" / "icon.png")
     for name in ("filters.json",):

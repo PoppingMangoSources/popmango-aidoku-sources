@@ -13,13 +13,21 @@ fi
 
 root=$(git rev-parse --show-toplevel)
 python3 - "$root" "$1" <<'EOF'
-import json, re, sys
+import json, re, subprocess, sys
 from pathlib import Path
 
 root, source_id = Path(sys.argv[1]), sys.argv[2]
 manifest = root / "sources" / source_id / "res" / "source.json"
 info = json.loads(manifest.read_text())
 old = info["info"]["version"]
+# One bump per push: a version already above what main publishes was bumped by an earlier run.
+published = subprocess.run(
+    ["git", "-C", str(root), "show", f"origin/main:sources/{source_id}/res/source.json"],
+    capture_output=True, text=True,
+)
+if published.returncode == 0 and old > json.loads(published.stdout)["info"]["version"]:
+    print(f"{source_id}: already v{old}, above origin/main; not bumped again")
+    sys.exit(0)
 new = old + 1
 text = manifest.read_text()
 text, count = re.subn(rf'("version": ){old}\b', rf"\g<1>{new}", text, count=1)

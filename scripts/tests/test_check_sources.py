@@ -43,6 +43,30 @@ class CardRuleTests(unittest.TestCase):
         )
         self.assertTrue(any('full details' in failure for failure in self.cards(text)))
 
+    def test_justified_silence_passes(self):
+        (self.source / 'src').mkdir()
+        (self.source / 'src/lib.rs').write_text('// Tells the untagged variants apart.\n#[allow(dead_code)]\nheader: String,\n')
+        checks.check_rust(self.source, False)
+        self.assertEqual(checks.failures, [])
+
+    def test_redundant_tag_style_fails(self):
+        path = self.source / 'res/filters.json'
+        path.write_text('[\n\t{"type": "multi-select", "id": "genre", "isGenre": true, "usesTagStyle": true, "options": []}\n]\n')
+        checks.check_filters_json(path)
+        self.assertTrue(any('usesTagStyle' in failure for failure in checks.failures))
+
+    def test_test_without_assertion_fails(self):
+        (self.source / 'src').mkdir()
+        (self.source / 'src/test.rs').write_text('#[aidoku_test]\nfn found_type_is_used() {\n\tlet _ = Found { hits: Vec::new() }.hits;\n}\n')
+        checks.check_tests(self.source)
+        self.assertTrue(any('asserts nothing' in failure for failure in checks.failures))
+
+    def test_release_profile_required(self):
+        path = self.source / 'Cargo.toml'
+        path.write_text('[package]\nname = "x"\n\n[profile.release]\npanic = "abort"\n')
+        checks.check_cargo(path)
+        self.assertTrue(any('lto = true' in failure for failure in checks.failures))
+
     def test_silenced_dead_code_fails(self):
         (self.source / 'src').mkdir()
         for attribute in ('#[allow(dead_code)]', '#![allow(unused_imports)]', '#[expect(unused)]'):

@@ -1,10 +1,8 @@
 name: Check source rules
 
-# The AGENTS.md rules that need no network or toolchain: tab-indented JSON, final newlines,
-# no "multi" language, check filters hidden from the header, no decorative dividers, page
-# sizes, settings read in settings.rs, README rows in step with source.json, a version bump
-# on every changed source, patterns reviewers keep flagging, 128x128 icons, and matching AGENTS.md/CLAUDE.md
-# and matching physical skill copies. Only the sources a change touches are checked.
+# The AGENTS.md rules that need no network or toolchain, as `check-sources.py` implements
+# them (AGENTS.md section 9 lists them). Only the sources a change touches are checked; the
+# checker's own tests and an upstream calibration run on every push.
 
 on:
   push:
@@ -43,4 +41,14 @@ jobs:
           python3 scripts/check-sources.py --base "$base"
       - name: Exercise workflow guard regressions
         run: python3 -m unittest discover -s scripts/tests -v
+      - name: Calibrate rules against upstream
+        # A rule that fails code upstream merged needs evidence it is still the reviewer's
+        # position. Reported in the summary; not a gate.
+        run: |
+          {
+            echo "### Rule failures across merged upstream sources"
+            echo '```'
+            scripts/calibrate-rules.sh
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: docker://rhysd/actionlint:1.7.7
