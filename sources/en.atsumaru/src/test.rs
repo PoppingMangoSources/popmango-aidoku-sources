@@ -2,7 +2,7 @@
 
 use super::*;
 use aidoku::{
-	ContentRating, DynamicFilters, DynamicSettings, Home, MangaStatus, Viewer,
+	ContentRating, DynamicSettings, Home, MangaStatus, Viewer,
 	alloc::{format, string::ToString},
 	imports::defaults::{DefaultValue, defaults_set},
 };
@@ -99,6 +99,21 @@ fn keys(result: &MangaPageResult) -> Vec<String> {
 		.collect()
 }
 
+/// Cards carry key, title, cover, status and rating; details are left to the series page.
+fn assert_compact(result: &MangaPageResult) {
+	for manga in &result.entries {
+		assert!(
+			manga.description.is_none()
+				&& manga.tags.is_none()
+				&& manga.authors.is_none()
+				&& manga.artists.is_none()
+				&& manga.url.is_none(),
+			"{}",
+			manga.key
+		);
+	}
+}
+
 fn strings(values: &[&str]) -> DefaultValue {
 	DefaultValue::StringArray(values.iter().map(|value| (*value).into()).collect())
 }
@@ -165,6 +180,7 @@ fn browse_pages() {
 		.unwrap();
 	assert_eq!(first.entries.len(), 40);
 	assert!(first.has_next_page);
+	assert_compact(&first);
 	assert_ne!(keys(&first), keys(&second));
 	// Pornographic titles are off by default.
 	for doc in docs(&first) {
@@ -197,11 +213,9 @@ fn pasted_links() {
 		"https://atsu.moe/read/n86El/3uheUh",
 		" https://atsu.moe/manga/n86El ",
 	] {
-		assert_eq!(
-			keys(&search(Some(url), Vec::new())),
-			[COMIC.to_string()],
-			"{url}"
-		);
+		let result = search(Some(url), Vec::new());
+		assert_eq!(keys(&result), [COMIC.to_string()], "{url}");
+		assert_compact(&result);
 	}
 	assert_eq!(
 		keys(&search(Some("https://atsu.moe/novel/slh2"), Vec::new())),
@@ -247,23 +261,6 @@ fn tapped_tags() {
 	assert!(!martial.entries.is_empty() && !isekai.entries.is_empty());
 	assert!(docs(&martial).iter().all(|doc| doc.has_genre("29")));
 	assert!(docs(&isekai).iter().all(|doc| doc.has_tag("94")));
-}
-
-#[aidoku_test]
-fn tags() {
-	assert!(Atsumaru::new().get_dynamic_filters().unwrap().len() >= 18);
-	let isekai = search(None, vec![multi("tags/Settings", &["94"])]);
-	assert!(!isekai.entries.is_empty());
-	assert!(docs(&isekai).iter().all(|doc| doc.has_tag("94")));
-	let without = search(
-		None,
-		vec![FilterValue::MultiSelect {
-			id: "tags/Settings".into(),
-			included: Vec::new(),
-			excluded: vec!["94".into()],
-		}],
-	);
-	assert!(docs(&without).iter().all(|doc| !doc.has_tag("94")));
 }
 
 #[aidoku_test]
@@ -420,6 +417,7 @@ fn content_types() {
 	let picked = under(&["Novel"], || {
 		vec![search(None, vec![multi("type", &["Manga"])])]
 	});
+	assert!(!picked[0].entries.is_empty());
 	assert!(
 		docs(&picked[0])
 			.iter()
@@ -471,6 +469,7 @@ fn listings() {
 	] {
 		let first = listing(id, 1);
 		assert!(!first.entries.is_empty() && first.has_next_page, "{id}");
+		assert_compact(&first);
 		assert_ne!(keys(&first), keys(&listing(id, 2)), "{id}");
 	}
 	assert!(

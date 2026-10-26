@@ -128,20 +128,6 @@ pub fn display_title(title: String, medium: Option<&str>, label_novels: bool) ->
 	}
 }
 
-pub fn media_label(kind: Option<&str>, medium: Option<&str>) -> &'static str {
-	if is_novel(medium) {
-		return "Novel";
-	}
-	match kind {
-		Some("Manga") => "Manga",
-		// The site's own spelling.
-		Some("Manwha") => "Manhwa",
-		Some("Manhua") => "Manhua",
-		Some("OEL") => "OEL",
-		_ => "Comic",
-	}
-}
-
 pub fn viewer(kind: Option<&str>, medium: Option<&str>) -> Viewer {
 	if is_novel(medium) {
 		return Viewer::Unknown;

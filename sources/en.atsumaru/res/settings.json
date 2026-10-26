@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "Applies to the home page, listings and search; the matching search filters override it for one search. Titles the site leaves unrated are rated from their genres: Hentai as Pornographic, Adult and Smut as Erotica.",
+		"footer": "Applies to the home page, listings and search; the Content Type and Content Rating filters override them for one search. Titles the site leaves unrated are rated from their genres: Hentai as Pornographic, Adult and Smut as Erotica.",
 		"items": [
 			{
 				"type": "multi-select",

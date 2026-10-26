@@ -25,7 +25,7 @@ const QUERY_BY_WEIGHTS: &str = "4,3,2,2,1";
 const NUM_TYPOS: &str = "4,3,2,1,0";
 const PREFIX: &str = "true,true,true,true,false";
 const INFIX: &str = "off,off,fallback,off,off";
-const CARD_FIELDS: &str =
+pub const CARD_FIELDS: &str =
 	"id,title,poster,posterMedium,isAdult,mbContentRating,genreIds,medium,status";
 pub const RATING_FIELDS: &str = "id,isAdult,mbContentRating,genreIds";
 pub const FEATURED_FIELDS: &str =
@@ -163,7 +163,6 @@ pub struct Search {
 	pub any_genre: bool,
 	pub tags: Vec<String>,
 	pub excluded_tags: Vec<String>,
-	pub any_tag: bool,
 	pub demographics: Vec<String>,
 	pub types: Vec<String>,
 	pub statuses: Vec<String>,
@@ -266,7 +265,7 @@ impl Search {
 		if !self.excluded_genres.is_empty() {
 			clauses.push(format!("genreIds:!={}", list(&self.excluded_genres)));
 		}
-		Self::push_ids(&mut clauses, "tagIds", &self.tags, self.any_tag);
+		Self::push_ids(&mut clauses, "tagIds", &self.tags, false);
 		// A series has one demographic, so several can only mean any of them.
 		Self::push_ids(&mut clauses, "tagIds", &self.demographics, true);
 		if !self.excluded_tags.is_empty() {

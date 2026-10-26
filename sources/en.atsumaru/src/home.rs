@@ -18,7 +18,6 @@ use aidoku::{
 #[derive(Clone, Copy)]
 enum Layout {
 	Featured,
-	Chapters,
 	Ranked,
 	Row,
 }
@@ -27,7 +26,6 @@ impl Layout {
 	fn empty(self) -> HomeComponentValue {
 		match self {
 			Self::Featured => HomeComponentValue::empty_big_scroller(),
-			Self::Chapters => HomeComponentValue::empty_manga_chapter_list(),
 			Self::Ranked => HomeComponentValue::empty_manga_list(),
 			Self::Row => HomeComponentValue::empty_scroller(),
 		}
@@ -49,7 +47,7 @@ const SECTIONS: [(&str, &str, Option<&str>, Layout); 14] = [
 		"recentlyUpdated",
 		"Recently Updated",
 		Some("Fresh chapters"),
-		Layout::Chapters,
+		Layout::Row,
 	),
 	(
 		"hotUpdates",
@@ -156,7 +154,7 @@ fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<Home
 			entries: response
 				.hits
 				.into_iter()
-				.map(|hit| hit.document.into_link(label_novels))
+				.map(|hit| hit.document.into_manga(label_novels).into())
 				.collect(),
 			listing,
 		});
@@ -192,27 +190,19 @@ fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<Home
 				auto_scroll_interval: Some(8.0),
 			}
 		}
-		Layout::Chapters => HomeComponentValue::MangaChapterList {
-			page_size: Some(5),
-			entries: items
-				.into_iter()
-				.map(|item| item.into_manga_with_chapter(label_novels))
-				.collect(),
-			listing,
-		},
 		Layout::Ranked => HomeComponentValue::MangaList {
 			ranking: true,
 			page_size: Some(5),
 			entries: items
 				.into_iter()
-				.map(|item| item.into_link(label_novels))
+				.map(|item| item.into_manga(label_novels).into())
 				.collect(),
 			listing,
 		},
 		Layout::Row => HomeComponentValue::Scroller {
 			entries: items
 				.into_iter()
-				.map(|item| item.into_link(label_novels))
+				.map(|item| item.into_manga(label_novels).into())
 				.collect(),
 			listing,
 		},

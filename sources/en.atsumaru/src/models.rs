@@ -1,10 +1,10 @@
 use crate::helpers::{
 	chapter_title, chapter_url, content_rating, cover_url, display_title, is_novel, manga_status,
-	manga_url, media_label, viewer,
+	manga_url, viewer,
 };
 use aidoku::{
-	Chapter, ContentRating, Link, Manga, MangaPageResult, MangaStatus, MangaWithChapter,
-	alloc::{String, Vec, format, vec},
+	Chapter, ContentRating, Manga, MangaPageResult,
+	alloc::{String, Vec, vec},
 };
 use serde::Deserialize;
 
@@ -32,24 +32,9 @@ pub struct FeedItem {
 	#[serde(rename = "type")]
 	pub kind: Option<String>,
 	pub medium: Option<String>,
-	mb_rating: Option<f32>,
-	views: Option<String>,
-	updated_at: Option<i64>,
 }
 
 impl FeedItem {
-	fn label(&self) -> &'static str {
-		media_label(self.kind.as_deref(), self.medium.as_deref())
-	}
-
-	/// "Manhwa · ★ 8.3", what a row shows under each title.
-	fn subtitle(&self) -> String {
-		match self.mb_rating.filter(|rating| *rating > 0.0) {
-			Some(rating) => format!("{} · ★ {rating:.1}", self.label()),
-			None => self.label().into(),
-		}
-	}
-
 	pub fn into_manga(self, label_novels: bool) -> Manga {
 		Manga {
 			title: display_title(self.title, self.medium.as_deref(), label_novels),
@@ -68,21 +53,8 @@ impl FeedItem {
 		}
 	}
 
-	pub fn into_link(self, label_novels: bool) -> Link {
-		let subtitle = self.subtitle();
-		Link {
-			subtitle: Some(subtitle),
-			..self.into_manga(label_novels).into()
-		}
-	}
-
-	/// Search adds the synopsis, authors, status and genres the feed lacks.
+	/// The big scroller is the one place for details; search adds what the feed lacks.
 	pub fn into_featured(self, label_novels: bool, document: Option<SearchDocument>) -> Manga {
-		let mut details = vec![self.subtitle()];
-		if let Some(views) = self.views.as_deref().filter(|views| !views.is_empty()) {
-			details.push(format!("{views} views"));
-		}
-		let mut tags = vec![String::from(self.label())];
 		let viewer = viewer(self.kind.as_deref(), self.medium.as_deref());
 		let cover = self
 			.large_image
@@ -91,42 +63,22 @@ impl FeedItem {
 			.or(self.image.as_deref())
 			.map(cover_url);
 		let manga = self.into_manga(label_novels);
-		let (content_rating, status, synopsis, authors) = match document {
-			Some(document) => {
-				let content_rating = document.content_rating();
-				tags.extend(document.tags);
-				(
-					content_rating,
-					manga_status(document.status.as_deref()),
-					document.synopsis.filter(|synopsis| !synopsis.is_empty()),
-					Some(document.authors).filter(|authors| !authors.is_empty()),
-				)
-			}
-			None => (manga.content_rating, MangaStatus::Unknown, None, None),
+		let Some(document) = document else {
+			return Manga {
+				viewer,
+				cover,
+				..manga
+			};
 		};
 		Manga {
-			content_rating,
-			status,
-			description: synopsis.or_else(|| Some(details.join(" · "))),
-			authors,
-			tags: Some(tags),
+			content_rating: document.content_rating(),
+			status: manga_status(document.status.as_deref()),
+			description: document.synopsis.filter(|synopsis| !synopsis.is_empty()),
+			authors: Some(document.authors).filter(|authors| !authors.is_empty()),
+			tags: Some(document.tags).filter(|tags| !tags.is_empty()),
 			viewer,
 			cover,
 			..manga
-		}
-	}
-
-	/// The feed has no chapter data, so the row shows the type and when the series updated.
-	pub fn into_manga_with_chapter(self, label_novels: bool) -> MangaWithChapter {
-		let chapter = Chapter {
-			key: self.id.clone(),
-			title: Some(self.label().into()),
-			date_uploaded: self.updated_at.map(|ms| ms / 1000),
-			..Default::default()
-		};
-		MangaWithChapter {
-			manga: self.into_manga(label_novels),
-			chapter,
 		}
 	}
 }
@@ -207,14 +159,6 @@ impl SearchDocument {
 			content_rating,
 			key: self.id,
 			..Default::default()
-		}
-	}
-
-	pub fn into_link(self, label_novels: bool) -> Link {
-		let subtitle = Some(self.authors.join(", ")).filter(|authors| !authors.is_empty());
-		Link {
-			subtitle,
-			..self.into_manga(label_novels).into()
 		}
 	}
 }

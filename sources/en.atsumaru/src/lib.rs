@@ -18,7 +18,8 @@ use aidoku::{
 	prelude::*,
 };
 use api::{
-	RATING_FIELDS, Search, chapters_url, get, lookup_url, manga_page_url, parse, read_url, request,
+	CARD_FIELDS, RATING_FIELDS, Search, chapters_url, get, lookup_url, manga_page_url, parse,
+	read_url, request,
 };
 use helpers::{arrange_chapters, is_novel_url, page_url, parse_link};
 use models::{
@@ -40,19 +41,11 @@ impl Source for Atsumaru {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		// A pasted link opens its series; anything else is searched as text.
-		if let Some((key, _)) = query.as_deref().map(str::trim).and_then(parse_link)
-			&& let Ok(manga) = self.get_manga_update(
-				Manga {
-					key,
-					..Default::default()
-				},
-				true,
-				false,
-			) {
-			return Ok(MangaPageResult {
-				entries: vec![manga],
-				has_next_page: false,
-			});
+		if let Some((key, _)) = query.as_deref().map(str::trim).and_then(parse_link) {
+			let found: SearchResponse = get(&lookup_url(&[&key], CARD_FIELDS))?;
+			if !found.hits.is_empty() {
+				return Ok(found.into_page(settings::label_novels()));
+			}
 		}
 
 		let mut search = Search::new(query);
@@ -80,15 +73,10 @@ impl Source for Atsumaru {
 						search.adult_only = false;
 					}
 					"status" => search.statuses = included,
-					_ if id.starts_with("tags/") => {
-						search.tags.extend(included);
-						search.excluded_tags.extend(excluded);
-					}
 					_ => {}
 				},
 				FilterValue::Select { id, value } => match id.as_str() {
 					"genre_match" => search.any_genre = value == "any",
-					"tag_match" => search.any_tag = value == "any",
 					// Sent when a tag is tapped.
 					"genre" => tapped.push(value),
 					_ => {}
@@ -238,7 +226,6 @@ register_source!(
 	Atsumaru,
 	Home,
 	ListingProvider,
-	DynamicFilters,
 	DynamicSettings,
 	DeepLinkHandler
 );

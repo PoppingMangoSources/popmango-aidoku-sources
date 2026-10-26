@@ -6,12 +6,11 @@ use crate::{
 	settings,
 };
 use aidoku::{
-	DynamicFilters, DynamicSettings, Filter, GroupSetting, MultiSelectFilter, MultiSelectSetting,
-	PageSetting, Result, SelectFilter, Setting,
-	alloc::{String, Vec, format, vec},
+	DynamicSettings, GroupSetting, MultiSelectSetting, PageSetting, Result, Setting,
+	alloc::{String, Vec, vec},
 };
 
-/// The site's tag groups, each with its own filter and hidden-tag list.
+/// The site's tag groups, each with its own hidden-tag list.
 pub const GROUPS: [&str; 19] = [
 	"Activities",
 	"Audience Demographics",
@@ -33,9 +32,6 @@ pub const GROUPS: [&str; 19] = [
 	"Work Info",
 	"World Building",
 ];
-
-/// Demographics have their own filter in `filters.json`.
-const DEMOGRAPHICS: &str = "Audience Demographics";
 
 /// Explicit tags are offered only when pornographic titles are, as the site does.
 fn grouped_tags(tags: Vec<TagOption>) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
@@ -75,42 +71,6 @@ pub fn tag_ids(names: &[String]) -> Result<(Vec<String>, Vec<String>)> {
 			.map(|tag| tag.id)
 			.collect(),
 	))
-}
-
-impl DynamicFilters for Atsumaru {
-	// The site has thousands of tags and adds more, so they come from its filter list.
-	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let tags = get::<AvailableFilters>(FILTERS_URL)?.tags;
-		let mut filters = grouped_tags(tags)
-			.into_iter()
-			.filter(|(group, ..)| *group != DEMOGRAPHICS)
-			.map(|(group, ids, names)| {
-				MultiSelectFilter {
-					id: format!("tags/{group}").into(),
-					title: Some(group.into()),
-					hide_from_header: Some(true),
-					can_exclude: true,
-					uses_tag_style: true,
-					options: names.into_iter().map(Into::into).collect(),
-					ids: Some(ids.into_iter().map(Into::into).collect()),
-					..Default::default()
-				}
-				.into()
-			})
-			.collect::<Vec<Filter>>();
-		filters.push(
-			SelectFilter {
-				id: "tag_match".into(),
-				title: Some("Match Tags".into()),
-				hide_from_header: Some(true),
-				options: vec!["All".into(), "Any".into()],
-				ids: Some(vec!["all".into(), "any".into()]),
-				..Default::default()
-			}
-			.into(),
-		);
-		Ok(filters)
-	}
 }
 
 /// The genre and tag lists live on the site, so the exclusions are offered from them.
