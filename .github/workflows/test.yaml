@@ -1,0 +1,105 @@
+name: Source tests
+# Runs each changed source's #[aidoku_test] suite. The tests call the live sites, so a
+# failure can be the site or the network rather than the source; this is a report, not a gate.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "sources/**"
+      - "templates/**"
+      - ".github/workflows/test.yaml"
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "Source ids to test, space-separated (empty: every source with tests)"
+        required: false
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.99.0"
+          targets: wasm32-unknown-unknown
+
+      - name: Cache rust stuff
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            sources/**/target
+            templates/**/target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Pick sources
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          REQUESTED: ${{ inputs.sources }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            if [[ -n "$REQUESTED" ]]; then
+              for id in $REQUESTED; do echo "sources/$id"; done > "$RUNNER_TEMP/candidates"
+            else
+              find sources -mindepth 1 -maxdepth 1 -type d | sort > "$RUNNER_TEMP/candidates"
+            fi
+          else
+            base="$BASE_SHA"
+            if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git rev-parse HEAD~1); fi
+            python3 scripts/changed-crates.py --base "$base" --sources-only > "$RUNNER_TEMP/candidates"
+          fi
+          while IFS= read -r source; do
+            if [[ ! -f "$source/Cargo.toml" ]]; then
+              echo "::error title=Unknown source::$source does not exist"
+              exit 1
+            fi
+            if grep -qs 'aidoku_test' "$source"/src/*.rs; then echo "$source"; fi
+          done < "$RUNNER_TEMP/candidates" > "$RUNNER_TEMP/tested"
+          {
+            echo "### Sources with tests"
+            if [[ -s "$RUNNER_TEMP/tested" ]]; then sed 's/^/- /' "$RUNNER_TEMP/tested"; else echo "None changed."; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install the test runner
+        run: |
+          set -euo pipefail
+          [[ -s "$RUNNER_TEMP/tested" ]] || exit 0
+          cargo install --locked --git https://github.com/Aidoku/aidoku-rs aidoku-test-runner
+
+      - name: Run tests
+        run: |
+          set -euo pipefail
+          failed=()
+          while IFS= read -r source; do
+            echo "::group::Testing $source"
+            if ! (cd "$source" && cargo test); then failed+=("$source"); fi
+            echo "::endgroup::"
+          done < "$RUNNER_TEMP/tested"
+          if (( ${#failed[@]} )); then
+            for source in "${failed[@]}"; do echo "::error title=Tests failed::$source"; done
+            exit 1
+          fi
