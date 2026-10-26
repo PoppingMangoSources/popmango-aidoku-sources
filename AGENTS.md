@@ -91,23 +91,35 @@ RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 
 ### Tests (verified)
 
-There **is** a harness, and we aren't using it. `aidoku-test` plus aidoku's `test`
-feature (which disables the panic handler) are dev-dependencies on ~129 sources,
-ours included — the scaffold adds them. Tests go in `src/test.rs` and are marked
-`#[aidoku_test]`; `en.mangakakalot`, `ja.senmanga`, `ja.soraraw` and
-`ja.spoilerplus` have real ones. They hit live endpoints and assert on actual
-results — pinned keys, whether a url resolves, whether a listing comes back sane.
+`aidoku-test` plus aidoku's `test` feature (which disables the panic handler) are
+dev-dependencies on ~129 sources — the scaffold adds them. Tests go in `src/test.rs`,
+declared in `lib.rs` as `#[cfg(test)] mod test;`, and are marked `#[aidoku_test]`;
+`en.mangakakalot`, `ja.senmanga`, `ja.soraraw`, `ja.spoilerplus` and `en.chikari` (inline in
+`lib.rs`) have real ones upstream, and `en.atsumaru` here. They hit live endpoints and assert
+on actual results — pinned keys, whether a url resolves, whether a listing comes back sane,
+whether each setting and filter actually narrows what the site returns.
 
-CI does not run them (only package, verify and clippy), so they're a local tool
-rather than a gate. Worth adding for anything whose behaviour is hard to eyeball,
-which is most of what went wrong in #735.
+**Write them for every new source.** Most of what went wrong in #735 would have shown up in
+one. Cover browse paging, every sort and filter, each content rating on its own, a cleared
+multi-select setting (must show nothing), a filter overriding its setting, details, a
+chapters-only update, pages, deep links and a key the site doesn't know. Check results against
+the site's own data rather than only for being non-empty. Name no other sources, clients or
+groups in test data. Upstream doesn't require tests (`en.toonkotsu` went up without them), but
+they go up with the source.
 
-Nothing upstream requires them: `en.toonkotsu` went up without its `test.rs` and the
-test dev-dependencies.
+Running them:
 
-To run them, install the runner once (`cargo install --git https://github.com/Aidoku/aidoku-rs
-aidoku-test-runner`); `.cargo/config.toml` already names it, so `cargo test` in the source
-directory runs every `#[aidoku_test]`. The runner simulates most of the app, not all of it.
+- Install the runner once: `cargo install --git https://github.com/Aidoku/aidoku-rs
+  aidoku-test-runner`. `.cargo/config.toml` already names it, so `cargo test` in the source
+  directory runs every `#[aidoku_test]`; `scripts/verify-source.sh <dir> --test` runs the
+  gates and then the tests. `cargo clippy --tests --target wasm32-unknown-unknown -- -D
+  warnings` lints the test module, which the plain clippy gate skips.
+- `.github/workflows/test.yaml` (**Source tests**) runs them for every source a push to
+  `main` changes, and on demand from the Actions tab for named ids, or every source with
+  tests when none are named. It is a report, not a gate: the tests call the live site, so a
+  red run can be the site or the network. Read the failing assertion before blaming either.
+- The runner simulates most of the app, not all of it: WebView calls return `-1`, and the
+  layout of a home page or how a component renders can only be seen in the app.
 
 For behaviour only the app shows, `aidoku logcat` starts a log server; enter its url in the
 app's Advanced settings under Log Server and every `println!` from a device on the same
@@ -356,6 +368,21 @@ Several of these came from Inkdex source guidelines. Most carry over; two don't.
 
 ## 6. Conventions seen across the community sources
 
+### Site type picks the sources to compare against
+
+Find out how the site is built before writing anything, then read merged sources built the
+same way. View the page source and watch the Network tab:
+
+- **Server-rendered HTML** (the data is in the page): scrape it with selectors —
+  `en.weebcentral`. A WordPress theme (`wp-content` in the source) is a template (section 12).
+- **Next.js** (`/_next/`, `__NEXT_DATA__`): look for the API the pages call and use that
+  instead of the embedded data (section 3).
+- **A client-rendered app over a JSON API** (an empty root element, a hashed bundle such as
+  `/assets/index-<hash>.js`, XHRs returning JSON): `en.toonkotsu`, `multi.kagane`,
+  `en.chikari`, `en.comix`, `multi.mangadex`, `en.atsumaru` (section 16).
+- **GraphQL** (one `POST` endpoint taking a `query`): `ru.senkuro`, `zh.komiic`,
+  `multi.xcomic`.
+
 ### Module layout
 
 `ru.senkuro` is `graphql.rs` / `helpers.rs` / `lib.rs` / `models.rs`.
@@ -535,6 +562,8 @@ an API quirk, a constraint, an ordering that matters.
   since `<ref>`, and byte-identical `AGENTS.md`/`CLAUDE.md` plus matching physical skill trees. CI (`check.yaml`) runs it on the
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway.
+- Before pushing a source with tests, run `cargo test` in it; the hook doesn't, since the
+  tests need the live site. **Source tests** (`test.yaml`) runs them after the push (section 1).
 
 ### Upstream PRs
 
@@ -837,3 +866,37 @@ matrix. Use the `.agents/skills/aidoku-source/references/source-review.md` copy 
 - Caching, `sccache`, artifact retention and compiler versions affect speed/diagnostics;
   none establish correctness. Do not restore an old cache or compiler action as a substitute
   for a missing behavioral or scope check. Preserve diagnostics when a build fails.
+
+## 16. Atsumaru specifics
+
+`en.atsumaru` (atsu.moe): comics and novels. Confirmed by live requests from the sandbox, which
+reaches the site, unless marked.
+
+- **Site type.** A client-rendered React app: the page is an empty `#root` and a Vite bundle
+  (`/assets/index-<hash>.js`), with no server-rendered data to scrape. Everything comes from a
+  JSON API under `/api/` and a Typesense search at `/collections/manga/documents/search`. So
+  the sources to compare against are the JSON-API ones — `en.toonkotsu`, `multi.kagane`,
+  `en.chikari` (also novels), `en.comix`, `multi.mangadex` — not the HTML or GraphQL ones.
+- **Search** is Typesense: `q` (`*` for none), `filter_by`, `sort_by`, `page`, `per_page`,
+  `include_fields`. `filter_by` takes `&&`, `||` and parentheses; values are backtick-quoted
+  (escape backticks and backslashes). `tags` holds genre names, `genreIds`/`tagIds` the ids;
+  tags only match by id, so a tapped tag name is looked up in
+  `/api/explore/availableFilters`. `id:=[…]` fetches several series in one request. Its typo
+  tolerance can match a nonsense query; that's the site, not a bug.
+- **Feeds** `/api/home2/{id}` with `offset`, `limit`, `mediums`, `types`, `adult=1` (adult
+  only), `contentRatings` and `excludedTags` (genre and tag ids together; the two never share
+  an id). `types` and `mediums` are ANDed, so with novels on the types are filtered locally.
+  `contentRatings` only filters rated titles: unrated ones pass, and official translations
+  can't be filtered at all. No total, so a full page is the only next-page signal.
+- **Ratings.** `mbContentRating` (`Safe`, `Suggestive`, `Erotica`, `Pornographic`) plus
+  `isAdult`; most titles are unrated (579 of 2,669 novels have one). Unrated titles are rated
+  from genres: Hentai (`10`) as Pornographic, Adult (`46`) and Smut (`41`) as Erotica.
+- **Series** `/api/manga/page?id=` (`mangaPage: null` for an unknown id, with a 200) carries the
+  first chapters and `hasMoreChapters`; `/api/manga/allChapters?mangaId=` has the rest. Both
+  list chapters newest first, so only deduplicating sorts. One chapter can appear once per
+  group; `scanlators` carry a `score`. The page has no rating, so details also look the
+  series up in search.
+- **Reader** `/api/read/chapter` (pages in order, `/static/…` paths on `cdn.atsu.moe`) and
+  `/api/read/novelChapter` (`paragraphs`). Covers are AVIF with a WebP copy beside each.
+- **Errors.** Search answers `{"message": …}`; the other endpoints answer plain text
+  (`Chapter not found`) or a validation object, so only search's message is shown.

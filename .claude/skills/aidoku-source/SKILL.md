@@ -22,6 +22,8 @@ against the live site first.
 
 1. **Look for a template.** If the matching keiyoushi extension declares a `themePkg`, or
    the site is a known WordPress theme, the source is a template consumer (AGENTS.md §12).
+   Otherwise find out how the site is built (server HTML, Next.js, a JSON API behind a
+   client-rendered app, GraphQL) and read the merged sources built the same way (AGENTS.md §6).
 2. **Read the reference clients** for endpoints and request shapes — keiyoushi first. Treat
    them as leads, not evidence: a reference may send parameters the endpoint ignores, and
    its comments may be copies of ours.
@@ -73,6 +75,7 @@ that shipped:
 - [ ] Regexes compiled once in a `static`; fixed sets as arrays
 - [ ] A rebranded site keeps its id and sets `breakingChangeVersion` in `config`
 - [ ] Comments: terse, why only, no other sources or third parties named, no dividers
+- [ ] `src/test.rs` with `#[aidoku_test]` cases checked against the site's data (AGENTS.md §1)
 
 ## Phase 4 — Verify
 
@@ -88,6 +91,10 @@ These cover the Rust/package baseline (AGENTS.md §1). Also run the independent 
 check and behavioral tests; compilation alone cannot establish upstream readiness.
 
 Then from the repo root: `scripts/check-sources.py <id>`.
+
+Run the tests in the source directory (`cargo test`, after installing `aidoku-test-runner`
+once) and lint them with `cargo clippy --tests --target wasm32-unknown-unknown -- -D
+warnings`. After a push to `main`, **Source tests** (`test.yaml`) runs them again.
 
 `scripts/install-hooks.sh` once from the main tooling checkout keeps the hook available
 in upstream worktrees. It validates pushed submission refs against upstream before running
