@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "Applies to the home page, listings and search; the matching search filters override it for one search. Titles the site leaves unrated are rated from their genres: Hentai as Pornographic, Adult and Smut as Erotica. The home feeds can't tell official translations apart, so that setting applies to search and the novel ranking.",
+		"footer": "Applies to the home page, listings and search; the matching search filters override it for one search. Titles the site leaves unrated are rated from their genres: Hentai as Pornographic, Adult and Smut as Erotica.",
 		"items": [
 			{
 				"type": "multi-select",
@@ -70,16 +70,6 @@
 					"listings",
 					"filters",
 					"settings"
-				]
-			},
-			{
-				"type": "switch",
-				"key": "officialOnly",
-				"title": "Official Translations Only",
-				"default": false,
-				"refreshes": [
-					"content",
-					"listings"
 				]
 			},
 			{

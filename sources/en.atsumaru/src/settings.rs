@@ -26,10 +26,6 @@ pub fn adult_only() -> bool {
 	defaults_get::<bool>("adultOnly").unwrap_or_default()
 }
 
-pub fn official_only() -> bool {
-	defaults_get::<bool>("officialOnly").unwrap_or_default()
-}
-
 pub fn label_novels() -> bool {
 	defaults_get::<bool>("labelNovels").unwrap_or_default()
 }

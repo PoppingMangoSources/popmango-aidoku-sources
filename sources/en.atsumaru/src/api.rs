@@ -192,7 +192,6 @@ impl Search {
 			types: settings::content_types(),
 			ratings: settings::content_ratings(),
 			adult_only: settings::adult_only(),
-			official: settings::official_only(),
 			..Default::default()
 		}
 	}
