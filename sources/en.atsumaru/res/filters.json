@@ -20,7 +20,6 @@
 		"title": "Genres",
 		"isGenre": true,
 		"canExclude": true,
-		"usesTagStyle": true,
 		"options": [
 			"Action",
 			"Adult",
