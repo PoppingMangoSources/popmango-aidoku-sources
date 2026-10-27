@@ -97,8 +97,6 @@ def check_filters_json(path: Path) -> None:
         name = item.get("id") or item.get("title")
         if item.get("type") == "sort" and item.get("default") == {"index": 0, "ascending": False}:
             fail(path, f"sort {name!r} sets the default the framework already uses")
-        if item.get("type") == "multi-select" and item.get("canExclude") is False:
-            fail(path, f"multi-select {name!r} sets canExclude false, which is the default")
         if item.get("type") in ("multi-select", "select") and item.get("isGenre") and item.get("usesTagStyle") is True:
             fail(path, f"{name!r} sets usesTagStyle, which isGenre already implies")
         if item.get("type") == "check" and not item.get("hideFromHeader"):

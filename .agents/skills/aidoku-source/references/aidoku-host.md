@@ -103,7 +103,10 @@ filter doesn't count.
   the source's own** when the source leaves it unset, so setting it is redundant. Partial
   manga from `send_partial_result` update the open series page while chapters load (app
   `Features/Manga/MangaView+ViewModel.swift`).
-- **Page list**: the manga arrives with `chapters` removed. Pages whose content can't be
+- **Page list**: only manga and chapter keys should be required for reader routing. URLs and
+  other metadata are not guaranteed on every call path (kkantan, #843); encode required
+  type information in the keys and test with fresh key-only values. The manga arrives with
+  `chapters` removed. Pages whose content can't be
   rebuilt (an image the source stored and lost) are dropped without an error.
 - **Listings** and **home** throw `unimplemented` unless the export exists.
 - **Errors**: a negative result maps to unimplemented (-2), network (-3), html (-4), js (-5),

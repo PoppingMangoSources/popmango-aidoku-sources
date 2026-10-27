@@ -1,6 +1,6 @@
 use crate::helpers::{
-	chapter_title, chapter_url, content_rating, cover_url, display_title, is_novel, manga_status,
-	manga_url, viewer,
+	chapter_key, chapter_title, chapter_url, content_rating, cover_url, display_title, is_novel,
+	manga_status, manga_url, viewer,
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaPageResult,
@@ -331,7 +331,7 @@ impl ChapterItem {
 			chapter_number: self.number,
 			date_uploaded: self.created_at.map(|ms| ms / 1000),
 			scanlators: scanlator.map(|name| vec![name]),
-			key: self.id,
+			key: chapter_key(self.id, novel),
 			..Default::default()
 		}
 	}

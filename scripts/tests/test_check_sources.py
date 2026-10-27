@@ -55,6 +55,12 @@ class CardRuleTests(unittest.TestCase):
         checks.check_filters_json(path)
         self.assertTrue(any('usesTagStyle' in failure for failure in checks.failures))
 
+    def test_explicitly_disabled_exclusion_passes(self):
+        path = self.source / 'res/filters.json'
+        path.write_text('[\n\t{"type": "multi-select", "id": "status", "canExclude": false, "options": []}\n]\n')
+        checks.check_filters_json(path)
+        self.assertEqual(checks.failures, [])
+
     def test_test_without_assertion_fails(self):
         (self.source / 'src').mkdir()
         (self.source / 'src/test.rs').write_text('#[aidoku_test]\nfn found_type_is_used() {\n\tlet _ = Found { hits: Vec::new() }.hits;\n}\n')

@@ -18,7 +18,7 @@ use aidoku::{
 	prelude::*,
 };
 use api::{API_URL, CARD_FIELDS, RATING_FIELDS, SearchParams, get, lookup_url, parse, request};
-use helpers::{arrange_chapters, is_novel, is_novel_url, page_url, parse_link};
+use helpers::{arrange_chapters, is_novel, page_url, parse_link};
 use models::{
 	ChaptersResponse, MangaPage, NovelResponse, PageResponse, ReadResponse, SearchResponse,
 };
@@ -177,11 +177,13 @@ impl Source for Atsumaru {
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let novel = is_novel_url(chapter.url.as_deref()) || is_novel_url(manga.url.as_deref());
+		let novel_id = chapter.key.strip_prefix("novel/");
+		let novel = novel_id.is_some();
+		let chapter_id = novel_id.unwrap_or(&chapter.key);
 		let kind = if novel { "novelChapter" } else { "chapter" };
 		let url = format!(
 			"{API_URL}/read/{kind}?mangaId={}&chapterId={}",
-			manga.key, chapter.key
+			manga.key, chapter_id
 		);
 
 		if novel {

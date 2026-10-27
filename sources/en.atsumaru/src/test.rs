@@ -535,6 +535,71 @@ fn exclusions() {
 }
 
 #[aidoku_test]
+fn filter_exclusions() {
+	for (id, excluded) in [("genre", "39"), ("demographic", "38")] {
+		let result = search(
+			None,
+			vec![FilterValue::MultiSelect {
+				id: id.into(),
+				included: Vec::new(),
+				excluded: vec![excluded.into()],
+			}],
+		);
+		assert!(!result.entries.is_empty(), "{id}");
+		for doc in docs(&result) {
+			assert!(if id == "genre" {
+				!doc.has_genre(excluded)
+			} else {
+				!doc.has_tag(excluded)
+			});
+		}
+	}
+}
+
+#[aidoku_test]
+fn review_filter_contract() {
+	#[derive(Deserialize)]
+	#[serde(rename_all = "camelCase")]
+	struct Filter {
+		id: String,
+		#[serde(default)]
+		can_exclude: bool,
+	}
+	let filters: Vec<Filter> = serde_json::from_str(include_str!("../res/filters.json")).unwrap();
+	let excluded = filters
+		.iter()
+		.filter(|filter| filter.can_exclude)
+		.map(|filter| filter.id.as_str())
+		.collect::<Vec<_>>();
+	assert_eq!(excluded, ["genre", "demographic"]);
+}
+
+#[aidoku_test]
+fn review_chapter_keys() {
+	let item = || serde_json::from_str::<models::ChapterItem>(r#"{"id":"5nDftC"}"#).unwrap();
+	let novel = item().into_chapter(NOVEL, true, &[]);
+	assert_eq!(novel.key, "novel/5nDftC");
+	assert_eq!(
+		novel.url.as_deref(),
+		Some("https://atsu.moe/novel/slh2/5nDftC")
+	);
+	assert_eq!(
+		helpers::parse_link(novel.url.as_deref().unwrap()),
+		Some((NOVEL.into(), Some(novel.key)))
+	);
+	let comic = item().into_chapter(COMIC, false, &[]);
+	assert_eq!(comic.key, "5nDftC");
+	assert_eq!(
+		comic.url.as_deref(),
+		Some("https://atsu.moe/read/n86El/5nDftC")
+	);
+	assert_eq!(
+		helpers::parse_link(comic.url.as_deref().unwrap()),
+		Some((COMIC.into(), Some(comic.key)))
+	);
+}
+
+#[aidoku_test]
 fn listings() {
 	for id in [
 		"popular",
@@ -625,7 +690,13 @@ fn comic() {
 	}
 
 	let pages = source
-		.get_page_list(details, chapters.into_iter().next().unwrap())
+		.get_page_list(
+			manga(COMIC),
+			Chapter {
+				key: chapters.into_iter().next().unwrap().key,
+				..Default::default()
+			},
+		)
 		.unwrap();
 	assert!(!pages.is_empty());
 	for page in pages {
@@ -694,9 +765,33 @@ fn novel() {
 			.unwrap()
 			.starts_with("https://atsu.moe/novel/slh2/")
 	);
-	let pages = source.get_page_list(novel, chapter).unwrap();
+	assert!(
+		novel
+			.chapters
+			.as_ref()
+			.unwrap()
+			.iter()
+			.all(|chapter| chapter.key.starts_with("novel/"))
+	);
+	let pages = source
+		.get_page_list(
+			manga(NOVEL),
+			Chapter {
+				key: chapter.key,
+				..Default::default()
+			},
+		)
+		.unwrap();
 	assert_eq!(pages.len(), 1);
 	assert!(matches!(&pages[0].content, PageContent::Text(text) if text.len() > 1000));
+	let chapters_only = source.get_manga_update(manga(NOVEL), false, true).unwrap();
+	assert!(
+		chapters_only
+			.chapters
+			.unwrap()
+			.iter()
+			.all(|chapter| chapter.key.starts_with("novel/"))
+	);
 
 	// Labelled by default.
 	let labelled = source.get_manga_update(manga(NOVEL), true, false).unwrap();
@@ -731,7 +826,7 @@ fn deep_links() {
 	));
 	assert!(matches!(
 		link("https://atsu.moe/novel/slh2/5nDftC?p=1"),
-		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == NOVEL && key == "5nDftC"
+		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == NOVEL && key == "novel/5nDftC"
 	));
 	assert!(link("https://atsu.moe/explore").is_none());
 	assert!(link("https://atsu.moe/read/n86El").is_none());

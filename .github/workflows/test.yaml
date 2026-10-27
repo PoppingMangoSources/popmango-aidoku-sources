@@ -93,6 +93,13 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends libfontconfig-dev libfreetype-dev
           cargo install --locked --git https://github.com/Aidoku/aidoku-rs aidoku-test-runner
 
+      - name: Run review contract regressions
+        run: |
+          set -euo pipefail
+          while IFS= read -r source; do
+            (cd "$source" && cargo test review_)
+          done < "$RUNNER_TEMP/tested"
+
       - name: Run tests
         run: |
           set -euo pipefail

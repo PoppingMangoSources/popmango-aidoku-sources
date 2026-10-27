@@ -101,9 +101,8 @@ pub fn chapter_url(manga_id: &str, chapter_id: &str, novel: bool) -> String {
 	format!("{BASE_URL}/{kind}/{manga_id}/{chapter_id}")
 }
 
-pub fn is_novel_url(url: Option<&str>) -> bool {
-	url.and_then(|url| url.strip_prefix(BASE_URL))
-		.is_some_and(|path| path.starts_with("/novel/"))
+pub fn chapter_key(id: String, novel: bool) -> String {
+	if novel { format!("novel/{id}") } else { id }
 }
 
 pub fn parse_link(url: &str) -> Option<(String, Option<String>)> {
@@ -118,9 +117,10 @@ pub fn parse_link(url: &str) -> Option<(String, Option<String>)> {
 	let mut parts = path.split('/').filter(|part| !part.is_empty());
 	match (parts.next()?, parts.next()?, parts.next()) {
 		("manga", id, None) => Some((id.into(), None)),
-		("novel", id, chapter) | ("read", id, chapter @ Some(_)) => {
-			Some((id.into(), chapter.map(Into::into)))
-		}
+		(kind @ "novel", id, chapter) | (kind @ "read", id, chapter @ Some(_)) => Some((
+			id.into(),
+			chapter.map(|id| chapter_key(id.into(), kind == "novel")),
+		)),
 		_ => None,
 	}
 }

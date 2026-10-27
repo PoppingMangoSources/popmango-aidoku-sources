@@ -40,7 +40,7 @@ details-only and combined requests separately when the source branches on those 
 | Source conventions | `python3 scripts/check-sources.py <id>` | Fork rules and README links; use `--upstream --repo <worktree>` for a clean submission without fork files. |
 | Submission | `check-upstream-scope.py --repo <worktree> --source <id>` after canonical fetch | Source-only final diff and commit history, no merge/generated files, correct id/version. New version 1; update upstream+1; review rounds retain that version. |
 | Rust/package | `scripts/verify-source.sh <source-directory>` | Formatting, Clippy with warnings denied, package exists, schema/icon/WASM verification. |
-| Parser/state tests | `scripts/verify-source.sh <source-directory> --test` | Install `aidoku-test-runner`; cover keys, URL encoding, parsers, pagination signals, errors and cleared settings with `#[aidoku_test]`. |
+| Parser/state tests | `scripts/verify-source.sh <source-directory> --test` | Install `aidoku-test-runner`; cover key-only reader inputs, chapter/deep-link key agreement, enabled filter exclusions, URL encoding, parsers, pagination signals, errors and cleared settings with `#[aidoku_test]`. |
 | Website | Probe each relevant endpoint with a timeout and proper headers | Record request and response facts, page 2 and a deliberately impossible filter value. A request that cannot connect is unverified, not a passing empty-result test. |
 | App | Install `.aix` by device transfer or `aidoku serve package.aix`; use `aidoku logcat` | Check browse, details/chapter-only updates, deep links, settings, locked/duplicate chapters and an actual readable chapter. |
 
@@ -64,6 +64,8 @@ not all universal API restrictions. Apply them to matching code, not mechanicall
 | [824: dates](https://github.com/Aidoku-Community/sources/pull/824#discussion_r4308580887) | Prefer `parse_date`; avoid a dependency just to parse one site timestamp. |
 | [824: sorting](https://github.com/Aidoku-Community/sources/pull/824#discussion_r4318364144) | Put the sort filter first as a presentation convention. |
 | [824: exclusions](https://github.com/Aidoku-Community/sources/pull/824#discussion_r4329883138) | Dynamic Rust `MultiSelectFilter` must explicitly disable exclusion when unsupported; static JSON has its own defaults. Do not confuse these defaults. |
+| [843: exclusions](https://github.com/Aidoku-Community/sources/pull/843#discussion_r4393718216) | Enable exclusions only when their values are handled. Explicit `canExclude: false` is valid for unsupported filters even though false is the host default. |
+| [843: reader keys](https://github.com/Aidoku-Community/sources/pull/843#discussion_r4393742205) | Reader routing must work with only manga/chapter keys; encode necessary type information there and keep chapter lists and deep links consistent. Test without metadata. |
 | [828: unified API](https://github.com/Aidoku-Community/sources/pull/828#discussion_r4329442516) | Prefer a single real API for query and filters over duplicated search paths when supported. |
 | [828: config](https://github.com/Aidoku-Community/sources/pull/828#discussion_r4352966663) | `breakingChangeVersion` belongs in top-level `config`; preserve source identity for a rewrite/rebrand. |
 | [833: fixed regex set](https://github.com/Aidoku-Community/sources/pull/833#discussion_r4353112488) | A fixed number of compiled regexes can be an array; compile reusable patterns once. |

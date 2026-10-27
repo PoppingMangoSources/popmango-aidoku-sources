@@ -303,7 +303,7 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
 | `url.starts_with(base)` then slicing | `strip_prefix`. |
 | Matching status strings as-is | Lowercase first; the site's casing varies. |
 | A name→id map in Rust for a filter | Put the ids in `filters.json` (`ids`). |
-| `canExclude` left on where the API can't exclude | Allow exclusion only where the site takes it. It defaults to `false` both in `filters.json` and in Rust, so omit it rather than writing `false`. |
+| `canExclude` left on where the API can't exclude | Enable exclusion only when the source handles `excluded` for that filter. It defaults to `false` in JSON and Rust; an explicit `false` is also valid and makes unsupported exclusions clear. |
 | A description that can be `""` | `.filter(\|d\| !d.is_empty())` so it's `None`. |
 | Two code paths for query and no query | Find the one endpoint that takes both; a site's own search API usually does. |
 | Listings that are really search options (Uncensored, Raw) | Make them search filters. |
@@ -316,6 +316,21 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
 | `"HQ-now"`, `struct Theblank` | The site's own name and spelling, in `source.json` and the struct name. |
 | No `minAppVersion` | `"0.7.1"`, unless verify asks for more. |
 | Comments marked resolved without a change | Every comment gets a change or a reply; reviewers check. |
+
+### From #843 (`en.atsumaru`)
+
+- **Filter exclusions:** every multi-select with `canExclude: true` must process both
+  `included` and `excluded`. Genre and demographic exclusions are supported; Content Type,
+  Status and Content Rating explicitly disable them. Test each enabled exclusion against the
+  site, and check the filter declarations as well as the match arms.
+- **Self-sufficient keys:** only manga and chapter keys can be relied on in later callbacks.
+  Reader routing must not require URLs, titles, viewer hints or cached details. Encode a
+  required discriminator in a key, use the same encoding in chapter lists and deep links,
+  and test reading with fresh `Manga` and `Chapter` values containing only keys. Atsumaru
+  prefixes novel chapter keys with `novel/`; series keys stay unchanged.
+- `review_` tests cover the filter capability contract and chapter/deep-link key agreement
+  without live requests. The Source tests workflow runs them in a separate step before the
+  full live suite so a site outage does not obscure these regressions.
 
 ### From our own reviews of `en.atsumaru` (owner's corrections)
 
@@ -530,7 +545,7 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
 - `MultiSelectFilter` has `uses_tag_style`, default `false` in Rust. For `filters.json` the app
   decodes `usesTagStyle` as `isGenre` and `canExclude` as `false` when absent (AidokuRunner
   `Models/Filter.swift`, `MultiSelectFilter.init(from:)`), so on a JSON genre filter both are
-  redundant. Upstream writes `"canExclude": false` 73 times; it is harmless but unnecessary.
+  redundant. An explicit `"canExclude": false` is valid, including when a review asks for unsupported exclusions to be disabled.
 - Every filter has `hide_from_header` (`hideFromHeader` in JSON), unset by default, so a
   filter shows in the header unless told otherwise.
 - `Manga` has no field for alternate titles, original language, year or score.
@@ -1085,6 +1100,9 @@ reaches the site, unless marked.
   list chapters newest first, so only deduplicating sorts. One chapter can appear once per
   group; `scanlators` carry a `score`. The page has no rating, so details also look the
   series up in search.
+- **Keys.** Series keys remain site ids. Novel chapter keys are `novel/<id>`, including in
+  chapter deep links; comic chapter keys remain site ids. Strip the novel prefix only for
+  the reader request. Existing installs need a chapter-list refresh to pick up the new keys.
 - **Reader** `/api/read/chapter` (pages in order, `/static/…` paths on `cdn.atsu.moe`) and
   `/api/read/novelChapter` (`paragraphs`). Covers are AVIF with a WebP copy beside each.
 - **Errors.** Search answers `{"message": …}`; the other endpoints answer plain text

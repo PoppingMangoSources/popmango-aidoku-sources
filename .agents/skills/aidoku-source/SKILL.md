@@ -66,6 +66,10 @@ that shipped:
 - [ ] `status`, `content_rating`, `viewer` set on details when the site has them
 - [ ] `send_partial_result` only when chapters need a second request
 - [ ] `DeepLinkHandler` for series **and** chapter urls; series and chapter urls resolve
+- [ ] Reader routing works with only manga/chapter keys; encode required type flags in keys,
+      and ensure chapter-list and deep-link keys match
+- [ ] Every enabled multi-select exclusion handles `excluded`; disable unsupported ones
+      with `canExclude: false` and test supported exclusions against the site
 - [ ] Every site filter present; dynamic genres → `supportsTagSearch` plus a
       `FilterValue::Select { id: "genre" }` arm; use `supportsAuthorSearch` only without
       an explicit author text filter (likewise for artists)
@@ -119,6 +123,9 @@ from `check-sources.py`, or say in the summary why it stays. After a workflow ch
 Then read AGENTS.md / CLAUDE.md §3 top to bottom against the diff, one row at a time, and say which rows
 you checked. Passing the scripts isn't the same as following the rules: rows showing
 "Manhwa · ★ 8.3" went to `main` with every gate green.
+
+Run deterministic `review_` regressions separately (`cargo test review_`), including key-only
+reader inputs and filter capabilities, then the full suite.
 
 Run the tests in the source directory (`cargo test`, after installing `aidoku-test-runner`
 once) and lint them with `cargo clippy --tests --target wasm32-unknown-unknown -- -D
