@@ -88,6 +88,9 @@ jobs:
         run: |
           set -euo pipefail
           [[ -s "$RUNNER_TEMP/tested" ]] || exit 0
+          # The runner renders text with font-kit, which links the system fontconfig and freetype.
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libfontconfig-dev libfreetype-dev
           cargo install --locked --git https://github.com/Aidoku/aidoku-rs aidoku-test-runner
 
       - name: Run tests

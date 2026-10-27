@@ -112,8 +112,9 @@ most upstream sources.
 Running them:
 
 - Install the runner once: `cargo install --git https://github.com/Aidoku/aidoku-rs
-  aidoku-test-runner`. `.cargo/config.toml` already names it, so `cargo test` in the source
-  directory runs every `#[aidoku_test]`; `scripts/verify-source.sh <dir> --test` runs the
+  aidoku-test-runner`. It links the system fontconfig and freetype, so install their headers
+  first (`libfontconfig-dev libfreetype-dev` on Ubuntu). `.cargo/config.toml` already names
+  the runner, so `cargo test` in the source directory runs every `#[aidoku_test]`; `scripts/verify-source.sh <dir> --test` runs the
   gates and then the tests. `cargo clippy --tests --target wasm32-unknown-unknown -- -D
   warnings` lints the test module, which the plain clippy gate skips.
 - `verify-source.sh` also lints the test module when a source has one (`cargo clippy --tests`),
