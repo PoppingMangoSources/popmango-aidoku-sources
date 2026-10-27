@@ -1,7 +1,7 @@
 use crate::{
 	helpers::{ADULT_GENRES, HENTAI, allows, spotlight_genre, take_document},
 	models::{ErrorResponse, FeedResponse, SearchResponse},
-	settings::{self, CONTENT_TYPES, RATINGS},
+	settings::{self, CONTENT_RATINGS, CONTENT_TYPES},
 };
 use aidoku::{
 	MangaPageResult, Result,
@@ -13,16 +13,11 @@ use aidoku::{
 use serde::de::DeserializeOwned;
 
 pub const BASE_URL: &str = "https://atsu.moe";
-pub const CDN_URL: &str = "https://cdn.atsu.moe/static";
-pub const FEED_LIMIT: i32 = 24;
-const SEARCH_LIMIT: i32 = 40;
 pub const API_URL: &str = "https://atsu.moe/api";
+pub const CDN_URL: &str = "https://cdn.atsu.moe/static";
+const PAGE_SIZE: i32 = 40;
+pub const FEED_PAGE_SIZE: i32 = 24;
 
-const QUERY_BY: &str = "title,englishTitle,otherNames,authors,acronyms";
-const QUERY_BY_WEIGHTS: &str = "4,3,2,2,1";
-const NUM_TYPOS: &str = "4,3,2,1,0";
-const PREFIX: &str = "true,true,true,true,false";
-const INFIX: &str = "off,off,fallback,off,off";
 pub const CARD_FIELDS: &str =
 	"id,title,poster,posterMedium,isAdult,mbContentRating,genreIds,medium,status";
 pub const RATING_FIELDS: &str = "id,isAdult,mbContentRating,genreIds";
@@ -174,8 +169,8 @@ impl SearchParams {
 			query.push("timeframe", Some(timeframe));
 		}
 		let (comics, novels) = split_types(&self.types);
-		query.push("offset", Some(&((page - 1) * FEED_LIMIT).to_string()));
-		query.push("limit", Some(&FEED_LIMIT.to_string()));
+		query.push("offset", Some(&((page - 1) * FEED_PAGE_SIZE).to_string()));
+		query.push("limit", Some(&FEED_PAGE_SIZE.to_string()));
 		// A full selection is left out, as in search. The feeds AND types with mediums, so with
 		// novels on, types are filtered locally.
 		if comics.is_empty() {
@@ -249,7 +244,7 @@ impl SearchParams {
 		if !allows(&self.ratings, "Pornographic") {
 			clauses.push("isAdult:=false".into());
 		}
-		let unwanted = RATINGS
+		let unwanted = CONTENT_RATINGS
 			.into_iter()
 			.filter(|rating| !allows(&self.ratings, rating))
 			.collect::<Vec<_>>();
@@ -315,10 +310,13 @@ impl SearchParams {
 	pub fn url(&self, page: i32, ids: &[&str]) -> String {
 		let mut query = QueryParameters::new();
 		query.push("q", Some(self.query.as_deref().unwrap_or("*")));
-		query.push("query_by", Some(QUERY_BY));
-		query.push("query_by_weights", Some(QUERY_BY_WEIGHTS));
-		query.push("num_typos", Some(NUM_TYPOS));
-		query.push("prefix", Some(PREFIX));
+		query.push(
+			"query_by",
+			Some("title,englishTitle,otherNames,authors,acronyms"),
+		);
+		query.push("query_by_weights", Some("4,3,2,2,1"));
+		query.push("num_typos", Some("4,3,2,1,0"));
+		query.push("prefix", Some("true,true,true,true,false"));
 		query.push("include_fields", Some(CARD_FIELDS));
 		let mut filter = self.filter_by();
 		if !ids.is_empty() {
@@ -326,9 +324,9 @@ impl SearchParams {
 		}
 		query.push("filter_by", Some(&filter));
 		query.push("page", Some(&page.to_string()));
-		query.push("per_page", Some(&SEARCH_LIMIT.to_string()));
+		query.push("per_page", Some(&PAGE_SIZE.to_string()));
 		if self.query.is_some() {
-			query.push("infix", Some(INFIX));
+			query.push("infix", Some("off,off,fallback,off,off"));
 		}
 		let sort = if self.sort == RANDOM {
 			let fields = ["shuffleA", "shuffleB"];
@@ -366,7 +364,7 @@ impl SearchParams {
 		};
 		if let Some((id, timeframe)) = feed {
 			let response: FeedResponse = get(&self.feed_url(id, page, timeframe.as_deref())?)?;
-			let has_next_page = response.items.len() as i32 == FEED_LIMIT;
+			let has_next_page = response.items.len() as i32 == FEED_PAGE_SIZE;
 			if response.items.is_empty() {
 				return Ok(MangaPageResult::default());
 			}

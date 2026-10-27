@@ -1,6 +1,6 @@
 use crate::{
 	Atsumaru,
-	api::{FEATURED_FIELDS, FEED_LIMIT, RANKED, SearchParams, get, lookup_url, parse, request},
+	api::{FEATURED_FIELDS, FEED_PAGE_SIZE, RANKED, SearchParams, get, lookup_url, parse, request},
 	helpers::{feed_allows, spotlight_genre, take_document},
 	models::{FeedItem, FeedResponse, SearchResponse},
 	settings,
@@ -57,7 +57,7 @@ fn section_request(id: &str, page: i32) -> Result<Option<Request>> {
 fn feed_items(response: Response) -> Result<(Vec<FeedItem>, bool)> {
 	let items = parse::<FeedResponse>(response)?.items;
 	// Feeds give no total, so a full page is the only sign of another.
-	let has_next_page = items.len() as i32 == FEED_LIMIT;
+	let has_next_page = items.len() as i32 == FEED_PAGE_SIZE;
 	let types = settings::content_types();
 	let items = items
 		.into_iter()
