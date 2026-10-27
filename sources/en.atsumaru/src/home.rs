@@ -92,13 +92,9 @@ fn fill(id: &str, name: &str, response: Response) -> Result<HomeComponentValue> 
 		kind: ListingKind::Default,
 	});
 	if id == NOVELS {
-		let response: SearchResponse = parse(response)?;
+		let page = parse::<SearchResponse>(response)?.into_page(label_novels);
 		return Ok(HomeComponentValue::Scroller {
-			entries: response
-				.hits
-				.into_iter()
-				.map(|hit| hit.document.into_manga(label_novels).into())
-				.collect(),
+			entries: page.entries.into_iter().map(Into::into).collect(),
 			listing,
 		});
 	}

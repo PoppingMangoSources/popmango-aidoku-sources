@@ -197,7 +197,7 @@ pub struct MangaInfo {
 	status: Option<String>,
 	#[serde(rename = "type")]
 	kind: Option<String>,
-	medium: Option<String>,
+	pub medium: Option<String>,
 	#[serde(default)]
 	is_adult: bool,
 }
@@ -229,12 +229,8 @@ struct Tag {
 }
 
 impl MangaInfo {
-	pub fn is_novel(&self) -> bool {
-		is_novel(self.medium.as_deref())
-	}
-
 	pub fn into_manga(self, label_novels: bool, rating: Option<SearchDocument>) -> Manga {
-		let novel = self.is_novel();
+		let novel = is_novel(self.medium.as_deref());
 		let content_rating = rating.map_or_else(
 			|| {
 				let genres = self

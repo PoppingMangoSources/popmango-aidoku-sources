@@ -340,7 +340,7 @@ impl SearchParams {
 				format!("_eval({first}:>={seed}):desc,{first}:asc,{second}:asc")
 			}
 		} else {
-			// The feeds and Random have one order.
+			// A feed sort only uses this for its lookup, whose order is discarded.
 			let field = SORTS.get(self.sort).copied().unwrap_or(SORTS[POPULARITY]);
 			format!("{field}:{}", if self.ascending { "asc" } else { "desc" })
 		};

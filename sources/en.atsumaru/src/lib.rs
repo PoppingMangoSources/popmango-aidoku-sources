@@ -13,7 +13,7 @@ use aidoku::{
 	helpers::string::PlainText,
 	imports::{
 		net::{Request, TimeUnit, set_rate_limit},
-		std::send_partial_result,
+		std::{current_date, send_partial_result},
 	},
 	prelude::*,
 };
@@ -21,7 +21,7 @@ use api::{
 	CARD_FIELDS, RATING_FIELDS, SearchParams, chapters_url, get, lookup_url, manga_page_url, parse,
 	read_url, request,
 };
-use helpers::{arrange_chapters, is_novel_url, page_url, parse_link};
+use helpers::{arrange_chapters, is_novel, is_novel_url, page_url, parse_link};
 use models::{
 	ChaptersResponse, MangaPage, NovelResponse, PageResponse, ReadResponse, SearchResponse,
 };
@@ -34,7 +34,7 @@ impl Source for Atsumaru {
 	fn new() -> Self {
 		set_rate_limit(10, 1, TimeUnit::Seconds);
 		Self {
-			seed: aidoku::imports::std::current_date().rem_euclid(2_147_483_646) as u32 + 1,
+			seed: current_date().rem_euclid(2_147_483_646) as u32 + 1,
 		}
 	}
 
@@ -150,7 +150,7 @@ impl Source for Atsumaru {
 		else {
 			bail!("This series is no longer on Atsumaru");
 		};
-		let novel = info.is_novel();
+		let novel = is_novel(info.medium.as_deref());
 
 		if needs_details {
 			manga.copy_from(info.into_manga(settings::label_novels(), rating));
