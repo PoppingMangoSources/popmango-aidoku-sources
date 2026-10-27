@@ -4,7 +4,7 @@ use aidoku::{
 	imports::defaults::defaults_get,
 };
 
-pub const CONTENT_TYPES: [&str; 6] = ["Manga", "Manwha", "Manhua", "OEL", "Other", "Novel"];
+pub const CONTENT_TYPES: [&str; 6] = ["Manga", "Manwha", "Manhua", "OEL", "Other", "Novel"]; // "Manwha" is the site's spelling.
 pub const RATINGS: [&str; 4] = ["Safe", "Suggestive", "Erotica", "Pornographic"];
 const DEFAULT_RATINGS: [&str; 3] = ["Safe", "Suggestive", "Erotica"];
 

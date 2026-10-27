@@ -1,6 +1,6 @@
 use crate::{
 	api::{BASE_URL, CDN_URL},
-	models::{ChapterItem, Scanlator},
+	models::{ChapterItem, Scanlator, SearchDocument},
 	settings::Keep,
 };
 use aidoku::{
@@ -37,8 +37,7 @@ pub fn spotlight_genre() -> &'static str {
 	SPOTLIGHT_GENRES[(current_date() / 86_400).rem_euclid(15) as usize]
 }
 
-/// The site's rating, raised to what the genres say: Hentai as pornographic, Adult and Smut
-/// as erotica.
+/// The site's rating, raised by the Hentai, Adult and Smut genres.
 pub fn content_rating<S: AsRef<str>>(
 	is_adult: bool,
 	rating: Option<&str>,
@@ -76,6 +75,12 @@ pub fn cover_url(path: &str) -> String {
 
 pub fn page_url(path: &str) -> String {
 	format!("{CDN_URL}/{}", static_path(path))
+}
+
+/// Search answers in its own order, so a feed item takes its document by id.
+pub fn take_document(documents: &mut Vec<SearchDocument>, id: &str) -> Option<SearchDocument> {
+	let index = documents.iter().position(|document| document.id == id)?;
+	Some(documents.swap_remove(index))
 }
 
 pub fn allows(values: &[String], value: &str) -> bool {
@@ -212,7 +217,7 @@ pub fn arrange_chapters(
 	chapters
 }
 
-/// Whether a feed item fits the Content Types setting, which the feed can't fully apply.
+/// The feeds can't apply every content type, so items are checked here.
 pub fn feed_allows(kind: Option<&str>, medium: Option<&str>, types: &[String]) -> bool {
 	if is_novel(medium) {
 		allows(types, "Novel")

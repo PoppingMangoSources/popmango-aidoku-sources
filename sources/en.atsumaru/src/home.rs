@@ -1,7 +1,7 @@
 use crate::{
 	Atsumaru,
-	api::{FEATURED_FIELDS, FEED_LIMIT, SearchParams, feed_url, get, lookup_url, parse, request},
-	helpers::{feed_allows, spotlight_genre},
+	api::{FEATURED_FIELDS, FEED_LIMIT, SearchParams, get, lookup_url, parse, request},
+	helpers::{feed_allows, spotlight_genre, take_document},
 	models::{FeedItem, FeedResponse, SearchResponse},
 	settings,
 };
@@ -45,7 +45,11 @@ fn section_request(id: &str, page: i32) -> Result<Option<Request>> {
 		}
 		return request(&search.url(page, &[])).map(Some);
 	}
-	feed_url(id, page)?.map(|url| request(&url)).transpose()
+	let params = SearchParams::new(None);
+	if params.matches_nothing() {
+		return Ok(None);
+	}
+	request(&params.feed_url(id, page)?).map(Some)
 }
 
 fn feed_items(response: Response) -> Result<(Vec<FeedItem>, bool)> {
@@ -116,10 +120,7 @@ fn fill(id: &str, name: &str, response: Response) -> Result<HomeComponentValue> 
 			entries: items
 				.into_iter()
 				.map(|item| {
-					let document = documents
-						.iter()
-						.position(|document| document.id == item.id)
-						.map(|index| documents.swap_remove(index));
+					let document = take_document(&mut documents, &item.id);
 					item.into_featured(label_novels, document)
 				})
 				.collect(),
@@ -175,9 +176,8 @@ impl Home for Atsumaru {
 				.collect(),
 		}));
 
-		let wanted = sections.len();
-		// Returned rather than sent as partials: the app keeps an empty placeholder for a
-		// section that never arrives, but shows a returned home as it is.
+		let requested = sections.len();
+		// Returned, not sent as partials: the app would keep an empty row for a failed section.
 		let components = sections
 			.into_iter()
 			.zip(Request::send_all(requests))
@@ -193,7 +193,7 @@ impl Home for Atsumaru {
 				})
 			})
 			.collect::<Vec<_>>();
-		if wanted > 0 && components.is_empty() {
+		if requested > 0 && components.is_empty() {
 			bail!("Atsumaru didn't answer");
 		}
 		Ok(HomeLayout { components })

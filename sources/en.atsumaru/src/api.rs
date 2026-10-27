@@ -1,5 +1,5 @@
 use crate::{
-	helpers::{ADULT_GENRES, HENTAI, allows, spotlight_genre},
+	helpers::{ADULT_GENRES, HENTAI, allows, spotlight_genre, take_document},
 	models::{ErrorResponse, FeedResponse, SearchResponse},
 	settings::{self, CONTENT_TYPES, RATINGS},
 };
@@ -108,22 +108,6 @@ fn split_types(types: &[String]) -> (Vec<&str>, bool) {
 	(comics, allows(types, "Novel"))
 }
 
-pub fn feed_url(id: &str, page: i32) -> Result<Option<String>> {
-	let search = SearchParams::new(None);
-	if search.matches_nothing() {
-		return Ok(None);
-	}
-	let mut query = search.feed_parameters(page);
-	match id {
-		"popular" | "mostBookmarked" | "mostTalkedAbout" => query.push("timeframe", Some("weekly")),
-		"genreSpotlight" => query.push("genre", Some(spotlight_genre())),
-		"hotUpdates" | "recentlyUpdated" | "rising" | "hotArrivals" | "recentlyAdded"
-		| "topRated" | "hiddenGems" | "bingeWorthy" | "mostPolarizing" => {}
-		_ => bail!("Unknown listing"),
-	}
-	Ok(Some(format!("{API_URL}/home2/{id}?{query}")))
-}
-
 pub fn lookup_url(ids: &[&str], fields: &str) -> String {
 	let mut query = QueryParameters::new();
 	query.push("q", Some("*"));
@@ -175,13 +159,21 @@ impl SearchParams {
 		search
 	}
 
-	fn feed_parameters(&self, page: i32) -> QueryParameters {
+	pub fn feed_url(&self, id: &str, page: i32) -> Result<String> {
 		let mut query = QueryParameters::new();
+		match id {
+			"popular" | "mostBookmarked" | "mostTalkedAbout" => {
+				query.push("timeframe", Some("weekly"))
+			}
+			"genreSpotlight" => query.push("genre", Some(spotlight_genre())),
+			"hotUpdates" | "recentlyUpdated" | "rising" | "hotArrivals" | "recentlyAdded"
+			| "topRated" | "hiddenGems" | "bingeWorthy" | "mostPolarizing" => {}
+			_ => bail!("Unknown listing"),
+		}
 		let (comics, novels) = split_types(&self.types);
 		query.push("offset", Some(&((page - 1) * FEED_LIMIT).to_string()));
 		query.push("limit", Some(&FEED_LIMIT.to_string()));
-		// The feeds AND these together, so a comic type would drop novels of other types; with
-		// novels on, the types are applied to the items instead.
+		// The feeds AND types with mediums, so with novels on, types are filtered locally.
 		let mediums: Vec<&str> = [(!comics.is_empty(), "Comic"), (novels, "Novel")]
 			.into_iter()
 			.filter_map(|(wanted, medium)| wanted.then_some(medium))
@@ -206,7 +198,7 @@ impl SearchParams {
 		if !excluded.is_empty() {
 			query.push("excludedTags", Some(&excluded.join(",")));
 		}
-		query
+		Ok(format!("{API_URL}/home2/{id}?{query}"))
 	}
 
 	pub fn matches_nothing(&self) -> bool {
@@ -247,8 +239,7 @@ impl SearchParams {
 			));
 			return;
 		}
-		// Most novels are unrated, so unwanted ratings are excluded rather than the wanted
-		// ones matched, and the genres stand in for the missing rating.
+		// Most novels are unrated, so exclude unwanted ratings rather than match wanted ones.
 		let genres = excluded_rating_genres(&self.ratings);
 		if !allows(&self.ratings, "Pornographic") {
 			clauses.push("isAdult:=false".into());
@@ -365,11 +356,7 @@ impl SearchParams {
 			.checked_sub(SORTS.len())
 			.and_then(|index| FEEDS.get(index))
 		{
-			let mut query = self.feed_parameters(page);
-			if matches!(*id, "mostBookmarked" | "mostTalkedAbout") {
-				query.push("timeframe", Some("weekly"));
-			}
-			let response: FeedResponse = get(&format!("{API_URL}/home2/{id}?{query}"))?;
+			let response: FeedResponse = get(&self.feed_url(id, page)?)?;
 			let has_next_page = response.items.len() as i32 == FEED_LIMIT;
 			if response.items.is_empty() {
 				return Ok(MangaPageResult::default());
@@ -381,20 +368,13 @@ impl SearchParams {
 				.map(|item| item.id.as_str())
 				.collect::<Vec<_>>();
 			let matched: SearchResponse = get(&self.url(1, &ids))?;
-			let mut documents = matched.hits;
+			let mut documents = matched.hits.into_iter().map(|hit| hit.document).collect();
 			let entries = response
 				.items
 				.into_iter()
 				.filter_map(|item| {
-					let index = documents
-						.iter()
-						.position(|hit| hit.document.id == item.id)?;
-					Some(
-						documents
-							.swap_remove(index)
-							.document
-							.into_manga(label_novels),
-					)
+					take_document(&mut documents, &item.id)
+						.map(|document| document.into_manga(label_novels))
 				})
 				.collect();
 			return Ok(MangaPageResult {

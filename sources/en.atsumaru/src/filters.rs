@@ -60,7 +60,7 @@ fn available_filters() -> Result<AvailableFilters> {
 	get(&format!("{API_URL}/explore/availableFilters"))
 }
 
-/// Genre and tag ids for tag names, as a tapped tag arrives; search only matches tags by id.
+/// A tapped tag arrives by name, but search only matches tags by id.
 pub fn tag_ids(names: &[String]) -> Result<(Vec<String>, Vec<String>)> {
 	let AvailableFilters { genres, tags } = available_filters()?;
 	let wanted = |name: &str| names.iter().any(|wanted| wanted.eq_ignore_ascii_case(name));
