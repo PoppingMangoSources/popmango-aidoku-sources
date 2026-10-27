@@ -5,13 +5,22 @@
 		"title": "Sort",
 		"canAscend": false,
 		"options": [
-			"Relevance",
 			"Popularity",
+			"Title",
 			"Trending",
 			"Recently Added",
 			"Release Date",
 			"Top Rated",
-			"Title"
+			"Hot Updates",
+			"Recently Updated",
+			"Rising",
+			"Hot Arrivals",
+			"Most Bookmarked",
+			"Most Talked About",
+			"Binge-Worthy",
+			"Most Polarizing",
+			"Hidden Gems",
+			"Random"
 		]
 	},
 	{

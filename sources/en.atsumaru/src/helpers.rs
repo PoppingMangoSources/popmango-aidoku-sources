@@ -149,7 +149,6 @@ pub fn manga_status(status: Option<&str>) -> MangaStatus {
 	}
 }
 
-/// Drops a leading "Chapter 12" that the app already shows from the number.
 pub fn chapter_title(title: &str, number: Option<f32>) -> Option<String> {
 	let trimmed = title.trim();
 	if number.is_some() {
@@ -209,7 +208,6 @@ pub fn arrange_chapters(
 			.then(by_keep)
 			.then(b.created_at.cmp(&a.created_at))
 	});
-	// The sort put the upload to keep first among its duplicates.
 	chapters.dedup_by(|later, kept| later.number.is_some() && later.number == kept.number);
 	chapters
 }

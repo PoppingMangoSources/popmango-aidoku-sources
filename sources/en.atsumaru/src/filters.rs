@@ -10,7 +10,6 @@ use aidoku::{
 	alloc::{String, Vec, format, vec},
 };
 
-/// The site's tag groups, each with its own hidden-tag list.
 pub const GROUPS: [&str; 19] = [
 	"Activities",
 	"Audience Demographics",
@@ -78,7 +77,6 @@ pub fn tag_ids(names: &[String]) -> Result<(Vec<String>, Vec<String>)> {
 	))
 }
 
-/// The genre and tag lists live on the site, so the exclusions are offered from them.
 impl DynamicSettings for Atsumaru {
 	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
 		let AvailableFilters { genres, tags } = available_filters()?;

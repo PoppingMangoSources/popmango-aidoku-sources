@@ -16,87 +16,25 @@ use aidoku::{
 	prelude::*,
 };
 
-#[derive(Clone, Copy)]
-enum Layout {
-	Featured,
-	Ranked,
-	Row,
-}
-
-impl Layout {
-	fn empty(self) -> HomeComponentValue {
-		match self {
-			Self::Featured => HomeComponentValue::empty_big_scroller(),
-			Self::Ranked => HomeComponentValue::empty_manga_list(),
-			Self::Row => HomeComponentValue::empty_scroller(),
-		}
-	}
-}
-
+const POPULAR: &str = "popular";
 const NOVELS: &str = "novels";
 const SPOTLIGHT: &str = "genreSpotlight";
 
-/// Id, title, subtitle and layout; each id is also the id of the section's listing.
-const SECTIONS: [(&str, &str, Option<&str>, Layout); 14] = [
-	(
-		"popular",
-		"Popular This Week",
-		Some("Most read this week"),
-		Layout::Featured,
-	),
-	(
-		"recentlyUpdated",
-		"Recently Updated",
-		Some("Fresh chapters"),
-		Layout::Row,
-	),
-	(
-		"hotUpdates",
-		"Hot Updates",
-		Some("Busy right now"),
-		Layout::Row,
-	),
-	("rising", "Rising", Some("Climbing fast"), Layout::Row),
-	(
-		"topRated",
-		"Top Rated",
-		Some("Highest scores"),
-		Layout::Ranked,
-	),
-	(SPOTLIGHT, "Spotlight", None, Layout::Row),
-	(
-		"hotArrivals",
-		"Hot Arrivals",
-		Some("New and popular"),
-		Layout::Row,
-	),
-	(
-		"mostBookmarked",
-		"Most Bookmarked This Week",
-		Some("Reader favourites"),
-		Layout::Ranked,
-	),
-	(
-		"mostTalkedAbout",
-		"Most Talked About This Week",
-		Some("Most discussed"),
-		Layout::Row,
-	),
-	(
-		NOVELS,
-		"Most Popular Novels",
-		Some("All time"),
-		Layout::Ranked,
-	),
-	(
-		"recentlyAdded",
-		"Recently Added",
-		Some("New titles"),
-		Layout::Row,
-	),
-	("hiddenGems", "Hidden Gems", None, Layout::Row),
-	("bingeWorthy", "Binge-Worthy", None, Layout::Row),
-	("mostPolarizing", "Most Polarizing", None, Layout::Row),
+const SECTIONS: [(&str, &str); 14] = [
+	(POPULAR, "Popular This Week"),
+	("hotUpdates", "Hot Updates"),
+	("rising", "Rising"),
+	("recentlyUpdated", "Recently Updated"),
+	("topRated", "Top Rated"),
+	(SPOTLIGHT, "Spotlight"),
+	("hotArrivals", "Hot Arrivals"),
+	("mostBookmarked", "Most Bookmarked This Week"),
+	("mostTalkedAbout", "Most Talked About This Week"),
+	(NOVELS, "Most Popular Novels"),
+	("recentlyAdded", "Recently Added"),
+	("hiddenGems", "Hidden Gems"),
+	("bingeWorthy", "Binge-Worthy"),
+	("mostPolarizing", "Most Polarizing"),
 ];
 
 fn section_request(id: &str, page: i32) -> Result<Option<Request>> {
@@ -105,7 +43,7 @@ fn section_request(id: &str, page: i32) -> Result<Option<Request>> {
 		if search.matches_nothing() {
 			return Ok(None);
 		}
-		return request(&search.url(page)).map(Some);
+		return request(&search.url(page, &[])).map(Some);
 	}
 	feed_url(id, page)?.map(|url| request(&url)).transpose()
 }
@@ -140,7 +78,7 @@ pub fn listing_page(id: &str, page: i32) -> Result<MangaPageResult> {
 	})
 }
 
-fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<HomeComponentValue> {
+fn fill(id: &str, name: &str, response: Response) -> Result<HomeComponentValue> {
 	let label_novels = settings::label_novels();
 	let listing = Some(Listing {
 		id: id.into(),
@@ -149,9 +87,7 @@ fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<Home
 	});
 	if id == NOVELS {
 		let response: SearchResponse = parse(response)?;
-		return Ok(HomeComponentValue::MangaList {
-			ranking: true,
-			page_size: Some(5),
+		return Ok(HomeComponentValue::Scroller {
 			entries: response
 				.hits
 				.into_iter()
@@ -161,52 +97,42 @@ fn fill(id: &str, name: &str, layout: Layout, response: Response) -> Result<Home
 		});
 	}
 	let (items, _) = feed_items(response)?;
-	Ok(match layout {
-		Layout::Featured => {
-			// The feed has no descriptions or authors, so one search request fills them in.
-			let ids = items
-				.iter()
-				.map(|item| item.id.as_str())
-				.collect::<Vec<_>>();
-			let mut documents = get::<SearchResponse>(&lookup_url(&ids, FEATURED_FIELDS))
-				.map(|response| {
-					response
-						.hits
-						.into_iter()
-						.map(|hit| hit.document)
-						.collect::<Vec<_>>()
-				})
-				.unwrap_or_default();
-			HomeComponentValue::BigScroller {
-				entries: items
+	Ok(if id == POPULAR {
+		// The feed has no descriptions or authors, so one search request fills them in.
+		let ids = items
+			.iter()
+			.map(|item| item.id.as_str())
+			.collect::<Vec<_>>();
+		let mut documents = get::<SearchResponse>(&lookup_url(&ids, FEATURED_FIELDS))
+			.map(|response| {
+				response
+					.hits
 					.into_iter()
-					.map(|item| {
-						let document = documents
-							.iter()
-							.position(|document| document.id == item.id)
-							.map(|index| documents.swap_remove(index));
-						item.into_featured(label_novels, document)
-					})
-					.collect(),
-				auto_scroll_interval: Some(8.0),
-			}
+					.map(|hit| hit.document)
+					.collect::<Vec<_>>()
+			})
+			.unwrap_or_default();
+		HomeComponentValue::BigScroller {
+			entries: items
+				.into_iter()
+				.map(|item| {
+					let document = documents
+						.iter()
+						.position(|document| document.id == item.id)
+						.map(|index| documents.swap_remove(index));
+					item.into_featured(label_novels, document)
+				})
+				.collect(),
+			auto_scroll_interval: Some(8.0),
 		}
-		Layout::Ranked => HomeComponentValue::MangaList {
-			ranking: true,
-			page_size: Some(5),
+	} else {
+		HomeComponentValue::Scroller {
 			entries: items
 				.into_iter()
 				.map(|item| item.into_manga(label_novels).into())
 				.collect(),
 			listing,
-		},
-		Layout::Row => HomeComponentValue::Scroller {
-			entries: items
-				.into_iter()
-				.map(|item| item.into_manga(label_novels).into())
-				.collect(),
-			listing,
-		},
+		}
 	})
 }
 
@@ -215,7 +141,7 @@ impl Home for Atsumaru {
 		let shown = settings::home_sections();
 		let mut sections = Vec::new();
 		let mut requests = Vec::new();
-		for (id, name, subtitle, layout) in SECTIONS {
+		for (id, name) in SECTIONS {
 			if shown
 				.as_ref()
 				.is_some_and(|shown| !shown.iter().any(|value| value == id))
@@ -228,7 +154,7 @@ impl Home for Atsumaru {
 				} else {
 					name.into()
 				};
-				sections.push((id, name, subtitle, layout));
+				sections.push((id, name));
 				requests.push(request);
 			}
 		}
@@ -237,10 +163,14 @@ impl Home for Atsumaru {
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: sections
 				.iter()
-				.map(|(_, name, subtitle, layout)| HomeComponent {
+				.map(|(id, name)| HomeComponent {
 					title: Some(name.clone()),
-					subtitle: subtitle.map(Into::into),
-					value: layout.empty(),
+					subtitle: None,
+					value: if *id == POPULAR {
+						HomeComponentValue::empty_big_scroller()
+					} else {
+						HomeComponentValue::empty_scroller()
+					},
 				})
 				.collect(),
 		}));
@@ -251,14 +181,14 @@ impl Home for Atsumaru {
 		let components = sections
 			.into_iter()
 			.zip(Request::send_all(requests))
-			.filter_map(|((id, name, subtitle, layout), response)| {
+			.filter_map(|((id, name), response)| {
 				let value = response
 					.map_err(Into::into)
-					.and_then(|response| fill(id, &name, layout, response))
+					.and_then(|response| fill(id, &name, response))
 					.ok()?;
 				Some(HomeComponent {
 					title: Some(name),
-					subtitle: subtitle.map(Into::into),
+					subtitle: None,
 					value,
 				})
 			})

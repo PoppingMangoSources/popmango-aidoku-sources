@@ -1,6 +1,6 @@
 use crate::{
 	helpers::{ADULT_GENRES, HENTAI, allows, spotlight_genre},
-	models::{ErrorResponse, SearchResponse},
+	models::{ErrorResponse, FeedResponse, SearchResponse},
 	settings::{self, CONTENT_TYPES, RATINGS},
 };
 use aidoku::{
@@ -19,7 +19,6 @@ const SEARCH_LIMIT: i32 = 40;
 const SEARCH_URL: &str = "https://atsu.moe/collections/manga/documents/search";
 pub const API_URL: &str = "https://atsu.moe/api";
 
-// The site's own search weighting.
 const QUERY_BY: &str = "title,englishTitle,otherNames,authors,acronyms";
 const QUERY_BY_WEIGHTS: &str = "4,3,2,2,1";
 const NUM_TYPOS: &str = "4,3,2,1,0";
@@ -31,19 +30,28 @@ pub const RATING_FIELDS: &str = "id,isAdult,mbContentRating,genreIds";
 pub const FEATURED_FIELDS: &str =
 	"id,synopsis,authors,status,tags,isAdult,mbContentRating,genreIds";
 
-/// Search sorts in `filters.json` order. Relevance ranks a text search by match and anything
-/// else as the site's default does.
-const SORTS: [&str; 7] = [
+/// Indexed sorts in `filters.json` order, then the ranked feeds, then Random.
+const SORTS: [&str; 6] = [
 	"views:desc",
-	"views:desc",
+	"title:asc",
 	"trending:desc",
 	"dateAdded:desc",
 	"releaseDate:desc",
 	"mbRating:desc",
-	"title:asc",
 ];
-const RELEVANCE: usize = 0;
-const POPULARITY: usize = 1;
+const FEEDS: [&str; 9] = [
+	"hotUpdates",
+	"recentlyUpdated",
+	"rising",
+	"hotArrivals",
+	"mostBookmarked",
+	"mostTalkedAbout",
+	"bingeWorthy",
+	"mostPolarizing",
+	"hiddenGems",
+];
+const RANDOM: usize = SORTS.len() + FEEDS.len();
+const POPULARITY: usize = 0;
 const TOP_RATED: usize = 5;
 
 pub fn request(url: &str) -> Result<Request> {
@@ -100,46 +108,18 @@ fn split_types(types: &[String]) -> (Vec<&str>, bool) {
 	(comics, allows(types, "Novel"))
 }
 
-/// A home feed or one of its listings; `None` when the settings leave it nothing to show.
 pub fn feed_url(id: &str, page: i32) -> Result<Option<String>> {
-	let mut query = QueryParameters::new();
+	let search = SearchParams::new(None);
+	if search.matches_nothing() {
+		return Ok(None);
+	}
+	let mut query = search.feed_parameters(page);
 	match id {
 		"popular" | "mostBookmarked" | "mostTalkedAbout" => query.push("timeframe", Some("weekly")),
 		"genreSpotlight" => query.push("genre", Some(spotlight_genre())),
 		"hotUpdates" | "recentlyUpdated" | "rising" | "hotArrivals" | "recentlyAdded"
 		| "topRated" | "hiddenGems" | "bingeWorthy" | "mostPolarizing" => {}
 		_ => bail!("Unknown listing"),
-	}
-	let types = settings::content_types();
-	let ratings = settings::content_ratings();
-	let adult_only = settings::adult_only();
-	let (comics, novels) = split_types(&types);
-	if (comics.is_empty() && !novels) || (ratings.is_empty() && !adult_only) {
-		return Ok(None);
-	}
-	query.push("offset", Some(&((page - 1) * FEED_LIMIT).to_string()));
-	query.push("limit", Some(&FEED_LIMIT.to_string()));
-	// The feeds AND these together, so a comic type would drop novels of other types; with
-	// novels on, the types are applied to the items instead.
-	let mediums: Vec<&str> = [(!comics.is_empty(), "Comic"), (novels, "Novel")]
-		.into_iter()
-		.filter_map(|(wanted, medium)| wanted.then_some(medium))
-		.collect();
-	query.push("mediums", Some(&mediums.join(",")));
-	if !novels {
-		query.push("types", Some(&comics.join(",")));
-	}
-	let mut excluded = settings::hidden_genres();
-	excluded.extend(settings::hidden_tags());
-	if adult_only {
-		query.push("adult", Some("1"));
-	} else {
-		// The feeds take genre and tag ids in one parameter; the two never share an id.
-		excluded.extend(excluded_rating_genres(&ratings).into_iter().map(Into::into));
-		query.push("contentRatings", Some(&ratings.join(",")));
-	}
-	if !excluded.is_empty() {
-		query.push("excludedTags", Some(&excluded.join(",")));
 	}
 	Ok(Some(format!("{API_URL}/home2/{id}?{query}")))
 }
@@ -158,6 +138,7 @@ pub fn lookup_url(ids: &[&str], fields: &str) -> String {
 pub struct SearchParams {
 	pub query: Option<String>,
 	pub sort: usize,
+	pub seed: u32,
 	pub genres: Vec<String>,
 	pub excluded_genres: Vec<String>,
 	pub any_genre: bool,
@@ -175,7 +156,6 @@ pub struct SearchParams {
 }
 
 impl SearchParams {
-	/// Settings first; filters then override them.
 	pub fn new(query: Option<String>) -> Self {
 		Self {
 			query,
@@ -188,12 +168,45 @@ impl SearchParams {
 		}
 	}
 
-	/// The novel ranking, which the feeds can't serve whole.
+	// The novel feed is incomplete; use indexed popularity.
 	pub fn novels() -> Self {
 		let mut search = Self::new(None);
-		search.sort = POPULARITY;
 		search.types.retain(|kind| kind == "Novel");
 		search
+	}
+
+	fn feed_parameters(&self, page: i32) -> QueryParameters {
+		let mut query = QueryParameters::new();
+		let (comics, novels) = split_types(&self.types);
+		query.push("offset", Some(&((page - 1) * FEED_LIMIT).to_string()));
+		query.push("limit", Some(&FEED_LIMIT.to_string()));
+		// The feeds AND these together, so a comic type would drop novels of other types; with
+		// novels on, the types are applied to the items instead.
+		let mediums: Vec<&str> = [(!comics.is_empty(), "Comic"), (novels, "Novel")]
+			.into_iter()
+			.filter_map(|(wanted, medium)| wanted.then_some(medium))
+			.collect();
+		query.push("mediums", Some(&mediums.join(",")));
+		if !novels {
+			query.push("types", Some(&comics.join(",")));
+		}
+		let mut excluded = self
+			.excluded_genres
+			.iter()
+			.chain(&self.excluded_tags)
+			.map(String::as_str)
+			.collect::<Vec<_>>();
+		if self.adult_only {
+			query.push("adult", Some("1"));
+		} else {
+			// The feeds take genre and tag ids in one parameter; the two never share an id.
+			excluded.extend(excluded_rating_genres(&self.ratings));
+			query.push("contentRatings", Some(&self.ratings.join(",")));
+		}
+		if !excluded.is_empty() {
+			query.push("excludedTags", Some(&excluded.join(",")));
+		}
+		query
 	}
 
 	pub fn matches_nothing(&self) -> bool {
@@ -295,7 +308,7 @@ impl SearchParams {
 		}
 		self.rating_clauses(&mut clauses);
 		match self.sort {
-			RELEVANCE | POPULARITY => clauses.push("views:>0".into()),
+			POPULARITY => clauses.push("views:>0".into()),
 			TOP_RATED => clauses.push("mbRating:>0".into()),
 			_ => {}
 		}
@@ -303,7 +316,7 @@ impl SearchParams {
 		clauses.join(" && ")
 	}
 
-	pub fn url(&self, page: i32) -> String {
+	pub fn url(&self, page: i32, ids: &[&str]) -> String {
 		let mut query = QueryParameters::new();
 		query.push("q", Some(self.query.as_deref().unwrap_or("*")));
 		query.push("query_by", Some(QUERY_BY));
@@ -311,15 +324,34 @@ impl SearchParams {
 		query.push("num_typos", Some(NUM_TYPOS));
 		query.push("prefix", Some(PREFIX));
 		query.push("include_fields", Some(CARD_FIELDS));
-		query.push("filter_by", Some(&self.filter_by()));
+		let mut filter = self.filter_by();
+		if !ids.is_empty() {
+			filter.push_str(&format!(" && id:={}", list(ids)));
+		}
+		query.push("filter_by", Some(&filter));
 		query.push("page", Some(&page.to_string()));
 		query.push("per_page", Some(&SEARCH_LIMIT.to_string()));
 		if self.query.is_some() {
 			query.push("infix", Some(INFIX));
-		}
-		if self.query.is_none() || self.sort != RELEVANCE {
-			let sort = SORTS.get(self.sort).copied().unwrap_or(SORTS[RELEVANCE]);
-			query.push("sort_by", Some(sort));
+		} else {
+			let sort = if self.sort == RANDOM {
+				let fields = ["shuffleA", "shuffleB"];
+				let seed = self.seed.max(1);
+				let first = fields[seed as usize % 2];
+				let second = fields[(seed as usize + 1) % 2];
+				if seed >> 1 & 1 == 1 {
+					format!("_eval({first}:<={seed}):desc,{first}:desc,{second}:desc")
+				} else {
+					format!("_eval({first}:>={seed}):desc,{first}:asc,{second}:asc")
+				}
+			} else {
+				SORTS
+					.get(self.sort)
+					.copied()
+					.unwrap_or(SORTS[POPULARITY])
+					.into()
+			};
+			query.push("sort_by", Some(&sort));
 		}
 		format!("{SEARCH_URL}?{query}")
 	}
@@ -328,7 +360,49 @@ impl SearchParams {
 		if self.matches_nothing() {
 			return Ok(MangaPageResult::default());
 		}
-		let response: SearchResponse = get(&self.url(page))?;
+		if let Some(id) = self
+			.sort
+			.checked_sub(SORTS.len())
+			.and_then(|index| FEEDS.get(index))
+		{
+			let mut query = self.feed_parameters(page);
+			if matches!(*id, "mostBookmarked" | "mostTalkedAbout") {
+				query.push("timeframe", Some("weekly"));
+			}
+			let response: FeedResponse = get(&format!("{API_URL}/home2/{id}?{query}"))?;
+			let has_next_page = response.items.len() as i32 == FEED_LIMIT;
+			if response.items.is_empty() {
+				return Ok(MangaPageResult::default());
+			}
+			// One indexed lookup applies every search filter while preserving feed order.
+			let ids = response
+				.items
+				.iter()
+				.map(|item| item.id.as_str())
+				.collect::<Vec<_>>();
+			let matched: SearchResponse = get(&self.url(1, &ids))?;
+			let mut documents = matched.hits;
+			let entries = response
+				.items
+				.into_iter()
+				.filter_map(|item| {
+					let index = documents
+						.iter()
+						.position(|hit| hit.document.id == item.id)?;
+					Some(
+						documents
+							.swap_remove(index)
+							.document
+							.into_manga(label_novels),
+					)
+				})
+				.collect();
+			return Ok(MangaPageResult {
+				entries,
+				has_next_page,
+			});
+		}
+		let response: SearchResponse = get(&self.url(page, &[]))?;
 		Ok(response.into_page(label_novels))
 	}
 }

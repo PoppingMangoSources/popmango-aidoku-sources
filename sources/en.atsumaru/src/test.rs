@@ -7,6 +7,7 @@ use aidoku::{
 	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
+use api::SearchParams;
 use serde::Deserialize;
 
 const COMIC: &str = "n86El";
@@ -227,17 +228,49 @@ fn pasted_links() {
 
 #[aidoku_test]
 fn sorts() {
-	for index in 0..7 {
+	for index in 0..16 {
 		assert!(
 			!search(None, vec![sort(index)]).entries.is_empty(),
 			"{index}"
 		);
 	}
-	// A sort picked alongside a query replaces relevance.
-	assert_ne!(
+	// Title uses the site's collation, so only check it is its own, stable order.
+	let titled = keys(&search(None, vec![sort(1)]));
+	assert_eq!(titled, keys(&search(None, vec![sort(1)])));
+	assert_ne!(titled, keys(&search(None, vec![sort(0)])));
+	// A text query is ranked by match whatever the sort.
+	assert_eq!(
 		keys(&search(Some("sword"), Vec::new())),
-		keys(&search(Some("sword"), vec![sort(6)]))
+		keys(&search(Some("sword"), vec![sort(1)]))
 	);
+}
+
+#[aidoku_test]
+fn feed_sorts() {
+	// Rising is the third feed sort: the feed's order, narrowed by the search filters.
+	let feed = keys(&listing("rising", 1));
+	let narrowed = search(None, vec![sort(8), multi("genre", &["39"])]);
+	assert!(!narrowed.entries.is_empty());
+	assert!(docs(&narrowed).iter().all(|doc| doc.has_genre("39")));
+	let mut position = 0;
+	for key in keys(&narrowed) {
+		position += feed[position..]
+			.iter()
+			.position(|feed_key| *feed_key == key)
+			.unwrap() + 1;
+	}
+}
+
+#[aidoku_test]
+fn random_sort() {
+	let shuffled = |seed: u32| {
+		let mut params = SearchParams::new(None);
+		params.sort = 15;
+		params.seed = seed;
+		keys(&params.page(1, false).unwrap())
+	};
+	assert_eq!(shuffled(7), shuffled(7));
+	assert_ne!(shuffled(7), shuffled(8));
 }
 
 #[aidoku_test]

@@ -26,12 +26,16 @@ use models::{
 	ChaptersResponse, MangaPage, NovelResponse, PageResponse, ReadResponse, SearchResponse,
 };
 
-struct Atsumaru;
+struct Atsumaru {
+	seed: u32,
+}
 
 impl Source for Atsumaru {
 	fn new() -> Self {
 		set_rate_limit(10, 1, TimeUnit::Seconds);
-		Self
+		Self {
+			seed: aidoku::imports::std::current_date().rem_euclid(2_147_483_646) as u32 + 1,
+		}
 	}
 
 	fn get_search_manga_list(
@@ -40,7 +44,6 @@ impl Source for Atsumaru {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		// A pasted link opens its series; anything else is searched as text.
 		if let Some((key, _)) = query.as_deref().map(str::trim).and_then(parse_link) {
 			let found: SearchResponse = get(&lookup_url(&[&key], CARD_FIELDS))?;
 			if !found.hits.is_empty() {
@@ -49,6 +52,7 @@ impl Source for Atsumaru {
 		}
 
 		let mut search = SearchParams::new(query);
+		search.seed = self.seed;
 		let mut tapped = Vec::new();
 		for filter in filters {
 			match filter {
@@ -66,7 +70,6 @@ impl Source for Atsumaru {
 						search.demographics = included;
 						search.excluded_tags.extend(excluded);
 					}
-					// Each overrides its setting for this search.
 					"type" => search.types = included,
 					"rating" => {
 						search.ratings = included;
@@ -77,7 +80,6 @@ impl Source for Atsumaru {
 				},
 				FilterValue::Select { id, value } => match id.as_str() {
 					"genre_match" => search.any_genre = value == "any",
-					// Sent when a tag is tapped.
 					"genre" => tapped.push(value),
 					_ => {}
 				},

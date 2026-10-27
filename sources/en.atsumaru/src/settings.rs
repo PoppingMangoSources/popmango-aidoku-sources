@@ -4,7 +4,6 @@ use aidoku::{
 	imports::defaults::defaults_get,
 };
 
-/// The options under Content Types and Content Ratings in settings.json.
 pub const CONTENT_TYPES: [&str; 6] = ["Manga", "Manwha", "Manhua", "OEL", "Other", "Novel"];
 pub const RATINGS: [&str; 4] = ["Safe", "Suggestive", "Erotica", "Pornographic"];
 const DEFAULT_RATINGS: [&str; 3] = ["Safe", "Suggestive", "Erotica"];
@@ -34,7 +33,6 @@ pub fn hidden_genres() -> Vec<String> {
 	defaults_get::<Vec<String>>("hiddenGenres").unwrap_or_default()
 }
 
-/// Each tag group has its own list on the Hidden Tags page.
 pub fn hidden_tags_key(group: &str) -> String {
 	format!("hiddenTags.{group}")
 }

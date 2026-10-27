@@ -53,7 +53,6 @@ impl FeedItem {
 		}
 	}
 
-	/// The big scroller is the one place for details; search adds what the feed lacks.
 	pub fn into_featured(self, label_novels: bool, document: Option<SearchDocument>) -> Manga {
 		let viewer = viewer(self.kind.as_deref(), self.medium.as_deref());
 		let cover = self
@@ -114,7 +113,6 @@ pub struct SearchHit {
 	pub document: SearchDocument,
 }
 
-/// One shape for every search request; each asks only for the fields it needs.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchDocument {
@@ -235,7 +233,6 @@ impl MangaInfo {
 		is_novel(self.medium.as_deref())
 	}
 
-	/// `rating` comes from search, since the page has none.
 	pub fn into_manga(self, label_novels: bool, rating: Option<SearchDocument>) -> Manga {
 		let novel = self.is_novel();
 		let content_rating = rating.map_or_else(
