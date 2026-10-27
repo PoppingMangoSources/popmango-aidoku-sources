@@ -17,10 +17,7 @@ use aidoku::{
 	},
 	prelude::*,
 };
-use api::{
-	CARD_FIELDS, RATING_FIELDS, SearchParams, chapters_url, get, lookup_url, manga_page_url, parse,
-	read_url, request,
-};
+use api::{API_URL, CARD_FIELDS, RATING_FIELDS, SearchParams, get, lookup_url, parse, request};
 use helpers::{arrange_chapters, is_novel, is_novel_url, page_url, parse_link};
 use models::{
 	ChaptersResponse, MangaPage, NovelResponse, PageResponse, ReadResponse, SearchResponse,
@@ -124,7 +121,7 @@ impl Source for Atsumaru {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let page_request = request(&manga_page_url(&manga.key))?;
+		let page_request = request(&format!("{API_URL}/manga/page?id={}", manga.key))?;
 		// The page has no content rating, so details also look the series up in search.
 		let (page, rating) = if needs_details {
 			let rating_request = request(&lookup_url(&[&manga.key], RATING_FIELDS))?;
@@ -162,7 +159,8 @@ impl Source for Atsumaru {
 		if needs_chapters {
 			// The series page carries only the first chapters of a long list.
 			let chapters = if has_more_chapters {
-				get::<ChaptersResponse>(&chapters_url(&manga.key))?.chapters
+				let url = format!("{API_URL}/manga/allChapters?mangaId={}", manga.key);
+				get::<ChaptersResponse>(&url)?.chapters
 			} else {
 				chapters
 			};
@@ -180,7 +178,11 @@ impl Source for Atsumaru {
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let novel = is_novel_url(chapter.url.as_deref()) || is_novel_url(manga.url.as_deref());
-		let url = read_url(&manga.key, &chapter.key, novel);
+		let kind = if novel { "novelChapter" } else { "chapter" };
+		let url = format!(
+			"{API_URL}/read/{kind}?mangaId={}&chapterId={}",
+			manga.key, chapter.key
+		);
 
 		if novel {
 			let paragraphs = get::<NovelResponse>(&url)?.read_novel_chapter.paragraphs;

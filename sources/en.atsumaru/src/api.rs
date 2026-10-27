@@ -393,28 +393,3 @@ impl SearchParams {
 		Ok(response.into_page(label_novels))
 	}
 }
-
-fn api_url(path: &str, params: &[(&str, &str)]) -> String {
-	let mut query = QueryParameters::new();
-	for (name, value) in params {
-		query.push(name, Some(value));
-	}
-	format!("{API_URL}/{path}?{query}")
-}
-
-pub fn manga_page_url(id: &str) -> String {
-	api_url("manga/page", &[("id", id)])
-}
-
-pub fn chapters_url(id: &str) -> String {
-	api_url("manga/allChapters", &[("mangaId", id)])
-}
-
-pub fn read_url(manga_id: &str, chapter_id: &str, novel: bool) -> String {
-	let path = if novel {
-		"read/novelChapter"
-	} else {
-		"read/chapter"
-	};
-	api_url(path, &[("mangaId", manga_id), ("chapterId", chapter_id)])
-}
