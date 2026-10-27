@@ -1057,10 +1057,11 @@ reaches the site, unless marked.
   (`daily`, `weekly`, `monthly`, `all`; anything else is a 400); the other feeds accept and
   ignore it (probed). The site's Explore offers a period on the Popularity, Most Bookmarked and
   Most Talked About sorts, All by default; with All, Popularity is the index's `views` sort, and
-  otherwise the `popular` feed. Each has a setting, `<feed>Timeframe`, defaulting to all, that
-  applies only to those search sorts; the home sections and their listings rank by week, as the
-  site's home does. A feed sort reads the feed with the settings, then
-  narrows it with one search lookup over its ids, so every search filter applies and the
+  otherwise the `popular` feed. Each has a setting, `<feed>Timeframe`, defaulting to weekly,
+  that applies only to its Discover section and linked listing. Search ignores these settings:
+  Popularity uses the index's `views` sort, and Most Bookmarked and Most Talked About use the
+  all-time feeds. A feed sort reads the feed with the content settings, then narrows it with one
+  search lookup over its ids, so every search filter applies and the
   feed's order is kept. Random sorts on the index's `shuffleA`/`shuffleB` fields from a seed
   the source picks at launch, so paging stays in one order until the app restarts.
 - **Search** is Typesense: `q` (`*` for none), `filter_by`, `sort_by`, `page`, `per_page`,

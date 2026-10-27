@@ -45,9 +45,9 @@ pub fn hidden_tags() -> Vec<String> {
 		.collect()
 }
 
-/// The period a ranked search sort covers; All is the site's own default.
+/// Discover ranking periods; search uses the site defaults.
 pub fn timeframe(feed: &str) -> String {
-	defaults_get::<String>(&format!("{feed}Timeframe")).unwrap_or_else(|| "all".into())
+	defaults_get::<String>(&format!("{feed}Timeframe")).unwrap_or_else(|| "weekly".into())
 }
 
 pub fn home_sections() -> Option<Vec<String>> {

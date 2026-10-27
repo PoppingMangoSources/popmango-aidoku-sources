@@ -351,19 +351,13 @@ impl SearchParams {
 		if self.matches_nothing() {
 			return Ok(MangaPageResult::default());
 		}
-		let feed = match self.sort.checked_sub(SORTS.len()) {
-			Some(index) => FEEDS.get(index).map(|id| {
-				let timeframe = RANKED.contains(id).then(|| settings::timeframe(id));
-				(*id, timeframe)
-			}),
-			// Popularity over a period is the popular feed; over all time, the index's views.
-			None if self.sort == POPULARITY => Some(settings::timeframe("popular"))
-				.filter(|timeframe| timeframe != "all")
-				.map(|timeframe| ("popular", Some(timeframe))),
-			None => None,
-		};
-		if let Some((id, timeframe)) = feed {
-			let response: FeedResponse = get(&self.feed_url(id, page, timeframe.as_deref())?)?;
+		let feed = self
+			.sort
+			.checked_sub(SORTS.len())
+			.and_then(|index| FEEDS.get(index));
+		if let Some(id) = feed {
+			let response: FeedResponse =
+				get(&self.feed_url(id, page, RANKED.contains(id).then_some("all"))?)?;
 			let has_next_page = response.items.len() as i32 == FEED_PAGE_SIZE;
 			if response.items.is_empty() {
 				return Ok(MangaPageResult::default());

@@ -260,23 +260,41 @@ fn sort_directions() {
 
 #[aidoku_test]
 fn timeframes() {
-	// All time by default, where Popularity is the index's order and the arrow reverses it.
-	let all_time = keys(&search(None, vec![sort(0, false)]));
-	let weekly = keys(&listing("popular", 1));
-	defaults_set("popularTimeframe", DefaultValue::String("daily".into()));
-	let today = keys(&search(None, vec![sort(0, false)]));
-	let today_reversed = keys(&search(None, vec![sort(0, true)]));
-	let home = Atsumaru::new().get_home().unwrap();
-	let home_listing = keys(&listing("popular", 1));
-	clear(&["popularTimeframe"]);
-	assert_ne!(today, all_time);
-	assert_eq!(today, today_reversed);
-	// The home page keeps the week whatever the setting.
-	assert_eq!(home_listing, weekly);
-	assert_eq!(
-		home.components[0].title.as_deref(),
-		Some("Popular This Week")
+	let sorts = [
+		("popular", 0),
+		("mostBookmarked", 10),
+		("mostTalkedAbout", 11),
+	];
+	let before = sorts
+		.iter()
+		.map(|(_, index)| keys(&search(None, vec![sort(*index, false)])))
+		.collect::<Vec<_>>();
+	for (id, _) in sorts {
+		defaults_set(
+			&format!("{id}Timeframe"),
+			DefaultValue::String("monthly".into()),
+		);
+	}
+	for ((_, index), expected) in sorts.iter().zip(before) {
+		assert_eq!(keys(&search(None, vec![sort(*index, false)])), expected);
+	}
+	defaults_set(
+		"homeSections",
+		strings(&["popular", "mostBookmarked", "mostTalkedAbout"]),
 	);
+	let home = Atsumaru::new().get_home().unwrap();
+	assert_eq!(home.components.len(), 3);
+	for component in home.components {
+		assert!(component.title.unwrap().ends_with("This Month"));
+	}
+	for (id, _) in sorts {
+		let params = SearchParams::new(None);
+		let expected: models::FeedResponse =
+			api::get(&params.feed_url(id, 1, Some("monthly")).unwrap()).unwrap();
+		assert_eq!(listing(id, 1).entries[0].key, expected.items[0].id);
+		defaults_set(&format!("{id}Timeframe"), DefaultValue::Null);
+	}
+	clear(&["homeSections"]);
 }
 
 #[aidoku_test]

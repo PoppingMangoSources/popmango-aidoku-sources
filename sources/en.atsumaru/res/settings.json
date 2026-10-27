@@ -135,7 +135,7 @@
 	{
 		"type": "group",
 		"title": "Rankings",
-		"footer": "The period each ranking sort covers in search, All by default as on the site. The home page ranks by week.",
+		"footer": "The period covered by Popularity, Most Bookmarked and Most Talked About on Discover and their listings. Search uses the site defaults.",
 		"items": [
 			{
 				"type": "select",
@@ -153,7 +153,11 @@
 					"This Month",
 					"All Time"
 				],
-				"default": "all"
+				"default": "weekly",
+				"refreshes": [
+					"content",
+					"listings"
+				]
 			},
 			{
 				"type": "select",
@@ -171,7 +175,11 @@
 					"This Month",
 					"All Time"
 				],
-				"default": "all"
+				"default": "weekly",
+				"refreshes": [
+					"content",
+					"listings"
+				]
 			},
 			{
 				"type": "select",
@@ -189,7 +197,11 @@
 					"This Month",
 					"All Time"
 				],
-				"default": "all"
+				"default": "weekly",
+				"refreshes": [
+					"content",
+					"listings"
+				]
 			}
 		]
 	},
