@@ -987,6 +987,12 @@ reaches the site, unless marked.
 - **Home** sends the layout as a partial, then returns the sections that loaded, so a failed
   one drops out rather than leaving an empty row; with every section failing it reports an
   error.
+- **Sorts.** Popularity, Title, Trending, Recently Added, Release Date, Top Rated, then the nine
+  ranked feeds (Hot Updates to Hidden Gems), then Random. A text query is ranked by match, so
+  the indexed sorts apply only without one. A feed sort reads the feed with the settings, then
+  narrows it with one search lookup over its ids, so every search filter applies and the
+  feed's order is kept. Random sorts on the index's `shuffleA`/`shuffleB` fields from a seed
+  the source picks at launch, so paging stays in one order until the app restarts.
 - **Search** is Typesense: `q` (`*` for none), `filter_by`, `sort_by`, `page`, `per_page`,
   `include_fields`. `filter_by` takes `&&`, `||` and parentheses; values are backtick-quoted
   (escape backticks and backslashes). `tags` holds genre names, `genreIds`/`tagIds` the ids;
