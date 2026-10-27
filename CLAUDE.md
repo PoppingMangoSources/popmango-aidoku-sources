@@ -646,9 +646,11 @@ went in one of these ways, and new ones go in the same way:
   defines that few or no merged sources share. For each, either the site needs it or there is
   a usual equivalent among sources built the same way (section 6): `API_URL` for the API base
   (20 sources), a fetch function for a filter list (`en.toonkotsu`'s `listed_facets`),
-  `SearchParams`/`BrowseParams` for search parameters, `ErrorResponse` for an API error,
-  "Blocked Groups" for excluded scanlators (`multi.mangadex`), and `GroupSetting`s rather
-  than a `PageSetting`, which no merged source uses. Run it before a submission.
+  `SearchParams`/`BrowseParams` for search parameters, and `ErrorResponse` for an API error.
+  An equivalent isn't always better: `en.atsumaru` keeps a `PageSetting` for its Hidden Tags
+  (no merged source uses one) and "Excluded Scanlators" rather than MangaDex's "Blocked
+  Groups", because the owner found them clearer in the app. Run it before a submission, and
+  put each swap to the person.
 - `scripts/check-host-reference.py` compares the files `references/aidoku-host.md` cites in
   AidokuRunner, the Aidoku app and aidoku-rs with each repository's `main`, and lists the ones
   that changed. **Host reference** (`host-reference.yaml`) runs it every Monday and when the
@@ -988,16 +990,17 @@ reaches the site, unless marked.
   novels or one comic type from Discover). The site's tag groups are **not**
   search filters (the owner's call): a tapped tag still searches by its id, and each group
   has a Hidden Tags list in settings. The site has 6,140 tags, too many for one list, so the
-  19 group lists sit in their own Hidden Tags group. Blocked Groups (key
-  `excludedScanlators`, kept so stored lists survive) leaves chapters from named groups out.
+  19 group lists sit on a Hidden Tags page under Exclusions, which keeps the settings short
+  (the owner's choice over listing them inline). Excluded Scanlators leaves chapters from
+  named groups out.
 - **Home** sends the layout as a partial, then returns the sections that loaded, so a failed
   one drops out rather than leaving an empty row; with every section failing it reports an
   error.
 - **Sorts.** Popularity, Title, Trending, Recently Added, Release Date, Top Rated, then the nine
-  ranked feeds (Hot Updates to Hidden Gems), then Random. A text query is ranked by match, so
-  the indexed sorts apply only without one. The six indexed sorts reverse with the sort arrow
-  (Typesense takes `field:asc` on each; Title reads from A by default, as Toonkotsu's does);
-  the feeds and Random have one order and ignore it.
+  ranked feeds (Hot Updates to Hidden Gems), then Random. As both reference clients do, the
+  sort applies to text searches too, and the arrow maps straight through: off is `desc`, on is
+  `asc`, for every indexed sort including Title (Typesense takes `field:asc` on each, probed).
+  The feeds and Random have one order and ignore the arrow.
 - **Rankings.** Only `popular`, `mostBookmarked` and `mostTalkedAbout` take `timeframe`
   (`daily`, `weekly`, `monthly`, `all`; anything else is a 400); the other feeds accept and
   ignore it (probed). Each has a setting, `<feed>Timeframe`, defaulting to weekly, that sets
