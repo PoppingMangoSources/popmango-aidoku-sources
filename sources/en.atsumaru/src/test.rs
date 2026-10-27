@@ -238,8 +238,8 @@ fn sorts() {
 	let titled = keys(&search(None, vec![sort(1, false)]));
 	assert_eq!(titled, keys(&search(None, vec![sort(1, false)])));
 	assert_ne!(titled, keys(&search(None, vec![sort(0, false)])));
-	// A text query is ranked by match whatever the sort.
-	assert_eq!(
+	// A text query is sorted too.
+	assert_ne!(
 		keys(&search(Some("sword"), Vec::new())),
 		keys(&search(Some("sword"), vec![sort(1, false)]))
 	);
@@ -248,11 +248,10 @@ fn sorts() {
 #[aidoku_test]
 fn sort_directions() {
 	let sorted = |index: i32, ascending: bool| search(None, vec![sort(index, ascending)]);
-	// Best first by default, and the arrow reverses it.
+	// Descending by default, and the arrow makes it ascending.
 	assert_ne!(keys(&sorted(0, false)), keys(&sorted(0, true)));
-	// Title reads from A by default.
-	let from_a = sorted(1, false).entries[0].title.to_lowercase();
-	let from_z = sorted(1, true).entries[0].title.to_lowercase();
+	let from_z = sorted(1, false).entries[0].title.to_lowercase();
+	let from_a = sorted(1, true).entries[0].title.to_lowercase();
 	assert!(from_z.starts_with('z'), "{from_z}");
 	assert!(!from_a.starts_with('z'), "{from_a}");
 	// The feeds have one order, so the arrow changes nothing.
@@ -486,8 +485,7 @@ fn content_types() {
 
 #[aidoku_test]
 fn exclusions() {
-	// Exclusions, then one Hidden Tags group of lists.
-	assert_eq!(Atsumaru::new().get_dynamic_settings().unwrap().len(), 2);
+	assert_eq!(Atsumaru::new().get_dynamic_settings().unwrap().len(), 1);
 	defaults_set("hiddenGenres", strings(&["39"]));
 	defaults_set("hiddenTags.Settings", strings(&["94"]));
 	let results = [

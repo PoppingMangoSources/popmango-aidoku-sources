@@ -39,7 +39,6 @@ const SORTS: [&str; 6] = [
 	"releaseDate",
 	"mbRating",
 ];
-const TITLE: usize = 1;
 const FEEDS: [&str; 9] = [
 	"hotUpdates",
 	"recentlyUpdated",
@@ -327,25 +326,23 @@ impl SearchParams {
 		query.push("per_page", Some(&SEARCH_LIMIT.to_string()));
 		if self.query.is_some() {
 			query.push("infix", Some(INFIX));
-		} else {
-			let sort = if self.sort == RANDOM {
-				let fields = ["shuffleA", "shuffleB"];
-				let seed = self.seed.max(1);
-				let first = fields[seed as usize % 2];
-				let second = fields[(seed as usize + 1) % 2];
-				if seed >> 1 & 1 == 1 {
-					format!("_eval({first}:<={seed}):desc,{first}:desc,{second}:desc")
-				} else {
-					format!("_eval({first}:>={seed}):desc,{first}:asc,{second}:asc")
-				}
-			} else {
-				// Best first, and Title from A; the feeds and Random have one order.
-				let field = SORTS.get(self.sort).copied().unwrap_or(SORTS[POPULARITY]);
-				let ascending = self.ascending != (self.sort == TITLE);
-				format!("{field}:{}", if ascending { "asc" } else { "desc" })
-			};
-			query.push("sort_by", Some(&sort));
 		}
+		let sort = if self.sort == RANDOM {
+			let fields = ["shuffleA", "shuffleB"];
+			let seed = self.seed.max(1);
+			let first = fields[seed as usize % 2];
+			let second = fields[(seed as usize + 1) % 2];
+			if seed >> 1 & 1 == 1 {
+				format!("_eval({first}:<={seed}):desc,{first}:desc,{second}:desc")
+			} else {
+				format!("_eval({first}:>={seed}):desc,{first}:asc,{second}:asc")
+			}
+		} else {
+			// The feeds and Random have one order.
+			let field = SORTS.get(self.sort).copied().unwrap_or(SORTS[POPULARITY]);
+			format!("{field}:{}", if self.ascending { "asc" } else { "desc" })
+		};
+		query.push("sort_by", Some(&sort));
 		format!("{SEARCH_URL}?{query}")
 	}
 

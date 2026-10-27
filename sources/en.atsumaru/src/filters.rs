@@ -6,7 +6,7 @@ use crate::{
 	settings,
 };
 use aidoku::{
-	DynamicSettings, GroupSetting, MultiSelectSetting, Result, Setting,
+	DynamicSettings, GroupSetting, MultiSelectSetting, PageSetting, Result, Setting,
 	alloc::{String, Vec, format, vec},
 };
 
@@ -117,13 +117,14 @@ impl DynamicSettings for Atsumaru {
 						..Default::default()
 					}
 					.into(),
+					PageSetting {
+						key: "hiddenTagsPage".into(),
+						title: "Hidden Tags".into(),
+						items: tag_lists,
+						..Default::default()
+					}
+					.into(),
 				],
-				..Default::default()
-			}
-			.into(),
-			GroupSetting {
-				title: "Hidden Tags".into(),
-				items: tag_lists,
 				..Default::default()
 			}
 			.into(),

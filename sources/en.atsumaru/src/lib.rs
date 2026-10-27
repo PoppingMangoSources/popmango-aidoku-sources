@@ -166,7 +166,7 @@ impl Source for Atsumaru {
 			} else {
 				chapters
 			};
-			let excluded = settings::blocked_groups();
+			let excluded = settings::excluded_scanlators();
 			let chapters =
 				arrange_chapters(chapters, &scanlators, &excluded, settings::deduplicate())
 					.into_iter()

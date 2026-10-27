@@ -74,7 +74,7 @@ pub fn deduplicate() -> Option<Keep> {
 }
 
 /// Lowercased names; an entry may hold several, separated by commas.
-pub fn blocked_groups() -> Vec<String> {
+pub fn excluded_scanlators() -> Vec<String> {
 	defaults_get::<Vec<String>>("excludedScanlators")
 		.unwrap_or_default()
 		.iter()
