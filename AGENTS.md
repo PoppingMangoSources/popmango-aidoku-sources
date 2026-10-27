@@ -438,9 +438,13 @@ nothing rather than the full list. Sending an explicit "all" list to an inclusiv
 API parameter silently drops every record with a null value in that field, which is
 mostly newly added entries. `en.toonkotsu` (`type`) and `multi.xcomic` (`incTypes`) leave a
 full selection out; `multi.kagane` and `multi.mangadex` send their full lists, which those
-APIs treat the same. Probe what a missing parameter means first: Atsumaru's feeds read a
-missing `contentRatings` as safe-only, so there the full list is the only way to include
-adult titles and is always sent.
+APIs treat the same. Probe what a missing parameter means first. Ratings are the usual
+exception: every merged source whose API reads a missing rating as safe-only sends it on every
+request, all ratings included — `multi.mangadex` (`contentRating[]`), `multi.xcomic`
+(`incContentRatings`), `multi.kagane`, `multi.mangadotnet` (`adult=both`) and `zh.noyacg` (an
+`allow-adult` header). Atsumaru's feeds read a missing `contentRatings` that way too.
+`en.toonkotsu` is the other kind: a missing `sfw` means everything, so it sends `sfw=1` only
+to hide adult titles.
 
 The opposite end matters too: a setting the reader **cleared** must show nothing, not
 everything. If the API has no "none" value, send one it can't match — Toonkotsu answers an
