@@ -346,6 +346,7 @@ call: change it or say why not); **—** needs the site or the app, so it is rea
 | `FEED_LIMIT`, `SEARCH_LIMIT` for page sizes | `PAGE_SIZE` (9 sources), or `<THING>_PAGE_SIZE` for a second one; `RATINGS` is `CONTENT_RATINGS` (`multi.xcomic`). | N |
 | `fn is_novel(&self) { is_novel(self.medium…) }` | A method that only passes its own fields to a free function is a wrapper; call the function. `ja.soraraw` keeps such accessors, so it is a note. | N |
 | `aidoku::imports::std::current_date()` in an expression | Import it. kkantan's own commits write full paths too, so it is a note. | N |
+| Deduplication discarded same-number parts from one scanlator | Select a winning group, keep all its entries for that number and every unnumbered chapter, and break equal rankings by chapter id. Test reversed inputs. | — |
 | The novels row mapped search hits to cards a second way | Reuse the existing conversion (`into_page`) rather than restating it. | — |
 | A comment on the fallback sort described the feeds | When code moves, re-read each comment beside it; a comment true of different code is stale. | — |
 | Full `mediums`/`types` lists sent to the feeds | Probe what a missing parameter means, then send nothing for a full selection, except ratings where missing means safe-only (section 6). | — |
@@ -1100,6 +1101,10 @@ reaches the site, unless marked.
   list chapters newest first, so only deduplicating sorts. One chapter can appear once per
   group; `scanlators` carry a `score`. The page has no rating, so details also look the
   series up in search.
+- **Deduplication.** Pick the winning scanlator for each numbered chapter using the selected
+  measure, then newest upload and chapter id as tie-breakers. Keep all same-number entries
+  from that group, plus all unnumbered chapters; the disabled mode preserves the site order.
+  Test reversed input order, split chapters, ties, all three measures and scanlator exclusions.
 - **Keys.** Series keys remain site ids. Novel chapter keys are `novel/<id>`, including in
   chapter deep links; comic chapter keys remain site ids. Strip the novel prefix only for
   the reader request. Existing installs need a chapter-list refresh to pick up the new keys.

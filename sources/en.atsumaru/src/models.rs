@@ -303,8 +303,8 @@ pub struct ChaptersResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterItem {
-	id: String,
-	scanlation_manga_id: Option<String>,
+	pub id: String,
+	pub scanlation_manga_id: Option<String>,
 	title: Option<String>,
 	pub number: Option<f32>,
 	pub created_at: Option<i64>,

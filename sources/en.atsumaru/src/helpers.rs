@@ -212,8 +212,22 @@ pub fn arrange_chapters(
 		by_number
 			.then(by_keep)
 			.then(b.created_at.cmp(&a.created_at))
+			.then_with(|| a.id.cmp(&b.id))
 	});
-	chapters.dedup_by(|later, kept| later.number.is_some() && later.number == kept.number);
+	let mut selected = None;
+	let mut group = None;
+	chapters.retain(|chapter| {
+		let Some(number) = chapter.number else {
+			return true;
+		};
+		if selected == Some(number) {
+			chapter.scanlation_manga_id == group
+		} else {
+			selected = Some(number);
+			group = chapter.scanlation_manga_id.clone();
+			true
+		}
+	});
 	chapters
 }
 

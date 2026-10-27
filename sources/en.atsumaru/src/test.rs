@@ -706,6 +706,122 @@ fn comic() {
 	}
 }
 
+fn chapter_fixtures() -> (Vec<models::ChapterItem>, Vec<models::Scanlator>) {
+	let chapters = serde_json::from_str(
+		r#"[
+		{"id":"a-2a","scanlationMangaId":"a","number":2,"createdAt":10,"pageCount":10},
+		{"id":"a-2b","scanlationMangaId":"a","number":2,"createdAt":20,"pageCount":15},
+		{"id":"b-2","scanlationMangaId":"b","number":2,"createdAt":30,"pageCount":20},
+		{"id":"a-1","scanlationMangaId":"a","number":1,"createdAt":100,"pageCount":20},
+		{"id":"b-1","scanlationMangaId":"b","number":1,"createdAt":50,"pageCount":30},
+		{"id":"a-special","scanlationMangaId":"a","createdAt":40,"pageCount":1},
+		{"id":"b-special","scanlationMangaId":"b","createdAt":40,"pageCount":1}
+	]"#,
+	)
+	.unwrap();
+	let groups = serde_json::from_str(
+		r#"[
+		{"id":"a","name":"A","score":8},
+		{"id":"b","name":"B","score":5}
+	]"#,
+	)
+	.unwrap();
+	(chapters, groups)
+}
+
+#[aidoku_test]
+fn review_deduplication() {
+	for (keep, expected) in [
+		(
+			settings::Keep::HighestRated,
+			vec!["a-2b", "a-2a", "a-1", "a-special", "b-special"],
+		),
+		(
+			settings::Keep::Newest,
+			vec!["b-2", "a-1", "a-special", "b-special"],
+		),
+		(
+			settings::Keep::MostPages,
+			vec!["b-2", "b-1", "a-special", "b-special"],
+		),
+	] {
+		let (chapters, groups) = chapter_fixtures();
+		let kept = arrange_chapters(chapters, &groups, &[], Some(keep));
+		assert_eq!(
+			kept.into_iter()
+				.map(|chapter| chapter.id)
+				.collect::<Vec<_>>(),
+			expected
+		);
+	}
+	let (chapters, groups) = chapter_fixtures();
+	let all = arrange_chapters(chapters, &groups, &[], None);
+	assert_eq!(
+		all.into_iter()
+			.map(|chapter| chapter.id)
+			.collect::<Vec<_>>(),
+		[
+			"a-2a",
+			"a-2b",
+			"b-2",
+			"a-1",
+			"b-1",
+			"a-special",
+			"b-special"
+		]
+	);
+	let (chapters, groups) = chapter_fixtures();
+	let kept = arrange_chapters(
+		chapters,
+		&groups,
+		&["a".into()],
+		Some(settings::Keep::HighestRated),
+	);
+	assert_eq!(
+		kept.into_iter()
+			.map(|chapter| chapter.id)
+			.collect::<Vec<_>>(),
+		["b-2", "b-1", "b-special"]
+	);
+}
+
+#[aidoku_test]
+fn review_deduplication_ties() {
+	for reverse in [false, true] {
+		for keep in [
+			settings::Keep::HighestRated,
+			settings::Keep::Newest,
+			settings::Keep::MostPages,
+		] {
+			let (mut chapters, mut groups): (Vec<models::ChapterItem>, Vec<models::Scanlator>) = (
+				serde_json::from_str(
+					r#"[
+					{"id":"z","scanlationMangaId":"a","number":1,"createdAt":10,"pageCount":10},
+					{"id":"a","scanlationMangaId":"b","number":1,"createdAt":10,"pageCount":10},
+					{"id":"b","scanlationMangaId":"b","number":1,"createdAt":10,"pageCount":10}
+				]"#,
+				)
+				.unwrap(),
+				serde_json::from_str(
+					r#"[{"id":"a","name":"A","score":5},{"id":"b","name":"B","score":5}]"#,
+				)
+				.unwrap(),
+			);
+			if reverse {
+				chapters.reverse();
+				groups.reverse();
+			}
+			let kept = arrange_chapters(chapters, &groups, &[], Some(keep));
+			assert_eq!(
+				kept.into_iter()
+					.map(|chapter| chapter.id)
+					.collect::<Vec<_>>(),
+				["a", "b"]
+			);
+		}
+	}
+}
+
 #[aidoku_test]
 fn chapter_settings() {
 	let chapters = || {
@@ -732,7 +848,17 @@ fn chapter_settings() {
 	for keep in ["rated", "newest", "pages"] {
 		defaults_set("deduplicateKeep", DefaultValue::String(keep.into()));
 		let list = chapters();
-		assert!(unique(&list) && list.len() > 100, "{keep}");
+		assert!(list.len() > 100 && list.len() <= all.len(), "{keep}");
+		for chapter in &list {
+			if let Some(number) = chapter.chapter_number {
+				assert!(
+					list.iter()
+						.filter(|other| other.chapter_number == Some(number))
+						.all(|other| other.scanlators == chapter.scanlators),
+					"{keep}: {number}"
+				);
+			}
+		}
 	}
 	clear(&["deduplicateChapters", "deduplicateKeep"]);
 
