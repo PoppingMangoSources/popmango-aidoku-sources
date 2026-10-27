@@ -1004,8 +1004,11 @@ reaches the site, unless marked.
   The feeds and Random have one order and ignore the arrow.
 - **Rankings.** Only `popular`, `mostBookmarked` and `mostTalkedAbout` take `timeframe`
   (`daily`, `weekly`, `monthly`, `all`; anything else is a 400); the other feeds accept and
-  ignore it (probed). Each has a setting, `<feed>Timeframe`, defaulting to weekly, that sets
-  the home section, its listing and its search sort, and names the section ("Popular Today"). A feed sort reads the feed with the settings, then
+  ignore it (probed). The site's Explore offers a period on the Popularity, Most Bookmarked and
+  Most Talked About sorts, All by default; with All, Popularity is the index's `views` sort, and
+  otherwise the `popular` feed. Each has a setting, `<feed>Timeframe`, defaulting to all, that
+  applies only to those search sorts; the home sections and their listings rank by week, as the
+  site's home does. A feed sort reads the feed with the settings, then
   narrows it with one search lookup over its ids, so every search filter applies and the
   feed's order is kept. Random sorts on the index's `shuffleA`/`shuffleB` fields from a seed
   the source picks at launch, so paging stays in one order until the app restarts.

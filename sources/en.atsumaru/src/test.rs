@@ -260,14 +260,23 @@ fn sort_directions() {
 
 #[aidoku_test]
 fn timeframes() {
+	// All time by default, where Popularity is the index's order and the arrow reverses it.
+	let all_time = keys(&search(None, vec![sort(0, false)]));
+	let weekly = keys(&listing("popular", 1));
 	defaults_set("popularTimeframe", DefaultValue::String("daily".into()));
-	let today = listing("popular", 1);
+	let today = keys(&search(None, vec![sort(0, false)]));
+	let today_reversed = keys(&search(None, vec![sort(0, true)]));
 	let home = Atsumaru::new().get_home().unwrap();
-	defaults_set("popularTimeframe", DefaultValue::String("all".into()));
-	let all_time = listing("popular", 1);
+	let home_listing = keys(&listing("popular", 1));
 	clear(&["popularTimeframe"]);
-	assert_ne!(keys(&today), keys(&all_time));
-	assert_eq!(home.components[0].title.as_deref(), Some("Popular Today"));
+	assert_ne!(today, all_time);
+	assert_eq!(today, today_reversed);
+	// The home page keeps the week whatever the setting.
+	assert_eq!(home_listing, weekly);
+	assert_eq!(
+		home.components[0].title.as_deref(),
+		Some("Popular This Week")
+	);
 }
 
 #[aidoku_test]

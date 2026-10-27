@@ -135,12 +135,12 @@
 	{
 		"type": "group",
 		"title": "Rankings",
-		"footer": "The period each ranking covers, on the home page, its list and its search sort.",
+		"footer": "The period each ranking sort covers in search, All by default as on the site. The home page ranks by week.",
 		"items": [
 			{
 				"type": "select",
 				"key": "popularTimeframe",
-				"title": "Popular",
+				"title": "Popularity",
 				"values": [
 					"daily",
 					"weekly",
@@ -153,11 +153,7 @@
 					"This Month",
 					"All Time"
 				],
-				"default": "weekly",
-				"refreshes": [
-					"content",
-					"listings"
-				]
+				"default": "all"
 			},
 			{
 				"type": "select",
@@ -175,11 +171,7 @@
 					"This Month",
 					"All Time"
 				],
-				"default": "weekly",
-				"refreshes": [
-					"content",
-					"listings"
-				]
+				"default": "all"
 			},
 			{
 				"type": "select",
@@ -197,11 +189,7 @@
 					"This Month",
 					"All Time"
 				],
-				"default": "weekly",
-				"refreshes": [
-					"content",
-					"listings"
-				]
+				"default": "all"
 			}
 		]
 	},

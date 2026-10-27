@@ -33,15 +33,6 @@ const SPOTLIGHT_GENRES: [&str; 15] = [
 	"Horror",
 ];
 
-pub fn timeframe_title(timeframe: &str) -> &'static str {
-	match timeframe {
-		"daily" => "Today",
-		"monthly" => "This Month",
-		"all" => "All Time",
-		_ => "This Week",
-	}
-}
-
 pub fn spotlight_genre() -> &'static str {
 	SPOTLIGHT_GENRES[(current_date() / 86_400).rem_euclid(15) as usize]
 }

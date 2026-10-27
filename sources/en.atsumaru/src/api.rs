@@ -50,6 +50,8 @@ const FEEDS: [&str; 9] = [
 	"mostPolarizing",
 	"hiddenGems",
 ];
+/// The feeds the site ranks over a period.
+pub const RANKED: [&str; 3] = ["popular", "mostBookmarked", "mostTalkedAbout"];
 const RANDOM: usize = SORTS.len() + FEEDS.len();
 const POPULARITY: usize = 0;
 const TOP_RATED: usize = 5;
@@ -160,7 +162,7 @@ impl SearchParams {
 		search
 	}
 
-	pub fn feed_url(&self, id: &str, page: i32) -> Result<String> {
+	pub fn feed_url(&self, id: &str, page: i32, timeframe: Option<&str>) -> Result<String> {
 		let mut query = QueryParameters::new();
 		match id {
 			"genreSpotlight" => query.push("genre", Some(spotlight_genre())),
@@ -169,8 +171,8 @@ impl SearchParams {
 			| "bingeWorthy" | "mostPolarizing" => {}
 			_ => bail!("Unknown listing"),
 		}
-		if let Some(timeframe) = settings::timeframe(id) {
-			query.push("timeframe", Some(&timeframe));
+		if let Some(timeframe) = timeframe {
+			query.push("timeframe", Some(timeframe));
 		}
 		let (comics, novels) = split_types(&self.types);
 		query.push("offset", Some(&((page - 1) * FEED_LIMIT).to_string()));
@@ -350,12 +352,19 @@ impl SearchParams {
 		if self.matches_nothing() {
 			return Ok(MangaPageResult::default());
 		}
-		if let Some(id) = self
-			.sort
-			.checked_sub(SORTS.len())
-			.and_then(|index| FEEDS.get(index))
-		{
-			let response: FeedResponse = get(&self.feed_url(id, page)?)?;
+		let feed = match self.sort.checked_sub(SORTS.len()) {
+			Some(index) => FEEDS.get(index).map(|id| {
+				let timeframe = RANKED.contains(id).then(|| settings::timeframe(id));
+				(*id, timeframe)
+			}),
+			// Popularity over a period is the popular feed; over all time, the index's views.
+			None if self.sort == POPULARITY => Some(settings::timeframe("popular"))
+				.filter(|timeframe| timeframe != "all")
+				.map(|timeframe| ("popular", Some(timeframe))),
+			None => None,
+		};
+		if let Some((id, timeframe)) = feed {
+			let response: FeedResponse = get(&self.feed_url(id, page, timeframe.as_deref())?)?;
 			let has_next_page = response.items.len() as i32 == FEED_LIMIT;
 			if response.items.is_empty() {
 				return Ok(MangaPageResult::default());
