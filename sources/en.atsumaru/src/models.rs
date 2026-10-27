@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 /// Search errors carry a message; the other endpoints don't.
 #[derive(Deserialize)]
-pub struct ErrorBody {
+pub struct ErrorResponse {
 	pub message: String,
 }
 

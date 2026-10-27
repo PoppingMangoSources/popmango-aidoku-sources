@@ -2,7 +2,7 @@
 
 use super::*;
 use aidoku::{
-	ContentRating, DynamicSettings, Home, MangaStatus, Viewer,
+	ContentRating, DynamicSettings, Home, HomeComponentValue, MangaStatus, Viewer,
 	alloc::{format, string::ToString},
 	imports::defaults::{DefaultValue, defaults_set},
 };
@@ -427,7 +427,8 @@ fn content_types() {
 
 #[aidoku_test]
 fn exclusions() {
-	assert_eq!(Atsumaru::new().get_dynamic_settings().unwrap().len(), 1);
+	// Exclusions, then one Hidden Tags group of lists.
+	assert_eq!(Atsumaru::new().get_dynamic_settings().unwrap().len(), 2);
 	defaults_set("hiddenGenres", strings(&["39"]));
 	defaults_set("hiddenTags.Settings", strings(&["94"]));
 	let results = [
@@ -487,12 +488,35 @@ fn listings() {
 
 #[aidoku_test]
 fn home() {
-	Atsumaru::new().get_home().unwrap();
+	let home = Atsumaru::new().get_home().unwrap();
+	assert_eq!(home.components.len(), 14);
+	for component in &home.components {
+		let rows = match &component.value {
+			HomeComponentValue::BigScroller { entries, .. } => {
+				// The one component that carries details.
+				assert!(entries.iter().any(|manga| manga.description.is_some()));
+				entries.len()
+			}
+			HomeComponentValue::Scroller { entries, .. }
+			| HomeComponentValue::MangaList { entries, .. } => {
+				assert!(
+					entries.iter().all(|link| link.subtitle.is_none()),
+					"{:?}",
+					component.title
+				);
+				entries.len()
+			}
+			_ => panic!("unexpected component {:?}", component.title),
+		};
+		assert!(rows > 0, "{:?} is empty", component.title);
+	}
 	defaults_set("homeSections", strings(&["rising"]));
-	Atsumaru::new().get_home().unwrap();
+	let one = Atsumaru::new().get_home().unwrap();
 	defaults_set("homeSections", strings(&[]));
-	Atsumaru::new().get_home().unwrap();
+	let none = Atsumaru::new().get_home().unwrap();
 	clear(&["homeSections"]);
+	assert_eq!(one.components.len(), 1);
+	assert!(none.components.is_empty());
 }
 
 #[aidoku_test]

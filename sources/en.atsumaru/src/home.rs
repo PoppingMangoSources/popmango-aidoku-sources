@@ -1,6 +1,6 @@
 use crate::{
 	Atsumaru,
-	api::{FEATURED_FIELDS, FEED_LIMIT, Search, feed_url, get, lookup_url, parse, request},
+	api::{FEATURED_FIELDS, FEED_LIMIT, SearchParams, feed_url, get, lookup_url, parse, request},
 	helpers::{feed_allows, spotlight_genre},
 	models::{FeedItem, FeedResponse, SearchResponse},
 	settings,
@@ -13,6 +13,7 @@ use aidoku::{
 		net::{Request, Response},
 		std::send_partial_result,
 	},
+	prelude::*,
 };
 
 #[derive(Clone, Copy)]
@@ -100,7 +101,7 @@ const SECTIONS: [(&str, &str, Option<&str>, Layout); 14] = [
 
 fn section_request(id: &str, page: i32) -> Result<Option<Request>> {
 	if id == NOVELS {
-		let search = Search::novels();
+		let search = SearchParams::novels();
 		if search.matches_nothing() {
 			return Ok(None);
 		}
@@ -124,7 +125,7 @@ fn feed_items(response: Response) -> Result<(Vec<FeedItem>, bool)> {
 pub fn listing_page(id: &str, page: i32) -> Result<MangaPageResult> {
 	let label_novels = settings::label_novels();
 	if id == NOVELS {
-		return Search::novels().page(page, label_novels);
+		return SearchParams::novels().page(page, label_novels);
 	}
 	let Some(request) = section_request(id, page)? else {
 		return Ok(MangaPageResult::default());
@@ -244,22 +245,27 @@ impl Home for Atsumaru {
 				.collect(),
 		}));
 
-		for ((id, name, subtitle, layout), response) in
-			sections.into_iter().zip(Request::send_all(requests))
-		{
-			let Ok(value) = response
-				.map_err(Into::into)
-				.and_then(|response| fill(id, &name, layout, response))
-			else {
-				continue;
-			};
-			send_partial_result(&HomePartialResult::Component(HomeComponent {
-				title: Some(name),
-				subtitle: subtitle.map(Into::into),
-				value,
-			}));
+		let wanted = sections.len();
+		// Returned rather than sent as partials: the app keeps an empty placeholder for a
+		// section that never arrives, but shows a returned home as it is.
+		let components = sections
+			.into_iter()
+			.zip(Request::send_all(requests))
+			.filter_map(|((id, name, subtitle, layout), response)| {
+				let value = response
+					.map_err(Into::into)
+					.and_then(|response| fill(id, &name, layout, response))
+					.ok()?;
+				Some(HomeComponent {
+					title: Some(name),
+					subtitle: subtitle.map(Into::into),
+					value,
+				})
+			})
+			.collect::<Vec<_>>();
+		if wanted > 0 && components.is_empty() {
+			bail!("Atsumaru didn't answer");
 		}
-
-		Ok(HomeLayout::default())
+		Ok(HomeLayout { components })
 	}
 }

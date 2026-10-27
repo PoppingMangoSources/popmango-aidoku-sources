@@ -1,6 +1,6 @@
 use crate::{
 	helpers::{ADULT_GENRES, HENTAI, allows, spotlight_genre},
-	models::{ErrorBody, SearchResponse},
+	models::{ErrorResponse, SearchResponse},
 	settings::{self, CONTENT_TYPES, RATINGS},
 };
 use aidoku::{
@@ -17,7 +17,7 @@ pub const CDN_URL: &str = "https://cdn.atsu.moe/static";
 pub const FEED_LIMIT: i32 = 24;
 const SEARCH_LIMIT: i32 = 40;
 const SEARCH_URL: &str = "https://atsu.moe/collections/manga/documents/search";
-pub const FILTERS_URL: &str = "https://atsu.moe/api/explore/availableFilters";
+pub const API_URL: &str = "https://atsu.moe/api";
 
 // The site's own search weighting.
 const QUERY_BY: &str = "title,englishTitle,otherNames,authors,acronyms";
@@ -55,7 +55,7 @@ pub fn request(url: &str) -> Result<Request> {
 pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
-		match response.get_json_owned::<ErrorBody>() {
+		match response.get_json_owned::<ErrorResponse>() {
 			Ok(body) => bail!("Atsumaru: {}", body.message),
 			Err(_) => bail!("Atsumaru returned status {status}"),
 		}
@@ -141,7 +141,7 @@ pub fn feed_url(id: &str, page: i32) -> Result<Option<String>> {
 	if !excluded.is_empty() {
 		query.push("excludedTags", Some(&excluded.join(",")));
 	}
-	Ok(Some(format!("{BASE_URL}/api/home2/{id}?{query}")))
+	Ok(Some(format!("{API_URL}/home2/{id}?{query}")))
 }
 
 pub fn lookup_url(ids: &[&str], fields: &str) -> String {
@@ -155,7 +155,7 @@ pub fn lookup_url(ids: &[&str], fields: &str) -> String {
 }
 
 #[derive(Default)]
-pub struct Search {
+pub struct SearchParams {
 	pub query: Option<String>,
 	pub sort: usize,
 	pub genres: Vec<String>,
@@ -174,7 +174,7 @@ pub struct Search {
 	pub official: bool,
 }
 
-impl Search {
+impl SearchParams {
 	/// Settings first; filters then override them.
 	pub fn new(query: Option<String>) -> Self {
 		Self {
@@ -338,7 +338,7 @@ fn api_url(path: &str, params: &[(&str, &str)]) -> String {
 	for (name, value) in params {
 		query.push(name, Some(value));
 	}
-	format!("{BASE_URL}/api/{path}?{query}")
+	format!("{API_URL}/{path}?{query}")
 }
 
 pub fn manga_page_url(id: &str) -> String {

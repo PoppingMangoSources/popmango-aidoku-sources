@@ -18,7 +18,7 @@ use aidoku::{
 	prelude::*,
 };
 use api::{
-	CARD_FIELDS, RATING_FIELDS, Search, chapters_url, get, lookup_url, manga_page_url, parse,
+	CARD_FIELDS, RATING_FIELDS, SearchParams, chapters_url, get, lookup_url, manga_page_url, parse,
 	read_url, request,
 };
 use helpers::{arrange_chapters, is_novel_url, page_url, parse_link};
@@ -48,7 +48,7 @@ impl Source for Atsumaru {
 			}
 		}
 
-		let mut search = Search::new(query);
+		let mut search = SearchParams::new(query);
 		let mut tapped = Vec::new();
 		for filter in filters {
 			match filter {
@@ -159,7 +159,7 @@ impl Source for Atsumaru {
 			} else {
 				chapters
 			};
-			let excluded = settings::excluded_scanlators();
+			let excluded = settings::blocked_groups();
 			let chapters =
 				arrange_chapters(chapters, &scanlators, &excluded, settings::deduplicate())
 					.into_iter()

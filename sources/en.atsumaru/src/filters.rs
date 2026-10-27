@@ -1,13 +1,13 @@
 use crate::{
 	Atsumaru,
-	api::{FILTERS_URL, get},
+	api::{API_URL, get},
 	helpers::allows,
 	models::{AvailableFilters, TagOption},
 	settings,
 };
 use aidoku::{
-	DynamicSettings, GroupSetting, MultiSelectSetting, PageSetting, Result, Setting,
-	alloc::{String, Vec, vec},
+	DynamicSettings, GroupSetting, MultiSelectSetting, Result, Setting,
+	alloc::{String, Vec, format, vec},
 };
 
 /// The site's tag groups, each with its own hidden-tag list.
@@ -56,9 +56,14 @@ fn grouped_tags(tags: Vec<TagOption>) -> Vec<(&'static str, Vec<String>, Vec<Str
 	groups
 }
 
+/// The site keeps adding tags, so its genre and tag lists are fetched rather than kept here.
+fn available_filters() -> Result<AvailableFilters> {
+	get(&format!("{API_URL}/explore/availableFilters"))
+}
+
 /// Genre and tag ids for tag names, as a tapped tag arrives; search only matches tags by id.
 pub fn tag_ids(names: &[String]) -> Result<(Vec<String>, Vec<String>)> {
-	let AvailableFilters { genres, tags } = get(FILTERS_URL)?;
+	let AvailableFilters { genres, tags } = available_filters()?;
 	let wanted = |name: &str| names.iter().any(|wanted| wanted.eq_ignore_ascii_case(name));
 	Ok((
 		genres
@@ -76,7 +81,7 @@ pub fn tag_ids(names: &[String]) -> Result<(Vec<String>, Vec<String>)> {
 /// The genre and tag lists live on the site, so the exclusions are offered from them.
 impl DynamicSettings for Atsumaru {
 	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
-		let AvailableFilters { genres, tags } = get(FILTERS_URL)?;
+		let AvailableFilters { genres, tags } = available_filters()?;
 		let refreshes = || Some(vec!["content".into(), "listings".into()]);
 		let (genre_ids, genre_names): (Vec<String>, Vec<String>) = genres
 			.into_iter()
@@ -114,14 +119,13 @@ impl DynamicSettings for Atsumaru {
 						..Default::default()
 					}
 					.into(),
-					PageSetting {
-						key: "hiddenTagsPage".into(),
-						title: "Hidden Tags".into(),
-						items: tag_lists,
-						..Default::default()
-					}
-					.into(),
 				],
+				..Default::default()
+			}
+			.into(),
+			GroupSetting {
+				title: "Hidden Tags".into(),
+				items: tag_lists,
 				..Default::default()
 			}
 			.into(),
