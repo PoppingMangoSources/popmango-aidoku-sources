@@ -18,6 +18,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFINITION = r"\b(?:fn|const|struct|enum|static|trait|type)\s+{}\b"
+# What merged sources call the same thing, from surveys of all of them (AGENTS.md / CLAUDE.md
+# section 8). Printed beside a rare name that matches, so the swap is a decision, not a search.
+EQUIVALENTS = [
+    (r"_(?:LIMIT|PER_PAGE|COUNT)$", "a page size is PAGE_SIZE (9 sources) or <THING>_PAGE_SIZE"),
+    (r"^(?:SEARCH|QUERY|LIST|DETAIL|CHAPTERS?)_(?:URL|ENDPOINT|PATH)$",
+     "endpoints are formatted inline from BASE_URL or API_URL (11 sources)"),
+    (r"^RATINGS$", "the full rating list is CONTENT_RATINGS (multi.xcomic)"),
+    (r"^(?:FILTERS_URL|FILTER_URL)$", "fetch the filter list in a function, as en.toonkotsu's listed_facets"),
+]
 
 
 def rust(directory: Path) -> str:
@@ -53,7 +62,8 @@ def main() -> int:
         for name in sorted(names):
             hits = [s for s, text in upstream.items() if re.search(pattern.format(re.escape(name)), text)]
             if len(hits) <= args.rare:
-                rows.append(f"{len(hits):4}  {name:28} {' '.join(hits[:4])}")
+                usual = next((advice for rule, advice in EQUIVALENTS if re.search(rule, name)), "")
+                rows.append(f"{len(hits):4}  {name:28} {' '.join(hits[:4])}" + (f"  -> {usual}" if usual else ""))
         print(f"{title} used by at most {args.rare} of {len(upstream)} upstream sources:")
         print("\n".join(rows) if rows else "     none")
 

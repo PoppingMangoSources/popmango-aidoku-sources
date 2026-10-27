@@ -86,6 +86,12 @@ that shipped:
 - [ ] Regexes compiled once in a `static`; fixed sets as arrays
 - [ ] A rebranded site keeps its id and sets `breakingChangeVersion` in `config`
 - [ ] Comments: terse, why only, no other sources or third parties named, no dividers
+- [ ] Constants as merged sources name them: `BASE_URL`/`API_URL`/`CDN_URL`, `PAGE_SIZE`; no
+      endpoint constants and no constant for a value used once (AGENTS.md / CLAUDE.md §8)
+- [ ] No method that only passes its own fields on, no full-path calls, no second copy of a
+      conversion that already exists
+- [ ] Each setting's default is the site's own default for that control, read from its code
+- [ ] A full selection sends nothing, unless a missing value means less (ratings, §6) — probe it
 - [ ] `src/test.rs` with `#[aidoku_test]` cases checked against the site's data (AGENTS.md / CLAUDE.md §1)
 
 ## Phase 4 — Verify
@@ -106,7 +112,9 @@ check and behavioral tests; compilation alone cannot establish upstream readines
 
 Then from the repo root: `scripts/check-sources.py <id>`, and `scripts/upstream-usage.py <id>`
 to list what the source uses or names that merged sources don't; replace each with the usual
-equivalent unless the site needs it (AGENTS.md / CLAUDE.md §9).
+equivalent it prints unless the site needs it (AGENTS.md / CLAUDE.md §9). Act on every `NOTE`
+from `check-sources.py`, or say in the summary why it stays. After a workflow change, run
+`scripts/check-workflows.py`.
 
 Then read AGENTS.md / CLAUDE.md §3 top to bottom against the diff, one row at a time, and say which rows
 you checked. Passing the scripts isn't the same as following the rules: rows showing

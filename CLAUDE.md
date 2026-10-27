@@ -317,6 +317,26 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
 | No `minAppVersion` | `"0.7.1"`, unless verify asks for more. |
 | Comments marked resolved without a change | Every comment gets a change or a reply; reviewers check. |
 
+### From our own reviews of `en.atsumaru` (owner's corrections)
+
+Each of these went to `main` and was put right in a later commit. **F** fails `check-sources.py`
+or `check-workflows.py`; **N** prints a note (merged sources disagree, so it is a judgement
+call: change it or say why not); **—** needs the site or the app, so it is read in review.
+
+| What was flagged | The rule | |
+|---|---|---|
+| `SEARCH_URL`, `BASE_URL` plus a path and only ever followed by `?` | No merged source names one endpoint: format it inline, `format!("{BASE_URL}/search?{qs}")` (11 sources). `API_URL` for an API base is fine (20 sources). | F |
+| Five Typesense parameters as constants, each sent once | Write a value used once where it is sent, `query.push("num_typos", Some("4,3,2,1,0"))`. | F |
+| `FEED_LIMIT`, `SEARCH_LIMIT` for page sizes | `PAGE_SIZE` (9 sources), or `<THING>_PAGE_SIZE` for a second one; `RATINGS` is `CONTENT_RATINGS` (`multi.xcomic`). | N |
+| `fn is_novel(&self) { is_novel(self.medium…) }` | A method that only passes its own fields to a free function is a wrapper; call the function. `ja.soraraw` keeps such accessors, so it is a note. | N |
+| `aidoku::imports::std::current_date()` in an expression | Import it. kkantan's own commits write full paths too, so it is a note. | N |
+| The novels row mapped search hits to cards a second way | Reuse the existing conversion (`into_page`) rather than restating it. | — |
+| A comment on the fallback sort described the feeds | When code moves, re-read each comment beside it; a comment true of different code is stale. | — |
+| Full `mediums`/`types` lists sent to the feeds | Probe what a missing parameter means, then send nothing for a full selection, except ratings where missing means safe-only (section 6). | — |
+| Ranking periods defaulted to a week and applied to the home page | A setting's default is the site's own default for that control (Explore's All), and it applies where the site applies it. Read the site's code for the default. | — |
+| `actions/cache@v4` (and `checkout@v4`, `upload-artifact@v4`, a pages action) on Node 20 | `check-workflows.py` reads each action's runtime at its pinned ref; move to a release on a supported Node. **Action runtimes** checks weekly. | F |
+| `aidoku-test-runner` install failed on GitHub's runner | It links fontconfig and freetype; install `libfontconfig-dev libfreetype-dev` first. `check-workflows.py` fails a workflow that doesn't. | F |
+
 ---
 
 ## 4. Reviewing behaviour and request cost, not just shape
@@ -550,6 +570,18 @@ an API quirk, a constraint, an ordering that matters.
   comment is worse than none — one survived here claiming a table fed both the
   filters and the settings long after the setting had moved.
 
+### Constants (verified across the 140 merged sources)
+
+- **URLs:** `BASE_URL` (116 sources), `API_URL` for an API base (20), `CDN_URL` for an image
+  host (3). Each is a full literal, even on the same host (`en.stonescape`, `en.comix`); none is
+  derived from another. Endpoints aren't constants: they are formatted where they are requested.
+- **Sizes:** `PAGE_SIZE` (9), then `<THING>_PAGE_SIZE` or `<THING>_SIZE` for others
+  (`CHAPTER_PAGE_SIZE`, `RECENTLY_ADDED_SIZE`). Not `_LIMIT`.
+- **Lists:** `SORTS` (5), `SECTIONS`, `GROUPS`, `CONTENT_TYPES`, `CONTENT_RATINGS`,
+  `DEFAULT_RATINGS`; site ids named for what they hold (`PORNOGRAPHIC_GENRES`).
+- **A value used once is written where it is used**, not given a name.
+- `scripts/upstream-usage.py` prints the usual equivalent beside a rare name it recognises.
+
 ---
 
 ### Dead code
@@ -623,7 +655,9 @@ went in one of these ways, and new ones go in the same way:
    that kkantan approved means the rule is too broad, so narrow it (the silenced-warning rule
    allows a commented exception because an untagged serde enum needs its field) or drop it
    (an author-search flag beside an author filter was merged in `multi.nhentai`, so that is
-   not a rule).
+   not a rule). A rule we still want that recent merges break becomes a **note**
+   (`note()` in `check-sources.py`): printed as `NOTE`, never failing. Act on each note or say
+   why not.
 5. **When evidence contradicts a rule, fix the rule in the same commit**, and say where the
    old wording was wrong. Section 2's tag-search paragraph and section 3's tag-style row were
    both corrected that way.
@@ -647,7 +681,14 @@ went in one of these ways, and new ones go in the same way:
   release profile, an `#[aidoku_test]` that asserts nothing, README row in step with `source.json`, a version bump
   since `<ref>`, and byte-identical `AGENTS.md`/`CLAUDE.md` plus matching physical skill trees. CI (`check.yaml`) runs it on the
   sources each push changes. Run with no arguments it reports the backlog in older sources —
-  fix those when you're in the source anyway.
+  fix those when you're in the source anyway. It also fails an endpoint constant used only with
+  a query and a constant sent once as a query value, and notes the section 3 **N** rows
+  (page-size names, own-field wrappers, single-call helpers used once, full-path calls).
+- `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
+  `action.yml` at the pinned ref and fails a deprecated Node, and fails a workflow that installs
+  `aidoku-test-runner` without the font headers. `check.yaml` runs it on every push and
+  **Action runtimes** (`action-runtimes.yaml`) every Monday, since deprecations arrive without a
+  push. Its tests are in `scripts/tests/test_check_workflows.py`.
 - `scripts/calibrate-rules.sh [rule text]` runs `check-sources.py` over every merged upstream
   source and counts failures per rule (or lists the sources one rule fails). CI's
   `check.yaml` prints it in the job summary on every push.

@@ -22,10 +22,16 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCES = ROOT / "sources"
 
 failures: list[str] = []
+# Judgement calls merged sources disagree on: printed, never failing. Change each or say why not.
+notes: list[str] = []
 
 
 def fail(path: Path, message: str) -> None:
     failures.append(f"{path.relative_to(ROOT)}: {message}")
+
+
+def note(path: Path, message: str) -> None:
+    notes.append(f"{path.relative_to(ROOT)}: {message}")
 
 
 def git(*args: str) -> str:
@@ -151,6 +157,58 @@ def check_cards(path: Path, text: str) -> None:
 
 
 SILENCED = re.compile(r"#!?\[\s*(?:allow|expect)\s*\([^)]*\b(?:dead_code|unused\w*)")
+FULL_PATH_CALL = re.compile(r"\baidoku::(?:imports|helpers|alloc)::[\w:]*::[a-z_][a-z0-9_]*\(")
+URL_CONSTANT = re.compile(r'\bconst (\w+): &str = "(https?://[^"]+)";')
+STRING_CONSTANT = re.compile(r'\bconst (\w+): &str =\s*"[^"]*";')
+QUERY_VALUE = re.compile(r'\.push\(\s*"[^"]+",\s*Some\((\w+)\)\s*\)')
+PAGE_SIZE_SENT = re.compile(
+    r'push\(\s*"(?:limit|per_page|perPage|size|page_size|pageSize)",\s*Some\(&?([A-Z][A-Z0-9_]*)\b'
+    r'|[?&](?:limit|per_page|perPage|size|page_size|pageSize)=\{([A-Z][A-Z0-9_]*)\}'
+)
+SINGLE_CALL_FN = re.compile(
+    r"^(\t*)(?:pub(?:\([^)]*\))? )?fn (\w+)(?:<[^>]*>)?\(([^)]*)\)[^{;]*\{\n\t*([\w:]+)\(([^;{}]*)\)\n\1\}",
+    re.M,
+)
+
+
+def crate_text(source: Path) -> str:
+    return "\n".join(p.read_text() for p in sorted((source / "src").rglob("*.rs")) if p.name != "test.rs")
+
+
+def check_naming(source: Path) -> None:
+    """Constants and wrappers merged sources write differently (AGENTS.md / CLAUDE.md section 8)."""
+    text = crate_text(source)
+    uses = lambda name: len(re.findall(rf"\b{name}\b", text)) - 1
+    urls = dict(URL_CONSTANT.findall(text))
+    for name, value in urls.items():
+        base = next((other for other, prefix in urls.items() if other != name and value.startswith(prefix + "/") and value != prefix + "/"), None)
+        endpoint = uses(name) and len(re.findall(rf"\{{{name}\}}\?", text)) == uses(name)
+        if base and endpoint:
+            fail(source, f"{name} is {base} plus a path, used only with a query; format it inline from {base}")
+    strings = set(STRING_CONSTANT.findall(text))
+    for name in QUERY_VALUE.findall(text):
+        if name in strings and uses(name) == 1:
+            fail(source, f"{name} is sent once as a query value; write the value where it is sent")
+    for groups in PAGE_SIZE_SENT.findall(text):
+        name = groups[0] or groups[1]
+        if not name.endswith("SIZE"):
+            note(source, f"{name} is sent as a page size; most merged sources call it PAGE_SIZE or <THING>_PAGE_SIZE")
+    for path in sorted((source / "src").rglob("*.rs")):
+        if path.name in ("test.rs", "settings.rs"):
+            continue
+        file_text = path.read_text()
+        for match in SINGLE_CALL_FN.finditer(file_text):
+            indent, name, params, callee, args = match.groups()
+            before = file_text[: match.start()]
+            impl = re.findall(rf"^{indent[:-1]}impl\b[^\n]*", before, re.M) if indent else []
+            if (impl and " for " in impl[-1]) or callee[0].isupper() or name == "new":
+                continue  # Trait methods, constructors and Ok(..) bodies aren't wrappers.
+            line = before.count("\n") + 1
+            own_fields = args and all(a.strip().startswith("self.") for a in args.split(","))
+            if "self" in params and "." not in callee and own_fields:
+                note(path, f"line {line} fn {name} only passes its own fields to {callee}; consider calling {callee} directly")
+            elif uses(name) == 1:
+                note(path, f"line {line} fn {name} only calls {callee} and is used once; consider inlining it")
 
 
 def check_rust(source: Path, single_language: bool) -> None:
@@ -178,6 +236,9 @@ def check_rust(source: Path, single_language: bool) -> None:
                 fail(path, f"{where} sets a chapter language on a single-language source")
             if has_settings and path.name != "settings.rs" and "defaults_get" in line:
                 fail(path, f"{where} reads a setting outside settings.rs")
+            call = FULL_PATH_CALL.search(line)
+            if call and not line.lstrip().startswith(("use ", "pub use ", "//")):
+                note(path, f"{where} calls {call.group(0)[:-1]} by its full path; import it")
             for pattern, message in LINE_RULES:
                 if pattern.search(line):
                     fail(path, f"{where} {message}")
@@ -243,6 +304,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
         check_json(source / "res" / "settings.json")
     languages = info.get("info", {}).get("languages", [])
     check_rust(source, len(languages) == 1)
+    check_naming(source)
 
     version = info.get("info", {}).get("version")
     if upstream:
@@ -276,9 +338,11 @@ def main() -> int:
     for name in names:
         check_source(name, args.base, args.upstream)
 
+    for item in notes:
+        print(f"NOTE {item}")
     for failure in failures:
         print(f"FAIL {failure}")
-    print(f"checked {len(names)} source(s): {len(failures)} failure(s)")
+    print(f"checked {len(names)} source(s): {len(failures)} failure(s), {len(notes)} note(s)")
     return 1 if failures else 0
 
 

@@ -67,6 +67,61 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cargo(path)
         self.assertTrue(any('lto = true' in failure for failure in checks.failures))
 
+    def naming(self, text, name='lib.rs'):
+        (self.source / 'src').mkdir(exist_ok=True)
+        (self.source / 'src' / name).write_text(text)
+        checks.notes.clear()
+        checks.check_naming(self.source)
+        checks.check_rust(self.source, False)
+        return list(checks.failures), list(checks.notes)
+
+    def test_endpoint_constant_fails(self):
+        failures, _ = self.naming(
+            'const BASE_URL: &str = "https://x.moe";\nconst SEARCH_URL: &str = "https://x.moe/search";\n'
+            'fn url(q: &str) -> String { format!("{SEARCH_URL}?{q}") }\n'
+        )
+        self.assertTrue(any('SEARCH_URL is BASE_URL plus a path' in f for f in failures))
+
+    def test_api_base_and_referer_pass(self):
+        failures, _ = self.naming(
+            'const BASE_URL: &str = "https://x.moe";\nconst API_URL: &str = "https://x.moe/api";\n'
+            'const QUERY_URL: &str = "https://x.moe/graphql";\nconst REFERER: &str = "https://x.moe/";\n'
+            'fn a() { format!("{API_URL}/search?{q}"); Request::post(QUERY_URL); referer(REFERER); }\n'
+        )
+        self.assertEqual(failures, [])
+
+    def test_single_use_query_constant_fails(self):
+        failures, _ = self.naming('const NUM_TYPOS: &str = "4,3";\nfn a() { query.push("num_typos", Some(NUM_TYPOS)); }\n')
+        self.assertTrue(any('NUM_TYPOS is sent once' in f for f in failures))
+
+    def test_shared_query_constant_passes(self):
+        failures, _ = self.naming(
+            'const FIELDS: &str = "id";\nfn a() { query.push("fields", Some(FIELDS)); }\n'
+            'fn b() { query.push("include", Some(FIELDS)); }\n'
+        )
+        self.assertEqual(failures, [])
+
+    def test_page_size_name_is_noted(self):
+        _, notes = self.naming('const FEED_LIMIT: i32 = 24;\nfn a() { query.push("limit", Some(&FEED_LIMIT.to_string())); }\n')
+        self.assertTrue(any('FEED_LIMIT is sent as a page size' in n for n in notes))
+        _, notes = self.naming('const PAGE_SIZE: i32 = 24;\nfn a() { query.push("limit", Some(&PAGE_SIZE.to_string())); }\n')
+        self.assertEqual(notes, [])
+
+    def test_own_field_wrapper_is_noted(self):
+        text = (
+            'impl Info {\n\tpub fn is_novel(&self) -> bool {\n\t\tis_novel(self.medium.as_deref())\n\t}\n}\n'
+            'impl Source for X {\n\tfn get_manga_list(&self, id: &str) -> R {\n\t\thome::listing(id)\n\t}\n}\n'
+        )
+        _, notes = self.naming(text)
+        self.assertTrue(any('fn is_novel only passes its own fields' in n for n in notes))
+        self.assertFalse(any('get_manga_list' in n for n in notes))
+
+    def test_full_path_call_is_noted(self):
+        _, notes = self.naming('fn new() -> Self {\n\tSelf { seed: aidoku::imports::std::current_date() }\n}\n')
+        self.assertTrue(any('by its full path' in n for n in notes))
+        _, notes = self.naming('use aidoku::imports::std::current_date;\nfn d(e: aidoku::imports::html::Element) {}\n')
+        self.assertEqual(notes, [])
+
     def test_silenced_dead_code_fails(self):
         (self.source / 'src').mkdir()
         for attribute in ('#[allow(dead_code)]', '#![allow(unused_imports)]', '#[expect(unused)]'):

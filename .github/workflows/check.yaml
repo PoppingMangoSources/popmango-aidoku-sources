@@ -39,6 +39,8 @@ jobs:
             base="HEAD~1"
           fi
           python3 scripts/check-sources.py --base "$base"
+      - name: Check workflow actions and the test runner install
+        run: python3 scripts/check-workflows.py
       - name: Exercise workflow guard regressions
         run: python3 -m unittest discover -s scripts/tests -v
       - name: Calibrate rules against upstream

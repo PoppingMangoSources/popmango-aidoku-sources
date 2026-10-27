@@ -1,0 +1,23 @@
+name: Action runtimes
+# GitHub deprecates Node versions on its own schedule, so an action that was fine when pinned
+# starts warning, then failing, with no change here. This reads each action's runtime weekly.
+on:
+  schedule:
+    - cron: "43 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Actions on a supported Node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Read each action's runtime at its pinned ref
+        run: |
+          set -o pipefail
+          python3 scripts/check-workflows.py | tee -a "$GITHUB_STEP_SUMMARY"
