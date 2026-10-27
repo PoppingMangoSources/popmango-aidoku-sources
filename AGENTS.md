@@ -327,7 +327,7 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
   Reader routing must not require URLs, titles, viewer hints or cached details. Encode a
   required discriminator in a key, use the same encoding in chapter lists and deep links,
   and test reading with fresh `Manga` and `Chapter` values containing only keys. Atsumaru
-  prefixes novel chapter keys with `novel/`; series keys stay unchanged.
+  prefixes novel series keys with `novel/`; chapter keys remain the site ids.
 - `review_` tests cover the filter capability contract and chapter/deep-link key agreement
   without live requests. The Source tests workflow runs them in a separate step before the
   full live suite so a site outage does not obscure these regressions.
@@ -1105,9 +1105,10 @@ reaches the site, unless marked.
   measure, then newest upload and chapter id as tie-breakers. Keep all same-number entries
   from that group, plus all unnumbered chapters; the disabled mode preserves the site order.
   Test reversed input order, split chapters, ties, all three measures and scanlator exclusions.
-- **Keys.** Series keys remain site ids. Novel chapter keys are `novel/<id>`, including in
-  chapter deep links; comic chapter keys remain site ids. Strip the novel prefix only for
-  the reader request. Existing installs need a chapter-list refresh to pick up the new keys.
+- **Keys.** Novel series keys are `novel/<id>`; comic series and all chapter keys remain
+  site ids. Search, Discover, details and deep links use the same encoding. Strip the series
+  prefix before every API id lookup, including pasted-link search, chapter lists and reading.
+  Reader routing depends only on the series key, never URLs or other metadata.
 - **Reader** `/api/read/chapter` (pages in order, `/static/…` paths on `cdn.atsu.moe`) and
   `/api/read/novelChapter` (`paragraphs`). Covers are AVIF with a WebP copy beside each.
 - **Errors.** Search answers `{"message": …}`; the other endpoints answer plain text

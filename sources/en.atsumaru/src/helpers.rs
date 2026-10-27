@@ -12,6 +12,7 @@ use core::cmp::Ordering;
 
 /// Genre ids that stand in for a rating the site leaves out.
 pub const HENTAI: &str = "10";
+pub const NOVEL_PREFIX: &str = "novel/";
 pub const ADULT_GENRES: [&str; 2] = ["46", "41"];
 
 // The site's spotlight genres, one a day in this order.
@@ -101,8 +102,16 @@ pub fn chapter_url(manga_id: &str, chapter_id: &str, novel: bool) -> String {
 	format!("{BASE_URL}/{kind}/{manga_id}/{chapter_id}")
 }
 
-pub fn chapter_key(id: String, novel: bool) -> String {
-	if novel { format!("novel/{id}") } else { id }
+pub fn manga_key(id: String, novel: bool) -> String {
+	if novel {
+		format!("{NOVEL_PREFIX}{id}")
+	} else {
+		id
+	}
+}
+
+pub fn manga_id(key: &str) -> &str {
+	key.strip_prefix(NOVEL_PREFIX).unwrap_or(key)
 }
 
 pub fn parse_link(url: &str) -> Option<(String, Option<String>)> {
@@ -118,8 +127,8 @@ pub fn parse_link(url: &str) -> Option<(String, Option<String>)> {
 	match (parts.next()?, parts.next()?, parts.next()) {
 		("manga", id, None) => Some((id.into(), None)),
 		(kind @ "novel", id, chapter) | (kind @ "read", id, chapter @ Some(_)) => Some((
-			id.into(),
-			chapter.map(|id| chapter_key(id.into(), kind == "novel")),
+			manga_key(id.into(), kind == "novel"),
+			chapter.map(Into::into),
 		)),
 		_ => None,
 	}

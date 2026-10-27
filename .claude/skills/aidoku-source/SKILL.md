@@ -67,7 +67,8 @@ that shipped:
 - [ ] `send_partial_result` only when chapters need a second request
 - [ ] `DeepLinkHandler` for series **and** chapter urls; series and chapter urls resolve
 - [ ] Reader routing works with only manga/chapter keys; encode required type flags in keys,
-      and ensure chapter-list and deep-link keys match
+      and ensure search, Discover, details, chapter-list and deep-link keys match; strip source
+      prefixes before sending ids to the site
 - [ ] Every enabled multi-select exclusion handles `excluded`; disable unsupported ones
       with `canExclude: false` and test supported exclusions against the site
 - [ ] Every site filter present; dynamic genres → `supportsTagSearch` plus a

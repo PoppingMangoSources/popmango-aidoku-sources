@@ -11,9 +11,9 @@ use api::SearchParams;
 use serde::Deserialize;
 
 const COMIC: &str = "n86El";
-const NOVEL: &str = "slh2";
+const NOVEL: &str = "novel/slh2";
 // Has the Adult and Smut genres but no rating from the site.
-const UNRATED_ADULT: &str = "XyKI";
+const UNRATED_ADULT: &str = "novel/XyKI";
 
 #[derive(Deserialize)]
 struct Found {
@@ -78,7 +78,7 @@ fn docs(result: &MangaPageResult) -> Vec<Doc> {
 	let ids = result
 		.entries
 		.iter()
-		.map(|manga| manga.key.as_str())
+		.map(|manga| manga_id(&manga.key))
 		.collect::<Vec<_>>();
 	let url = api::lookup_url(
 		&ids,
@@ -291,7 +291,10 @@ fn timeframes() {
 		let params = SearchParams::new(None);
 		let expected: models::FeedResponse =
 			api::get(&params.feed_url(id, 1, Some("monthly")).unwrap()).unwrap();
-		assert_eq!(listing(id, 1).entries[0].key, expected.items[0].id);
+		assert_eq!(
+			manga_id(&listing(id, 1).entries[0].key),
+			expected.items[0].id
+		);
 		defaults_set(&format!("{id}Timeframe"), DefaultValue::Null);
 	}
 	clear(&["homeSections"]);
@@ -575,10 +578,10 @@ fn review_filter_contract() {
 }
 
 #[aidoku_test]
-fn review_chapter_keys() {
+fn review_series_keys() {
 	let item = || serde_json::from_str::<models::ChapterItem>(r#"{"id":"5nDftC"}"#).unwrap();
-	let novel = item().into_chapter(NOVEL, true, &[]);
-	assert_eq!(novel.key, "novel/5nDftC");
+	let novel = item().into_chapter(manga_id(NOVEL), true, &[]);
+	assert_eq!(novel.key, "5nDftC");
 	assert_eq!(
 		novel.url.as_deref(),
 		Some("https://atsu.moe/novel/slh2/5nDftC")
@@ -597,6 +600,20 @@ fn review_chapter_keys() {
 		helpers::parse_link(comic.url.as_deref().unwrap()),
 		Some((COMIC.into(), Some(comic.key)))
 	);
+}
+
+#[aidoku_test]
+fn review_series_key_conversions() {
+	for (medium, expected) in [("Novel", "novel/slh2"), ("Comic", "slh2")] {
+		let json = format!(r#"{{"id":"slh2","title":"Title","medium":"{medium}"}}"#);
+		let feed: models::FeedItem = serde_json::from_str(&json).unwrap();
+		let search: models::SearchDocument = serde_json::from_str(&json).unwrap();
+		let details: models::MangaInfo = serde_json::from_str(&json).unwrap();
+		assert_eq!(feed.into_manga(false).key, expected);
+		assert_eq!(search.into_manga(false).key, expected);
+		assert_eq!(details.into_manga(false, None).key, expected);
+		assert_eq!(manga_id(expected), "slh2");
+	}
 }
 
 #[aidoku_test]
@@ -883,6 +900,7 @@ fn novel() {
 	let source = Atsumaru::new();
 	let novel = source.get_manga_update(manga(NOVEL), true, true).unwrap();
 	assert_eq!(novel.url.as_deref(), Some("https://atsu.moe/novel/slh2"));
+	assert_eq!(novel.key, NOVEL);
 	let chapter = novel.chapters.as_ref().unwrap().last().unwrap().clone();
 	assert!(
 		chapter
@@ -897,7 +915,7 @@ fn novel() {
 			.as_ref()
 			.unwrap()
 			.iter()
-			.all(|chapter| chapter.key.starts_with("novel/"))
+			.all(|chapter| !chapter.key.starts_with(NOVEL_PREFIX))
 	);
 	let pages = source
 		.get_page_list(
@@ -911,12 +929,13 @@ fn novel() {
 	assert_eq!(pages.len(), 1);
 	assert!(matches!(&pages[0].content, PageContent::Text(text) if text.len() > 1000));
 	let chapters_only = source.get_manga_update(manga(NOVEL), false, true).unwrap();
+	assert_eq!(chapters_only.key, NOVEL);
 	assert!(
 		chapters_only
 			.chapters
 			.unwrap()
 			.iter()
-			.all(|chapter| chapter.key.starts_with("novel/"))
+			.all(|chapter| !chapter.key.starts_with(NOVEL_PREFIX))
 	);
 
 	// Labelled by default.
@@ -952,7 +971,7 @@ fn deep_links() {
 	));
 	assert!(matches!(
 		link("https://atsu.moe/novel/slh2/5nDftC?p=1"),
-		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == NOVEL && key == "novel/5nDftC"
+		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == NOVEL && key == "5nDftC"
 	));
 	assert!(link("https://atsu.moe/explore").is_none());
 	assert!(link("https://atsu.moe/read/n86El").is_none());
