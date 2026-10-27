@@ -1,7 +1,7 @@
 # Source review evidence
 
 Consult this when creating a source, choosing APIs, preparing an upstream branch, or
-answering review comments. Read `AGENTS.md` for the repository's rules and the parent
+answering review comments. Read `AGENTS.md` / `CLAUDE.md` for the repository's rules and the parent
 `SKILL.md` for the procedure. Record new observations instead of assuming these snapshots
 remain current.
 

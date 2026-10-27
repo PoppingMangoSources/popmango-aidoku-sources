@@ -21,9 +21,9 @@ Never write a request or selector from memory or from another client's code. Con
 against the live site first.
 
 1. **Look for a template.** If the matching keiyoushi extension declares a `themePkg`, or
-   the site is a known WordPress theme, the source is a template consumer (AGENTS.md §12).
+   the site is a known WordPress theme, the source is a template consumer (AGENTS.md / CLAUDE.md §12).
    Otherwise find out how the site is built (server HTML, Next.js, a JSON API behind a
-   client-rendered app, GraphQL) and read the merged sources built the same way (AGENTS.md §6).
+   client-rendered app, GraphQL) and read the merged sources built the same way (AGENTS.md / CLAUDE.md §6).
 2. **Read the reference clients** for endpoints and request shapes — keiyoushi first. Treat
    them as leads, not evidence: a reference may send parameters the endpoint ignores, and
    its comments may be copies of ours.
@@ -31,7 +31,10 @@ against the live site first.
    snippets from `references/console-probes.md` in the site's DevTools console and paste
    the output. That is how every Toonkotsu question was settled — status values, sort ids,
    which parameters each endpoint honours, which value matches nothing.
-4. **Write down before coding:** the URL for home sections, search, details, chapter list
+4. **Know what the app will do with it.** `references/aidoku-host.md` records how the host
+   loads and calls a source, its JSON defaults and what each home component shows, citing
+   AidokuRunner, the Aidoku app and aidoku-rs. Settle "is that the default?" there.
+5. **Write down before coding:** the URL for home sections, search, details, chapter list
    and pages; every filter the site offers and the parameter it sends; the pagination
    signal; what a cleared selection sends.
 
@@ -48,17 +51,17 @@ Replace `res/icon.png` (128×128, opaque, margin around the mark).
 
 ## Phase 3 — Implement
 
-Follow AGENTS.md §2 and §6 for layout. Checklist, each item a real review comment or a bug
+Follow AGENTS.md / CLAUDE.md §2 and §6 for layout. Checklist, each item a real review comment or a bug
 that shipped:
 
 - [ ] Every card carries key, title, cover (and status/rating) only: search results,
       listings, a pasted-link result, and the `Scroller`, `MangaList` and `MangaChapterList`
       rows, which are `Link::from(compact Manga)` with no subtitle. Only `BigScroller` shows
-      details (AGENTS.md §3)
+      details (AGENTS.md / CLAUDE.md §3)
 - [ ] `MangaChapterList` only when the feed names a real chapter
 - [ ] A filter on the same axis as a setting overrides it for that search, never repeats it
 - [ ] No dead code: nothing silenced with `allow`/`expect`, no sort the API already does, no
-      field or helper left over from removed behaviour (AGENTS.md §8)
+      field or helper left over from removed behaviour (AGENTS.md / CLAUDE.md §8)
 - [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it out of the submission
 - [ ] `status`, `content_rating`, `viewer` set on details when the site has them
 - [ ] `send_partial_result` only when chapters need a second request
@@ -83,7 +86,7 @@ that shipped:
 - [ ] Regexes compiled once in a `static`; fixed sets as arrays
 - [ ] A rebranded site keeps its id and sets `breakingChangeVersion` in `config`
 - [ ] Comments: terse, why only, no other sources or third parties named, no dividers
-- [ ] `src/test.rs` with `#[aidoku_test]` cases checked against the site's data (AGENTS.md §1)
+- [ ] `src/test.rs` with `#[aidoku_test]` cases checked against the site's data (AGENTS.md / CLAUDE.md §1)
 
 ## Phase 4 — Verify
 
@@ -98,12 +101,14 @@ RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 `scripts/verify-source.sh <dir>` runs these with the extra dead-code lints from
 `scripts/source-lints.sh`, and lints the test module too; use it rather than the bare commands.
 
-These cover the Rust/package baseline (AGENTS.md §1). Also run the independent scope
+These cover the Rust/package baseline (AGENTS.md / CLAUDE.md §1). Also run the independent scope
 check and behavioral tests; compilation alone cannot establish upstream readiness.
 
-Then from the repo root: `scripts/check-sources.py <id>`.
+Then from the repo root: `scripts/check-sources.py <id>`, and `scripts/upstream-usage.py <id>`
+to list what the source uses or names that merged sources don't; replace each with the usual
+equivalent unless the site needs it (AGENTS.md / CLAUDE.md §9).
 
-Then read AGENTS.md §3 top to bottom against the diff, one row at a time, and say which rows
+Then read AGENTS.md / CLAUDE.md §3 top to bottom against the diff, one row at a time, and say which rows
 you checked. Passing the scripts isn't the same as following the rules: rows showing
 "Manhwa · ★ 8.3" went to `main` with every gate green.
 
@@ -127,7 +132,7 @@ scripts/bump.sh <id>
 ```
 
 Commit as Popmango Extensions, unsigned, conventional subject, a one- or two-sentence body,
-no AI attribution (AGENTS.md §9).
+no AI attribution (AGENTS.md / CLAUDE.md §9).
 
 ## Phase 6 — Upstream PR
 
@@ -150,7 +155,7 @@ If a branch is contaminated, preserve it and use `--rebuild --from <saved-ref>`.
 cherry-pick a commit that includes README, workflow or unrelated source changes. Keep
 the backup until the reconstructed source has been tested and the person no longer needs it. The person opens the PR; do not open it unless asked.
 
-Before opening it, reread the reviews AGENTS.md §13 lists and predict kkantan's comments.
+Before opening it, reread the reviews AGENTS.md / CLAUDE.md §13 lists and predict kkantan's comments.
 
 ## Phase 7 — Review rounds
 
@@ -163,9 +168,9 @@ scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<one or tw
 Draft a one- or two-sentence reply per comment for the person to post; do not post on the
 PR yourself.
 
-Every comment, and every correction the person makes, also becomes a rule: a row in AGENTS.md
+Every comment, and every correction the person makes, also becomes a rule: a row in AGENTS.md / CLAUDE.md
 §3, decided from the implementing code, plus a `check-sources.py` rule with a test when it can
-be detected, calibrated with `scripts/calibrate-rules.sh` (AGENTS.md §9, "How a rule gets
+be detected, calibrated with `scripts/calibrate-rules.sh` (AGENTS.md / CLAUDE.md §9, "How a rule gets
 into this file"). Fix the same pattern everywhere in the source before pushing, not just the
 line the reviewer pointed at.
 

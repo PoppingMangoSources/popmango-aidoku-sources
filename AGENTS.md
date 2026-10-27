@@ -476,7 +476,13 @@ is short-lived, so a cache dies with it.
   description — with a compact payload it's always `None`, which is what a row should show.
   Don't set a subtitle yourself; `check-sources.py` fails a `Link` that does.
 - `HomePartialResult` + `send_partial_result` let one failed section not kill the
-  whole page. Worth doing when there are several independent sections.
+  whole page. But the app matches a component partial to the layout **by title**, and keeps
+  the layout's empty placeholder for a section that never arrives, which renders as a title
+  over nothing once loading ends. When sections load together (one `send_all`), send the
+  layout as a partial and **return** the sections that loaded: a returned home replaces the
+  partial one (`en.atsumaru`). Details in the skill's `references/aidoku-host.md`.
+- `MangaList` rows also show the **manga's tags** when it has any, so a row's manga carries
+  none.
 
 ### Global mutable state
 
@@ -504,6 +510,10 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
 - `config.languageSelectType` in `source.json` accepts only `"single"`; the CLI
   schema also lists `"multi"` but the app rejects it and the source fails to
   install. Omit the field for multi-select, which is the default.
+- `parse_date` formats with the **device's locale** unless given one, so English month or
+  day names fail on a phone set to another language; pass `"en_US_POSIX"`.
+- Dynamic settings get their defaults registered only when the reader opens the settings
+  page, so `defaults_get` returns `None` for them until then; read them with a fallback.
 - `defaults_get::<Vec<String>>(key)` returns `None` when unset and `Some(vec![])`
   when the reader cleared it. Keep those distinct — collapsing them means
   unchecking every box silently re-enables everything.
@@ -632,6 +642,18 @@ went in one of these ways, and new ones go in the same way:
 - `scripts/calibrate-rules.sh [rule text]` runs `check-sources.py` over every merged upstream
   source and counts failures per rule (or lists the sources one rule fails). CI's
   `check.yaml` prints it in the job summary on every push.
+- `scripts/upstream-usage.py <id>` lists every aidoku item the source uses and every name it
+  defines that few or no merged sources share. For each, either the site needs it or there is
+  a usual equivalent among sources built the same way (section 6): `API_URL` for the API base
+  (20 sources), a fetch function for a filter list (`en.toonkotsu`'s `listed_facets`),
+  `SearchParams`/`BrowseParams` for search parameters, `ErrorResponse` for an API error,
+  "Blocked Groups" for excluded scanlators (`multi.mangadex`), and `GroupSetting`s rather
+  than a `PageSetting`, which no merged source uses. Run it before a submission.
+- `scripts/check-host-reference.py` compares the files `references/aidoku-host.md` cites in
+  AidokuRunner, the Aidoku app and aidoku-rs with each repository's `main`, and lists the ones
+  that changed. **Host reference** (`host-reference.yaml`) runs it every Monday and when the
+  reference changes; when it fails, re-read the changed file, correct the reference, then run
+  the script with `--update`.
 - `scripts/source-lints.sh` holds the dead-code lints (section 8) that `verify-source.sh` and
   CI's `lint-crates.sh` add to every source's clippy run, templates excepted.
 - Before pushing a source with tests, run `cargo test` in it; the hook doesn't, since the
@@ -913,7 +935,10 @@ Confirmed by console probes on kagane.si unless marked.
 
 ## 15. Evidence before submission
 
-Read the synchronized skill reference
+Read [references/aidoku-host.md](.claude/skills/aidoku-source/references/aidoku-host.md) for
+what the app actually does with a source — how AidokuRunner loads and calls it, every import,
+the JSON defaults, and what each home component renders — with each claim tied to the file it
+comes from. Read the synchronized skill reference
 [references/source-review.md](.claude/skills/aidoku-source/references/source-review.md)
 for official code locations, runner limitations, reviewer comment permalinks and the test
 matrix. Use the `.agents/skills/aidoku-source/references/source-review.md` copy from Codex.
@@ -956,7 +981,12 @@ reaches the site, unless marked.
   search filters that override the setting for one search (the owner's call: readers pick
   novels or one comic type from Discover). The site's tag groups are **not**
   search filters (the owner's call): a tapped tag still searches by its id, and each group
-  has a Hidden Tags list in settings.
+  has a Hidden Tags list in settings. The site has 6,140 tags, too many for one list, so the
+  19 group lists sit in their own Hidden Tags group. Blocked Groups (key
+  `excludedScanlators`, kept so stored lists survive) leaves chapters from named groups out.
+- **Home** sends the layout as a partial, then returns the sections that loaded, so a failed
+  one drops out rather than leaving an empty row; with every section failing it reports an
+  error.
 - **Search** is Typesense: `q` (`*` for none), `filter_by`, `sort_by`, `page`, `per_page`,
   `include_fields`. `filter_by` takes `&&`, `||` and parentheses; values are backtick-quoted
   (escape backticks and backslashes). `tags` holds genre names, `genreIds`/`tagIds` the ids;
