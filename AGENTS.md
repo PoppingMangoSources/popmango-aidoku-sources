@@ -326,6 +326,7 @@ call: change it or say why not); **—** needs the site or the app, so it is rea
 | What was flagged | The rule | |
 |---|---|---|
 | `SEARCH_URL`, `BASE_URL` plus a path and only ever followed by `?` | No merged source names one endpoint: format it inline, `format!("{BASE_URL}/search?{qs}")` (11 sources). `API_URL` for an API base is fine (20 sources). | F |
+| `manga_page_url`, `chapters_url`, `read_url` over an `api_url` helper, each used once | API endpoints are formatted where they are requested, `format!("{API_URL}/chapter/{key}")` (`en.comix`, `multi.mangadex`, `en.toonkotsu`). Helpers are for site urls used in several places (`manga_url` 4 sources, `cover_url` 3, `chapter_url` 2). The used-once note counts calls, not imports. | N |
 | Five Typesense parameters as constants, each sent once | Write a value used once where it is sent, `query.push("num_typos", Some("4,3,2,1,0"))`. | F |
 | `FEED_LIMIT`, `SEARCH_LIMIT` for page sizes | `PAGE_SIZE` (9 sources), or `<THING>_PAGE_SIZE` for a second one; `RATINGS` is `CONTENT_RATINGS` (`multi.xcomic`). | N |
 | `fn is_novel(&self) { is_novel(self.medium…) }` | A method that only passes its own fields to a free function is a wrapper; call the function. `ja.soraraw` keeps such accessors, so it is a note. | N |
@@ -574,7 +575,8 @@ an API quirk, a constraint, an ordering that matters.
 
 - **URLs:** `BASE_URL` (116 sources), `API_URL` for an API base (20), `CDN_URL` for an image
   host (3). Each is a full literal, even on the same host (`en.stonescape`, `en.comix`); none is
-  derived from another. Endpoints aren't constants: they are formatted where they are requested.
+  derived from another. Endpoints aren't constants or one-line helpers: they are formatted
+  where they are requested.
 - **Sizes:** `PAGE_SIZE` (9), then `<THING>_PAGE_SIZE` or `<THING>_SIZE` for others
   (`CHAPTER_PAGE_SIZE`, `RECENTLY_ADDED_SIZE`). Not `_LIMIT`.
 - **Lists:** `SORTS` (5), `SECTIONS`, `GROUPS`, `CONTENT_TYPES`, `CONTENT_RATINGS`,

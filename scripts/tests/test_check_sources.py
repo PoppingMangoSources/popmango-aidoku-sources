@@ -116,6 +116,12 @@ class CardRuleTests(unittest.TestCase):
         self.assertTrue(any('fn is_novel only passes its own fields' in n for n in notes))
         self.assertFalse(any('get_manga_list' in n for n in notes))
 
+    def test_imported_helper_used_once_is_noted(self):
+        (self.source / 'src').mkdir(exist_ok=True)
+        (self.source / 'src/api.rs').write_text('pub fn page_url(id: &str) -> String {\n\tapi_url("page", id)\n}\n')
+        _, notes = self.naming('use api::{get, page_url};\nfn a(k: &str) { get(&page_url(k)); }\n')
+        self.assertTrue(any('fn page_url only calls api_url and is used once' in n for n in notes))
+
     def test_full_path_call_is_noted(self):
         _, notes = self.naming('fn new() -> Self {\n\tSelf { seed: aidoku::imports::std::current_date() }\n}\n')
         self.assertTrue(any('by its full path' in n for n in notes))

@@ -178,7 +178,9 @@ def crate_text(source: Path) -> str:
 def check_naming(source: Path) -> None:
     """Constants and wrappers merged sources write differently (AGENTS.md / CLAUDE.md section 8)."""
     text = crate_text(source)
-    uses = lambda name: len(re.findall(rf"\b{name}\b", text)) - 1
+    # An import isn't a use: a helper imported once and called once is still used once.
+    code = re.sub(r"^\s*(?:pub(?:\([^)]*\))? )?use [^;]*;", "", text, flags=re.M | re.S)
+    uses = lambda name: len(re.findall(rf"\b{name}\b", code)) - 1
     urls = dict(URL_CONSTANT.findall(text))
     for name, value in urls.items():
         base = next((other for other, prefix in urls.items() if other != name and value.startswith(prefix + "/") and value != prefix + "/"), None)
