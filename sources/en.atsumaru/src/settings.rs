@@ -26,7 +26,7 @@ pub fn adult_only() -> bool {
 }
 
 pub fn label_novels() -> bool {
-	defaults_get::<bool>("labelNovels").unwrap_or_default()
+	defaults_get::<bool>("labelNovels").unwrap_or(true)
 }
 
 pub fn hidden_genres() -> Vec<String> {

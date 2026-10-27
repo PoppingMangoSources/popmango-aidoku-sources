@@ -77,7 +77,7 @@
 				"key": "labelNovels",
 				"title": "Label Novels",
 				"subtitle": "Add (Novel) after the titles of novels.",
-				"default": false,
+				"default": true,
 				"refreshes": [
 					"content",
 					"listings"

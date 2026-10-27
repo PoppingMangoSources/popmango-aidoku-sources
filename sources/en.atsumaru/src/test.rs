@@ -671,10 +671,13 @@ fn novel() {
 	assert_eq!(pages.len(), 1);
 	assert!(matches!(&pages[0].content, PageContent::Text(text) if text.len() > 1000));
 
-	defaults_set("labelNovels", DefaultValue::Bool(true));
+	// Labelled by default.
 	let labelled = source.get_manga_update(manga(NOVEL), true, false).unwrap();
+	defaults_set("labelNovels", DefaultValue::Bool(false));
+	let plain = source.get_manga_update(manga(NOVEL), true, false).unwrap();
 	clear(&["labelNovels"]);
 	assert!(labelled.title.ends_with(" (Novel)"));
+	assert!(!plain.title.ends_with(" (Novel)"));
 }
 
 #[aidoku_test]
