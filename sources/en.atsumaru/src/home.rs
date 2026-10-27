@@ -1,7 +1,7 @@
 use crate::{
 	Atsumaru,
 	api::{FEATURED_FIELDS, FEED_LIMIT, SearchParams, get, lookup_url, parse, request},
-	helpers::{feed_allows, spotlight_genre, take_document},
+	helpers::{feed_allows, spotlight_genre, take_document, timeframe_title},
 	models::{FeedItem, FeedResponse, SearchResponse},
 	settings,
 };
@@ -21,15 +21,15 @@ const NOVELS: &str = "novels";
 const SPOTLIGHT: &str = "genreSpotlight";
 
 const SECTIONS: [(&str, &str); 14] = [
-	(POPULAR, "Popular This Week"),
+	(POPULAR, "Popular"),
 	("hotUpdates", "Hot Updates"),
 	("rising", "Rising"),
 	("recentlyUpdated", "Recently Updated"),
 	("topRated", "Top Rated"),
 	(SPOTLIGHT, "Spotlight"),
 	("hotArrivals", "Hot Arrivals"),
-	("mostBookmarked", "Most Bookmarked This Week"),
-	("mostTalkedAbout", "Most Talked About This Week"),
+	("mostBookmarked", "Most Bookmarked"),
+	("mostTalkedAbout", "Most Talked About"),
 	(NOVELS, "Most Popular Novels"),
 	("recentlyAdded", "Recently Added"),
 	("hiddenGems", "Hidden Gems"),
@@ -152,6 +152,8 @@ impl Home for Atsumaru {
 			if let Some(request) = section_request(id, 1)? {
 				let name: String = if id == SPOTLIGHT {
 					format!("{name}: {}", spotlight_genre())
+				} else if let Some(timeframe) = settings::timeframe(id) {
+					format!("{name} {}", timeframe_title(&timeframe))
 				} else {
 					name.into()
 				};

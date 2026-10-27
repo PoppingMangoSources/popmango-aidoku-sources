@@ -56,7 +56,12 @@ impl Source for Atsumaru {
 		let mut tapped = Vec::new();
 		for filter in filters {
 			match filter {
-				FilterValue::Sort { index, .. } => search.sort = index as usize,
+				FilterValue::Sort {
+					index, ascending, ..
+				} => {
+					search.sort = index as usize;
+					search.ascending = ascending;
+				}
 				FilterValue::MultiSelect {
 					id,
 					included,

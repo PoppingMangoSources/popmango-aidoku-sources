@@ -32,13 +32,14 @@ pub const FEATURED_FIELDS: &str =
 
 /// Indexed sorts in `filters.json` order, then the ranked feeds, then Random.
 const SORTS: [&str; 6] = [
-	"views:desc",
-	"title:asc",
-	"trending:desc",
-	"dateAdded:desc",
-	"releaseDate:desc",
-	"mbRating:desc",
+	"views",
+	"title",
+	"trending",
+	"dateAdded",
+	"releaseDate",
+	"mbRating",
 ];
+const TITLE: usize = 1;
 const FEEDS: [&str; 9] = [
 	"hotUpdates",
 	"recentlyUpdated",
@@ -122,6 +123,7 @@ pub fn lookup_url(ids: &[&str], fields: &str) -> String {
 pub struct SearchParams {
 	pub query: Option<String>,
 	pub sort: usize,
+	pub ascending: bool,
 	pub seed: u32,
 	pub genres: Vec<String>,
 	pub excluded_genres: Vec<String>,
@@ -162,13 +164,14 @@ impl SearchParams {
 	pub fn feed_url(&self, id: &str, page: i32) -> Result<String> {
 		let mut query = QueryParameters::new();
 		match id {
-			"popular" | "mostBookmarked" | "mostTalkedAbout" => {
-				query.push("timeframe", Some("weekly"))
-			}
 			"genreSpotlight" => query.push("genre", Some(spotlight_genre())),
-			"hotUpdates" | "recentlyUpdated" | "rising" | "hotArrivals" | "recentlyAdded"
-			| "topRated" | "hiddenGems" | "bingeWorthy" | "mostPolarizing" => {}
+			"popular" | "mostBookmarked" | "mostTalkedAbout" | "hotUpdates" | "recentlyUpdated"
+			| "rising" | "hotArrivals" | "recentlyAdded" | "topRated" | "hiddenGems"
+			| "bingeWorthy" | "mostPolarizing" => {}
 			_ => bail!("Unknown listing"),
+		}
+		if let Some(timeframe) = settings::timeframe(id) {
+			query.push("timeframe", Some(&timeframe));
 		}
 		let (comics, novels) = split_types(&self.types);
 		query.push("offset", Some(&((page - 1) * FEED_LIMIT).to_string()));
@@ -336,11 +339,10 @@ impl SearchParams {
 					format!("_eval({first}:>={seed}):desc,{first}:asc,{second}:asc")
 				}
 			} else {
-				SORTS
-					.get(self.sort)
-					.copied()
-					.unwrap_or(SORTS[POPULARITY])
-					.into()
+				// Best first, and Title from A; the feeds and Random have one order.
+				let field = SORTS.get(self.sort).copied().unwrap_or(SORTS[POPULARITY]);
+				let ascending = self.ascending != (self.sort == TITLE);
+				format!("{field}:{}", if ascending { "asc" } else { "desc" })
 			};
 			query.push("sort_by", Some(&sort));
 		}

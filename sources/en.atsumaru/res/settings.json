@@ -135,6 +135,79 @@
 	},
 	{
 		"type": "group",
+		"title": "Rankings",
+		"footer": "The period each ranking covers, on the home page, its list and its search sort.",
+		"items": [
+			{
+				"type": "select",
+				"key": "popularTimeframe",
+				"title": "Popular",
+				"values": [
+					"daily",
+					"weekly",
+					"monthly",
+					"all"
+				],
+				"titles": [
+					"Today",
+					"This Week",
+					"This Month",
+					"All Time"
+				],
+				"default": "weekly",
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "select",
+				"key": "mostBookmarkedTimeframe",
+				"title": "Most Bookmarked",
+				"values": [
+					"daily",
+					"weekly",
+					"monthly",
+					"all"
+				],
+				"titles": [
+					"Today",
+					"This Week",
+					"This Month",
+					"All Time"
+				],
+				"default": "weekly",
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "select",
+				"key": "mostTalkedAboutTimeframe",
+				"title": "Most Talked About",
+				"values": [
+					"daily",
+					"weekly",
+					"monthly",
+					"all"
+				],
+				"titles": [
+					"Today",
+					"This Week",
+					"This Month",
+					"All Time"
+				],
+				"default": "weekly",
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
 		"title": "Home",
 		"footer": "Turn off the sections you don't read to make the home page load faster.",
 		"items": [

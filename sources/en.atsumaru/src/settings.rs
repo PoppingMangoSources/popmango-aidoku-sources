@@ -45,6 +45,13 @@ pub fn hidden_tags() -> Vec<String> {
 		.collect()
 }
 
+/// The period a ranked feed covers, for the three the site ranks by period.
+pub fn timeframe(feed: &str) -> Option<String> {
+	matches!(feed, "popular" | "mostBookmarked" | "mostTalkedAbout").then(|| {
+		defaults_get::<String>(&format!("{feed}Timeframe")).unwrap_or_else(|| "weekly".into())
+	})
+}
+
 pub fn home_sections() -> Option<Vec<String>> {
 	defaults_get::<Vec<String>>("homeSections")
 }

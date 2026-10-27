@@ -146,11 +146,11 @@ fn select(id: &str, value: &str) -> FilterValue {
 	}
 }
 
-fn sort(index: i32) -> FilterValue {
+fn sort(index: i32, ascending: bool) -> FilterValue {
 	FilterValue::Sort {
 		id: "sort".into(),
 		index,
-		ascending: false,
+		ascending,
 	}
 }
 
@@ -230,26 +230,52 @@ fn pasted_links() {
 fn sorts() {
 	for index in 0..16 {
 		assert!(
-			!search(None, vec![sort(index)]).entries.is_empty(),
+			!search(None, vec![sort(index, false)]).entries.is_empty(),
 			"{index}"
 		);
 	}
 	// Title uses the site's collation, so only check it is its own, stable order.
-	let titled = keys(&search(None, vec![sort(1)]));
-	assert_eq!(titled, keys(&search(None, vec![sort(1)])));
-	assert_ne!(titled, keys(&search(None, vec![sort(0)])));
+	let titled = keys(&search(None, vec![sort(1, false)]));
+	assert_eq!(titled, keys(&search(None, vec![sort(1, false)])));
+	assert_ne!(titled, keys(&search(None, vec![sort(0, false)])));
 	// A text query is ranked by match whatever the sort.
 	assert_eq!(
 		keys(&search(Some("sword"), Vec::new())),
-		keys(&search(Some("sword"), vec![sort(1)]))
+		keys(&search(Some("sword"), vec![sort(1, false)]))
 	);
+}
+
+#[aidoku_test]
+fn sort_directions() {
+	let sorted = |index: i32, ascending: bool| search(None, vec![sort(index, ascending)]);
+	// Best first by default, and the arrow reverses it.
+	assert_ne!(keys(&sorted(0, false)), keys(&sorted(0, true)));
+	// Title reads from A by default.
+	let from_a = sorted(1, false).entries[0].title.to_lowercase();
+	let from_z = sorted(1, true).entries[0].title.to_lowercase();
+	assert!(from_z.starts_with('z'), "{from_z}");
+	assert!(!from_a.starts_with('z'), "{from_a}");
+	// The feeds have one order, so the arrow changes nothing.
+	assert_eq!(keys(&sorted(8, false)), keys(&sorted(8, true)));
+}
+
+#[aidoku_test]
+fn timeframes() {
+	defaults_set("popularTimeframe", DefaultValue::String("daily".into()));
+	let today = listing("popular", 1);
+	let home = Atsumaru::new().get_home().unwrap();
+	defaults_set("popularTimeframe", DefaultValue::String("all".into()));
+	let all_time = listing("popular", 1);
+	clear(&["popularTimeframe"]);
+	assert_ne!(keys(&today), keys(&all_time));
+	assert_eq!(home.components[0].title.as_deref(), Some("Popular Today"));
 }
 
 #[aidoku_test]
 fn feed_sorts() {
 	// Rising is the third feed sort: the feed's order, narrowed by the search filters.
 	let feed = keys(&listing("rising", 1));
-	let narrowed = search(None, vec![sort(8), multi("genre", &["39"])]);
+	let narrowed = search(None, vec![sort(8, false), multi("genre", &["39"])]);
 	assert!(!narrowed.entries.is_empty());
 	assert!(docs(&narrowed).iter().all(|doc| doc.has_genre("39")));
 	let mut position = 0;
