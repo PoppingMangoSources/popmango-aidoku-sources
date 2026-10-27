@@ -698,6 +698,12 @@ went in one of these ways, and new ones go in the same way:
   `scripts/pr-branch.sh <id> --from <saved-ref> --rebuild [--push]`. It preserves the old
   branch as `chore/<id>-before-rebuild-<sha>` before replacing it. Ordinary runs refuse
   to replace an unmerged branch. No source behavior is changed during reconstruction.
+- **A rebuild refuses a branch that holds work `main` doesn't have** — source files matching
+  no commit of the source on `main`, ignoring the version, `test.rs` and its module line.
+  Another session pushed straight to `feat/en.atsumaru` once and the next rebuild replaced
+  it; the work survived only in the `chore/…-before-rebuild-…` copy. Bring such work into
+  `main` with a three-way merge (base: the commit it was built on, then `git apply -3`),
+  then rebuild. `--discard-unmerged` replaces it anyway, for work that is truly unwanted.
 - Review rounds preserve the submission version; updates of sources already upstream use
   exactly upstream's version plus one. Fork publication versions advance independently.
 - Pushes to the PR branch always use `--force-with-lease=<ref>:<expected-sha>`, never a

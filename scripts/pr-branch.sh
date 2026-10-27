@@ -2,7 +2,8 @@
 # Prepare an upstream submission from a committed snapshot; leave its checkout alone.
 # Usage: scripts/pr-branch.sh <id> [--from <ref>] [--branch <name>] [--push]
 # Add --update "<subject>" "<body>" for an existing upstream source,
-# --fix "<subject>" "<body>" for a review round, or --rebuild to preserve and replace a branch.
+# --fix "<subject>" "<body>" for a review round, or --rebuild to preserve and replace a branch
+# (refused when the branch holds work main doesn't have, unless --discard-unmerged).
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
 tooling=$(cd "$(dirname "$0")/.." && pwd)
@@ -15,6 +16,7 @@ subject="feat: add $id"
 body=
 push=false
 rebuild=false
+discard=false
 while [ $# -gt 0 ]; do
     case $1 in
         --from) snapshot=${2:?provide a ref}; shift 2 ;;
@@ -22,6 +24,7 @@ while [ $# -gt 0 ]; do
         --fix|--update) mode=${1#--}; subject=${2:?provide a subject}; body=${3:?provide a body}; shift 3 ;;
         --push) push=true; shift ;;
         --rebuild) rebuild=true; shift ;;
+        --discard-unmerged) discard=true; shift ;;
         *) echo "unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -50,6 +53,29 @@ else
             exit 1
         fi
     fi
+fi
+# A rebuild replaces the branch, so refuse when it holds source work no commit on main has:
+# someone may have pushed to it directly. --discard-unmerged replaces it anyway.
+if $rebuild && [ -n "$lease" ] && ! $discard; then
+    python3 - "$root" "$lease" "$source" <<'PY' || exit 1
+import re, subprocess, sys
+root, lease, source = sys.argv[1:]
+skip = {f"{source}/res/source.json", f"{source}/src/test.rs"}
+def files(ref):
+    rows = subprocess.check_output(["git", "-C", root, "ls-tree", "-r", ref, "--", source], text=True).splitlines()
+    return {row.split("\t")[1]: row.split()[2] for row in rows if row.split("\t")[1] not in skip}
+def lib(ref):
+    text = subprocess.run(["git", "-C", root, "show", f"{ref}:{source}/src/lib.rs"], capture_output=True, text=True).stdout
+    return re.sub(r"\n*#\[cfg\(test\)\]\nmod test;\n", "\n", text)
+def same(ref):
+    a, b = files(lease), files(ref)
+    a.pop(f"{source}/src/lib.rs", None); b.pop(f"{source}/src/lib.rs", None)
+    return a == b and lib(lease) == lib(ref)
+snapshots = subprocess.check_output(["git", "-C", root, "log", "--format=%H", "-n", "200", "origin/main", "--", source], text=True).split()
+if not any(same(ref) for ref in snapshots):
+    sys.exit(f"{lease[:8]} on the branch matches no commit of {source} on main: someone pushed work to it.\n"
+             "Bring that work into main first (or pass --discard-unmerged to replace it anyway).")
+PY
 fi
 if $rebuild && [ -n "$lease" ]; then
     backup="chore/$id-before-rebuild-${lease:0:8}"
