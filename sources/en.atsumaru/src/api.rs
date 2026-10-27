@@ -16,7 +16,6 @@ pub const BASE_URL: &str = "https://atsu.moe";
 pub const CDN_URL: &str = "https://cdn.atsu.moe/static";
 pub const FEED_LIMIT: i32 = 24;
 const SEARCH_LIMIT: i32 = 40;
-const SEARCH_URL: &str = "https://atsu.moe/collections/manga/documents/search";
 pub const API_URL: &str = "https://atsu.moe/api";
 
 const QUERY_BY: &str = "title,englishTitle,otherNames,authors,acronyms";
@@ -117,7 +116,7 @@ pub fn lookup_url(ids: &[&str], fields: &str) -> String {
 	query.push("include_fields", Some(fields));
 	query.push("filter_by", Some(&format!("id:={}", list(ids))));
 	query.push("per_page", Some(&ids.len().max(1).to_string()));
-	format!("{SEARCH_URL}?{query}")
+	format!("{BASE_URL}/collections/manga/documents/search?{query}")
 }
 
 #[derive(Default)]
@@ -347,7 +346,7 @@ impl SearchParams {
 			format!("{field}:{}", if self.ascending { "asc" } else { "desc" })
 		};
 		query.push("sort_by", Some(&sort));
-		format!("{SEARCH_URL}?{query}")
+		format!("{BASE_URL}/collections/manga/documents/search?{query}")
 	}
 
 	pub fn page(&self, page: i32, label_novels: bool) -> Result<MangaPageResult> {
