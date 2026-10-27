@@ -995,7 +995,13 @@ reaches the site, unless marked.
   error.
 - **Sorts.** Popularity, Title, Trending, Recently Added, Release Date, Top Rated, then the nine
   ranked feeds (Hot Updates to Hidden Gems), then Random. A text query is ranked by match, so
-  the indexed sorts apply only without one. A feed sort reads the feed with the settings, then
+  the indexed sorts apply only without one. The six indexed sorts reverse with the sort arrow
+  (Typesense takes `field:asc` on each; Title reads from A by default, as Toonkotsu's does);
+  the feeds and Random have one order and ignore it.
+- **Rankings.** Only `popular`, `mostBookmarked` and `mostTalkedAbout` take `timeframe`
+  (`daily`, `weekly`, `monthly`, `all`; anything else is a 400); the other feeds accept and
+  ignore it (probed). Each has a setting, `<feed>Timeframe`, defaulting to weekly, that sets
+  the home section, its listing and its search sort, and names the section ("Popular Today"). A feed sort reads the feed with the settings, then
   narrows it with one search lookup over its ids, so every search filter applies and the
   feed's order is kept. Random sorts on the index's `shuffleA`/`shuffleB` fields from a seed
   the source picks at launch, so paging stays in one order until the app restarts.
