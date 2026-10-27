@@ -1,7 +1,7 @@
 name: Check source rules
 
-# The AGENTS.md rules that need no network or toolchain, as `check-sources.py` implements
-# them (AGENTS.md section 9 lists them). Only the sources a change touches are checked; the
+# The AGENTS.md / CLAUDE.md rules that need no network or toolchain, as `check-sources.py` implements
+# them (AGENTS.md / CLAUDE.md section 9 lists them). Only the sources a change touches are checked; the
 # checker's own tests and an upstream calibration run on every push.
 
 on:

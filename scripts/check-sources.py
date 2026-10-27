@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks sources against the rules in AGENTS.md that need no network.
+"""Checks sources against the rules in AGENTS.md / CLAUDE.md that need no network.
 
 Usage:
     scripts/check-sources.py                  every source
@@ -113,7 +113,7 @@ def check_icon(path: Path) -> None:
 SECTION_BANNER = re.compile(r"^\s*//+\s*[-=*#~]{3,}")
 PAGE_SIZE = re.compile(r"page_size:\s*Some\((\d+)\)")
 CHAPTER_LANGUAGE = re.compile(r"\blanguage:\s*Some\(")
-# Rules from review comments on other contributors' PRs (AGENTS.md section 3).
+# Rules from review comments on other contributors' PRs (AGENTS.md / CLAUDE.md section 3).
 LINE_RULES = [
     (
         re.compile(r"!needs_details\s*&&\s*!needs_chapters|!needs_chapters\s*&&\s*!needs_details"),

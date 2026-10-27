@@ -1,0 +1,31 @@
+name: Host reference
+# The skill's references/aidoku-host.md describes what the app does with a source, citing
+# files in AidokuRunner, the Aidoku app and aidoku-rs. This fails when a cited file changes,
+# so the facts drawn from it are re-read before a source relies on them.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".claude/skills/aidoku-source/references/aidoku-host.md"
+      - "scripts/check-host-reference.py"
+      - ".github/workflows/host-reference.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Cited host files unchanged
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Compare cited files with each repository's main
+        run: |
+          set -o pipefail
+          python3 scripts/check-host-reference.py | tee -a "$GITHUB_STEP_SUMMARY"

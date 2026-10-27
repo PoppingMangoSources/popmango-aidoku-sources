@@ -28,6 +28,14 @@ def main():
             for reference in (".claude/skills/aidoku-source/SKILL.md", ".agents/skills/aidoku-source/SKILL.md"):
                 if reference not in path.read_text():
                     errors.append(f"{path.name} does not point to {reference}")
+        # Both files hold the same rules, so a pointer names both, for whichever an agent reads.
+        for base in (".claude/skills", "scripts", ".github", ".githooks"):
+            for path in sorted((ROOT / base).rglob("*")):
+                if not path.is_file() or path.suffix not in ("", ".md", ".py", ".sh", ".yaml") or path == Path(__file__).resolve():
+                    continue
+                for number, line in enumerate(path.read_text(errors="ignore").splitlines(), 1):
+                    if ("AGENTS.md" in line) != ("CLAUDE.md" in line) and "write_text" not in line:
+                        errors.append(f"{path.relative_to(ROOT)}:{number} names one of AGENTS.md and CLAUDE.md; name both")
         for error in errors:
             print(f"FAIL {error}")
         if not errors:

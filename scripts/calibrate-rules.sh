@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs check-sources.py over every merged upstream source and counts the failures per rule.
 # Run it when adding or changing a rule: a rule that fails code kkantan merged recently needs
-# evidence it is still the reviewer's position (AGENTS.md section 9) before it ships.
+# evidence it is still the reviewer's position (AGENTS.md / CLAUDE.md section 9) before it ships.
 # Usage: scripts/calibrate-rules.sh [rule text to list the sources it fails]
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
