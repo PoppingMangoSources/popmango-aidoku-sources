@@ -436,7 +436,11 @@ Don't offer the same axis twice. Pick one:
 Whichever you pick, a selection that covers every option constrains nothing — send
 nothing rather than the full list. Sending an explicit "all" list to an inclusive
 API parameter silently drops every record with a null value in that field, which is
-mostly newly added entries.
+mostly newly added entries. `en.toonkotsu` (`type`) and `multi.xcomic` (`incTypes`) leave a
+full selection out; `multi.kagane` and `multi.mangadex` send their full lists, which those
+APIs treat the same. Probe what a missing parameter means first: Atsumaru's feeds read a
+missing `contentRatings` as safe-only, so there the full list is the only way to include
+adult titles and is always sent.
 
 The opposite end matters too: a setting the reader **cleared** must show nothing, not
 everything. If the API has no "none" value, send one it can't match — Toonkotsu answers an
@@ -1022,7 +1026,9 @@ reaches the site, unless marked.
   only), `contentRatings` and `excludedTags` (genre and tag ids together; the two never share
   an id). `types` and `mediums` are ANDed, so with novels on the types are filtered locally.
   `contentRatings` only filters rated titles: unrated ones pass, and official translations
-  can't be filtered at all. No total, so a full page is the only next-page signal.
+  can't be filtered at all. A missing `mediums` or `types` means every one, so a full selection
+  is left out; a missing `contentRatings` hides adult titles, so it is always sent (probed).
+  No total, so a full page is the only next-page signal.
 - **Ratings.** `mbContentRating` (`Safe`, `Suggestive`, `Erotica`, `Pornographic`) plus
   `isAdult`; most titles are unrated (579 of 2,669 novels have one). Unrated titles are rated
   from genres: Hentai (`10`) as Pornographic, Adult (`46`) and Smut (`41`) as Erotica.

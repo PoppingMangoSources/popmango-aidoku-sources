@@ -177,14 +177,15 @@ impl SearchParams {
 		let (comics, novels) = split_types(&self.types);
 		query.push("offset", Some(&((page - 1) * FEED_LIMIT).to_string()));
 		query.push("limit", Some(&FEED_LIMIT.to_string()));
-		// The feeds AND types with mediums, so with novels on, types are filtered locally.
-		let mediums: Vec<&str> = [(!comics.is_empty(), "Comic"), (novels, "Novel")]
-			.into_iter()
-			.filter_map(|(wanted, medium)| wanted.then_some(medium))
-			.collect();
-		query.push("mediums", Some(&mediums.join(",")));
-		if !novels {
-			query.push("types", Some(&comics.join(",")));
+		// A full selection is left out, as in search. The feeds AND types with mediums, so with
+		// novels on, types are filtered locally.
+		if comics.is_empty() {
+			query.push("mediums", Some("Novel"));
+		} else if !novels {
+			query.push("mediums", Some("Comic"));
+			if comics.len() < CONTENT_TYPES.len() - 1 {
+				query.push("types", Some(&comics.join(",")));
+			}
 		}
 		let mut excluded = self
 			.excluded_genres
@@ -197,6 +198,7 @@ impl SearchParams {
 		} else {
 			// The feeds take genre and tag ids in one parameter; the two never share an id.
 			excluded.extend(excluded_rating_genres(&self.ratings));
+			// Left out, it hides adult titles, so even every rating is sent.
 			query.push("contentRatings", Some(&self.ratings.join(",")));
 		}
 		if !excluded.is_empty() {
