@@ -187,6 +187,7 @@ pub fn arrange_chapters(
 	mut chapters: Vec<ChapterItem>,
 	scanlators: &[Scanlator],
 	excluded: &[String],
+	preferred: &[String],
 	keep: Option<Keep>,
 ) -> Vec<ChapterItem> {
 	if !excluded.is_empty() {
@@ -206,6 +207,17 @@ pub fn arrange_chapters(
 			.scanlator(scanlators)
 			.map_or(i32::MIN, |group| group.score)
 	};
+	let priority = |chapter: &ChapterItem| {
+		chapter
+			.scanlator(scanlators)
+			.and_then(|group| {
+				preferred.iter().position(|name| {
+					name.chars()
+						.eq(group.name.chars().flat_map(char::to_lowercase))
+				})
+			})
+			.unwrap_or(usize::MAX)
+	};
 	chapters.sort_by(|a, b| {
 		let by_number = match (a.number, b.number) {
 			(Some(a), Some(b)) => b.partial_cmp(&a).unwrap_or(Ordering::Equal),
@@ -219,6 +231,7 @@ pub fn arrange_chapters(
 			Keep::Newest => Ordering::Equal,
 		};
 		by_number
+			.then_with(|| priority(a).cmp(&priority(b)))
 			.then(by_keep)
 			.then(b.created_at.cmp(&a.created_at))
 			.then_with(|| a.id.cmp(&b.id))

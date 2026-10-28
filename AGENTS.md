@@ -1101,10 +1101,12 @@ reaches the site, unless marked.
   list chapters newest first, so only deduplicating sorts. One chapter can appear once per
   group; `scanlators` carry a `score`. The page has no rating, so details also look the
   series up in search.
-- **Deduplication.** Pick the winning scanlator for each numbered chapter using the selected
-  measure, then newest upload and chapter id as tie-breakers. Keep all same-number entries
-  from that group, plus all unnumbered chapters; the disabled mode preserves the site order.
-  Test reversed input order, split chapters, ties, all three measures and scanlator exclusions.
+- **Deduplication.** Remove excluded scanlators first. With deduplication enabled, pick the
+  first available name in the ordered Group Preference list (case-insensitive); when none
+  match, use the selected Keep measure, then newest upload and chapter id as tie-breakers.
+  Keep all same-number entries from that group, plus all unnumbered chapters; the disabled
+  mode preserves the site order. Test reversed input order, split chapters, ties, all three
+  measures, preference order and exclusions.
 - **Keys.** Novel series keys are `novel/<id>`; comic series and all chapter keys remain
   site ids. Search, Discover, details and deep links use the same encoding. Strip the series
   prefix before every API id lookup, including pasted-link search, chapter lists and reading.

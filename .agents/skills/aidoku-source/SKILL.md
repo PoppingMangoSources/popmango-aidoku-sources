@@ -80,8 +80,9 @@ that shipped:
       accepts before filtering locally
 - [ ] Home components `page_size` ≤ 5; one request per section; no per-card fan-out
 - [ ] Settings read only in `settings.rs`; a cleared multi-select means "nothing", not "all"
-- [ ] Chapter deduplication preserves the winning group's same-number parts and unnumbered
-      chapters; equal scores have a stable tie-breaker, tested with reversed input
+- [ ] Chapter deduplication removes excluded groups first, honors ordered group preferences,
+      and preserves the winning group's same-number parts and unnumbered chapters; equal
+      scores have a stable tie-breaker, tested with reversed input
 - [ ] Moving an axis between settings and filters renames the setting key
 - [ ] `bail!` over `Err(error!())`; consume owned values instead of cloning
 - [ ] JSON types and their `From` impls in `models.rs`, free functions in `helpers.rs`

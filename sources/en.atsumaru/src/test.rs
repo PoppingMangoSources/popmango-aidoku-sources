@@ -763,7 +763,7 @@ fn review_deduplication() {
 		),
 	] {
 		let (chapters, groups) = chapter_fixtures();
-		let kept = arrange_chapters(chapters, &groups, &[], Some(keep));
+		let kept = arrange_chapters(chapters, &groups, &[], &[], Some(keep));
 		assert_eq!(
 			kept.into_iter()
 				.map(|chapter| chapter.id)
@@ -772,7 +772,7 @@ fn review_deduplication() {
 		);
 	}
 	let (chapters, groups) = chapter_fixtures();
-	let all = arrange_chapters(chapters, &groups, &[], None);
+	let all = arrange_chapters(chapters, &groups, &[], &[], None);
 	assert_eq!(
 		all.into_iter()
 			.map(|chapter| chapter.id)
@@ -792,6 +792,7 @@ fn review_deduplication() {
 		chapters,
 		&groups,
 		&["a".into()],
+		&[],
 		Some(settings::Keep::HighestRated),
 	);
 	assert_eq!(
@@ -828,7 +829,7 @@ fn review_deduplication_ties() {
 				chapters.reverse();
 				groups.reverse();
 			}
-			let kept = arrange_chapters(chapters, &groups, &[], Some(keep));
+			let kept = arrange_chapters(chapters, &groups, &[], &[], Some(keep));
 			assert_eq!(
 				kept.into_iter()
 					.map(|chapter| chapter.id)
@@ -837,6 +838,114 @@ fn review_deduplication_ties() {
 			);
 		}
 	}
+}
+
+#[aidoku_test]
+fn review_group_preference() {
+	for keep in [
+		settings::Keep::HighestRated,
+		settings::Keep::Newest,
+		settings::Keep::MostPages,
+	] {
+		let (mut chapters, groups) = chapter_fixtures();
+		chapters.push(
+			serde_json::from_str(
+				r#"{"id":"b-3","scanlationMangaId":"b","number":3,"createdAt":1,"pageCount":1}"#,
+			)
+			.unwrap(),
+		);
+		let kept = arrange_chapters(
+			chapters,
+			&groups,
+			&[],
+			&["a".into(), "b".into()],
+			Some(keep),
+		);
+		assert_eq!(
+			kept.into_iter()
+				.filter(|chapter| chapter.number.is_some())
+				.map(|chapter| chapter.id)
+				.collect::<Vec<_>>(),
+			["b-3", "a-2b", "a-2a", "a-1"]
+		);
+	}
+	for preferred in [
+		vec!["b".into(), "a".into()],
+		vec!["missing".into(), "b".into()],
+	] {
+		let (chapters, groups) = chapter_fixtures();
+		let kept = arrange_chapters(
+			chapters,
+			&groups,
+			&[],
+			&preferred,
+			Some(settings::Keep::HighestRated),
+		);
+		assert_eq!(
+			kept.into_iter()
+				.filter(|chapter| chapter.number.is_some())
+				.map(|chapter| chapter.id)
+				.collect::<Vec<_>>(),
+			["b-2", "b-1"]
+		);
+	}
+	let (chapters, groups) = chapter_fixtures();
+	let fallback = arrange_chapters(
+		chapters,
+		&groups,
+		&[],
+		&["missing".into()],
+		Some(settings::Keep::Newest),
+	);
+	assert_eq!(
+		fallback
+			.into_iter()
+			.filter(|chapter| chapter.number.is_some())
+			.map(|chapter| chapter.id)
+			.collect::<Vec<_>>(),
+		["b-2", "a-1"]
+	);
+	let (chapters, groups) = chapter_fixtures();
+	let excluded = arrange_chapters(
+		chapters,
+		&groups,
+		&["a".into()],
+		&["a".into(), "b".into()],
+		Some(settings::Keep::HighestRated),
+	);
+	assert_eq!(
+		excluded
+			.into_iter()
+			.map(|chapter| chapter.id)
+			.collect::<Vec<_>>(),
+		["b-2", "b-1", "b-special"]
+	);
+	let (chapters, groups) = chapter_fixtures();
+	let all = arrange_chapters(chapters, &groups, &[], &["b".into()], None);
+	assert_eq!(
+		all.into_iter()
+			.map(|chapter| chapter.id)
+			.collect::<Vec<_>>(),
+		[
+			"a-2a",
+			"a-2b",
+			"b-2",
+			"a-1",
+			"b-1",
+			"a-special",
+			"b-special"
+		]
+	);
+}
+
+#[aidoku_test]
+fn review_group_preference_settings() {
+	assert!(settings::preferred_scanlators().is_empty());
+	defaults_set("preferredScanlators", strings(&[" B ", "A, Unknown", " "]));
+	assert_eq!(settings::preferred_scanlators(), ["b", "a", "unknown"]);
+	defaults_set("preferredScanlators", strings(&[]));
+	assert!(settings::preferred_scanlators().is_empty());
+	clear(&["preferredScanlators"]);
 }
 
 #[aidoku_test]

@@ -167,11 +167,17 @@ impl Source for Atsumaru {
 				chapters
 			};
 			let excluded = settings::excluded_scanlators();
-			let chapters =
-				arrange_chapters(chapters, &scanlators, &excluded, settings::deduplicate())
-					.into_iter()
-					.map(|chapter| chapter.into_chapter(id, novel, &scanlators))
-					.collect();
+			let preferred = settings::preferred_scanlators();
+			let chapters = arrange_chapters(
+				chapters,
+				&scanlators,
+				&excluded,
+				&preferred,
+				settings::deduplicate(),
+			)
+			.into_iter()
+			.map(|chapter| chapter.into_chapter(id, novel, &scanlators))
+			.collect();
 			manga.chapters = Some(chapters);
 		}
 
