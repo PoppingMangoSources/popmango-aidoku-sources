@@ -10,12 +10,11 @@ use aidoku::{
 };
 use core::cmp::Ordering;
 
-/// Genre ids that stand in for a rating the site leaves out.
+// Rating fallbacks for unrated titles.
 pub const HENTAI: &str = "10";
-pub const NOVEL_PREFIX: &str = "novel/";
 pub const ADULT_GENRES: [&str; 2] = ["46", "41"];
+pub const NOVEL_PREFIX: &str = "novel/";
 
-// The site's spotlight genres, one a day in this order.
 const SPOTLIGHT_GENRES: [&str; 15] = [
 	"Action",
 	"Romance",
@@ -38,7 +37,6 @@ pub fn spotlight_genre() -> &'static str {
 	SPOTLIGHT_GENRES[(current_date() / 86_400).rem_euclid(15) as usize]
 }
 
-/// The site's rating, raised by the Hentai, Adult and Smut genres.
 pub fn content_rating<S: AsRef<str>>(
 	is_adult: bool,
 	rating: Option<&str>,
@@ -78,7 +76,7 @@ pub fn page_url(path: &str) -> String {
 	format!("{CDN_URL}/{}", static_path(path))
 }
 
-/// Search answers in its own order, so a feed item takes its document by id.
+// Lookup order differs from feed order.
 pub fn take_document(documents: &mut Vec<SearchDocument>, id: &str) -> Option<SearchDocument> {
 	let index = documents.iter().position(|document| document.id == id)?;
 	Some(documents.swap_remove(index))
@@ -253,7 +251,6 @@ pub fn arrange_chapters(
 	chapters
 }
 
-/// The feeds can't apply every content type, so items are checked here.
 pub fn feed_allows(kind: Option<&str>, medium: Option<&str>, types: &[String]) -> bool {
 	if is_novel(medium) {
 		allows(types, "Novel")

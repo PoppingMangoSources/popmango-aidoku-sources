@@ -25,7 +25,7 @@ struct Hit {
 	document: Doc,
 }
 
-/// The fields the assertions check, looked up separately from what the source requested.
+// Verify against an independent lookup.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Doc {
@@ -100,7 +100,6 @@ fn keys(result: &MangaPageResult) -> Vec<String> {
 		.collect()
 }
 
-/// Cards carry key, title, cover, status and rating; details are left to the series page.
 fn assert_compact(result: &MangaPageResult) {
 	for manga in &result.entries {
 		assert!(
@@ -183,7 +182,6 @@ fn browse_pages() {
 	assert!(first.has_next_page);
 	assert_compact(&first);
 	assert_ne!(keys(&first), keys(&second));
-	// Pornographic titles are off by default.
 	for doc in docs(&first) {
 		assert_ne!(doc.tier(), "Pornographic", "{}", doc.id);
 	}
@@ -222,7 +220,7 @@ fn pasted_links() {
 		keys(&search(Some("https://atsu.moe/novel/slh2"), Vec::new())),
 		[NOVEL.to_string()]
 	);
-	// A link to a series the site doesn't have is searched as text.
+	// Unknown series links fall back to text search.
 	search(Some("https://atsu.moe/manga/zzzzzz"), Vec::new());
 }
 
@@ -234,11 +232,10 @@ fn sorts() {
 			"{index}"
 		);
 	}
-	// Title uses the site's collation, so only check it is its own, stable order.
+	// Site collation can differ from Rust string order.
 	let titled = keys(&search(None, vec![sort(1, false)]));
 	assert_eq!(titled, keys(&search(None, vec![sort(1, false)])));
 	assert_ne!(titled, keys(&search(None, vec![sort(0, false)])));
-	// A text query is sorted too.
 	assert_ne!(
 		keys(&search(Some("sword"), Vec::new())),
 		keys(&search(Some("sword"), vec![sort(1, false)]))
@@ -248,13 +245,12 @@ fn sorts() {
 #[aidoku_test]
 fn sort_directions() {
 	let sorted = |index: i32, ascending: bool| search(None, vec![sort(index, ascending)]);
-	// Descending by default, and the arrow makes it ascending.
 	assert_ne!(keys(&sorted(0, false)), keys(&sorted(0, true)));
 	let from_z = sorted(1, false).entries[0].title.to_lowercase();
 	let from_a = sorted(1, true).entries[0].title.to_lowercase();
 	assert!(from_z.starts_with('z'), "{from_z}");
 	assert!(!from_a.starts_with('z'), "{from_a}");
-	// The feeds have one order, so the arrow changes nothing.
+	// Feeds have no reverse order.
 	assert_eq!(keys(&sorted(8, false)), keys(&sorted(8, true)));
 }
 
@@ -363,7 +359,6 @@ fn other_filters() {
 		)
 	};
 	assert!(keys(&author("Hong Daeui")).contains(&COMIC.to_string()));
-	// Quotes and backslashes are escaped rather than breaking the query.
 	assert!(author("zzqq nobody`\\").entries.is_empty());
 	let ranged = search(
 		None,
@@ -403,13 +398,12 @@ fn content_ratings() {
 		for doc in docs(&searched) {
 			assert_eq!(doc.tier(), rating, "search {}", doc.id);
 		}
-		// The feeds can't tell unrated titles apart, so Safe is the one tier they may add.
+		// Feeds cannot distinguish unrated titles.
 		for doc in docs(&feed) {
 			let tier = doc.tier();
 			assert!(tier == rating || tier == "Safe", "feed {} {tier}", doc.id);
 		}
 	}
-	// A rating picked in the filter overrides the setting.
 	let picked = search(None, vec![multi("rating", &["Pornographic"])]);
 	assert!(!picked.entries.is_empty());
 	assert!(docs(&picked).iter().all(|doc| doc.tier() == "Pornographic"));
@@ -448,7 +442,6 @@ fn adult_only() {
 	for doc in docs(&searched).iter().chain(&docs(&feed)) {
 		assert_eq!(doc.tier(), "Pornographic", "{}", doc.id);
 	}
-	// A rating picked in the filter overrides it.
 	assert!(!picked.entries.is_empty());
 	assert!(docs(&picked).iter().all(|doc| doc.tier() == "Safe"));
 }
@@ -501,7 +494,6 @@ fn content_types() {
 		]
 	});
 	assert!(none.iter().all(|result| result.entries.is_empty()));
-	// A type picked in the filter overrides the setting.
 	let picked = under(&["Novel"], || {
 		vec![search(None, vec![multi("type", &["Manga"])])]
 	});
@@ -532,7 +524,6 @@ fn exclusions() {
 			assert!(!doc.has_genre("39") && !doc.has_tag("94"), "{}", doc.id);
 		}
 	}
-	// A search that asks for a hidden genre shows it.
 	assert!(!asked.entries.is_empty());
 	assert!(docs(&asked).iter().all(|doc| doc.has_genre("39")));
 }
@@ -617,6 +608,41 @@ fn review_series_key_conversions() {
 }
 
 #[aidoku_test]
+fn review_featured_covers() {
+	for (images, card, featured) in [
+		(
+			r#""image":"small.avif","mediumImage":"medium.avif","largeImage":"large.avif""#,
+			Some("medium.webp"),
+			Some("large.webp"),
+		),
+		(
+			r#""image":"small.avif","mediumImage":"medium.avif""#,
+			Some("medium.webp"),
+			Some("medium.webp"),
+		),
+		(
+			r#""image":"small.avif""#,
+			Some("small.webp"),
+			Some("small.webp"),
+		),
+		(r#""largeImage":"large.avif""#, None, Some("large.webp")),
+		(r#""image":null"#, None, None),
+	] {
+		let json = format!(r#"{{"id":"id","title":"Title",{images}}}"#);
+		let item = || serde_json::from_str::<models::FeedItem>(&json).unwrap();
+		let expected = |path: Option<&str>| path.map(helpers::cover_url);
+		assert_eq!(item().into_manga(false).cover, expected(card));
+		assert_eq!(item().into_featured(false, None).cover, expected(featured));
+		let document =
+			serde_json::from_str(r#"{"id":"id","title":"Title","synopsis":"Description"}"#)
+				.unwrap();
+		let enriched = item().into_featured(false, Some(document));
+		assert_eq!(enriched.cover, expected(featured));
+		assert_eq!(enriched.description.as_deref(), Some("Description"));
+	}
+}
+
+#[aidoku_test]
 fn listings() {
 	for id in [
 		"popular",
@@ -659,7 +685,6 @@ fn home() {
 	for component in &home.components {
 		let rows = match &component.value {
 			HomeComponentValue::BigScroller { entries, .. } => {
-				// The one component that carries details.
 				assert!(entries.iter().any(|manga| manga.description.is_some()));
 				entries.len()
 			}
@@ -1047,7 +1072,6 @@ fn novel() {
 			.all(|chapter| !chapter.key.starts_with(NOVEL_PREFIX))
 	);
 
-	// Labelled by default.
 	let labelled = source.get_manga_update(manga(NOVEL), true, false).unwrap();
 	defaults_set("labelNovels", DefaultValue::Bool(false));
 	let plain = source.get_manga_update(manga(NOVEL), true, false).unwrap();
