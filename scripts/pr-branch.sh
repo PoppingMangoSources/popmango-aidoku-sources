@@ -57,22 +57,19 @@ fi
 # A rebuild replaces the branch, so refuse when it holds source work no commit on main has:
 # someone may have pushed to it directly. --discard-unmerged replaces it anyway.
 if $rebuild && [ -n "$lease" ] && ! $discard; then
-    python3 - "$root" "$lease" "$source" <<'PY' || exit 1
-import re, subprocess, sys
-root, lease, source = sys.argv[1:]
-skip = {f"{source}/res/source.json", f"{source}/src/test.rs"}
+    python3 - "$root" "$lease" "$source" "$tooling" <<'PY' || exit 1
+import runpy, subprocess, sys
+root, lease, source, tooling = sys.argv[1:]
+helpers = runpy.run_path(tooling + "/scripts/submission-files.py")
 def files(ref):
-    rows = subprocess.check_output(["git", "-C", root, "ls-tree", "-r", ref, "--", source], text=True).splitlines()
-    return {row.split("\t")[1]: row.split()[2] for row in rows if row.split("\t")[1] not in skip}
-def lib(ref):
-    text = subprocess.run(["git", "-C", root, "show", f"{ref}:{source}/src/lib.rs"], capture_output=True, text=True).stdout
-    return re.sub(r"\n*#\[cfg\(test\)\]\nmod test;\n", "\n", text)
-def same(ref):
-    a, b = files(lease), files(ref)
-    a.pop(f"{source}/src/lib.rs", None); b.pop(f"{source}/src/lib.rs", None)
-    return a == b and lib(lease) == lib(ref)
+    data = helpers["without_tests"](helpers["snapshot_files"](root, ref, source))
+    data.pop("res/source.json", None)
+    modes = helpers["snapshot_modes"](root, ref, source)
+    modes.pop("src/test.rs", None)
+    return data, modes
+branch_files = files(lease)
 snapshots = subprocess.check_output(["git", "-C", root, "log", "--format=%H", "-n", "200", "origin/main", "--", source], text=True).split()
-if not any(same(ref) for ref in snapshots):
+if not any(branch_files == files(ref) for ref in snapshots):
     sys.exit(f"{lease[:8]} on the branch matches no commit of {source} on main: someone pushed work to it.\n"
              "Bring that work into main first (or pass --discard-unmerged to replace it anyway).")
 PY
@@ -102,17 +99,23 @@ esac
 rm -rf "$work/$source"
 git archive "$snapshot" "$source" | tar -x -C "$work"
 # Tests stay on main: they call the live site, and the submission is the source alone.
-python3 - "$work/$source" "$version" <<'PY'
-import json, re, sys
+python3 - "$work/$source" "$version" "$tooling" <<'PY'
+import json, runpy, sys
 from pathlib import Path
-source, version = Path(sys.argv[1]), int(sys.argv[2])
+source, version, tooling = Path(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
+without_tests = runpy.run_path(tooling + "/scripts/submission-files.py")["without_tests"]
+files = {str(path.relative_to(source)): str(path.readlink()).encode() if path.is_symlink() else path.read_bytes()
+         for path in source.rglob("*") if path.is_file() or path.is_symlink()}
+prepared = without_tests(files)
+for path in files.keys() - prepared.keys():
+    (source / path).unlink()
+for path, data in prepared.items():
+    if not (source / path).is_symlink():
+        (source / path).write_bytes(data)
 path = source / "res/source.json"
 data = json.loads(path.read_text())
 data["info"]["version"] = version
 path.write_text(json.dumps(data, indent="\t", ensure_ascii=False) + "\n")
-(source / "src/test.rs").unlink(missing_ok=True)
-lib = source / "src/lib.rs"
-lib.write_text(re.sub(r"\n*#\[cfg\(test\)\]\nmod test;\n", "\n", lib.read_text()))
 PY
 git -C "$work" add -A -- "$source"
 git -C "$work" diff --cached --quiet && { echo "No source changes to submit." >&2; exit 1; }
@@ -126,24 +129,20 @@ git -C "$work" -c commit.gpgsign=false commit -q --no-gpg-sign "${message[@]}"
 python3 "$tooling/scripts/check-upstream-scope.py" --repo "$work" --source "$id" --branch "$branch"
 python3 "$tooling/scripts/check-sources.py" --repo "$work" --upstream "$id"
 "$tooling/scripts/verify-source.sh" "$work/$source"
-python3 - "$root" "$snapshot" "$work" "$source" <<'PY'
-import json, re, subprocess, sys
-root, snapshot, work, source = sys.argv[1:]
-metadata, lib, test = (source + "/" + name for name in ("res/source.json", "src/lib.rs", "src/test.rs"))
-def tree(repo, ref):
-    rows = subprocess.check_output(["git", "-C", repo, "ls-tree", "-r", ref, "--", source], text=True).splitlines()
-    return [row for row in rows if row.split("\t")[1] not in (metadata, lib, test)]
-assert tree(root, snapshot) == tree(work, "HEAD"), "source files drifted"
-def show(repo, ref, path):
-    return subprocess.check_output(["git", "-C", repo, "show", ref + ":" + path], text=True)
-expected = re.sub(r"\n*#\[cfg\(test\)\]\nmod test;\n", "\n", show(root, snapshot, lib))
-assert show(work, "HEAD", lib) == expected, "lib.rs drifted beyond the test module"
-assert subprocess.run(["git", "-C", work, "cat-file", "-e", "HEAD:" + test], capture_output=True).returncode != 0, "test.rs reached the submission"
-def info(repo, ref):
-    data = json.loads(subprocess.check_output(["git", "-C", repo, "show", ref + ":" + metadata]))
-    data["info"].pop("version")
-    return data
-assert info(root, snapshot) == info(work, "HEAD"), "source metadata drifted beyond version"
+python3 - "$root" "$snapshot" "$work" "$source" "$tooling" <<'PY'
+import json, runpy, sys
+root, snapshot, work, source, tooling = sys.argv[1:]
+helpers = runpy.run_path(tooling + "/scripts/submission-files.py")
+expected = helpers["without_tests"](helpers["snapshot_files"](root, snapshot, source))
+actual = helpers["snapshot_files"](work, "HEAD", source)
+for files in (expected, actual):
+    metadata = json.loads(files["res/source.json"])
+    metadata["info"].pop("version")
+    files["res/source.json"] = metadata
+assert expected == actual, "source files drifted beyond version and fork-only tests"
+expected_modes = helpers["snapshot_modes"](root, snapshot, source)
+expected_modes.pop("src/test.rs", None)
+assert expected_modes == helpers["snapshot_modes"](work, "HEAD", source), "source file modes drifted"
 PY
 sha=$(git -C "$work" rev-parse HEAD)
 if $push; then

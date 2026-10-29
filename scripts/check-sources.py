@@ -16,6 +16,7 @@ import re
 import struct
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -276,6 +277,15 @@ def check_cargo(path: Path) -> None:
         fail(path, f"[profile.release] lacks {', '.join(missing)}, which every upstream source sets")
 
 
+def check_test_dependencies(source: Path) -> None:
+    manifest = source / "Cargo.toml"
+    data = tomllib.loads(manifest.read_text())
+    if "serde_json" in data.get("dev-dependencies", {}):
+        rust = "\n".join(path.read_text() for path in (source / "src").rglob("*.rs"))
+        if not re.search(r"\bserde_json\b", rust):
+            note(manifest, "serde_json dev dependency has no source or test usage; omit test-only dependencies from submissions")
+
+
 def check_tests(source: Path) -> None:
     """A test that asserts nothing passes whatever the source does."""
     for path in sorted((source / "src").rglob("*.rs")):
@@ -295,6 +305,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
             check_text_file(source / name)
     check_cargo(source / "Cargo.toml")
     check_tests(source)
+    check_test_dependencies(source)
     info = check_source_json(source / "res" / "source.json", source_id)
     check_icon(source / "res" / "icon.png")
     for name in ("filters.json",):

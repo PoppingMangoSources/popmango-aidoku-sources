@@ -73,6 +73,21 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cargo(path)
         self.assertTrue(any('lto = true' in failure for failure in checks.failures))
 
+    def test_unused_json_test_dependency_is_noted(self):
+        (self.source / 'src').mkdir()
+        (self.source / 'Cargo.toml').write_text('[dev-dependencies]\nserde_json = "1"\n')
+        checks.notes.clear()
+        checks.check_test_dependencies(self.source)
+        self.assertTrue(any('serde_json dev dependency' in note for note in checks.notes))
+
+    def test_used_json_test_dependency_passes(self):
+        (self.source / 'src').mkdir()
+        (self.source / 'src/test.rs').write_text('let item = serde_json::from_str("{}");\n')
+        (self.source / 'Cargo.toml').write_text('[dev-dependencies]\nserde_json = "1"\n')
+        checks.notes.clear()
+        checks.check_test_dependencies(self.source)
+        self.assertEqual(checks.notes, [])
+
     def naming(self, text, name='lib.rs'):
         (self.source / 'src').mkdir(exist_ok=True)
         (self.source / 'src' / name).write_text(text)

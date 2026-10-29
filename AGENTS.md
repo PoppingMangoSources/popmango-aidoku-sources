@@ -328,6 +328,17 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
   required discriminator in a key, use the same encoding in chapter lists and deep links,
   and test reading with fresh `Manga` and `Chapter` values containing only keys. Atsumaru
   prefixes novel series keys with `novel/`; chapter keys remain the site ids.
+- **Rating defaults (inferred from this review; also used by merged MangaDex):** with
+  source content rating `1`, Atsumaru defaults to Safe and Suggestive, leaving Erotica and
+  Pornographic opt-in. Keep the Rust fallback and settings JSON defaults identical; do not
+  overwrite the reader's explicit selection.
+- **Submission dependencies:** removing fork-only tests also removes their unused
+  `serde_json` dev dependency and root lockfile entry. Keep it on main while tests use it.
+  `check-sources.py` notes unused declarations; preparation normalizes the same files when
+  checking preserved snapshots and final source equality.
+- **Tag order:** sort featured tags alphabetically, using the same order in details, so
+  opening a featured card does not animate a needless tag reorder. Test shuffled input and
+  preserve the detail-only tag weighting rules.
 - `review_` tests cover the filter capability contract and chapter/deep-link key agreement
   without live requests. The Source tests workflow runs them in a separate step before the
   full live suite so a site outage does not obscure these regressions.
@@ -1096,6 +1107,7 @@ reaches the site, unless marked.
 - **Ratings.** `mbContentRating` (`Safe`, `Suggestive`, `Erotica`, `Pornographic`) plus
   `isAdult`; most titles are unrated (579 of 2,669 novels have one). Unrated titles are rated
   from genres: Hentai (`10`) as Pornographic, Adult (`46`) and Smut (`41`) as Erotica.
+  Defaults are Safe and Suggestive; Erotica and Pornographic remain selectable.
 - **Series** `/api/manga/page?id=` (`mangaPage: null` for an unknown id, with a 200) carries the
   first chapters and `hasMoreChapters`; `/api/manga/allChapters?mangaId=` has the rest. Both
   list chapters newest first, so only deduplicating sorts. One chapter can appear once per

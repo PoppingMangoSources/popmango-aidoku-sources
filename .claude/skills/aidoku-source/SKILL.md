@@ -62,7 +62,8 @@ that shipped:
 - [ ] A filter on the same axis as a setting overrides it for that search, never repeats it
 - [ ] No dead code: nothing silenced with `allow`/`expect`, no sort the API already does, no
       field or helper left over from removed behaviour (AGENTS.md / CLAUDE.md §8)
-- [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it out of the submission
+- [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it and its unused `serde_json`
+      dev dependency out of the submission, including the root lockfile entry
 - [ ] `status`, `content_rating`, `viewer` set on details when the site has them
 - [ ] `send_partial_result` only when chapters need a second request
 - [ ] `DeepLinkHandler` for series **and** chapter urls; series and chapter urls resolve
@@ -98,7 +99,9 @@ that shipped:
       endpoint constants and no constant for a value used once (AGENTS.md / CLAUDE.md §8)
 - [ ] No method that only passes its own fields on, no full-path calls, no second copy of a
       conversion that already exists
-- [ ] Each setting's default is the site's own default for that control, read from its code
+- [ ] Each setting's default is the site's own default for that control, read from its code,
+      unless review requires a narrower source-rating policy; keep Rust/JSON defaults aligned
+- [ ] Featured and detail tags use the same alphabetical order; test shuffled API input
 - [ ] A full selection sends nothing, unless a missing value means less (ratings, §6) — probe it
 - [ ] `src/test.rs` with `#[aidoku_test]` cases checked against the site's data (AGENTS.md / CLAUDE.md §1)
 

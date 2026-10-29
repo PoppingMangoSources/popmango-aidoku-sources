@@ -183,7 +183,7 @@ fn browse_pages() {
 	assert_compact(&first);
 	assert_ne!(keys(&first), keys(&second));
 	for doc in docs(&first) {
-		assert_ne!(doc.tier(), "Pornographic", "{}", doc.id);
+		assert!(matches!(doc.tier(), "Safe" | "Suggestive"), "{}", doc.id);
 	}
 }
 
@@ -418,11 +418,11 @@ fn content_ratings() {
 fn unrated_titles_rated_from_genres() {
 	let found =
 		|| keys(&search(Some("SON OF THE HERO KING"), Vec::new())).contains(&UNRATED_ADULT.into());
-	assert!(found());
-	defaults_set("contentRatings", strings(&["Safe", "Suggestive"]));
-	let hidden = !found();
+	assert!(!found());
+	defaults_set("contentRatings", strings(&["Erotica"]));
+	let shown = found();
 	clear(&["contentRatings"]);
-	assert!(hidden);
+	assert!(shown);
 	// Hentai needs Pornographic, which is off by default.
 	assert!(
 		search(None, vec![multi("genre", &["10"])])
@@ -605,6 +605,39 @@ fn review_series_key_conversions() {
 		assert_eq!(details.into_manga(false, None).key, expected);
 		assert_eq!(manga_id(expected), "slh2");
 	}
+}
+
+#[aidoku_test]
+fn review_rating_defaults() {
+	clear(&["contentRatings"]);
+	assert_eq!(settings::content_ratings(), ["Safe", "Suggestive"]);
+	let settings: serde_json::Value =
+		serde_json::from_str(include_str!("../res/settings.json")).unwrap();
+	let rating = settings[0]["items"]
+		.as_array()
+		.unwrap()
+		.iter()
+		.find(|item| item["key"] == "contentRatings")
+		.unwrap();
+	assert_eq!(rating["default"], serde_json::json!(["Safe", "Suggestive"]));
+	defaults_set("contentRatings", strings(&["Erotica"]));
+	assert_eq!(settings::content_ratings(), ["Erotica"]);
+	clear(&["contentRatings"]);
+}
+
+#[aidoku_test]
+fn review_tag_order() {
+	let feed: models::FeedItem = serde_json::from_str(r#"{"id":"id","title":"Title"}"#).unwrap();
+	let document =
+		serde_json::from_str(r#"{"id":"id","tags":["Romance","Action","Fantasy"]}"#).unwrap();
+	let featured = feed.into_featured(false, Some(document));
+	let details: models::MangaInfo = serde_json::from_str(r#"{"id":"id","title":"Title","genres":[{"id":"2","name":"Romance"},{"id":"1","name":"Action"}],"tags":[{"name":"Fantasy","weight":"Core"},{"name":"Unrelated","weight":"Incidental"}]}"#).unwrap();
+	let details = details.into_manga(false, None);
+	let expected = Some(vec!["Action".into(), "Fantasy".into(), "Romance".into()]);
+	assert_eq!(featured.tags, expected);
+	assert_eq!(details.tags, featured.tags);
+	let feed = serde_json::from_str::<models::FeedItem>(r#"{"id":"id","title":"Title"}"#).unwrap();
+	assert!(feed.into_featured(false, None).tags.is_none());
 }
 
 #[aidoku_test]
