@@ -8,7 +8,7 @@ use aidoku::{
 	prelude::*,
 };
 use mangak::{Impl, Params};
-use models::{ApiResponse, Item, ItemList};
+use models::{ApiResponse, Filter, Item, ItemList};
 
 mod models;
 #[cfg(test)]
@@ -179,10 +179,21 @@ fn component(title: &str, listing: Option<&str>, items: Vec<Item>) -> HomeCompon
 		..Default::default()
 	});
 	let value = match listing {
-		None => HomeComponentValue::BigScroller {
-			entries: items.into_iter().map(Item::into_featured).collect(),
-			auto_scroll_interval: None,
-		},
+		None => {
+			let filters: Vec<Filter> =
+				serde_json::from_str(include_str!("../res/filters.json")).unwrap_or_default();
+			let genres = filters
+				.into_iter()
+				.find(|filter| filter.id == "genres")
+				.unwrap_or_default();
+			HomeComponentValue::BigScroller {
+				entries: items
+					.into_iter()
+					.map(|item| item.into_featured(&genres))
+					.collect(),
+				auto_scroll_interval: None,
+			}
+		}
 		// The site shows each title's newest chapter in these rows
 		Some("popular_updates" | "latest") => HomeComponentValue::MangaChapterList {
 			page_size: Some(5),

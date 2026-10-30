@@ -177,6 +177,7 @@ dependencies = [
  "aidoku-test",
  "mangak",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

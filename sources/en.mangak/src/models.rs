@@ -26,9 +26,16 @@ pub struct Item {
 	pub cover: Option<String>,
 	pub summary: Option<String>,
 	pub status: Option<String>,
-	pub rating: Option<f32>,
-	pub views: Option<u64>,
+	pub genre_slugs: Option<String>,
 	pub latest_chapters: Vec<ChapterItem>,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(default)]
+pub struct Filter {
+	pub id: String,
+	pub options: Vec<String>,
+	pub ids: Vec<String>,
 }
 
 #[derive(Default, Deserialize)]
@@ -52,7 +59,9 @@ impl From<Item> for Manga {
 }
 
 impl Item {
-	pub fn into_featured(mut self) -> Manga {
+	// The trending feed only has genre slugs; named from the genre filter, they match the
+	// details in content and order.
+	pub fn into_featured(mut self, genres: &Filter) -> Manga {
 		let description = self.summary.take().filter(|summary| !summary.is_empty());
 		let status = match self
 			.status
@@ -66,27 +75,19 @@ impl Item {
 			Some("cancelled") => MangaStatus::Cancelled,
 			_ => MangaStatus::Unknown,
 		};
-		// The big scroller clamps the description, so its stats go in the tag row below
-		// it, rounded as the site shows them
-		let views = self.views.map(|views| {
-			let (value, unit) = match views {
-				1_000_000.. => (views as f32 / 1_000_000.0, "M"),
-				1_000.. => (views as f32 / 1_000.0, "K"),
-				_ => return format!("⏯\u{fe0e} {views}"),
-			};
-			let value = format!("{value:.1}");
-			// The text-style selector keeps the symbol from rendering as an emoji
-			format!("⏯\u{fe0e} {}{unit}", value.trim_end_matches(".0"))
+		let tags = self.genre_slugs.take().map(|slugs| {
+			slugs
+				.split(',')
+				.filter_map(|slug| {
+					let index = genres.ids.iter().position(|id| id == slug)?;
+					genres.options.get(index).cloned()
+				})
+				.collect::<Vec<_>>()
 		});
-		let rating = self
-			.rating
-			.filter(|rating| *rating > 0.0)
-			.map(|rating| format!("★ {rating:.1}"));
-		let tags: Vec<String> = views.into_iter().chain(rating).collect();
 		Manga {
 			description,
 			status,
-			tags: (!tags.is_empty()).then_some(tags),
+			tags: tags.filter(|tags| !tags.is_empty()),
 			..self.into()
 		}
 	}

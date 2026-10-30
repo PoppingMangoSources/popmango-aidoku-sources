@@ -199,28 +199,30 @@ fn listings() {
 }
 
 #[aidoku_test]
-fn review_featured_stats() {
-	let tags = |views: Option<u64>, rating: Option<f32>| {
+fn review_featured_genres() {
+	let genres = Filter {
+		id: "genres".into(),
+		options: vec!["Boys Love".into(), "Drama".into(), "Slice of life".into()],
+		ids: vec!["boys-love".into(), "drama".into(), "slice-of-life".into()],
+	};
+	let tags = |slugs: Option<&str>| {
 		Item {
-			views,
-			rating,
+			genre_slugs: slugs.map(Into::into),
 			..Default::default()
 		}
-		.into_featured()
+		.into_featured(&genres)
 		.tags
 	};
-	let expect = |values: &[&str]| Some(values.iter().map(|value| (*value).into()).collect());
+	// Names keep the feed's order, which is the order details show
 	assert_eq!(
-		tags(Some(1_591_319), Some(4.8)),
-		expect(&["⏯\u{fe0e} 1.6M", "★ 4.8"])
+		tags(Some("slice-of-life,boys-love,drama")),
+		Some(vec![
+			"Slice of life".into(),
+			"Boys Love".into(),
+			"Drama".into()
+		])
 	);
-	assert_eq!(
-		tags(Some(24_980_620), Some(4.62)),
-		expect(&["⏯\u{fe0e} 25M", "★ 4.6"])
-	);
-	assert_eq!(tags(Some(257_719), None), expect(&["⏯\u{fe0e} 257.7K"]));
-	assert_eq!(tags(Some(999), Some(0.0)), expect(&["⏯\u{fe0e} 999"]));
-	assert_eq!(tags(None, None), None);
+	assert_eq!(tags(None), None);
 }
 
 #[aidoku_test]
@@ -246,12 +248,21 @@ fn home() {
 	};
 	assert_eq!(entries.len(), 5);
 	assert!(entries.iter().all(|manga| manga.description.is_some()));
-	assert!(entries.iter().all(|manga| {
-		manga
-			.tags
-			.as_ref()
-			.is_some_and(|tags| tags[0].starts_with("⏯\u{fe0e} ") && tags[1].starts_with('★'))
-	}));
+	// Opening a card must leave its tags as they are
+	for featured in entries {
+		let details = source()
+			.get_manga_update(
+				Manga {
+					key: featured.key.clone(),
+					..Default::default()
+				},
+				true,
+				false,
+			)
+			.unwrap();
+		assert!(featured.tags.is_some());
+		assert_eq!(featured.tags, details.tags, "{}", featured.key);
+	}
 	for index in [1, 3] {
 		let HomeComponentValue::Scroller { entries, listing } = &home.components[index].value
 		else {
