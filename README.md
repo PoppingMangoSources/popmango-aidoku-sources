@@ -81,6 +81,10 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangahome-v5.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangahome-v5.aix">.aix (v5)</a></sub>
 
+<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.mangak/res/icon.png" width="24" align="top"/>&nbsp; MangaK &nbsp;<sub><a href="https://mangak.io">mangak.io</a></sub></h3>
+
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v1.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v1.aix">.aix (v1)</a></sub>
+
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/mangatown.png" width="24" align="top"/>&nbsp; MangaTown &nbsp;<sub><a href="https://www.mangatown.com">mangatown.com</a></sub></h3>
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangatown-v8.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangatown-v8.aix">.aix (v8)</a></sub>
