@@ -11,8 +11,7 @@ pub struct ApiResponse<T> {
 	pub data: T,
 }
 
-#[derive(Default, Deserialize)]
-#[serde(default)]
+#[derive(Deserialize)]
 pub struct ItemList {
 	pub items: Vec<Item>,
 }
@@ -38,8 +37,7 @@ pub struct Filter {
 	pub ids: Vec<String>,
 }
 
-#[derive(Default, Deserialize)]
-#[serde(default)]
+#[derive(Deserialize)]
 pub struct ChapterItem {
 	pub url: String,
 	pub name: String,

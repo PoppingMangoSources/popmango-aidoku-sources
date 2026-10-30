@@ -69,8 +69,11 @@ impl Impl for MangaK {
 					included,
 					excluded,
 				} if id == "genres" => {
-					qs.push("genres", Some(&included.join(",")));
-					qs.push("exclude", Some(&excluded.join(",")));
+					for (name, slugs) in [("genres", included), ("exclude", excluded)] {
+						if !slugs.is_empty() {
+							qs.push(name, Some(&slugs.join(",")));
+						}
+					}
 				}
 				FilterValue::MultiSelect { id, included, .. } => {
 					qs.push(&id, Some(&included.join(",")));
