@@ -100,28 +100,26 @@ impl Impl for MangaK {
 		listing: Listing,
 		page: i32,
 	) -> Result<MangaPageResult> {
-		let feed = match listing.id.as_str() {
-			"trending" => "titles",
-			"popular_updates" => "top-update",
-			"new" | "latest" => {
-				let mut qs = QueryParameters::new();
-				let sort = if listing.id == "new" {
-					"newest"
-				} else {
-					"latest"
-				};
-				qs.push("sort", Some(sort));
-				return self.search(params, qs, page);
+		let mut qs = QueryParameters::new();
+		match listing.id.as_str() {
+			"trending" => {
+				// The trending feed is one fixed list
+				let response: ApiResponse<ItemList> =
+					Request::get(format!("{API_URL}/trending/titles"))?.json_owned()?;
+				return Ok(MangaPageResult {
+					entries: response.data.items.into_iter().map(Into::into).collect(),
+					has_next_page: false,
+				});
 			}
+			"popular_updates" => {
+				qs.push("sort", Some("bookmarks"));
+				qs.push("window", Some("today"));
+			}
+			"new" => qs.push("sort", Some("newest")),
+			"latest" => qs.push("sort", Some("latest")),
 			_ => bail!("Unknown listing"),
-		};
-		// The trending feeds are one fixed list
-		let response: ApiResponse<ItemList> =
-			Request::get(format!("{API_URL}/trending/{feed}"))?.json_owned()?;
-		Ok(MangaPageResult {
-			entries: response.data.items.into_iter().map(Into::into).collect(),
-			has_next_page: false,
-		})
+		}
+		self.search(params, qs, page)
 	}
 
 	fn get_home(&self, _params: &Params) -> Result<HomeLayout> {
@@ -130,7 +128,7 @@ impl Impl for MangaK {
 			("Trending Today", "trending/titles", Some("trending")),
 			(
 				"Popular Updates",
-				"trending/top-update",
+				"titles/search?sort=bookmarks&window=today&limit=12",
 				Some("popular_updates"),
 			),
 			(
@@ -185,7 +183,7 @@ fn component(title: &str, listing: Option<&str>, items: Vec<Item>) -> HomeCompon
 			entries: items.into_iter().map(Item::into_featured).collect(),
 			auto_scroll_interval: None,
 		},
-		// These feeds name the chapter that was released
+		// The site shows each title's newest chapter in these rows
 		Some("popular_updates" | "latest") => HomeComponentValue::MangaChapterList {
 			page_size: Some(5),
 			entries: items

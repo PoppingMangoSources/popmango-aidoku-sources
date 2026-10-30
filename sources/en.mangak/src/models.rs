@@ -17,7 +17,7 @@ pub struct ItemList {
 	pub items: Vec<Item>,
 }
 
-// One shape for the trending feeds and search; each fills a different subset.
+// One shape for the trending feed and search; the trending feed has no chapters.
 #[derive(Default, Deserialize)]
 #[serde(default)]
 pub struct Item {
@@ -26,7 +26,6 @@ pub struct Item {
 	pub cover: Option<String>,
 	pub summary: Option<String>,
 	pub status: Option<String>,
-	pub latest_chapter: Option<ChapterItem>,
 	pub latest_chapters: Vec<ChapterItem>,
 }
 
@@ -35,7 +34,6 @@ pub struct Item {
 pub struct ChapterItem {
 	pub url: String,
 	pub name: String,
-	#[serde(alias = "released_at")]
 	pub updated_at: Option<String>,
 }
 
@@ -74,10 +72,7 @@ impl Item {
 	}
 
 	pub fn into_manga_with_chapter(mut self) -> Option<MangaWithChapter> {
-		let chapter = self
-			.latest_chapter
-			.take()
-			.or_else(|| self.latest_chapters.drain(..).next())?;
+		let chapter = self.latest_chapters.drain(..).next()?;
 		Some(MangaWithChapter {
 			manga: self.into(),
 			chapter: chapter.into(),

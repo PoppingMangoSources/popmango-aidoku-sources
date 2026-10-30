@@ -183,12 +183,9 @@ fn listings() {
 		id: id.into(),
 		..Default::default()
 	};
-	for id in ["trending", "popular_updates"] {
-		let result = source.get_manga_list(listing(id), 1).unwrap();
-		assert!(!result.entries.is_empty(), "listing {id} returned nothing");
-		assert!(!result.has_next_page);
-	}
-	for id in ["new", "latest"] {
+	let trending = source.get_manga_list(listing("trending"), 1).unwrap();
+	assert!(!trending.entries.is_empty() && !trending.has_next_page);
+	for id in ["popular_updates", "new", "latest"] {
 		let first = source.get_manga_list(listing(id), 1).unwrap();
 		let second = source.get_manga_list(listing(id), 2).unwrap();
 		assert!(first.has_next_page, "listing {id} has one page");

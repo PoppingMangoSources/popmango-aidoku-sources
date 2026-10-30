@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.mangak",
 		"name": "MangaK",
-		"version": 4,
+		"version": 5,
 		"url": "https://mangak.io",
 		"contentRating": 2,
 		"languages": ["en"],
