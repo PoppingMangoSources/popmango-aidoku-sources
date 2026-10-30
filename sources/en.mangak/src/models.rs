@@ -72,10 +72,11 @@ impl Item {
 			let (value, unit) = match views {
 				1_000_000.. => (views as f32 / 1_000_000.0, "M"),
 				1_000.. => (views as f32 / 1_000.0, "K"),
-				_ => return format!("{views} views"),
+				_ => return format!("⏯\u{fe0e} {views}"),
 			};
 			let value = format!("{value:.1}");
-			format!("{}{unit} views", value.trim_end_matches(".0"))
+			// The text-style selector keeps the symbol from rendering as an emoji
+			format!("⏯\u{fe0e} {}{unit}", value.trim_end_matches(".0"))
 		});
 		let rating = self
 			.rating
