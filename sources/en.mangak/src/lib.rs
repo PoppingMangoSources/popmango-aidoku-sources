@@ -1,12 +1,16 @@
 #![no_std]
 use aidoku::{
-	FilterValue, MangaPageResult, Result, Source,
+	FilterValue, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link, Listing,
+	Manga, MangaPageResult, Result, Source,
 	alloc::{String, Vec, string::ToString},
 	helpers::uri::QueryParameters,
+	imports::{net::Request, std::send_partial_result},
 	prelude::*,
 };
 use mangak::{Impl, Params};
+use models::{ApiResponse, Item, ItemList};
 
+mod models;
 #[cfg(test)]
 mod test;
 
@@ -88,6 +92,120 @@ impl Impl for MangaK {
 			}
 		}
 		self.search(params, qs, page)
+	}
+
+	fn get_manga_list(
+		&self,
+		params: &Params,
+		listing: Listing,
+		page: i32,
+	) -> Result<MangaPageResult> {
+		let feed = match listing.id.as_str() {
+			"trending" => "titles",
+			"popular_updates" => "top-update",
+			"new" | "latest" => {
+				let mut qs = QueryParameters::new();
+				let sort = if listing.id == "new" {
+					"newest"
+				} else {
+					"latest"
+				};
+				qs.push("sort", Some(sort));
+				return self.search(params, qs, page);
+			}
+			_ => bail!("Unknown listing"),
+		};
+		// The trending feeds are one fixed list
+		let response: ApiResponse<ItemList> =
+			Request::get(format!("{API_URL}/trending/{feed}"))?.json_owned()?;
+		Ok(MangaPageResult {
+			entries: response.data.items.into_iter().map(Into::into).collect(),
+			has_next_page: false,
+		})
+	}
+
+	fn get_home(&self, _params: &Params) -> Result<HomeLayout> {
+		let sections = [
+			("Hot this week", "trending/titles?window=week&limit=5", None),
+			("Trending Today", "trending/titles", Some("trending")),
+			(
+				"Popular Updates",
+				"trending/top-update",
+				Some("popular_updates"),
+			),
+			(
+				"New Manga",
+				"titles/search?sort=newest&limit=18",
+				Some("new"),
+			),
+			(
+				"Recently Updated",
+				"titles/search?sort=latest",
+				Some("latest"),
+			),
+		];
+		send_partial_result(&HomePartialResult::Layout(HomeLayout {
+			components: sections
+				.iter()
+				.map(|(title, _, listing)| component(title, *listing, Vec::new()))
+				.collect(),
+		}));
+
+		let requests = sections
+			.iter()
+			.map(|(_, path, _)| Ok(Request::get(format!("{API_URL}/{path}"))?))
+			.collect::<Result<Vec<_>>>()?;
+		// Returning the final layout drops the placeholder of a section that failed
+		let components = sections
+			.iter()
+			.zip(Request::send_all(requests))
+			.filter_map(|((title, _, listing), response)| {
+				let response = response
+					.ok()?
+					.get_json_owned::<ApiResponse<ItemList>>()
+					.ok()?;
+				Some(component(title, *listing, response.data.items))
+			})
+			.collect::<Vec<_>>();
+		if components.is_empty() {
+			bail!("MangaK didn't answer");
+		}
+		Ok(HomeLayout { components })
+	}
+}
+
+fn component(title: &str, listing: Option<&str>, items: Vec<Item>) -> HomeComponent {
+	let link = listing.map(|id| Listing {
+		id: id.into(),
+		name: title.into(),
+		..Default::default()
+	});
+	let value = match listing {
+		None => HomeComponentValue::BigScroller {
+			entries: items.into_iter().map(Item::into_featured).collect(),
+			auto_scroll_interval: None,
+		},
+		// These feeds name the chapter that was released
+		Some("popular_updates" | "latest") => HomeComponentValue::MangaChapterList {
+			page_size: Some(5),
+			entries: items
+				.into_iter()
+				.filter_map(Item::into_manga_with_chapter)
+				.collect(),
+			listing: link,
+		},
+		Some(_) => HomeComponentValue::Scroller {
+			entries: items
+				.into_iter()
+				.map(|item| Manga::from(item).into())
+				.collect::<Vec<Link>>(),
+			listing: link,
+		},
+	};
+	HomeComponent {
+		title: Some(title.into()),
+		subtitle: None,
+		value,
 	}
 }
 

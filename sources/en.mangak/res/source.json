@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.mangak",
 		"name": "MangaK",
-		"version": 3,
+		"version": 4,
 		"url": "https://mangak.io",
 		"contentRating": 2,
 		"languages": ["en"],
@@ -10,16 +10,20 @@
 	},
 	"listings": [
 		{
-			"id": "today",
-			"name": "Popular Today"
+			"id": "trending",
+			"name": "Trending Today"
 		},
 		{
-			"id": "week",
-			"name": "Popular This Week"
+			"id": "popular_updates",
+			"name": "Popular Updates"
+		},
+		{
+			"id": "new",
+			"name": "New Manga"
 		},
 		{
 			"id": "latest",
-			"name": "Latest"
+			"name": "Recently Updated"
 		}
 	]
 }

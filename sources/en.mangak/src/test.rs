@@ -179,28 +179,70 @@ fn author() {
 #[aidoku_test]
 fn listings() {
 	let source = source();
-	for id in ["today", "week", "latest"] {
-		let result = source
-			.get_manga_list(
-				Listing {
-					id: id.into(),
-					..Default::default()
-				},
-				1,
-			)
-			.unwrap();
+	let listing = |id: &str| Listing {
+		id: id.into(),
+		..Default::default()
+	};
+	for id in ["trending", "popular_updates"] {
+		let result = source.get_manga_list(listing(id), 1).unwrap();
 		assert!(!result.entries.is_empty(), "listing {id} returned nothing");
+		assert!(!result.has_next_page);
 	}
+	for id in ["new", "latest"] {
+		let first = source.get_manga_list(listing(id), 1).unwrap();
+		let second = source.get_manga_list(listing(id), 2).unwrap();
+		assert!(first.has_next_page, "listing {id} has one page");
+		assert!(keys(&first).iter().all(|key| !keys(&second).contains(key)));
+	}
+	assert_ne!(
+		keys(&source.get_manga_list(listing("new"), 1).unwrap()),
+		keys(&source.get_manga_list(listing("latest"), 1).unwrap())
+	);
+	assert!(source.get_manga_list(listing("today"), 1).is_err());
 }
 
 #[aidoku_test]
 fn home() {
 	let home = source().get_home().unwrap();
-	assert_eq!(home.components.len(), 3);
-	let HomeComponentValue::MangaChapterList { entries, .. } = &home.components[2].value else {
-		panic!("latest updates is not a chapter list");
+	let titles = home
+		.components
+		.iter()
+		.map(|component| component.title.as_deref().unwrap())
+		.collect::<Vec<_>>();
+	assert_eq!(
+		titles,
+		[
+			"Hot this week",
+			"Trending Today",
+			"Popular Updates",
+			"New Manga",
+			"Recently Updated"
+		]
+	);
+	let HomeComponentValue::BigScroller { entries, .. } = &home.components[0].value else {
+		panic!("hot this week is not a big scroller");
 	};
-	assert!(!entries.is_empty());
+	assert_eq!(entries.len(), 5);
+	assert!(entries.iter().all(|manga| manga.description.is_some()));
+	for index in [1, 3] {
+		let HomeComponentValue::Scroller { entries, listing } = &home.components[index].value
+		else {
+			panic!("section {index} is not a scroller");
+		};
+		assert!(!entries.is_empty() && listing.is_some());
+		assert!(entries.iter().all(|link| link.subtitle.is_none()));
+	}
+	for index in [2, 4] {
+		let HomeComponentValue::MangaChapterList { entries, .. } = &home.components[index].value
+		else {
+			panic!("section {index} is not a chapter list");
+		};
+		assert!(!entries.is_empty());
+		for entry in entries {
+			assert!(entry.chapter.key.starts_with(&entry.manga.key));
+			assert!(entry.chapter.chapter_number.is_some() || entry.chapter.title.is_some());
+		}
+	}
 }
 
 #[aidoku_test]
