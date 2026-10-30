@@ -26,6 +26,8 @@ pub struct Item {
 	pub cover: Option<String>,
 	pub summary: Option<String>,
 	pub status: Option<String>,
+	pub rating: Option<f32>,
+	pub views: Option<u64>,
 	pub latest_chapters: Vec<ChapterItem>,
 }
 
@@ -64,9 +66,26 @@ impl Item {
 			Some("cancelled") => MangaStatus::Cancelled,
 			_ => MangaStatus::Unknown,
 		};
+		// The big scroller clamps the description, so its stats go in the tag row below
+		// it, rounded as the site shows them
+		let views = self.views.map(|views| {
+			let (value, unit) = match views {
+				1_000_000.. => (views as f32 / 1_000_000.0, "M"),
+				1_000.. => (views as f32 / 1_000.0, "K"),
+				_ => return format!("{views} views"),
+			};
+			let value = format!("{value:.1}");
+			format!("{}{unit} views", value.trim_end_matches(".0"))
+		});
+		let rating = self
+			.rating
+			.filter(|rating| *rating > 0.0)
+			.map(|rating| format!("★ {rating:.1}"));
+		let tags: Vec<String> = views.into_iter().chain(rating).collect();
 		Manga {
 			description,
 			status,
+			tags: (!tags.is_empty()).then_some(tags),
 			..self.into()
 		}
 	}

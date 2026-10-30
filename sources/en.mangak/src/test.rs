@@ -199,6 +199,31 @@ fn listings() {
 }
 
 #[aidoku_test]
+fn review_featured_stats() {
+	let tags = |views: Option<u64>, rating: Option<f32>| {
+		Item {
+			views,
+			rating,
+			..Default::default()
+		}
+		.into_featured()
+		.tags
+	};
+	let expect = |values: &[&str]| Some(values.iter().map(|value| (*value).into()).collect());
+	assert_eq!(
+		tags(Some(1_591_319), Some(4.8)),
+		expect(&["1.6M views", "★ 4.8"])
+	);
+	assert_eq!(
+		tags(Some(24_980_620), Some(4.62)),
+		expect(&["25M views", "★ 4.6"])
+	);
+	assert_eq!(tags(Some(257_719), None), expect(&["257.7K views"]));
+	assert_eq!(tags(Some(999), Some(0.0)), expect(&["999 views"]));
+	assert_eq!(tags(None, None), None);
+}
+
+#[aidoku_test]
 fn home() {
 	let home = source().get_home().unwrap();
 	let titles = home
@@ -221,6 +246,12 @@ fn home() {
 	};
 	assert_eq!(entries.len(), 5);
 	assert!(entries.iter().all(|manga| manga.description.is_some()));
+	assert!(entries.iter().all(|manga| {
+		manga
+			.tags
+			.as_ref()
+			.is_some_and(|tags| tags[0].ends_with(" views") && tags[1].starts_with('★'))
+	}));
 	for index in [1, 3] {
 		let HomeComponentValue::Scroller { entries, listing } = &home.components[index].value
 		else {
