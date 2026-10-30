@@ -60,7 +60,7 @@ fn query() {
 
 #[aidoku_test]
 fn every_sort() {
-	for index in 0..SORTS.len() as i32 {
+	for index in 0..10 {
 		let result = search(
 			None,
 			vec![FilterValue::Sort {

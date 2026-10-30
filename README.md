@@ -83,7 +83,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.mangak/res/icon.png" width="24" align="top"/>&nbsp; MangaK &nbsp;<sub><a href="https://mangak.io">mangak.io</a></sub></h3>
 
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v1.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v1.aix">.aix (v1)</a></sub>
+<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v2.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v2.aix">.aix (v2)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/mangatown.png" width="24" align="top"/>&nbsp; MangaTown &nbsp;<sub><a href="https://www.mangatown.com">mangatown.com</a></sub></h3>
 

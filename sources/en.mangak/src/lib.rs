@@ -14,7 +14,7 @@ const BASE_URL: &str = "https://mangak.io";
 const API_URL: &str = "https://api.mangak.io";
 
 // Best Match sends no sort, as on the site
-const SORTS: [Option<&str>; 10] = [
+const SORTS: [Option<&str>; 11] = [
 	None,
 	Some("latest"),
 	Some("newest"),
@@ -25,6 +25,7 @@ const SORTS: [Option<&str>; 10] = [
 	Some("views_30days"),
 	Some("views"),
 	Some("chapters"),
+	Some("alphabetical"),
 ];
 
 struct MangaK;

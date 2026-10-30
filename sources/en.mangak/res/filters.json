@@ -14,7 +14,8 @@
 			"Most Viewed: 7 Days",
 			"Most Viewed: 30 Days",
 			"Most Viewed: All Time",
-			"Most Chapters"
+			"Most Chapters",
+			"A-Z"
 		]
 	},
 	{
@@ -56,12 +57,16 @@
 		"options": [
 			"Any",
 			"Ongoing",
-			"Completed"
+			"Completed",
+			"Hiatus",
+			"Cancelled"
 		],
 		"ids": [
 			"",
 			"ongoing",
-			"completed"
+			"completed",
+			"hiatus",
+			"cancelled"
 		]
 	},
 	{
