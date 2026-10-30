@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prepare an upstream submission from a committed snapshot; leave its checkout alone.
-# Usage: scripts/pr-branch.sh <id> [--from <ref>] [--branch <name>] [--push]
+# Usage: scripts/pr-branch.sh <id> [--from <ref>] [--branch <name>] [--body "<body>"] [--push]
 # Add --update "<subject>" "<body>" for an existing upstream source,
 # --fix "<subject>" "<body>" for a review round, or --rebuild to preserve and replace a branch
 # (refused when the branch holds work main doesn't have, unless --discard-unmerged).
@@ -22,6 +22,7 @@ while [ $# -gt 0 ]; do
         --from) snapshot=${2:?provide a ref}; shift 2 ;;
         --branch) branch=${2:?provide a branch}; shift 2 ;;
         --fix|--update) mode=${1#--}; subject=${2:?provide a subject}; body=${3:?provide a body}; shift 3 ;;
+        --body) body=${2:?provide a body}; shift 2 ;;
         --push) push=true; shift ;;
         --rebuild) rebuild=true; shift ;;
         --discard-unmerged) discard=true; shift ;;
