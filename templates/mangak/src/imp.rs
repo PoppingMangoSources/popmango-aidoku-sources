@@ -162,7 +162,7 @@ pub trait Impl {
 			.iter()
 			.map(|(_, _, path)| Ok(Request::get(format!("{}/{path}", params.api_url))?))
 			.collect::<Result<Vec<_>>>()?;
-		// Returning the final layout drops the placeholder of a section that failed
+		// Returning the layout drops a failed section's placeholder
 		let components = sections
 			.iter()
 			.zip(Request::send_all(requests))

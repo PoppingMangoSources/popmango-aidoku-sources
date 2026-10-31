@@ -221,7 +221,7 @@ fn home() {
 	};
 	assert_eq!(entries.len(), 10);
 	assert!(entries.iter().all(|manga| manga.description.is_some()));
-	// Search leaves some genres out, so a card shows some of its details' tags, in their order
+	// Search leaves some genres out, so a card's tags are an ordered subset of its details'
 	for featured in entries {
 		let details = source()
 			.get_manga_update(

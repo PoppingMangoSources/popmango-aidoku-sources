@@ -4,9 +4,8 @@ use aidoku::{
 };
 use serde::de::DeserializeOwned;
 
-// Best Match sends no sort, as on the site
 pub const SORTS: [Option<&str>; 11] = [
-	None,
+	None, // Best Match sends no sort, as on the site
 	Some("latest"),
 	Some("newest"),
 	Some("popular"),
@@ -19,7 +18,6 @@ pub const SORTS: [Option<&str>; 11] = [
 	Some("alphabetical"),
 ];
 
-// A listing and its home row make the same request.
 pub fn listing_path(id: &str) -> &'static str {
 	match id {
 		"trending" => "trending/titles?window=week",

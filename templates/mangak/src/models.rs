@@ -25,7 +25,7 @@ pub struct Pagination {
 }
 
 impl SearchData {
-	// The trending feed has no pagination, so it reads as one page.
+	// The trending feed has no pagination, so it reads as one page
 	pub fn into_page(self, base_url: &str) -> MangaPageResult {
 		MangaPageResult {
 			entries: self
@@ -38,7 +38,7 @@ impl SearchData {
 	}
 }
 
-// The trending feed shares this shape without genres or chapters.
+// The trending feed shares this shape without genres or chapters
 #[derive(Default, Deserialize)]
 #[serde(default)]
 pub struct SearchItem {
@@ -62,7 +62,7 @@ impl SearchItem {
 		}
 	}
 
-	// Genres keep the response's order, which is the order details show them in.
+	// Details list genres in the same order
 	pub fn into_featured(mut self, base_url: &str) -> Manga {
 		let tags: Vec<String> = self.genres.drain(..).map(|genre| genre.name).collect();
 		Manga {
