@@ -3,7 +3,7 @@ use aidoku::{
 	Chapter, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue, HomeLayout,
 	HomePartialResult, Link, Listing, Manga, MangaPageResult, Page, PageContent, PageContext,
 	Result,
-	alloc::{String, Vec, string::ToString, vec},
+	alloc::{String, Vec, string::ToString},
 	helpers::uri::QueryParameters,
 	imports::{net::Request, std::send_partial_result},
 	prelude::*,
@@ -88,10 +88,9 @@ pub trait Impl {
 	) -> Result<MangaPageResult> {
 		let mut qs = QueryParameters::new();
 		match listing.id.as_str() {
-			id @ ("trending" | "hot") => {
-				let window = if id == "hot" { "?window=week" } else { "" };
+			"trending" => {
 				let response: ApiResponse<SearchData> =
-					Request::get(format!("{}/trending/titles{window}", params.api_url))?
+					Request::get(format!("{}/trending/titles?window=week", params.api_url))?
 						.json_owned()?;
 				return Ok(response.data.into_page(&params.base_url));
 			}
@@ -154,18 +153,17 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let mut sections = vec![(
-			params.featured_title.as_ref(),
-			params.featured_path.as_ref(),
-			None,
-		)];
-		if params.trending_sections {
-			sections.extend([
-				("Hot this week", "trending/titles?window=week", Some("hot")),
-				("Trending Today", "trending/titles", Some("trending")),
-			]);
-		}
-		sections.extend([
+		let sections = [
+			(
+				params.featured_title.as_ref(),
+				params.featured_path.as_ref(),
+				None,
+			),
+			(
+				"Trending This Week",
+				"trending/titles?window=week",
+				Some("trending"),
+			),
 			(
 				"Popular Updates",
 				"titles/search?sort=bookmarks&window=today&limit=12",
@@ -181,7 +179,7 @@ pub trait Impl {
 				"titles/search?sort=latest",
 				Some("latest"),
 			),
-		]);
+		];
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: sections
 				.iter()

@@ -20,9 +20,8 @@ impl Impl for MangaK {
 			base_url: BASE_URL.into(),
 			api_url: API_URL.into(),
 			featured_title: "Most Views".into(),
-			featured_path: "titles/search?source=ranking&sort=views&limit=5".into(),
+			featured_path: "titles/search?source=ranking&sort=views&limit=10".into(),
 			latest_title: "Recently Updated".into(),
-			trending_sections: true,
 		}
 	}
 }

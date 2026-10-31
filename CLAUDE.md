@@ -353,9 +353,10 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
   generically goes in each source, with the template's left empty.
 - Check the other consumer's site before moving anything: ToonTop and MangaK run the same API
   and search page, so every filter and the sorts were shared, while `demographic` and `format`
-  match nothing on ToonTop and stayed MangaK's alone. The home rows differ slightly: ToonTop's
-  hero is its ranking's Top This Week and it has no Trending Today row, so the hero's title and
-  path and that row are `Params`. Read the owner's screenshots of both sites before settling a
+  match nothing on ToonTop and stayed MangaK's alone. Both homes share their rows except the
+  hero (ToonTop's ranking's Top This Week, MangaK's Most Views) and the latest row's name, so
+  only those are `Params`. MangaK's search lists fewer genres than its details, so its hero's
+  tags can grow on open; the owner chose that over the trending feed's slug lookup. Read the owner's screenshots of both sites before settling a
   layout; the server-rendered data alone suggested a hero ToonTop doesn't show.
 
 ### From our own reviews of `en.atsumaru` (owner's corrections)
