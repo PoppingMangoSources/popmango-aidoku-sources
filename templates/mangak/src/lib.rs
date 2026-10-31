@@ -18,7 +18,7 @@ pub struct Params {
 	pub featured_title: Cow<'static, str>,
 	pub featured_path: Cow<'static, str>,
 	pub latest_title: Cow<'static, str>,
-	pub trending_today_section: bool,
+	pub trending_sections: bool,
 }
 
 impl Default for Params {
@@ -29,7 +29,7 @@ impl Default for Params {
 			featured_title: "Top This Week".into(),
 			featured_path: "titles/search?source=ranking&top_views=week&limit=5".into(),
 			latest_title: "Latest Updates".into(),
-			trending_today_section: false,
+			trending_sections: false,
 		}
 	}
 }

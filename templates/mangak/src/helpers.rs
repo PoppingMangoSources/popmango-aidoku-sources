@@ -1,10 +1,6 @@
 use crate::models::NextData;
 use aidoku::{
-	Listing, MangaStatus, Result,
-	alloc::string::{String, ToString},
-	helpers::uri::QueryParameters,
-	imports::net::Request,
-	prelude::*,
+	ContentRating, MangaStatus, Result, alloc::string::String, imports::net::Request, prelude::*,
 };
 use serde::de::DeserializeOwned;
 
@@ -35,26 +31,15 @@ pub fn next_data<T: DeserializeOwned>(url: &str) -> Result<T> {
 	Ok(serde_json::from_str::<NextData<T>>(&json)?.props.page_props)
 }
 
-pub fn listing_query(id: &str) -> QueryParameters {
-	let mut qs = QueryParameters::new();
-	match id {
-		"popular_updates" => {
-			qs.push("sort", Some("bookmarks"));
-			qs.push("window", Some("today"));
-		}
-		"new" => qs.push("sort", Some("newest")),
-		"uncensored" | "raw" => qs.push(&format!("is_{id}"), Some("true")),
-		_ => qs.push("sort", Some("latest")),
+pub fn content_rating(genres: &[String]) -> ContentRating {
+	let has = |wanted: &[&str]| genres.iter().any(|genre| wanted.contains(&genre.as_str()));
+	if has(&["Adult", "Hentai", "Mature", "Smut"]) {
+		ContentRating::NSFW
+	} else if has(&["Ecchi"]) {
+		ContentRating::Suggestive
+	} else {
+		ContentRating::Safe
 	}
-	qs
-}
-
-pub fn listing(id: &str, name: &str) -> Option<Listing> {
-	Some(Listing {
-		id: id.to_string(),
-		name: name.to_string(),
-		..Default::default()
-	})
 }
 
 pub fn manga_status(status: Option<String>) -> MangaStatus {

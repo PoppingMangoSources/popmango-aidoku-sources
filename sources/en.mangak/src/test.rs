@@ -185,7 +185,10 @@ fn listings() {
 		..Default::default()
 	};
 	let trending = source.get_manga_list(listing("trending"), 1).unwrap();
+	let hot = source.get_manga_list(listing("hot"), 1).unwrap();
 	assert!(!trending.entries.is_empty() && !trending.has_next_page);
+	assert!(!hot.entries.is_empty() && !hot.has_next_page);
+	assert_ne!(keys(&trending), keys(&hot));
 	for id in ["popular_updates", "new", "latest"] {
 		let first = source.get_manga_list(listing(id), 1).unwrap();
 		let second = source.get_manga_list(listing(id), 2).unwrap();
@@ -209,6 +212,7 @@ fn home() {
 	assert_eq!(
 		titles,
 		[
+			"Most Views",
 			"Hot this week",
 			"Trending Today",
 			"Popular Updates",
@@ -217,11 +221,11 @@ fn home() {
 		]
 	);
 	let HomeComponentValue::BigScroller { entries, .. } = &home.components[0].value else {
-		panic!("hot this week is not a big scroller");
+		panic!("most views is not a big scroller");
 	};
 	assert_eq!(entries.len(), 5);
 	assert!(entries.iter().all(|manga| manga.description.is_some()));
-	// Opening a card must leave its tags as they are
+	// Search leaves some genres out, so a card shows some of its details' tags, in their order
 	for featured in entries {
 		let details = source()
 			.get_manga_update(
@@ -233,10 +237,20 @@ fn home() {
 				false,
 			)
 			.unwrap();
-		assert!(featured.tags.is_some());
-		assert_eq!(featured.tags, details.tags, "{}", featured.key);
+		let details = details.tags.unwrap();
+		let mut remaining = details.iter();
+		assert!(
+			featured
+				.tags
+				.as_ref()
+				.unwrap()
+				.iter()
+				.all(|tag| remaining.any(|detail| detail == tag)),
+			"{}",
+			featured.key
+		);
 	}
-	for index in [1, 3] {
+	for index in [1, 2, 4] {
 		let HomeComponentValue::Scroller { entries, listing } = &home.components[index].value
 		else {
 			panic!("section {index} is not a scroller");
@@ -244,7 +258,7 @@ fn home() {
 		assert!(!entries.is_empty() && listing.is_some());
 		assert!(entries.iter().all(|link| link.subtitle.is_none()));
 	}
-	for index in [2, 4] {
+	for index in [3, 5] {
 		let HomeComponentValue::MangaChapterList { entries, .. } = &home.components[index].value
 		else {
 			panic!("section {index} is not a chapter list");

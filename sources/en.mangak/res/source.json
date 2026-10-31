@@ -2,13 +2,17 @@
 	"info": {
 		"id": "en.mangak",
 		"name": "MangaK",
-		"version": 11,
+		"version": 12,
 		"url": "https://mangak.io",
 		"contentRating": 2,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
 	},
 	"listings": [
+		{
+			"id": "hot",
+			"name": "Hot this week"
+		},
 		{
 			"id": "trending",
 			"name": "Trending Today"

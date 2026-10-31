@@ -14,31 +14,16 @@ pub trait Impl {
 
 	fn params(&self) -> Params;
 
-	fn search_request(
+	fn search(
 		&self,
 		params: &Params,
 		mut qs: QueryParameters,
 		page: i32,
-	) -> Result<Request> {
+	) -> Result<MangaPageResult> {
 		qs.push("page", Some(&page.to_string()));
-		Ok(Request::get(format!(
-			"{}/titles/search?{qs}",
-			params.api_url
-		))?)
-	}
-
-	fn search(&self, params: &Params, qs: QueryParameters, page: i32) -> Result<MangaPageResult> {
 		let response: ApiResponse<SearchData> =
-			self.search_request(params, qs, page)?.json_owned()?;
-		Ok(MangaPageResult {
-			entries: response
-				.data
-				.items
-				.into_iter()
-				.map(|item| item.into_manga(&params.base_url))
-				.collect(),
-			has_next_page: response.data.pagination.has_next,
-		})
+			Request::get(format!("{}/titles/search?{qs}", params.api_url))?.json_owned()?;
+		Ok(response.data.into_page(&params.base_url))
 	}
 
 	fn get_search_manga_list(
@@ -101,21 +86,24 @@ pub trait Impl {
 		listing: Listing,
 		page: i32,
 	) -> Result<MangaPageResult> {
-		if listing.id == "trending" {
-			let response: ApiResponse<SearchData> =
-				Request::get(format!("{}/trending/titles", params.api_url))?.json_owned()?;
-			// The trending feed is one fixed list
-			return Ok(MangaPageResult {
-				entries: response
-					.data
-					.items
-					.into_iter()
-					.map(|item| item.into_manga(&params.base_url))
-					.collect(),
-				has_next_page: false,
-			});
+		let mut qs = QueryParameters::new();
+		match listing.id.as_str() {
+			id @ ("trending" | "hot") => {
+				let window = if id == "hot" { "?window=week" } else { "" };
+				let response: ApiResponse<SearchData> =
+					Request::get(format!("{}/trending/titles{window}", params.api_url))?
+						.json_owned()?;
+				return Ok(response.data.into_page(&params.base_url));
+			}
+			"popular_updates" => {
+				qs.push("sort", Some("bookmarks"));
+				qs.push("window", Some("today"));
+			}
+			"new" => qs.push("sort", Some("newest")),
+			id @ ("uncensored" | "raw") => qs.push(&format!("is_{id}"), Some("true")),
+			_ => qs.push("sort", Some("latest")),
 		}
-		self.search(params, listing_query(&listing.id), page)
+		self.search(params, qs, page)
 	}
 
 	fn get_manga_update(
@@ -171,8 +159,11 @@ pub trait Impl {
 			params.featured_path.as_ref(),
 			None,
 		)];
-		if params.trending_today_section {
-			sections.push(("Trending Today", "trending/titles", Some("trending")));
+		if params.trending_sections {
+			sections.extend([
+				("Hot this week", "trending/titles?window=week", Some("hot")),
+				("Trending Today", "trending/titles", Some("trending")),
+			]);
 		}
 		sections.extend([
 			(
@@ -194,46 +185,30 @@ pub trait Impl {
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: sections
 				.iter()
-				.map(|(title, _, listing)| home_component(params, title, *listing, Vec::new(), &[]))
+				.map(|(title, _, listing)| {
+					home_component(&params.base_url, title, *listing, Vec::new())
+				})
 				.collect(),
 		}));
 
-		let mut requests = sections
+		let requests = sections
 			.iter()
 			.map(|(_, path, _)| Ok(Request::get(format!("{}/{path}", params.api_url))?))
 			.collect::<Result<Vec<_>>>()?;
-		// The trending feed names genres only by slug, unlike search
-		let named_by_slug = params.featured_path.starts_with("trending/");
-		if named_by_slug {
-			requests.push(Request::get(format!("{}/genres", params.api_url))?);
-		}
-		let mut responses = Request::send_all(requests);
-		let genres = named_by_slug
-			.then(|| responses.pop())
-			.flatten()
-			.and_then(|response| {
-				response
-					.ok()?
-					.get_json_owned::<ApiResponse<GenreList>>()
-					.ok()
-			})
-			.map(|response| response.data.items)
-			.unwrap_or_default();
 		// Returning the final layout drops the placeholder of a section that failed
 		let components = sections
 			.iter()
-			.zip(responses)
+			.zip(Request::send_all(requests))
 			.filter_map(|((title, _, listing), response)| {
 				let response = response
 					.ok()?
 					.get_json_owned::<ApiResponse<SearchData>>()
 					.ok()?;
 				Some(home_component(
-					params,
+					&params.base_url,
 					title,
 					*listing,
 					response.data.items,
-					&genres,
 				))
 			})
 			.collect::<Vec<_>>();
@@ -271,19 +246,21 @@ pub trait Impl {
 }
 
 fn home_component(
-	params: &Params,
+	base_url: &str,
 	title: &str,
 	listing_id: Option<&str>,
 	items: Vec<SearchItem>,
-	genres: &[Genre],
 ) -> HomeComponent {
-	let base_url = &params.base_url;
-	let link = listing_id.and_then(|id| listing(id, title));
+	let link = listing_id.map(|id| Listing {
+		id: id.into(),
+		name: title.into(),
+		..Default::default()
+	});
 	let value = match listing_id {
 		None => HomeComponentValue::BigScroller {
 			entries: items
 				.into_iter()
-				.map(|item| item.into_featured(base_url, genres))
+				.map(|item| item.into_featured(base_url))
 				.collect(),
 			auto_scroll_interval: None,
 		},

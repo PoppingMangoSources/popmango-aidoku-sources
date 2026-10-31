@@ -1,6 +1,6 @@
-use crate::helpers::manga_status;
+use crate::helpers::{content_rating, manga_status};
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaWithChapter, Viewer,
+	Chapter, Manga, MangaPageResult, MangaWithChapter, Viewer,
 	alloc::{String, Vec, format},
 	imports::std::parse_date,
 };
@@ -24,8 +24,21 @@ pub struct Pagination {
 	pub has_next: bool,
 }
 
-// Search and the trending feed share this shape; only search has named genres and chapters,
-// and only the trending feed has genre slugs.
+impl SearchData {
+	// The trending feed has no pagination, so it reads as one page.
+	pub fn into_page(self, base_url: &str) -> MangaPageResult {
+		MangaPageResult {
+			entries: self
+				.items
+				.into_iter()
+				.map(|item| item.into_manga(base_url))
+				.collect(),
+			has_next_page: self.pagination.has_next,
+		}
+	}
+}
+
+// The trending feed shares this shape without genres or chapters.
 #[derive(Default, Deserialize)]
 #[serde(default)]
 pub struct SearchItem {
@@ -34,20 +47,8 @@ pub struct SearchItem {
 	pub cover: Option<String>,
 	pub summary: Option<String>,
 	pub status: Option<String>,
-	pub genres: Vec<Genre>,
-	pub genre_slugs: Option<String>,
+	pub genres: Vec<Entity>,
 	pub latest_chapters: Vec<ChapterItem>,
-}
-
-#[derive(Deserialize)]
-pub struct GenreList {
-	pub items: Vec<Genre>,
-}
-
-#[derive(Deserialize)]
-pub struct Genre {
-	pub name: String,
-	pub slug: String,
 }
 
 impl SearchItem {
@@ -62,23 +63,13 @@ impl SearchItem {
 	}
 
 	// Genres keep the response's order, which is the order details show them in.
-	pub fn into_featured(mut self, base_url: &str, genre_list: &[Genre]) -> Manga {
-		let tags = match self.genre_slugs.take() {
-			Some(slugs) => slugs
-				.split(',')
-				.map(|slug| {
-					genre_list
-						.iter()
-						.find(|genre| genre.slug == slug)
-						.map_or_else(|| slug_name(slug), |genre| genre.name.clone())
-				})
-				.collect(),
-			None => self.genres.drain(..).map(|genre| genre.name).collect(),
-		};
+	pub fn into_featured(mut self, base_url: &str) -> Manga {
+		let tags: Vec<String> = self.genres.drain(..).map(|genre| genre.name).collect();
 		Manga {
 			description: self.summary.take().filter(|summary| !summary.is_empty()),
+			content_rating: content_rating(&tags),
 			status: manga_status(self.status.take()),
-			tags: Some(tags).filter(|tags: &Vec<String>| !tags.is_empty()),
+			tags: Some(tags).filter(|tags| !tags.is_empty()),
 			..self.into_manga(base_url)
 		}
 	}
@@ -108,16 +99,6 @@ pub struct ChapterItem {
 	pub url: String,
 	pub name: String,
 	pub updated_at: Option<String>,
-}
-
-// The genre list misses a few genres that details still show, named after their slug.
-fn slug_name(slug: &str) -> String {
-	let words = slug.replace('-', " ");
-	let mut chars = words.chars();
-	chars
-		.next()
-		.map(|first| first.to_uppercase().chain(chars).collect())
-		.unwrap_or_default()
 }
 
 impl ChapterItem {
@@ -183,19 +164,8 @@ impl MangaDetails {
 			list.map(|list| list.into_iter().map(|entity| entity.name).collect())
 		};
 		let tags: Option<Vec<String>> = names(self.genres);
-		let has_tag = |wanted: &[&str]| {
-			tags.iter()
-				.flatten()
-				.any(|tag| wanted.contains(&tag.as_str()))
-		};
-		let content_rating = if has_tag(&["Adult", "Hentai", "Mature", "Smut"]) {
-			ContentRating::NSFW
-		} else if has_tag(&["Ecchi"]) {
-			ContentRating::Suggestive
-		} else {
-			ContentRating::Safe
-		};
 		Manga {
+			content_rating: content_rating(tags.as_deref().unwrap_or_default()),
 			url: Some(format!("{base_url}{key}")),
 			key,
 			title: self.name,
@@ -204,7 +174,6 @@ impl MangaDetails {
 			authors: names(self.authors),
 			artists: names(self.artists),
 			tags,
-			content_rating,
 			status: manga_status(self.status),
 			viewer: Viewer::Webtoon,
 			..Default::default()
