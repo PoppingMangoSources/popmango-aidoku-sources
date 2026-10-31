@@ -4,7 +4,7 @@ use aidoku::{
 };
 use serde::de::DeserializeOwned;
 
-pub const SORTS: [Option<&str>; 11] = [
+pub const SORTS: [Option<&str>; 10] = [
 	None, // Best Match sends no sort, as on the site
 	Some("latest"),
 	Some("newest"),
@@ -15,7 +15,6 @@ pub const SORTS: [Option<&str>; 11] = [
 	Some("views_30days"),
 	Some("views"),
 	Some("chapters"),
-	Some("alphabetical"),
 ];
 
 pub fn listing_path(id: &str) -> &'static str {
