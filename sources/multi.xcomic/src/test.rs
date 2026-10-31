@@ -172,12 +172,22 @@ fn merged_editions_share_one_list() {
 	teams.dedup();
 	assert!(teams.len() > 1);
 	// Two English editions there are both by "exe scans", and two by UTOON in different case
-	assert!(teams.contains(&"exe scans [qwxvq6]"));
-	assert!(teams.contains(&"exe scans [rg737m]"));
-	assert!(!teams.contains(&"exe scans"));
-	assert!(teams.contains(&"UTOON [gxbp66]"));
-	assert!(teams.contains(&"UToon [vgreew]"));
-	assert!(teams.contains(&"WebToon"));
+	assert!(teams.contains(&"exe scans"));
+	assert!(teams.contains(&"UTOON"));
+	assert!(!teams.contains(&"UToon"));
+	assert!(teams.iter().all(|team| !team.contains(" [")));
+	// One copy of each numbered chapter per team
+	let mut slots: Vec<(String, u32)> = merged
+		.iter()
+		.filter_map(|chapter| {
+			let team = chapter.scanlators.as_ref()?.first()?.to_lowercase();
+			Some((team, chapter.chapter_number?.to_bits()))
+		})
+		.collect();
+	let numbered = slots.len();
+	slots.sort_unstable();
+	slots.dedup();
+	assert_eq!(slots.len(), numbered);
 	let numbers: Vec<f32> = merged
 		.iter()
 		.filter_map(|chapter| chapter.chapter_number)

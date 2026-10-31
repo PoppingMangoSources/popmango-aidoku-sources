@@ -5,7 +5,7 @@ use crate::{
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
-	alloc::{String, Vec, format, string::ToString},
+	alloc::{String, Vec, collections::BTreeMap, format, string::ToString},
 };
 use core::cmp::{Ordering, Reverse};
 
@@ -422,49 +422,58 @@ pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Cha
 	}
 	let editions = editions(base_url, key)?;
 	let ids: Vec<&str> = editions.iter().map(|edition| edition.id.as_str()).collect();
-	let lists = fetch_chapters(base_url, &ids)?;
-	let labels: Vec<Option<String>> = editions
-		.iter()
-		.zip(&lists)
-		.map(|(edition, list)| {
-			team_of(edition).or_else(|| {
-				list.first()
-					.and_then(|chapter| chapter.src_name.as_deref())
-					.map(title_case)
-			})
-		})
-		.collect();
+	// One team's editions read as one scanlator, spelled as its leading edition spells it,
+	// and keep one copy of each numbered chapter: the leading edition's.
+	let mut teams: Vec<String> = Vec::new();
+	let mut owners: BTreeMap<(usize, u32), usize> = BTreeMap::new();
 	let mut chapters = Vec::new();
-	for ((edition, list), label) in editions.iter().zip(lists).zip(&labels) {
-		// The Scanlator filter tells editions apart only by name, so ones sharing a name
-		// carry their id too.
-		let shared = label.as_ref().is_some_and(|label| {
-			labels
-				.iter()
-				.flatten()
-				.filter(|other| other.eq_ignore_ascii_case(label))
-				.count() > 1
-		});
-		let team = if shared {
-			label
-				.as_ref()
-				.map(|label| format!("{label} [{}]", edition.id))
-		} else {
-			team_of(edition)
-		};
+	for (index, (edition, list)) in editions
+		.iter()
+		.zip(fetch_chapters(base_url, &ids)?)
+		.enumerate()
+	{
+		let team = team_of(edition);
 		let language = edition
 			.translated_language
 			.as_deref()
 			.and_then(normalize_language);
-		chapters.extend(list.into_iter().filter_map(|chapter| {
-			chapter_from_data(
+		for chapter in list {
+			let Some(mut chapter) = chapter_from_data(
 				chapter,
 				base_url,
 				language.as_deref(),
 				team.as_deref(),
 				false,
-			)
-		}));
+			) else {
+				continue;
+			};
+			if let Some(name) = chapter
+				.scanlators
+				.as_mut()
+				.and_then(|names| names.first_mut())
+			{
+				let team = match teams
+					.iter()
+					.position(|seen| seen.eq_ignore_ascii_case(name))
+				{
+					Some(position) => {
+						name.clone_from(&teams[position]);
+						position
+					}
+					None => {
+						teams.push(name.clone());
+						teams.len() - 1
+					}
+				};
+				// An unnumbered chapter may be any extra, so only numbered ones collapse.
+				if let Some(number) = chapter.chapter_number
+					&& *owners.entry((team, number.to_bits())).or_insert(index) != index
+				{
+					continue;
+				}
+			}
+			chapters.push(chapter);
+		}
 	}
 	// Each list arrives newest first, so interleave them by number, then by upload.
 	chapters.sort_by(|a, b| {
