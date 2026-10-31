@@ -128,6 +128,57 @@ fn long_chapter_lists_arrive_whole() {
 	assert!(manga.chapters.unwrap().len() > 3000);
 }
 
+fn chapters(key: &str) -> Vec<Chapter> {
+	XComic::new()
+		.get_manga_update(
+			Manga {
+				key: key.into(),
+				..Default::default()
+			},
+			false,
+			true,
+		)
+		.unwrap()
+		.chapters
+		.unwrap()
+}
+
+#[aidoku_test]
+fn merged_editions_share_one_list() {
+	defaults_set("mergeEditions", DefaultValue::Bool(false));
+	let single = chapters(TITLE_EDITION);
+	let separate = search(Some("On the Way to Meet Mom"), 1, Vec::new())
+		.entries
+		.len();
+
+	defaults_set("mergeEditions", DefaultValue::Bool(true));
+	let merged = chapters(TITLE_EDITION);
+	let together = search(Some("On the Way to Meet Mom"), 1, Vec::new())
+		.entries
+		.len();
+	defaults_set("mergeEditions", DefaultValue::Bool(false));
+
+	assert!(merged.len() > single.len());
+	assert!(
+		single
+			.iter()
+			.all(|chapter| merged.iter().any(|seen| seen.key == chapter.key))
+	);
+	let mut teams: Vec<&str> = merged
+		.iter()
+		.filter_map(|chapter| chapter.scanlators.as_ref()?.first().map(String::as_str))
+		.collect();
+	teams.sort_unstable();
+	teams.dedup();
+	assert!(teams.len() > 1);
+	let numbers: Vec<f32> = merged
+		.iter()
+		.filter_map(|chapter| chapter.chapter_number)
+		.collect();
+	assert!(numbers.windows(2).all(|pair| pair[0] >= pair[1]));
+	assert!(together < separate);
+}
+
 #[aidoku_test]
 fn details_fall_back_to_the_work() {
 	let manga = XComic::new()

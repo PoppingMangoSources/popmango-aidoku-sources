@@ -1,5 +1,5 @@
 use crate::{
-	graphql::title_edition,
+	graphql::{editions, fetch_chapters, title_edition},
 	models::{ChapterData, ComicData, NamedData, Node, TitleNode},
 	settings::{self, normalize_language},
 };
@@ -7,7 +7,7 @@ use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, format, string::ToString, vec},
 };
-use core::cmp::Reverse;
+use core::cmp::{Ordering, Reverse};
 
 pub const PORNOGRAPHIC_GENRES: &[&str] = &["adult", "hentai", "pornographic", "smut"];
 
@@ -311,8 +311,10 @@ pub fn manga_from_data(comic: ComicData, base_url: &str) -> Manga {
 		title.truncate(open);
 		title = title.trim_end().into();
 	}
-	// Editions of one title are identical on a shelf without the team's name.
+	// Editions of one title are identical on a shelf without the team's name. Merged
+	// editions name their teams on each chapter instead.
 	if settings::show_source_in_title()
+		&& !settings::merge_editions()
 		&& let Some(team) = team
 		&& !title.contains(team.as_str())
 	{
@@ -407,6 +409,44 @@ fn unix_seconds(timestamp: i64) -> Option<i64> {
 			timestamp
 		}
 	})
+}
+
+/// One edition's chapters, or with Merge Editions every edition's, each naming its team.
+pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Chapter>> {
+	if !settings::merge_editions() {
+		return Ok(fetch_chapters(base_url, &[key])?
+			.into_iter()
+			.flatten()
+			.filter_map(|chapter| chapter_from_data(chapter, base_url, None, team, false))
+			.collect());
+	}
+	let editions = editions(base_url, key)?;
+	let ids: Vec<&str> = editions.iter().map(|edition| edition.id.as_str()).collect();
+	let mut chapters = Vec::new();
+	for (edition, list) in editions.iter().zip(fetch_chapters(base_url, &ids)?) {
+		let team = team_of(edition);
+		let language = edition
+			.translated_language
+			.as_deref()
+			.and_then(normalize_language);
+		chapters.extend(list.into_iter().filter_map(|chapter| {
+			chapter_from_data(
+				chapter,
+				base_url,
+				language.as_deref(),
+				team.as_deref(),
+				false,
+			)
+		}));
+	}
+	// Each list arrives newest first, so interleave them by number, then by upload.
+	chapters.sort_by(|a, b| {
+		b.chapter_number
+			.partial_cmp(&a.chapter_number)
+			.unwrap_or(Ordering::Equal)
+			.then(b.date_uploaded.cmp(&a.date_uploaded))
+	});
+	Ok(chapters)
 }
 
 /// `published_first` dates by publication instead of revision: the feed reports
