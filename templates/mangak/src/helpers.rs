@@ -1,19 +1,26 @@
 use crate::models::NextData;
 use aidoku::{
-	Listing, Result, alloc::string::ToString, helpers::uri::QueryParameters, imports::net::Request,
+	Listing, MangaStatus, Result,
+	alloc::string::{String, ToString},
+	helpers::uri::QueryParameters,
+	imports::net::Request,
 	prelude::*,
 };
 use serde::de::DeserializeOwned;
 
-pub const SORTS: [&str; 8] = [
-	"latest",
-	"popular",
-	"newest",
-	"rating",
-	"views_today",
-	"views_7days",
-	"views_30days",
-	"views",
+// Best Match sends no sort, as on the site
+pub const SORTS: [Option<&str>; 11] = [
+	None,
+	Some("latest"),
+	Some("newest"),
+	Some("popular"),
+	Some("rating"),
+	Some("views_today"),
+	Some("views_7days"),
+	Some("views_30days"),
+	Some("views"),
+	Some("chapters"),
+	Some("alphabetical"),
 ];
 
 pub fn next_data<T: DeserializeOwned>(url: &str) -> Result<T> {
@@ -31,10 +38,11 @@ pub fn next_data<T: DeserializeOwned>(url: &str) -> Result<T> {
 pub fn listing_query(id: &str) -> QueryParameters {
 	let mut qs = QueryParameters::new();
 	match id {
-		"today" | "week" => {
-			qs.push("sort", Some("popular"));
-			qs.push("window", Some(id));
+		"popular_updates" => {
+			qs.push("sort", Some("bookmarks"));
+			qs.push("window", Some("today"));
 		}
+		"new" => qs.push("sort", Some("newest")),
 		"uncensored" | "raw" => qs.push(&format!("is_{id}"), Some("true")),
 		_ => qs.push("sort", Some("latest")),
 	}
@@ -47,4 +55,14 @@ pub fn listing(id: &str, name: &str) -> Option<Listing> {
 		name: name.to_string(),
 		..Default::default()
 	})
+}
+
+pub fn manga_status(status: Option<String>) -> MangaStatus {
+	match status.unwrap_or_default().to_lowercase().as_str() {
+		"ongoing" => MangaStatus::Ongoing,
+		"completed" => MangaStatus::Completed,
+		"hiatus" => MangaStatus::Hiatus,
+		"cancelled" | "dropped" => MangaStatus::Cancelled,
+		_ => MangaStatus::Unknown,
+	}
 }

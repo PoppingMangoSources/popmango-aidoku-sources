@@ -1,5 +1,6 @@
+use crate::helpers::manga_status;
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Viewer,
+	Chapter, ContentRating, Manga, MangaWithChapter, Viewer,
 	alloc::{String, Vec, format},
 	imports::std::parse_date,
 };
@@ -23,13 +24,29 @@ pub struct Pagination {
 	pub has_next: bool,
 }
 
+// Search and the trending feed share this shape; only the trending feed has genre slugs and
+// only search has chapters.
 #[derive(Default, Deserialize)]
 #[serde(default)]
 pub struct SearchItem {
 	pub name: String,
 	pub url: String,
 	pub cover: Option<String>,
+	pub summary: Option<String>,
+	pub status: Option<String>,
+	pub genre_slugs: Option<String>,
 	pub latest_chapters: Vec<ChapterItem>,
+}
+
+#[derive(Deserialize)]
+pub struct GenreList {
+	pub items: Vec<Genre>,
+}
+
+#[derive(Deserialize)]
+pub struct Genre {
+	pub name: String,
+	pub slug: String,
 }
 
 impl SearchItem {
@@ -40,6 +57,27 @@ impl SearchItem {
 			title: self.name,
 			cover: self.cover,
 			..Default::default()
+		}
+	}
+
+	// Genres follow the feed's order, which is the order details show them in.
+	pub fn into_featured(mut self, base_url: &str, genres: &[Genre]) -> Manga {
+		let tags = self.genre_slugs.take().map(|slugs| {
+			slugs
+				.split(',')
+				.map(|slug| {
+					genres
+						.iter()
+						.find(|genre| genre.slug == slug)
+						.map_or_else(|| slug_name(slug), |genre| genre.name.clone())
+				})
+				.collect::<Vec<_>>()
+		});
+		Manga {
+			description: self.summary.take().filter(|summary| !summary.is_empty()),
+			status: manga_status(self.status.take()),
+			tags: tags.filter(|tags| !tags.is_empty()),
+			..self.into_manga(base_url)
 		}
 	}
 
@@ -70,14 +108,27 @@ pub struct ChapterItem {
 	pub updated_at: Option<String>,
 }
 
+// The genre list misses a few genres that details still show, named after their slug.
+fn slug_name(slug: &str) -> String {
+	let words = slug.replace('-', " ");
+	let mut chars = words.chars();
+	chars
+		.next()
+		.map(|first| first.to_uppercase().chain(chars).collect())
+		.unwrap_or_default()
+}
+
 impl ChapterItem {
 	pub fn into_chapter(self, base_url: &str) -> Chapter {
+		let chapter_number = self
+			.name
+			.split_whitespace()
+			.nth(1)
+			.and_then(|number| number.parse().ok());
 		Chapter {
-			chapter_number: self
-				.name
-				.split_whitespace()
-				.nth(1)
-				.and_then(|number| number.parse().ok()),
+			// Extras and prologues have no number, only a name
+			title: chapter_number.is_none().then_some(self.name),
+			chapter_number,
 			date_uploaded: self
 				.updated_at
 				.and_then(|date| parse_date(date, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")),
@@ -152,13 +203,7 @@ impl MangaDetails {
 			artists: names(self.artists),
 			tags,
 			content_rating,
-			status: match self.status.unwrap_or_default().to_lowercase().as_str() {
-				"ongoing" => MangaStatus::Ongoing,
-				"completed" => MangaStatus::Completed,
-				"hiatus" => MangaStatus::Hiatus,
-				"cancelled" | "dropped" => MangaStatus::Cancelled,
-				_ => MangaStatus::Unknown,
-			},
+			status: manga_status(self.status),
 			viewer: Viewer::Webtoon,
 			..Default::default()
 		}

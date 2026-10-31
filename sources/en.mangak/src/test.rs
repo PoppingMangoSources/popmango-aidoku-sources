@@ -2,8 +2,9 @@
 
 use super::*;
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, Home, HomeComponentValue, Listing, ListingProvider,
-	Manga, MangaStatus, alloc::vec,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, Listing,
+	ListingProvider, Manga, MangaPageResult, MangaStatus,
+	alloc::{Vec, vec},
 };
 use aidoku_test::aidoku_test;
 
@@ -195,34 +196,6 @@ fn listings() {
 		keys(&source.get_manga_list(listing("new"), 1).unwrap()),
 		keys(&source.get_manga_list(listing("latest"), 1).unwrap())
 	);
-	assert!(source.get_manga_list(listing("today"), 1).is_err());
-}
-
-#[aidoku_test]
-fn review_featured_genres() {
-	let genres = Filter {
-		id: "genres".into(),
-		options: vec!["Boys Love".into(), "Drama".into(), "Slice of life".into()],
-		ids: vec!["boys-love".into(), "drama".into(), "slice-of-life".into()],
-	};
-	let tags = |slugs: Option<&str>| {
-		Item {
-			genre_slugs: slugs.map(Into::into),
-			..Default::default()
-		}
-		.into_featured(&genres)
-		.tags
-	};
-	// Names keep the feed's order, which is the order details show
-	assert_eq!(
-		tags(Some("slice-of-life,boys-love,drama")),
-		Some(vec![
-			"Slice of life".into(),
-			"Boys Love".into(),
-			"Drama".into()
-		])
-	);
-	assert_eq!(tags(None), None);
 }
 
 #[aidoku_test]

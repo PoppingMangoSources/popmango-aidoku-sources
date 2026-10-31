@@ -15,6 +15,8 @@ pub use imp::Impl;
 pub struct Params {
 	pub base_url: Cow<'static, str>,
 	pub api_url: Cow<'static, str>,
+	pub latest_title: Cow<'static, str>,
+	pub new_manga_section: bool,
 }
 
 impl Default for Params {
@@ -22,6 +24,8 @@ impl Default for Params {
 		Self {
 			base_url: "".into(),
 			api_url: "".into(),
+			latest_title: "Latest Updates".into(),
+			new_manga_section: false,
 		}
 	}
 }
