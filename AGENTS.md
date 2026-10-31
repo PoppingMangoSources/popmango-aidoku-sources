@@ -343,6 +343,18 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
   without live requests. The Source tests workflow runs them in a separate step before the
   full live suite so a site outage does not obscure these regressions.
 
+### From #850 (`en.mangak`)
+
+- **Template first (inferred, kkantan):** a feature a template consumer adds goes in the
+  template when it also applies to the template's other consumers. Per-site differences become
+  `Params` fields, as merged templates do (`iken`'s `hide_home_lists`, `mangareader`'s
+  `home_path`). A consumer whose behaviour changes (its sorts, its home) is bumped in the same
+  PR; a model change that doesn't affect it needs no bump. A home page that can't be built
+  generically goes in each source, with the template's left empty.
+- Check the other consumer's site before moving anything: ToonTop and MangaK run the same API
+  and search page, so every filter, the sorts and the home rows were shared, while
+  `demographic` and `format` match nothing on ToonTop and stayed MangaK's alone.
+
 ### From our own reviews of `en.atsumaru` (owner's corrections)
 
 Each of these went to `main` and was put right in a later commit. **F** fails `check-sources.py`
@@ -766,6 +778,11 @@ went in one of these ways, and new ones go in the same way:
   `origin/main`. README/website/workflow edits, other sources, generated files, merge commits,
   wrong ids and wrong submission versions fail. A clean final diff cannot conceal unrelated
   commits that were later reverted.
+- A submission may also change `templates/<name>/` when its source depends on that template,
+  and other sources depending on it, each at exactly its upstream version plus one. Other
+  templates and sources still fail. `pr-branch.sh` copies one source only, so such a round is
+  built in a worktree from the PR branch: copy the template and the source from `main`, drop
+  `src/test.rs` and its module line, keep version 1, and edit the other consumers there.
 - Submission branches are `feat/<id>` or `fix/<id>`; the existing
   `fix/kagane-chapter-fetch` maps to `multi.kagane`. Use `chore/<topic>` for tooling and
   preserved snapshots. Do not put custom fork checks or docs onto an upstream source branch.
@@ -916,7 +933,9 @@ engine or theme:
 `pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`.
 
 Our `templates/` is upstream's copy, except `madara`, `madtheme` and `mangathemesia`, which
-carry additions our sources use (shared detail parsing, listings and dynamic filters). The
+carry additions our sources use (shared detail parsing, listings and dynamic filters), and
+`mangak`, which is ahead of upstream until #850 merges (search filters, the home page and
+featured details, moved there from `en.mangak` on review). The
 `madtheme` ones (a home page and a chapter-list fallback) were for Kaliscan, which now sits on
 the `dead-sources` branch with Galaxy Manga and OManga. When syncing, take upstream's files for every other
 template and bring only upstream's own changes into those three.
