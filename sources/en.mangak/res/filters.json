@@ -21,6 +21,7 @@
 		"type": "multi-select",
 		"id": "type",
 		"title": "Type",
+		"canExclude": false,
 		"options": [
 			"Manga",
 			"Manhwa",
@@ -36,6 +37,7 @@
 		"type": "multi-select",
 		"id": "content_rating",
 		"title": "Content Rating",
+		"canExclude": false,
 		"options": [
 			"Safe",
 			"Suggestive",
@@ -72,6 +74,7 @@
 		"type": "multi-select",
 		"id": "demographic",
 		"title": "Demographics",
+		"canExclude": false,
 		"options": [
 			"Shounen",
 			"Shoujo",
@@ -244,6 +247,7 @@
 		"type": "multi-select",
 		"id": "format",
 		"title": "Format",
+		"canExclude": false,
 		"hideFromHeader": true,
 		"options": [
 			"4-Koma",
