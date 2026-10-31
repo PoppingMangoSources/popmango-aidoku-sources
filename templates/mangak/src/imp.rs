@@ -14,18 +14,6 @@ pub trait Impl {
 
 	fn params(&self) -> Params;
 
-	fn search(
-		&self,
-		params: &Params,
-		mut qs: QueryParameters,
-		page: i32,
-	) -> Result<MangaPageResult> {
-		qs.push("page", Some(&page.to_string()));
-		let response: ApiResponse<SearchData> =
-			Request::get(format!("{}/titles/search?{qs}", params.api_url))?.json_owned()?;
-		Ok(response.data.into_page(&params.base_url))
-	}
-
 	fn get_search_manga_list(
 		&self,
 		params: &Params,
@@ -77,7 +65,10 @@ pub trait Impl {
 				_ => {}
 			}
 		}
-		self.search(params, qs, page)
+		qs.push("page", Some(&page.to_string()));
+		let response: ApiResponse<SearchData> =
+			Request::get(format!("{}/titles/search?{qs}", params.api_url))?.json_owned()?;
+		Ok(response.data.into_page(&params.base_url))
 	}
 
 	fn get_manga_list(
@@ -86,23 +77,10 @@ pub trait Impl {
 		listing: Listing,
 		page: i32,
 	) -> Result<MangaPageResult> {
-		let mut qs = QueryParameters::new();
-		match listing.id.as_str() {
-			"trending" => {
-				let response: ApiResponse<SearchData> =
-					Request::get(format!("{}/trending/titles?window=week", params.api_url))?
-						.json_owned()?;
-				return Ok(response.data.into_page(&params.base_url));
-			}
-			"popular_updates" => {
-				qs.push("sort", Some("bookmarks"));
-				qs.push("window", Some("today"));
-			}
-			"new" => qs.push("sort", Some("newest")),
-			id @ ("uncensored" | "raw") => qs.push(&format!("is_{id}"), Some("true")),
-			_ => qs.push("sort", Some("latest")),
-		}
-		self.search(params, qs, page)
+		let path = listing_path(&listing.id);
+		let response: ApiResponse<SearchData> =
+			Request::get(format!("{}/{path}&page={page}", params.api_url))?.json_owned()?;
+		Ok(response.data.into_page(&params.base_url))
 	}
 
 	fn get_manga_update(
@@ -153,37 +131,28 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let sections = [
-			(
-				params.featured_title.as_ref(),
-				params.featured_path.as_ref(),
-				None,
-			),
-			(
-				"Trending This Week",
-				"trending/titles?window=week",
-				Some("trending"),
-			),
-			(
-				"Popular Updates",
-				"titles/search?sort=bookmarks&window=today&limit=12",
-				Some("popular_updates"),
-			),
-			(
-				"New Manga",
-				"titles/search?sort=newest&limit=18",
-				Some("new"),
-			),
-			(
-				params.latest_title.as_ref(),
-				"titles/search?sort=latest",
-				Some("latest"),
-			),
+		// Row sizes follow the site's own home page
+		let rows = [
+			("Trending This Week", "trending", ""),
+			("Popular Updates", "popular_updates", "&limit=12"),
+			("New Manga", "new", "&limit=18"),
+			(params.latest_title.as_ref(), "latest", ""),
 		];
+		let sections =
+			[(
+				params.featured_title.as_ref(),
+				None,
+				params.featured_path.to_string(),
+			)]
+			.into_iter()
+			.chain(rows.map(|(title, id, limit)| {
+				(title, Some(id), format!("{}{limit}", listing_path(id)))
+			}))
+			.collect::<Vec<_>>();
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: sections
 				.iter()
-				.map(|(title, _, listing)| {
+				.map(|(title, listing, _)| {
 					home_component(&params.base_url, title, *listing, Vec::new())
 				})
 				.collect(),
@@ -191,13 +160,13 @@ pub trait Impl {
 
 		let requests = sections
 			.iter()
-			.map(|(_, path, _)| Ok(Request::get(format!("{}/{path}", params.api_url))?))
+			.map(|(_, _, path)| Ok(Request::get(format!("{}/{path}", params.api_url))?))
 			.collect::<Result<Vec<_>>>()?;
 		// Returning the final layout drops the placeholder of a section that failed
 		let components = sections
 			.iter()
 			.zip(Request::send_all(requests))
-			.filter_map(|((title, _, listing), response)| {
+			.filter_map(|((title, listing, _), response)| {
 				let response = response
 					.ok()?
 					.get_json_owned::<ApiResponse<SearchData>>()

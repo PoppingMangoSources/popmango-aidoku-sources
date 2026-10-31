@@ -19,6 +19,18 @@ pub const SORTS: [Option<&str>; 11] = [
 	Some("alphabetical"),
 ];
 
+// A listing and its home row make the same request.
+pub fn listing_path(id: &str) -> &'static str {
+	match id {
+		"trending" => "trending/titles?window=week",
+		"popular_updates" => "titles/search?sort=bookmarks&window=today",
+		"new" => "titles/search?sort=newest",
+		"uncensored" => "titles/search?is_uncensored=true",
+		"raw" => "titles/search?is_raw=true",
+		_ => "titles/search?sort=latest",
+	}
+}
+
 pub fn next_data<T: DeserializeOwned>(url: &str) -> Result<T> {
 	let html = Request::get(url)?.html()?;
 	let script = html
