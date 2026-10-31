@@ -95,7 +95,7 @@ RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 dev-dependencies on ~129 sources — the scaffold adds them. Tests go in `src/test.rs`,
 declared in `lib.rs` as `#[cfg(test)] mod test;`, and are marked `#[aidoku_test]`;
 `en.mangakakalot`, `ja.senmanga`, `ja.soraraw`, `ja.spoilerplus` and `en.chikari` (inline in
-`lib.rs`) have real ones upstream, and `en.atsumaru` here. They hit live endpoints and assert
+`lib.rs`) have real ones upstream, and `en.mangak` here. They hit live endpoints and assert
 on actual results — pinned keys, whether a url resolves, whether a listing comes back sane,
 whether each setting and filter actually narrows what the site returns.
 
@@ -1052,6 +1052,10 @@ matrix. Use the `.agents/skills/aidoku-source/references/source-review.md` copy 
   for a missing behavioral or scope check. Preserve diagnostics when a build fails.
 
 ## 16. Atsumaru specifics
+
+`en.atsumaru` lives upstream only; it was removed from `main` once merged (#843), and a later
+change is a new branch from `upstream/main`, as for Toonkotsu. Its tests went with it; the last
+copy is in `main`'s history.
 
 `en.atsumaru` (atsu.moe): comics and novels. Confirmed by live requests from the sandbox, which
 reaches the site, unless marked.
