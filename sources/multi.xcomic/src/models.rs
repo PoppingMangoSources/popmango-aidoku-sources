@@ -162,8 +162,6 @@ pub struct ChapterData {
 	pub date_modify: Option<i64>,
 	pub date_public: Option<i64>,
 	pub src_name: Option<String>,
-	pub profile_nodes: Option<Vec<Node<Option<NamedData>>>>,
-	pub group_nodes: Option<Vec<Node<Option<NamedData>>>>,
 	/// Only the latest-uploads feed sets this.
 	pub comic_node: Option<Node<Option<ComicData>>>,
 }

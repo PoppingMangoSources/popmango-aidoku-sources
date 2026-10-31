@@ -168,8 +168,6 @@ query get_comic_chapterList_fullList($select: Select_Comic_ChapterList) {
       data {
         id dbStatus serial chaNum volNum dname title urlPath
         dateCreate dateModify datePublic srcName
-        profileNodes { data { name } }
-        groupNodes { data { name } }
       }
     }
   }
@@ -184,8 +182,6 @@ query get_comic_chapterList_uniqList($select: Select_Comic_ChapterList_UniqList)
       data {
         id dbStatus serial chaNum volNum dname title urlPath
         dateCreate dateModify datePublic srcName
-        profileNodes { data { name } }
-        groupNodes { data { name } }
       }
     }
   }

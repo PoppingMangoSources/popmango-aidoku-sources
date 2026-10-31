@@ -5,7 +5,7 @@ use crate::{
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
-	alloc::{String, Vec, format, string::ToString, vec},
+	alloc::{String, Vec, format, string::ToString},
 };
 use core::cmp::{Ordering, Reverse};
 
@@ -422,9 +422,36 @@ pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Cha
 	}
 	let editions = editions(base_url, key)?;
 	let ids: Vec<&str> = editions.iter().map(|edition| edition.id.as_str()).collect();
+	let lists = fetch_chapters(base_url, &ids)?;
+	let labels: Vec<Option<String>> = editions
+		.iter()
+		.zip(&lists)
+		.map(|(edition, list)| {
+			team_of(edition).or_else(|| {
+				list.first()
+					.and_then(|chapter| chapter.src_name.as_deref())
+					.map(title_case)
+			})
+		})
+		.collect();
 	let mut chapters = Vec::new();
-	for (edition, list) in editions.iter().zip(fetch_chapters(base_url, &ids)?) {
-		let team = team_of(edition);
+	for ((edition, list), label) in editions.iter().zip(lists).zip(&labels) {
+		// The Scanlator filter tells editions apart only by name, so ones sharing a name
+		// carry their id too.
+		let shared = label.as_ref().is_some_and(|label| {
+			labels
+				.iter()
+				.flatten()
+				.filter(|other| other.eq_ignore_ascii_case(label))
+				.count() > 1
+		});
+		let team = if shared {
+			label
+				.as_ref()
+				.map(|label| format!("{label} [{}]", edition.id))
+		} else {
+			team_of(edition)
+		};
 		let language = edition
 			.translated_language
 			.as_deref()
@@ -471,8 +498,6 @@ pub fn chapter_from_data(
 		date_modify,
 		date_public,
 		src_name,
-		profile_nodes,
-		group_nodes,
 		comic_node: _,
 	} = data;
 	if db_status.as_deref().unwrap_or("normal") != "normal" {
@@ -493,24 +518,14 @@ pub fn chapter_from_data(
 		_ => None,
 	};
 	// `srcName` is only the aggregator the upload came through.
-	let mut scanlators = team
+	let scanlators: Vec<String> = team
 		.map(str::trim)
 		.filter(|team| !team.is_empty())
-		.map(|team| vec![team.into()])
-		.unwrap_or_default();
-	if scanlators.is_empty() {
-		scanlators = src_name
-			.map(|name| title_case(&name))
-			.filter(|name| !name.is_empty())
-			.map(|name| vec![name])
-			.unwrap_or_default();
-	}
-	if scanlators.is_empty() {
-		scanlators = profile_nodes.map(node_names).unwrap_or_default();
-	}
-	if scanlators.is_empty() {
-		scanlators = group_nodes.map(node_names).unwrap_or_default();
-	}
+		.map(Into::into)
+		.or_else(|| src_name.map(|name| title_case(&name)))
+		.filter(|name| !name.is_empty())
+		.into_iter()
+		.collect();
 	// Every chapter path repeats its comic's language, so listing chapters needs no
 	// lookup of the comic itself.
 	let language = language

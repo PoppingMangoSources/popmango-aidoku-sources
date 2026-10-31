@@ -171,6 +171,13 @@ fn merged_editions_share_one_list() {
 	teams.sort_unstable();
 	teams.dedup();
 	assert!(teams.len() > 1);
+	// Two English editions there are both by "exe scans", and two by UTOON in different case
+	assert!(teams.contains(&"exe scans [qwxvq6]"));
+	assert!(teams.contains(&"exe scans [rg737m]"));
+	assert!(!teams.contains(&"exe scans"));
+	assert!(teams.contains(&"UTOON [gxbp66]"));
+	assert!(teams.contains(&"UToon [vgreew]"));
+	assert!(teams.contains(&"WebToon"));
 	let numbers: Vec<f32> = merged
 		.iter()
 		.filter_map(|chapter| chapter.chapter_number)
