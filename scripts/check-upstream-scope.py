@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 SOURCE_ID = re.compile(r"(?:[a-z]{2,3}|multi)\.[a-z0-9][a-z0-9.-]*\Z")
+TEMPLATE_DEPENDENCY = re.compile(r'path\s*=\s*"\.\./\.\./templates/([A-Za-z0-9_-]+)"')
 LEGACY_BRANCHES = {"fix/kagane-chapter-fetch": "multi.kagane"}
 
 
@@ -22,6 +23,21 @@ def git(repo, *args):
     return subprocess.check_output(["git", "-C", str(repo), *args], stderr=subprocess.PIPE)
 
 
+def templates_used(repo, ref, source):
+    try:
+        manifest = git(repo, "show", f"{ref}:sources/{source}/Cargo.toml").decode("utf-8", "replace")
+    except subprocess.CalledProcessError:
+        return set()
+    return set(TEMPLATE_DEPENDENCY.findall(manifest))
+
+
+def source_version(repo, ref, source):
+    try:
+        return json.loads(git(repo, "show", f"{ref}:sources/{source}/res/source.json"))["info"]["version"]
+    except subprocess.CalledProcessError:
+        return None
+
+
 def inspect(repo, base, head, source):
     if not SOURCE_ID.fullmatch(source):
         raise ValueError("invalid source id")
@@ -33,13 +49,27 @@ def inspect(repo, base, head, source):
         return {"sha": head, "source": source, "errors": [], "description": "Already upstream; no submission commits"}
     prefix = f"sources/{source}/"
     errors = set()
+    # A template change may ride with a source using it, together with its other consumers.
+    templates = templates_used(repo, head, source)
+    consumers = set()
+
+    def allowed(path):
+        parts = path.split("/")
+        if path.startswith(prefix):
+            return True
+        if len(parts) > 2 and parts[0] == "templates":
+            return parts[1] in templates
+        if len(parts) > 2 and parts[0] == "sources" and templates_used(repo, head, parts[1]) & templates:
+            consumers.add(parts[1])
+            return True
+        return False
 
     def check_paths(data):
         for raw in data.split(b"\0"):
             if not raw:
                 continue
             path = raw.decode("utf-8", "replace")
-            if not path.startswith(prefix):
+            if not allowed(path):
                 errors.add(f"outside {prefix}: {path}")
             elif path.endswith(".aix") or any(part in {"target", "public", ".git"} for part in path.split("/")):
                 errors.add(f"generated/nested repository file: {path}")
@@ -53,6 +83,13 @@ def inspect(repo, base, head, source):
         if len(parents) > 2:
             errors.add(f"merge commit {commit[:12]}; rebase the submission instead")
         check_paths(git(repo, "diff-tree", "--root", "--no-commit-id", "--no-renames", "--name-only", "-r", "-z", commit))
+    for consumer in sorted(consumers):
+        previous = source_version(repo, base, consumer)
+        version = source_version(repo, head, consumer)
+        if previous is None:
+            errors.add(f"{consumer} is not upstream; submit it on its own branch")
+        elif version != previous + 1:
+            errors.add(f"{consumer} changes with the template, so it must use version {previous + 1}, found {version}")
     metadata_path = prefix + "res/source.json"
     metadata = json.loads(git(repo, "show", head + ":" + metadata_path))["info"]
     if metadata.get("id") != source:

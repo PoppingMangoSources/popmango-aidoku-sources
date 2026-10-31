@@ -126,6 +126,37 @@ class ScopeTests(unittest.TestCase):
         self.commit('another source')
         self.assertTrue(any('en.other' in e for e in self.inspect()))
 
+    def template_consumer(self, consumer_version):
+        uses = 'theme = { path = "../../templates/theme" }\n'
+        (self.repo / 'templates/theme/src').mkdir(parents=True)
+        (self.repo / 'templates/theme/src/lib.rs').write_text('template\n')
+        other = self.repo / 'sources/en.other'
+        (other / 'res').mkdir(parents=True)
+        (other / 'Cargo.toml').write_text(uses)
+        (other / 'res/source.json').write_text(json.dumps({'info': {'id': 'en.other', 'version': 2}}) + '\n')
+        self.commit('upstream template and consumer')
+        self.base = self.git('rev-parse', 'HEAD')
+        (self.source / 'Cargo.toml').write_text(uses)
+        (self.repo / 'templates/theme/src/lib.rs').write_text('shared feature\n')
+        (other / 'res/filters.json').write_text('[]\n')
+        (other / 'res/source.json').write_text(json.dumps({'info': {'id': 'en.other', 'version': consumer_version}}) + '\n')
+        self.metadata(2)
+        self.commit('template change')
+
+    def test_template_change_with_bumped_consumer(self):
+        self.template_consumer(3)
+        self.assertEqual(self.inspect(), [])
+
+    def test_template_consumer_must_be_bumped(self):
+        self.template_consumer(2)
+        self.assertTrue(any('en.other' in e and 'version 3' in e for e in self.inspect()))
+
+    def test_unrelated_template(self):
+        (self.repo / 'templates/other/src').mkdir(parents=True)
+        (self.repo / 'templates/other/src/lib.rs').write_text('unrelated\n')
+        self.commit('unrelated template')
+        self.assertTrue(any('templates/other' in e for e in self.inspect()))
+
 
 class VerificationTests(unittest.TestCase):
     def test_clippy_exit_status_blocks_packaging_even_without_diagnostics(self):
