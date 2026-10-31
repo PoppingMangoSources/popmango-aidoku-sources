@@ -162,7 +162,7 @@ pub struct ChapterData {
 	pub date_modify: Option<i64>,
 	pub date_public: Option<i64>,
 	pub src_name: Option<String>,
-	/// Only the latest-uploads feed sets this.
+	/// Its edition: the whole comic in the latest-uploads feed, its language in chapter lists.
 	pub comic_node: Option<Node<Option<ComicData>>>,
 }
 

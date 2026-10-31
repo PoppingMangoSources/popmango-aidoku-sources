@@ -156,8 +156,20 @@ fn merged_editions_share_one_list() {
 	let together = search(Some("On the Way to Meet Mom"), 1, Vec::new())
 		.entries
 		.len();
+	// "Prince Akihiko" has one team's edition in English and another in Indonesian
+	defaults_set(
+		"languages",
+		DefaultValue::StringArray(vec!["en".into(), "id".into()]),
+	);
+	let bilingual = chapters("z736jp");
+	defaults_set("languages", DefaultValue::Null);
 	defaults_set("mergeEditions", DefaultValue::Bool(false));
 
+	assert!(
+		single
+			.iter()
+			.all(|chapter| chapter.language.as_deref() == Some("en"))
+	);
 	assert!(merged.len() > single.len());
 	assert!(
 		single
@@ -176,12 +188,17 @@ fn merged_editions_share_one_list() {
 	assert!(teams.contains(&"UTOON"));
 	assert!(!teams.contains(&"UToon"));
 	assert!(teams.iter().all(|team| !team.contains(" [")));
-	// One copy of each numbered chapter per team
-	let mut slots: Vec<(String, u32)> = merged
+	// One copy of each numbered chapter per team, language and volume
+	let mut slots: Vec<(String, Option<String>, Option<u32>, u32)> = merged
 		.iter()
 		.filter_map(|chapter| {
 			let team = chapter.scanlators.as_ref()?.first()?.to_lowercase();
-			Some((team, chapter.chapter_number?.to_bits()))
+			Some((
+				team,
+				chapter.language.clone(),
+				chapter.volume_number.map(f32::to_bits),
+				chapter.chapter_number?.to_bits(),
+			))
 		})
 		.collect();
 	let numbered = slots.len();
@@ -194,6 +211,47 @@ fn merged_editions_share_one_list() {
 		.collect();
 	assert!(numbers.windows(2).all(|pair| pair[0] >= pair[1]));
 	assert!(together < separate);
+
+	let languages: Vec<&str> = bilingual
+		.iter()
+		.filter(|chapter| {
+			chapter
+				.scanlators
+				.as_ref()
+				.and_then(|names| names.first())
+				.is_some_and(|name| name.eq_ignore_ascii_case("aakizonprincea"))
+		})
+		.filter_map(|chapter| chapter.language.as_deref())
+		.collect();
+	assert!(languages.contains(&"en"));
+	assert!(languages.contains(&"id"));
+}
+
+// "Hug Me" has only a Spanish edition
+#[aidoku_test]
+fn title_links_open_another_language_when_needed() {
+	let link = XComic::new()
+		.handle_deep_link("https://xcomic.me/title/x5xjly".into())
+		.unwrap()
+		.unwrap();
+	assert!(matches!(link, DeepLinkResult::Manga { key } if key == "5rnyl"));
+}
+
+#[aidoku_test]
+fn details_and_chapters_together() {
+	let manga = XComic::new()
+		.get_manga_update(
+			Manga {
+				key: EDITION_KEY.into(),
+				..Default::default()
+			},
+			true,
+			true,
+		)
+		.unwrap();
+	assert!(!manga.title.is_empty());
+	assert!(manga.artists.is_some());
+	assert!(!manga.chapters.unwrap().is_empty());
 }
 
 #[aidoku_test]

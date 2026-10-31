@@ -397,12 +397,6 @@ pub fn comic_key(base_url: &str, target: Target) -> Result<String> {
 	}
 }
 
-/// Language code from a chapter path, whose last segment is `{id}-{lang}-{name}`.
-fn language_from_path(url_path: Option<&str>) -> Option<String> {
-	let segment = url_path?.trim_end_matches('/').rsplit('/').next()?;
-	segment.split('-').nth(1).and_then(normalize_language)
-}
-
 fn unix_seconds(timestamp: i64) -> Option<i64> {
 	(timestamp > 0).then_some({
 		if timestamp > 1_000_000_000_000 {
@@ -438,9 +432,10 @@ pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Cha
 	let editions = editions(base_url, key)?;
 	let ids: Vec<&str> = editions.iter().map(|edition| edition.id.as_str()).collect();
 	// One team's editions read as one scanlator, spelled as its leading edition spells it,
-	// and keep one copy of each numbered chapter: the leading edition's.
+	// and keep one copy of each numbered chapter per language and volume: the leading
+	// edition's.
 	let mut teams: Vec<String> = Vec::new();
-	let mut owners: BTreeMap<(usize, u32), usize> = BTreeMap::new();
+	let mut owners: BTreeMap<(usize, Option<String>, Option<u32>, u32), usize> = BTreeMap::new();
 	let mut chapters = Vec::new();
 	for (index, (edition, list)) in editions
 		.iter()
@@ -475,7 +470,12 @@ pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Cha
 				// An unnumbered chapter may be any extra, so only numbered ones collapse.
 				if let Some(number) = chapter.chapter_number
 					&& *owners
-						.entry((team_index, number.to_bits()))
+						.entry((
+							team_index,
+							chapter.language.clone(),
+							chapter.volume_number.map(f32::to_bits),
+							number.to_bits(),
+						))
 						.or_insert(index) != index
 				{
 					continue;
@@ -516,7 +516,7 @@ pub fn chapter_from_data(
 		date_modify,
 		date_public,
 		src_name,
-		comic_node: _,
+		comic_node,
 	} = data;
 	if db_status.as_deref().unwrap_or("normal") != "normal" {
 		return None;
@@ -544,11 +544,13 @@ pub fn chapter_from_data(
 		.filter(|name| !name.is_empty())
 		.into_iter()
 		.collect();
-	// Every chapter path repeats its comic's language, so listing chapters needs no
-	// lookup of the comic itself.
-	let language = language
-		.map(Into::into)
-		.or_else(|| language_from_path(url_path.as_deref()));
+	// Chapter paths no longer name a language, but each chapter can carry its edition's.
+	let language = language.map(Into::into).or_else(|| {
+		comic_node
+			.and_then(|node| node.data)
+			.and_then(|comic| comic.translated_language)
+			.and_then(|language| normalize_language(&language))
+	});
 	// The shape the site's own rewriter takes when it has only a chapter id.
 	let url = site_url(base_url, url_path).unwrap_or_else(|| format!("{base_url}/chapter/{id}"));
 	Some(Chapter {

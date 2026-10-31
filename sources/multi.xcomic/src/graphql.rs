@@ -168,6 +168,7 @@ query get_comic_chapterList_fullList($select: Select_Comic_ChapterList) {
       data {
         id dbStatus serial chaNum volNum dname title urlPath
         dateCreate dateModify datePublic srcName
+        comicNode { data { translatedLanguage } }
       }
     }
   }
@@ -182,6 +183,7 @@ query get_comic_chapterList_uniqList($select: Select_Comic_ChapterList_UniqList)
       data {
         id dbStatus serial chaNum volNum dname title urlPath
         dateCreate dateModify datePublic srcName
+        comicNode { data { translatedLanguage } }
       }
     }
   }
@@ -453,13 +455,11 @@ pub fn parse_titles(response: Response, params: &BrowseParams) -> Result<(Vec<Co
 	let response: BrowseResponse = parse_graphql(response)?;
 	let titles = response.items.unwrap_or_default();
 	let served = titles.len();
+	// Merged editions share one chapter list, so one card stands for them all.
+	let every = !params.word.is_empty() && !settings::merge_editions();
 	let comics = titles
 		.into_iter()
-		.flat_map(|title| {
-			// Merged editions share one chapter list, so one card stands for them all.
-			let every = !params.word.is_empty() && !settings::merge_editions();
-			editions_of(title, &params.translated_languages, every)
-		})
+		.flat_map(|title| editions_of(title, &params.translated_languages, every))
 		.collect();
 	Ok((comics, served))
 }
@@ -483,13 +483,21 @@ pub fn fetch_comic(base_url: &str, id: &str) -> Result<ComicData> {
 pub fn title_edition(base_url: &str, title_id: &str) -> Result<String> {
 	let response: TitleNodeResponse =
 		graphql(base_url, TITLE_QUERY, serde_json::json!({ "id": title_id }))?;
-	response
+	let title = response
 		.title
-		.and_then(|title| {
-			editions_of(title, &settings::languages(), false)
-				.into_iter()
-				.next()
-		})
+		.ok_or_else(|| error!("No comics are available for this series"))?;
+	// The reader's languages rank first, but a work with none of them still opens.
+	let mut languages = settings::languages();
+	languages.extend(
+		title
+			.comic_nodes
+			.iter()
+			.flatten()
+			.filter_map(|node| node.data.as_ref()?.translated_language.clone()),
+	);
+	editions_of(title, &languages, false)
+		.into_iter()
+		.next()
 		.map(|comic| comic.id)
 		.ok_or_else(|| error!("No comics are available for this series"))
 }
@@ -579,7 +587,7 @@ pub fn fetch_chapters(base_url: &str, comic_ids: &[&str]) -> Result<Vec<Vec<Chap
 
 	// The total is exact, so a short list lost a page and would otherwise read as complete.
 	for (list, total) in lists.iter().zip(&totals) {
-		if list.len() as i64 != *total {
+		if (list.len() as i64) < *total {
 			bail!(
 				"Received {} of {total} chapters; refresh to try again",
 				list.len()
