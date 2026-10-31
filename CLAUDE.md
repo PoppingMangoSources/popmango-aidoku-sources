@@ -345,6 +345,9 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
 
 ### From #850 (`en.mangak`)
 
+- **Exclusions follow the code that sends them (kkantan):** a consumer's multi-selects must match
+  what the template handles. The mangak template only sends `excluded` for genres, so every other
+  multi-select sets `"canExclude": false`; probe the API's exclusion parameters before enabling one.
 - **Template first (inferred, kkantan):** a feature a template consumer adds goes in the
   template when it also applies to the template's other consumers. Per-site differences become
   `Params` fields, as merged templates do (`iken`'s `hide_home_lists`, `mangareader`'s
