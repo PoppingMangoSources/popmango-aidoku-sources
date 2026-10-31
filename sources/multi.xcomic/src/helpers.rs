@@ -1,10 +1,12 @@
 use crate::{
-	graphql::{editions, fetch_chapters, title_edition},
+	graphql::{
+		BrowseParams, browse_request, editions, fetch_chapters, parse_browse, title_edition,
+	},
 	models::{ChapterData, ComicData, NamedData, Node, TitleNode},
 	settings::{self, normalize_language},
 };
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
+	Chapter, ContentRating, Manga, MangaPageResult, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, collections::BTreeMap, format, string::ToString},
 };
 use core::cmp::{Ordering, Reverse};
@@ -411,6 +413,19 @@ fn unix_seconds(timestamp: i64) -> Option<i64> {
 	})
 }
 
+pub fn browse_page(base_url: &str, params: &BrowseParams) -> Result<MangaPageResult> {
+	let response = browse_request(base_url, params)?.send()?;
+	let (comics, has_next_page) = parse_browse(response, params)?;
+	let entries = comics
+		.into_iter()
+		.map(|comic| manga_from_data(comic, base_url))
+		.collect();
+	Ok(MangaPageResult {
+		has_next_page,
+		entries,
+	})
+}
+
 /// One edition's chapters, or with Merge Editions every edition's, each naming its team.
 pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Chapter>> {
 	if !settings::merge_editions() {
@@ -433,18 +448,10 @@ pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Cha
 		.enumerate()
 	{
 		let team = team_of(edition);
-		let language = edition
-			.translated_language
-			.as_deref()
-			.and_then(normalize_language);
 		for chapter in list {
-			let Some(mut chapter) = chapter_from_data(
-				chapter,
-				base_url,
-				language.as_deref(),
-				team.as_deref(),
-				false,
-			) else {
+			let Some(mut chapter) =
+				chapter_from_data(chapter, base_url, None, team.as_deref(), false)
+			else {
 				continue;
 			};
 			if let Some(name) = chapter
@@ -452,7 +459,7 @@ pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Cha
 				.as_mut()
 				.and_then(|names| names.first_mut())
 			{
-				let team = match teams
+				let team_index = match teams
 					.iter()
 					.position(|seen| seen.eq_ignore_ascii_case(name))
 				{
@@ -467,7 +474,9 @@ pub fn chapters(base_url: &str, key: &str, team: Option<&str>) -> Result<Vec<Cha
 				};
 				// An unnumbered chapter may be any extra, so only numbered ones collapse.
 				if let Some(number) = chapter.chapter_number
-					&& *owners.entry((team, number.to_bits())).or_insert(index) != index
+					&& *owners
+						.entry((team_index, number.to_bits()))
+						.or_insert(index) != index
 				{
 					continue;
 				}

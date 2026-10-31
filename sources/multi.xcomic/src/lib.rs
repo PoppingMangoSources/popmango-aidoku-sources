@@ -21,19 +21,6 @@ use helpers::manga_from_data;
 
 struct XComic;
 
-fn browse_page(base_url: &str, params: &BrowseParams) -> Result<MangaPageResult> {
-	let response = graphql::browse_request(base_url, params)?.send()?;
-	let (comics, has_next_page) = graphql::parse_browse(response, params)?;
-	let entries = comics
-		.into_iter()
-		.map(|comic| manga_from_data(comic, base_url))
-		.collect();
-	Ok(MangaPageResult {
-		has_next_page,
-		entries,
-	})
-}
-
 impl Source for XComic {
 	fn new() -> Self {
 		Self
@@ -101,7 +88,7 @@ impl Source for XComic {
 			}
 		}
 
-		browse_page(&base_url, &params)
+		helpers::browse_page(&base_url, &params)
 	}
 
 	fn get_manga_update(
@@ -156,7 +143,7 @@ impl Source for XComic {
 impl ListingProvider for XComic {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let base_url = self.get_base_url()?;
-		browse_page(
+		helpers::browse_page(
 			&base_url,
 			&BrowseParams::new(&listing.id, page, graphql::PAGE_SIZE),
 		)

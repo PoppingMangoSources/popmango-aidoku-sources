@@ -20,8 +20,8 @@ pub const PAGE_SIZE: i32 = 48;
 pub const HOME_LATEST_SIZE: i32 = 20;
 const RECENTLY_ADDED_SIZE: i32 = 50;
 const RANDOM_AMOUNT: i32 = 12;
-const CHAPTER_PAGE_SIZE: i32 = 100;
-const UNIQUE_CHAPTER_PAGE_SIZE: i32 = 1000;
+const CHAPTER_PAGE_SIZE: i64 = 100;
+const UNIQUE_CHAPTER_PAGE_SIZE: i64 = 1000;
 
 pub const SORT_IDS: &[&str] = &[
 	"field_score",
@@ -485,7 +485,11 @@ pub fn title_edition(base_url: &str, title_id: &str) -> Result<String> {
 		graphql(base_url, TITLE_QUERY, serde_json::json!({ "id": title_id }))?;
 	response
 		.title
-		.and_then(|title| editions_of(title, &settings::languages(), false).pop())
+		.and_then(|title| {
+			editions_of(title, &settings::languages(), false)
+				.into_iter()
+				.next()
+		})
 		.map(|comic| comic.id)
 		.ok_or_else(|| error!("No comics are available for this series"))
 }
@@ -539,13 +543,8 @@ pub fn fetch_chapters(base_url: &str, comic_ids: &[&str]) -> Result<Vec<Vec<Chap
 	} else {
 		(CHAPTERS_QUERY, CHAPTER_PAGE_SIZE)
 	};
-	let size = i64::from(size);
 	let request = |comic_id: &str, page: i64| {
-		graphql_request(
-			base_url,
-			query,
-			chapter_variables(comic_id, page as i32, size as i32),
-		)
+		graphql_request(base_url, query, chapter_variables(comic_id, page, size))
 	};
 
 	// More than three requests at once and the site answers 429, losing the list.
@@ -590,7 +589,7 @@ pub fn fetch_chapters(base_url: &str, comic_ids: &[&str]) -> Result<Vec<Vec<Chap
 	Ok(lists)
 }
 
-fn chapter_variables(comic_id: &str, page: i32, size: i32) -> serde_json::Value {
+fn chapter_variables(comic_id: &str, page: i64, size: i64) -> serde_json::Value {
 	serde_json::json!({
 		"select": {
 			"comic_id": comic_id,
