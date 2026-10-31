@@ -5,21 +5,17 @@ use aidoku::{
 	MangaPageResult, MangaStatus, MangaWithChapter, Page, PageContent, Result, Source, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::QueryParameters,
-	imports::defaults::defaults_get,
 	imports::net::Request,
 	imports::std::{parse_date, send_partial_result},
 	prelude::*,
 };
 use serde::{Deserialize, de::DeserializeOwned};
 
+mod settings;
+
 const DOMAIN: &str = "https://novelarchive.cc";
 const API_URL: &str = "https://novelarchive.cc/api";
 const PAGE_SIZE: i32 = 24;
-const HIDE_ADULT_KEY: &str = "hideAdult";
-
-fn hide_adult() -> bool {
-	defaults_get::<bool>(HIDE_ADULT_KEY).unwrap_or(false)
-}
 
 const ADULT_GENRES: &[&str] = &[
 	"adult",
@@ -199,21 +195,21 @@ fn parse_iso(value: Option<&str>) -> Option<i64> {
 fn novel_to_manga(novel: Novel) -> Manga {
 	let genres = genres_of(&novel);
 	let key = id_string(&novel.id);
+	let cover = cover_url(&novel);
+	let status = status_of(&novel);
 	Manga {
 		title: novel.title.trim().to_string(),
-		cover: cover_url(&novel),
+		cover,
 		description: novel
 			.description
-			.as_deref()
-			.map(strip_html)
+			.map(|d| strip_html(&d))
 			.filter(|d| !d.is_empty()),
 		authors: novel
 			.author
-			.as_deref()
-			.map(str::trim)
+			.map(|a| a.trim().to_string())
 			.filter(|a| !a.is_empty())
-			.map(|a| vec![a.to_string()]),
-		status: status_of(&novel),
+			.map(|a| vec![a]),
+		status,
 		content_rating: content_rating_for(&genres),
 		viewer: Viewer::Vertical,
 		url: Some(format!("{DOMAIN}/novel?id={key}")),
@@ -296,7 +292,7 @@ fn build_list_url(
 
 fn fetch_list(url: &str) -> Result<MangaPageResult> {
 	let data: NovelListResponse = api_get(url)?;
-	let hide = hide_adult();
+	let hide = settings::hide_adult();
 	let has_next_page = data
 		.pagination
 		.map(|p| p.has_next)
@@ -392,7 +388,7 @@ impl Source for NovelArchive {
 
 		if needs_details {
 			let mut details = novel_to_manga(novel);
-			details.key = novel_id.clone();
+			details.key = novel_id;
 			manga.copy_from(details);
 
 			if needs_chapters {
@@ -413,7 +409,6 @@ impl Source for NovelArchive {
 						key: (index + 1).to_string(),
 						title: (!title.is_empty()).then_some(title),
 						chapter_number: Some(chapter_number),
-						language: Some("en".into()),
 						..Default::default()
 					}
 				})

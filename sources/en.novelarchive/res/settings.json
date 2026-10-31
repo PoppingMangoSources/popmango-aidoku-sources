@@ -8,7 +8,7 @@
 				"type": "switch",
 				"key": "hideAdult",
 				"title": "Hide adult content",
-				"default": false,
+				"default": true,
 				"refreshes": [
 					"content",
 					"listings"
