@@ -86,6 +86,48 @@ fn original_status_takes_several() {
 	);
 }
 
+// The site matches formats against its own category list, which details don't carry
+#[aidoku_test]
+fn formats_narrow_like_genres() {
+	let keys = |id: &str, included: &[&str], excluded: &[&str]| -> Vec<String> {
+		let filter = FilterValue::MultiSelect {
+			id: id.into(),
+			included: included.iter().map(|value| (*value).into()).collect(),
+			excluded: excluded.iter().map(|value| (*value).into()).collect(),
+		};
+		search(None, 1, vec![filter])
+			.entries
+			.into_iter()
+			.map(|manga| manga.key)
+			.collect()
+	};
+	let unfiltered = keys("formats", &[], &[]);
+	let four_koma = keys("formats", &["4_koma"], &[]);
+	assert!(!four_koma.is_empty());
+	assert_ne!(four_koma, unfiltered);
+	assert_eq!(four_koma, keys("genres", &["4_koma"], &[]));
+	// Nearly every top title counts as a oneshot there, so excluding it shows
+	let no_oneshots = keys("formats", &[], &["oneshot"]);
+	assert_ne!(no_oneshots, unfiltered);
+	assert_eq!(no_oneshots, keys("genres", &[], &["oneshot"]));
+}
+
+// Over 3,800 deduplicated chapters, so the list spans four pages
+#[aidoku_test]
+fn long_chapter_lists_arrive_whole() {
+	let manga = XComic::new()
+		.get_manga_update(
+			Manga {
+				key: "kzznn2".into(),
+				..Default::default()
+			},
+			false,
+			true,
+		)
+		.unwrap();
+	assert!(manga.chapters.unwrap().len() > 3000);
+}
+
 #[aidoku_test]
 fn details_fall_back_to_the_work() {
 	let manga = XComic::new()

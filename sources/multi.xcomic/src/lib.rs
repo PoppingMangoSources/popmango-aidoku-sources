@@ -1,6 +1,5 @@
 #![no_std]
 
-mod filters;
 mod graphql;
 mod helpers;
 mod home;
@@ -85,8 +84,9 @@ impl Source for XComic {
 					included,
 					excluded,
 				} => match id.as_str() {
-					"genres" => {
-						params.included_genres = included;
+					// The API takes formats as genres.
+					"genres" | "formats" => {
+						params.included_genres.extend(included);
 						params.excluded_genres.extend(excluded);
 					}
 					"demographics" => params.demographics = included,
@@ -205,8 +205,6 @@ register_source!(
 	XComic,
 	Home,
 	ListingProvider,
-	DynamicFilters,
-	DynamicSettings,
 	ImageRequestProvider,
 	DeepLinkHandler,
 	BaseUrlProvider

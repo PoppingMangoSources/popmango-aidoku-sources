@@ -537,6 +537,13 @@ pub fn fetch_chapters(base_url: &str, comic_id: &str) -> Result<Vec<ChapterData>
 			}
 		}
 	}
+	// The total is exact, so a short list lost a page and would otherwise read as complete.
+	if chapters.len() as i64 != total {
+		bail!(
+			"Received {} of {total} chapters; refresh to try again",
+			chapters.len()
+		);
+	}
 	Ok(chapters)
 }
 
