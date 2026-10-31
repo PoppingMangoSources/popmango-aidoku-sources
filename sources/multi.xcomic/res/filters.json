@@ -105,6 +105,7 @@
 		"type": "multi-select",
 		"id": "original_status",
 		"title": "Original Work Status",
+		"canExclude": false,
 		"options": [
 			"Releasing",
 			"Completed",
@@ -537,6 +538,7 @@
 		"type": "multi-select",
 		"id": "original_languages",
 		"title": "Original Languages",
+		"canExclude": false,
 		"options": [
 			"English",
 			"French",
