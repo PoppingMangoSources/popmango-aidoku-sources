@@ -15,6 +15,11 @@ instruction set, synchronize the copies with `python3 scripts/sync-agent-docs.py
 `AGENTS.md` and `.claude/skills` first). CI and the pre-push hook fail on drift. This is
 intentional duplication so each client can read the full instructions directly.
 
+`docs/` is a wiki of how particular areas work and the traps found there, kept by an LLM as
+work touches them. Its format and the `/docs-sync` workflow are in
+[`docs/CLAUDE.md`](docs/CLAUDE.md); start at [`docs/index.md`](docs/index.md). The rules for
+writing sources stay here.
+
 Items marked **(verified)** were checked against aidoku-rs, the community sources or
 CI config. Items marked **(inferred)** are read from reviewer comments or a single
 reference implementation and could be wrong.
@@ -345,9 +350,11 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
 
 ### From #850 (`en.mangak`)
 
-- **Exclusions follow the code that sends them (kkantan):** a consumer's multi-selects must match
-  what the template handles. The mangak template only sends `excluded` for genres, so every other
-  multi-select sets `"canExclude": false`; probe the API's exclusion parameters before enabling one.
+- **Exclusions follow the code that sends them (kkantan, on #850 and again on #853):** every
+  multi-select whose excluded values the code doesn't send states `"canExclude": false`, even
+  though false is the default. The mangak template sends `excluded` for genres only; XCOMIC sends
+  genres and formats (as `excGenres`) only. Probe the API's exclusion parameters before enabling
+  one. `check-sources.py` notes a non-genre multi-select that leaves `canExclude` unstated.
 - **Template first (inferred, kkantan):** a feature a template consumer adds goes in the
   template when it also applies to the template's other consumers. Per-site differences become
   `Params` fields, as merged templates do (`iken`'s `hide_home_lists`, `mangareader`'s
@@ -731,7 +738,8 @@ went in one of these ways, and new ones go in the same way:
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway. It also fails an endpoint constant used only with
   a query and a constant sent once as a query value, and notes the section 3 **N** rows
-  (page-size names, own-field wrappers, single-call helpers used once, full-path calls).
+  (page-size names, own-field wrappers, single-call helpers used once, full-path calls) and a
+  non-genre multi-select that leaves `canExclude` unstated.
 - `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
   `action.yml` at the pinned ref and fails a deprecated Node, and fails a workflow that installs
   `aidoku-test-runner` without the font headers. `check.yaml` runs it on every push and
@@ -825,20 +833,30 @@ Kept here because the API is undocumented and this took a while to work out.
   its editions in a "Sources" section, one `/comic/` link each.
 - The site's own url rewriter maps `/series/{id}` → `/comic/{id}` and
   `/chapter/{id}` → `/comic/_/{id}`, so `_` is its placeholder for an unnamed comic.
-- Feeds vs. browse: `get_comic_recentlyAdded` and `get_comic_latestUploads` are
-  their own endpoints and take **no filters** — filter those locally. Browse
-  (`get_comic_browse_items`) applies everything server-side, so don't re-filter it.
+- Feeds vs. browse: `get_title_recentlyAdded` and `get_title_latestUploads` are
+  their own endpoints and take **no filters**, filter those locally. Browse
+  (`get_title_browse_items`) applies the other filters server-side, but **ignores
+  `incContentRatings`** (probed 2026-10-31; the site's own rating filter sends it too). Left
+  as is on the owner's call, since it worked before and the site is still changing.
+- **Editions:** a title has many editions per language (median 14 in English), and the site's
+  series page only lists them. `get_comicNode(id) { title_titleNode { comicNodes } }` returns
+  every edition in one request; Merge Editions (off by default) costs one chapter list per
+  edition. A merged series follows `merged_to` on the site; browse never returns one.
 - `ignoreGlobalGenres` / `ignoreGlobalULangs` / `ignoreGlobalBlocks` should stay
   **off**. Turning off the blocklist admits uploads the site hasn't approved.
 - Chapter lists come in two forms: `get_comic_chapterList_fullList` (every
   scanlator's upload, paged ~100) and `get_comic_chapterList_uniqList`
   (deduplicated, paged ~1000). Alias both to the same field name so one response
   model reads either.
-- Every chapter's `urlPath` embeds its language, so a chapters-only refresh doesn't
-  need to fetch the comic first.
-- The `/search` page exposes genres as `details.group` blocks with an id per option
-  in a `:` attribute — scrapeable. **Languages are not**: that group is one wrapping
-  div with the names as plain text, no per-option ids. (verified)
+- Chapter `urlPath` is now `/chapter/{id}` with no language (probed 2026-10-31), so chapter
+  lists ask for `comicNode { data { translatedLanguage } }` per item, in the same request.
+- The `/search` page no longer renders its genre groups; the categories exist only in the
+  server-rendered page state (`_categorys`), and no GraphQL query serves them. Genres, formats
+  and original languages are static `filters.json` lists (all matched the live list on
+  2026-10-31). Browse matches genres against `rewrite.category_ids`, a broader voted list than
+  `genre_ids`, so a filter can match titles whose details don't show that genre.
+- Exclusion exists only for genres and formats (`excGenres`); types, demographics, status and
+  original languages are include-only, so their filters state `"canExclude": false` (#853).
 - `xcomic.net` and `comik.to` resolve alongside `xcomic.me`; `xcomic.cr` and
   `xcomic.cs` appear in the site's own domain list but don't resolve. `mpark.top` is
   a sibling site, not a mirror — different ids. **`comik.to` has not been confirmed

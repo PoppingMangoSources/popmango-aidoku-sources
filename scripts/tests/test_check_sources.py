@@ -56,10 +56,24 @@ class CardRuleTests(unittest.TestCase):
         self.assertTrue(any('usesTagStyle' in failure for failure in checks.failures))
 
     def test_explicitly_disabled_exclusion_passes(self):
+        checks.notes.clear()
         path = self.source / 'res/filters.json'
         path.write_text('[\n\t{"type": "multi-select", "id": "status", "canExclude": false, "options": []}\n]\n')
         checks.check_filters_json(path)
         self.assertEqual(checks.failures, [])
+        self.assertEqual(checks.notes, [])
+
+    def test_unstated_exclusion_is_noted(self):
+        checks.notes.clear()
+        path = self.source / 'res/filters.json'
+        path.write_text(
+            '[\n\t{"type": "multi-select", "id": "type", "options": []},\n'
+            '\t{"type": "multi-select", "id": "genres", "isGenre": true, "canExclude": true, "options": []}\n]\n'
+        )
+        checks.check_filters_json(path)
+        self.assertEqual(checks.failures, [])
+        self.assertEqual(len(checks.notes), 1)
+        self.assertIn("'type' leaves canExclude unstated", checks.notes[0])
 
     def test_test_without_assertion_fails(self):
         (self.source / 'src').mkdir()

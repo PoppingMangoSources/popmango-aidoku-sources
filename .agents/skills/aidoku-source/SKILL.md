@@ -70,8 +70,10 @@ that shipped:
 - [ ] Reader routing works with only manga/chapter keys; encode required type flags in keys,
       and ensure search, Discover, details, chapter-list and deep-link keys match; strip source
       prefixes before sending ids to the site
-- [ ] Every enabled multi-select exclusion handles `excluded`; disable unsupported ones
-      with `canExclude: false` and test supported exclusions against the site
+- [ ] Every enabled multi-select exclusion handles `excluded`; state `canExclude: false` on
+      every other multi-select (kkantan asked twice, though false is the default), including
+      a template consumer's filters the template doesn't exclude; test supported exclusions
+      against the site
 - [ ] Every site filter present; dynamic genres → `supportsTagSearch` plus a
       `FilterValue::Select { id: "genre" }` arm; use `supportsAuthorSearch` only without
       an explicit author text filter (likewise for artists)

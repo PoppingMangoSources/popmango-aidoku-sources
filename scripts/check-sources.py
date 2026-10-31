@@ -102,6 +102,9 @@ def check_filters_json(path: Path) -> None:
             fail(path, f"{name!r} sets usesTagStyle, which isGenre already implies")
         if item.get("type") == "check" and not item.get("hideFromHeader"):
             fail(path, f"check {name!r} shows in the filters header; set hideFromHeader")
+        # Reviewers ask for an explicit false wherever the code sends no excluded values.
+        if item.get("type") == "multi-select" and not item.get("isGenre") and "canExclude" not in item:
+            note(path, f"multi-select {name!r} leaves canExclude unstated; set false unless the code sends its excluded values")
 
 
 def check_icon(path: Path) -> None:
