@@ -105,6 +105,29 @@ def check_filters_json(path: Path) -> None:
         # Reviewers ask for an explicit false wherever the code sends no excluded values.
         if item.get("type") == "multi-select" and not item.get("isGenre") and "canExclude" not in item:
             note(path, f"multi-select {name!r} leaves canExclude unstated; set false unless the code sends its excluded values")
+    kinds = [item.get("type") for item in filters if isinstance(item, dict)]
+    if "sort" in kinds and kinds[0] != "sort":
+        note(path, "the sort filter is not first; reviewers ask for it first")
+
+
+ADULT_SWITCH = re.compile(r"^(hide|show)\w*(adult|nsfw|18)", re.I)
+
+
+def check_settings_json(path: Path, rating: object) -> None:
+    """A source rated 1 hides adult titles until the reader asks for them."""
+    if rating != 1:
+        check_json(path)
+        return
+    stack = [check_json(path)]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, list):
+            stack.extend(item)
+        elif isinstance(item, dict):
+            stack.extend(item.get("items", []))
+            match = ADULT_SWITCH.match(str(item.get("key", "")))
+            if item.get("type") == "switch" and match and item.get("default") is (match.group(1).lower() == "show"):
+                fail(path, f"switch {item['key']!r} shows adult titles by default with contentRating 1; hide them by default or rate the source 2")
 
 
 def check_icon(path: Path) -> None:
@@ -145,6 +168,7 @@ LINE_RULES = [
 LINK_BLOCK = re.compile(r"\bLink\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
 LINK_SUBTITLE = re.compile(r"\bsubtitle\b(?!:\s*None)")
 SEARCH_BODY = re.compile(r"fn get_search_manga_list\b(.*?)(?=\n\tfn |\n\}\n)", re.S)
+IMAGE_SCROLLER = re.compile(r"ImageScroller\s*\{[^}]*\bwidth:\s*None")
 
 
 def check_cards(path: Path, text: str) -> None:
@@ -156,6 +180,9 @@ def check_cards(path: Path, text: str) -> None:
     body = SEARCH_BODY.search(text)
     if body and "get_manga_update(" in body.group(1):
         fail(path, "search returns a series' full details as a card; look it up compactly instead")
+    for scroller in IMAGE_SCROLLER.finditer(text):
+        line = text.count("\n", 0, scroller.start()) + 1
+        note(path, f"line {line} leaves an image scroller unsized; set width and height when the banners have one size")
 
 
 SILENCED = re.compile(r"#!?\[\s*(?:allow|expect)\s*\([^)]*\b(?:dead_code|unused\w*)")
@@ -315,7 +342,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
         if (source / "res" / name).exists():
             check_filters_json(source / "res" / name)
     if (source / "res" / "settings.json").exists():
-        check_json(source / "res" / "settings.json")
+        check_settings_json(source / "res" / "settings.json", info.get("info", {}).get("contentRating"))
     languages = info.get("info", {}).get("languages", [])
     check_rust(source, len(languages) == 1)
     check_naming(source)

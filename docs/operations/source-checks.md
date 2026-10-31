@@ -10,7 +10,7 @@ sources:
   - code: .github/workflows/check.yaml
   - code: .githooks/pre-push
   - code: scripts/pr-branch.sh
-verified_at: e9c39f5
+verified_at: 2cbd8e0
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -26,9 +26,9 @@ that need no network and no toolchain. It is the third gate after `cargo fmt`/`c
 | `scripts/check-sources.py --base origin/main` | sources changed since the ref, plus the version-bump rule |
 | `--repo <dir> --upstream <ids>` | source rules only, against another checkout: no README row, no agent-doc sync |
 
-Arguments are parsed in `scripts/check-sources.py:337`. Output is one `NOTE` or `FAIL` line
+Arguments are parsed in `scripts/check-sources.py:364`. Output is one `NOTE` or `FAIL` line
 per finding, then a count; the exit code is non-zero only for failures
-(`scripts/check-sources.py:360`).
+(`scripts/check-sources.py:387`).
 
 Where it runs:
 
@@ -40,16 +40,16 @@ Where it runs:
 
 ## What a run covers
 
-`check_source` (`scripts/check-sources.py:300`) walks one source: Cargo manifest and release
+`check_source` (`scripts/check-sources.py:327`) walks one source: Cargo manifest and release
 profile, tests that assert nothing, unused test dependencies, the source, filter and settings
 JSON, the icon, the Rust rules, constant naming, then the README row and the version bump. Outside `--upstream` it also runs `sync-agent-docs.py --check`
-(`scripts/check-sources.py:348`), so a drifted `AGENTS.md` fails here too.
+(`scripts/check-sources.py:375`), so a drifted `AGENTS.md` fails here too.
 
-> ⚠️ Only `sources/` is walked (`scripts/check-sources.py:346`). Templates under `templates/`
+> ⚠️ Only `sources/` is walked (`scripts/check-sources.py:373`). Templates under `templates/`
 > are never checked, so a template's filters or Rust passes whatever it holds. Read a
 > template change against the rules by hand.
 
-> ⚠️ A directory without a Cargo manifest is skipped silently (`scripts/check-sources.py:302`),
+> ⚠️ A directory without a Cargo manifest is skipped silently (`scripts/check-sources.py:329`),
 > so a misspelled id on the command line reports "checked 1 source(s): 0 failure(s)".
 
 ## Fail or note
@@ -76,7 +76,15 @@ printed, never failing.
 `check_filters_json` (`scripts/check-sources.py:91`) fails a sort default the framework
 already uses, `usesTagStyle` beside `isGenre`, and a check filter shown in the header. It
 notes a multi-select that is not a genre filter and leaves `canExclude` unstated
-(`scripts/check-sources.py:106`).
+(`scripts/check-sources.py:106`), and a sort filter that is not first (`scripts/check-sources.py:110`).
+
+`check_settings_json` (`scripts/check-sources.py:116`) fails a `hide…`/`show…` adult switch whose
+default shows adult titles on a source rated 1. `check_cards` notes an image scroller left
+without a width.
+
+> ⚠️ The sort-first rule is a note, not a failure: 47 merged sources put the sort later,
+> including en.hentai2read, which kkantan approved this month. Don't promote it without a
+> fresh calibration.
 
 > ⚠️ The `canExclude` note asks for an explicit `false` although false is the app's default.
 > kkantan asked for it on two PRs, and upstream's backlog still notes. Don't "fix" the note
@@ -84,6 +92,6 @@ notes a multi-select that is not a genre filter and leaves `canExclude` unstated
 
 ## Version bump
 
-> ⚠️ The bump rule runs only with `--base` (`scripts/check-sources.py:260`), comparing
+> ⚠️ The bump rule runs only with `--base` (`scripts/check-sources.py:287`), comparing
 > the source's version with its version at that ref. A plain run never reports a missing bump.
 > A source new since the ref has no file to compare and passes.

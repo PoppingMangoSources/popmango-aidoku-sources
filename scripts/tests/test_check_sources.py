@@ -75,6 +75,42 @@ class CardRuleTests(unittest.TestCase):
         self.assertEqual(len(checks.notes), 1)
         self.assertIn("'type' leaves canExclude unstated", checks.notes[0])
 
+    def test_sort_after_other_filters_is_noted(self):
+        checks.notes.clear()
+        path = self.source / 'res/filters.json'
+        path.write_text('[\n\t{"type": "text", "id": "author"},\n\t{"type": "sort", "id": "sort", "options": []}\n]\n')
+        checks.check_filters_json(path)
+        self.assertTrue(any('sort filter is not first' in n for n in checks.notes))
+        checks.notes.clear()
+        path.write_text('[\n\t{"type": "sort", "id": "sort", "options": []},\n\t{"type": "text", "id": "author"}\n]\n')
+        checks.check_filters_json(path)
+        self.assertEqual(checks.notes, [])
+
+    def test_adult_shown_by_default_on_rating_one_fails(self):
+        path = self.source / 'res/settings.json'
+        for key, default in (('hideAdult', 'false'), ('showNsfw', 'true')):
+            checks.failures.clear()
+            path.write_text(f'[\n\t{{"type": "group", "items": [{{"type": "switch", "key": "{key}", "default": {default}}}]}}\n]\n')
+            checks.check_settings_json(path, 1)
+            self.assertTrue(any('shows adult titles by default' in f for f in checks.failures), key)
+
+    def test_adult_hidden_by_default_or_rating_two_passes(self):
+        path = self.source / 'res/settings.json'
+        path.write_text('[\n\t{"type": "switch", "key": "hideAdult", "default": true}\n]\n')
+        checks.check_settings_json(path, 1)
+        path.write_text('[\n\t{"type": "switch", "key": "hideAdult", "default": false}\n]\n')
+        checks.check_settings_json(path, 2)
+        self.assertEqual(checks.failures, [])
+
+    def test_unsized_image_scroller_is_noted(self):
+        checks.notes.clear()
+        unsized = 'HomeComponentValue::ImageScroller {\n\tlinks,\n\twidth: None,\n\theight: None,\n}\n'
+        checks.check_cards(self.path, unsized)
+        self.assertEqual(len(checks.notes), 1)
+        checks.notes.clear()
+        checks.check_cards(self.path, unsized.replace('width: None', 'width: Some(300)'))
+        self.assertEqual(checks.notes, [])
+
     def test_test_without_assertion_fails(self):
         (self.source / 'src').mkdir()
         (self.source / 'src/test.rs').write_text('#[aidoku_test]\nfn found_type_is_used() {\n\tlet _ = Found { hits: Vec::new() }.hits;\n}\n')

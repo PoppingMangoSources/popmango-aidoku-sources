@@ -79,6 +79,11 @@ that shipped:
       an explicit author text filter (likewise for artists)
 - [ ] No `language` on chapters of a single-language source
 - [ ] Toggles and other secondary filters set `"hideFromHeader": true`
+- [ ] The sort filter comes first, untitled unless the site labels it
+- [ ] Every serde rename and every query parameter checked against a captured response; a
+      parameter the endpoint ignores is removed
+- [ ] With `contentRating` 1, an adult-hiding switch defaults to hidden (or rate the source 2)
+- [ ] Home sections in the site's order; banners as `LinkValue::Manga` with sizes set when fixed
 - [ ] Every home feed honours the same settings as browse — check what the feed endpoint
       accepts before filtering locally
 - [ ] Home components `page_size` ≤ 5; one request per section; no per-card fan-out

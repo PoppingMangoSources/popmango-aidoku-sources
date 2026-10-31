@@ -322,6 +322,33 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
 | No `minAppVersion` | `"0.7.1"`, unless verify asks for more. |
 | Comments marked resolved without a change | Every comment gets a change or a reply; reviewers check. |
 
+### From #819, #825, #840, #842, #845 and #846 (other contributors, October)
+
+Asked again on these, so they are the most repeated: `bail!` over a hand-built
+`AidokuError::Message`, listings with only key, title and cover, no empty-query test, no
+explicit sort default, `defaults_get` in `settings.rs` even for one switch, helpers out of
+`lib.rs`, no neither-flag guard, no `!included.is_empty()` in a multi-select arm, a check filter
+hidden from the header, `has_next_page` from the API rather than the length of the page, and no
+url read back to fetch data (#840). Resolved threads on #819 and #825 only show to a signed-in
+viewer; their rules were read from the fix commits. New ones, marked as in the owner's table
+below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in review):
+
+| What was flagged | The rule | |
+|---|---|---|
+| `#[serde(rename_all = "camelCase")]` on JSON that isn't ("have you verified this?", #846) | Every rename and field name matches a captured response. A wrong rename leaves `#[serde(default)]` fields at their defaults without an error. | R |
+| `sort` and `order` sent to an endpoint that ignores them ("this doesn't seem to do anything", #846) | Send only parameters the endpoint honours; probe each with a value that should change the result. | R |
+| The sort filter built last, titled "Sort" (#846) | The sort filter goes first, untitled unless the site labels it. 47 merged sources put it later, en.hentai2read among them, so it is a note. | N |
+| `hideNsfw` defaulting to `false` with `contentRating` 1 (#845) | A source rated 1 hides adult titles by default; to show them by default, rate it 2. Keep the Rust fallback the same as the JSON default. | F |
+| Discover sections in a different order from the site (#845) | Order the home sections as the site's home page does. | R |
+| Comics and novels behind a source setting (#842, also dyphire) | When a setting would switch between two catalogues, make two sources over a template, or make it a search filter. A setting makes readers give one catalogue up. | R |
+| `page_url_hd` dropped in a rework (#842) | A rework keeps every field the old code preferred, such as a higher-quality image, unless a response shows it is gone; fall back to the plain one. | R |
+| `requiresFalse: "contentType == novel"` on a setting (#842) | A setting can depend on another one's value. Below app 0.9 the dependent toggle isn't disabled, so the code must still check both. (inferred, the author's test) | R |
+| A slug looked up by searching the whole series list each time (#840) | Keys hold only what never changes: a slug carrying a date goes stale, and a stale key duplicates the series in the library. Map id to slug in a `HashMap` filled when the list is fetched. kkantan first asked for `id\|slug`, then withdrew it once the slugs turned out to change. | R |
+| `ImageScroller` with `width: None` (#819) | Set `width` and `height` when the banners have one size; it smooths preloading. | N |
+| A banner linking a series page with `LinkValue::Url` (#819) | Link a series as `LinkValue::Manga` with only the key; keep `Url` for pages that aren't series. | R |
+| The two newest chapters of a long series didn't load (#819) | Reviewers read in the app. Before submitting, open the newest chapters of a long series as well as the first. | R |
+| A chapter that failed to load returned "(empty chapter)" text (#819, fix commit) | Fail the chapter with `bail!` rather than return placeholder text, and don't skip a fragment that failed. | R |
+
 ### From #843 (`en.atsumaru`)
 
 - **Filter exclusions:** every multi-select with `canExclude: true` must process both
@@ -737,9 +764,10 @@ went in one of these ways, and new ones go in the same way:
   since `<ref>`, and byte-identical `AGENTS.md`/`CLAUDE.md` plus matching physical skill trees. CI (`check.yaml`) runs it on the
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway. It also fails an endpoint constant used only with
-  a query and a constant sent once as a query value, and notes the section 3 **N** rows
-  (page-size names, own-field wrappers, single-call helpers used once, full-path calls) and a
-  non-genre multi-select that leaves `canExclude` unstated.
+  a query, a constant sent once as a query value, and an adult-hiding switch that shows adult
+  titles by default on a source rated 1. It notes the section 3 **N** rows (page-size names,
+  own-field wrappers, single-call helpers used once, full-path calls, a sort filter that isn't
+  first, an unsized image scroller) and a non-genre multi-select that leaves `canExclude` unstated.
 - `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
   `action.yml` at the pinned ref and fails a deprecated Node, and fails a workflow that installs
   `aidoku-test-runner` without the font headers. `check.yaml` runs it on every push and
