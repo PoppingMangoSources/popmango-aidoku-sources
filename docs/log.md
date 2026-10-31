@@ -14,3 +14,8 @@ Append-only. Newest entries at the bottom.
 - Started in grow mode: one page, [[mangak-template]], written from `templates/mangak` and
   `sources/en.mangak` after the #850 review round. `AGENTS.md` and `.agents/` were added to
   the code exclude list, since they mirror `CLAUDE.md` and `.claude/skills/`.
+
+## [2026-10-31] add | operations/source-checks
+
+- New page [[source-checks]] for `scripts/check-sources.py`, which the commit hook
+  named as uncovered. Verified against `e9c39f5`.

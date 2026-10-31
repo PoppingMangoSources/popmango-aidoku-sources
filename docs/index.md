@@ -10,6 +10,7 @@ traps found in them. It grows as work touches new areas.
 ## Start here
 
 - Working on MangaK or ToonTop: [[mangak-template]]
+- Adding or changing a source check: [[source-checks]]
 
 ---
 
@@ -35,7 +36,7 @@ _(none yet)_
 
 ## operations
 
-_(none yet)_
+- [[source-checks]] -- what `scripts/check-sources.py` checks, where it runs, fail vs note
 
 ## history
 
