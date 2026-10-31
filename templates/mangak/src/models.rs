@@ -24,8 +24,8 @@ pub struct Pagination {
 	pub has_next: bool,
 }
 
-// Search and the trending feed share this shape; only the trending feed has genre slugs and
-// only search has chapters.
+// Search and the trending feed share this shape; only search has named genres and chapters,
+// and only the trending feed has genre slugs.
 #[derive(Default, Deserialize)]
 #[serde(default)]
 pub struct SearchItem {
@@ -34,6 +34,7 @@ pub struct SearchItem {
 	pub cover: Option<String>,
 	pub summary: Option<String>,
 	pub status: Option<String>,
+	pub genres: Vec<Genre>,
 	pub genre_slugs: Option<String>,
 	pub latest_chapters: Vec<ChapterItem>,
 }
@@ -60,23 +61,24 @@ impl SearchItem {
 		}
 	}
 
-	// Genres follow the feed's order, which is the order details show them in.
-	pub fn into_featured(mut self, base_url: &str, genres: &[Genre]) -> Manga {
-		let tags = self.genre_slugs.take().map(|slugs| {
-			slugs
+	// Genres keep the response's order, which is the order details show them in.
+	pub fn into_featured(mut self, base_url: &str, genre_list: &[Genre]) -> Manga {
+		let tags = match self.genre_slugs.take() {
+			Some(slugs) => slugs
 				.split(',')
 				.map(|slug| {
-					genres
+					genre_list
 						.iter()
 						.find(|genre| genre.slug == slug)
 						.map_or_else(|| slug_name(slug), |genre| genre.name.clone())
 				})
-				.collect::<Vec<_>>()
-		});
+				.collect(),
+			None => self.genres.drain(..).map(|genre| genre.name).collect(),
+		};
 		Manga {
 			description: self.summary.take().filter(|summary| !summary.is_empty()),
 			status: manga_status(self.status.take()),
-			tags: tags.filter(|tags| !tags.is_empty()),
+			tags: Some(tags).filter(|tags: &Vec<String>| !tags.is_empty()),
 			..self.into_manga(base_url)
 		}
 	}

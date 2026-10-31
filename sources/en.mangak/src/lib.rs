@@ -19,8 +19,10 @@ impl Impl for MangaK {
 		Params {
 			base_url: BASE_URL.into(),
 			api_url: API_URL.into(),
+			featured_title: "Hot this week".into(),
+			featured_path: "trending/titles?window=week&limit=5".into(),
 			latest_title: "Recently Updated".into(),
-			new_manga_section: true,
+			trending_today_section: true,
 		}
 	}
 }

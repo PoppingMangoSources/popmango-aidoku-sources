@@ -352,8 +352,11 @@ What kkantan asked for on #624, #637, #824, #828, #833 and #835. None of it is s
   PR; a model change that doesn't affect it needs no bump. A home page that can't be built
   generically goes in each source, with the template's left empty.
 - Check the other consumer's site before moving anything: ToonTop and MangaK run the same API
-  and search page, so every filter, the sorts and the home rows were shared, while
-  `demographic` and `format` match nothing on ToonTop and stayed MangaK's alone.
+  and search page, so every filter and the sorts were shared, while `demographic` and `format`
+  match nothing on ToonTop and stayed MangaK's alone. The home rows differ slightly: ToonTop's
+  hero is its ranking's Top This Week and it has no Trending Today row, so the hero's title and
+  path and that row are `Params`. Read the owner's screenshots of both sites before settling a
+  layout; the server-rendered data alone suggested a hero ToonTop doesn't show.
 
 ### From our own reviews of `en.atsumaru` (owner's corrections)
 

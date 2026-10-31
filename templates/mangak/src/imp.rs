@@ -166,27 +166,31 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let mut sections = vec![
-			("Hot this week", "trending/titles?window=week&limit=5", None),
-			("Trending Today", "trending/titles", Some("trending")),
+		let mut sections = vec![(
+			params.featured_title.as_ref(),
+			params.featured_path.as_ref(),
+			None,
+		)];
+		if params.trending_today_section {
+			sections.push(("Trending Today", "trending/titles", Some("trending")));
+		}
+		sections.extend([
 			(
 				"Popular Updates",
 				"titles/search?sort=bookmarks&window=today&limit=12",
 				Some("popular_updates"),
 			),
-		];
-		if params.new_manga_section {
-			sections.push((
+			(
 				"New Manga",
 				"titles/search?sort=newest&limit=18",
 				Some("new"),
-			));
-		}
-		sections.push((
-			&params.latest_title,
-			"titles/search?sort=latest",
-			Some("latest"),
-		));
+			),
+			(
+				params.latest_title.as_ref(),
+				"titles/search?sort=latest",
+				Some("latest"),
+			),
+		]);
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: sections
 				.iter()
@@ -198,11 +202,15 @@ pub trait Impl {
 			.iter()
 			.map(|(_, path, _)| Ok(Request::get(format!("{}/{path}", params.api_url))?))
 			.collect::<Result<Vec<_>>>()?;
-		// The trending feed names genres only by slug
-		requests.push(Request::get(format!("{}/genres", params.api_url))?);
+		// The trending feed names genres only by slug, unlike search
+		let named_by_slug = params.featured_path.starts_with("trending/");
+		if named_by_slug {
+			requests.push(Request::get(format!("{}/genres", params.api_url))?);
+		}
 		let mut responses = Request::send_all(requests);
-		let genres = responses
-			.pop()
+		let genres = named_by_slug
+			.then(|| responses.pop())
+			.flatten()
 			.and_then(|response| {
 				response
 					.ok()?
