@@ -1,0 +1,106 @@
+[
+	{
+		"type": "group",
+		"title": "Content",
+		"footer": "Choose which content types and ratings appear in Discover and search.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "contentTypes",
+				"title": "Content Types",
+				"values": [
+					"cartoon",
+					"imageset",
+					"manga",
+					"manhua",
+					"manhwa",
+					"oel",
+					"other",
+					"western"
+				],
+				"titles": [
+					"Cartoon",
+					"Imageset",
+					"Manga",
+					"Manhua",
+					"Manhwa",
+					"OEL",
+					"Other",
+					"Western"
+				],
+				"default": [
+					"cartoon",
+					"imageset",
+					"manga",
+					"manhua",
+					"manhwa",
+					"oel",
+					"other",
+					"western"
+				],
+				"refreshes": [
+					"content"
+				]
+			},
+			{
+				"type": "multi-select",
+				"key": "contentRatings",
+				"title": "Content Ratings",
+				"values": [
+					"safe",
+					"suggestive",
+					"erotica",
+					"pornographic"
+				],
+				"titles": [
+					"Safe",
+					"Suggestive",
+					"Erotica",
+					"Pornographic"
+				],
+				"default": [
+					"safe",
+					"suggestive",
+					"erotica",
+					"pornographic"
+				],
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Title Preferences",
+		"footer": "A title can publish through several editions. The team behind each one tells them apart; chapters name it either way.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "showSourceInTitle",
+				"title": "Show Source in Title",
+				"subtitle": "Tag duplicate titles with the team that uploaded them.",
+				"default": true,
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Chapters",
+		"footer": "On asks the site for one chapter per number. Off shows every scanlator's upload, which a title with hundreds of sources may be too large to load.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "deduplicateChapters",
+				"title": "Deduplicate Chapter List",
+				"default": true,
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	}
+]
