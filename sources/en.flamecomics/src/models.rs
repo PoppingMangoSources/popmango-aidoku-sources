@@ -1,4 +1,7 @@
-use crate::{BASE_URL, CDN_URL, helpers::markdown};
+use crate::{
+	BASE_URL, CDN_URL,
+	helpers::{key, markdown},
+};
 use aidoku::{
 	Chapter, ContentRating, Link, LinkValue, Manga, MangaStatus, MangaWithChapter, Viewer,
 	alloc::{String, Vec, collections::BTreeMap, string::ToString},
@@ -55,14 +58,6 @@ pub struct Unlock {
 }
 
 impl Entry {
-	/// Novel and series ids overlap, so the key keeps the site's path.
-	fn key(&self) -> String {
-		match self.novel_id {
-			Some(id) => format!("/novel/{id}"),
-			None => format!("/series/{}", self.series_id.unwrap_or_default()),
-		}
-	}
-
 	fn cover_url(&self) -> Option<String> {
 		let (folder, id) = match self.novel_id {
 			Some(id) => ("novels", id),
@@ -77,7 +72,10 @@ impl Entry {
 
 	pub fn into_latest(mut self) -> Option<MangaWithChapter> {
 		let chapter = mem::take(&mut self.chapters).into_iter().next()?;
-		let url = format!("{BASE_URL}{}", self.key());
+		let url = format!(
+			"{BASE_URL}{}",
+			key(self.novel_id, self.series_id).unwrap_or_default()
+		);
 		Some(MangaWithChapter {
 			chapter: chapter.into_chapter(&url, false),
 			manga: self.into(),
@@ -85,7 +83,7 @@ impl Entry {
 	}
 
 	pub fn into_details(self) -> Manga {
-		let key = self.key();
+		let key = key(self.novel_id, self.series_id).unwrap_or_default();
 		let status = match self.status.as_deref().map(str::to_lowercase).as_deref() {
 			Some("ongoing") => MangaStatus::Ongoing,
 			Some("completed") => MangaStatus::Completed,
@@ -141,7 +139,7 @@ impl Entry {
 impl From<Entry> for Manga {
 	fn from(entry: Entry) -> Self {
 		Manga {
-			key: entry.key(),
+			key: key(entry.novel_id, entry.series_id).unwrap_or_default(),
 			cover: entry.cover_url(),
 			title: entry.title,
 			..Default::default()
@@ -219,11 +217,7 @@ pub struct Slide {
 
 impl Slide {
 	pub fn into_link(self) -> Option<Link> {
-		let key = match (self.novel_id, self.series_id) {
-			(Some(id), _) => format!("/novel/{id}"),
-			(None, Some(id)) => format!("/series/{id}"),
-			(None, None) => return None,
-		};
+		let key = key(self.novel_id, self.series_id)?;
 		Some(Link {
 			title: self.title,
 			image_url: Some(format!("{CDN_URL}/uploads/images/carousel/{}", self.image)),

@@ -26,9 +26,16 @@ pub fn next_data<T: DeserializeOwned>(path: &str) -> Result<T> {
 		.select_first("script#__NEXT_DATA__")
 		.and_then(|script| script.data().or_else(|| script.html()))
 		.ok_or_else(|| error!("No page data found at {path}"))?;
-	serde_json::from_str::<NextData<T>>(&json)
-		.map(|data| data.props.page_props)
-		.map_err(|err| error!("Unexpected page data at {path}: {err}"))
+	Ok(serde_json::from_str::<NextData<T>>(&json)?.props.page_props)
+}
+
+/// Novel and series ids overlap, so a key keeps the site's path.
+pub fn key(novel_id: Option<u32>, series_id: Option<u32>) -> Option<String> {
+	match (novel_id, series_id) {
+		(Some(id), _) => Some(format!("/novel/{id}")),
+		(None, Some(id)) => Some(format!("/series/{id}")),
+		(None, None) => None,
+	}
 }
 
 /// A search over browse, which lists the whole catalogue; the site filters it locally too.
