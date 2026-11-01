@@ -10,8 +10,8 @@ use aidoku::{
 	},
 };
 use aidoku_test::aidoku_test;
-use helpers::locked_chapters;
-use models::{ChapterItem, Unlock};
+use helpers::{locked_chapters, next_data};
+use models::{BrowseProps, ChapterItem, Unlock};
 
 // A manhwa, and a novel whose id is also a different series' id.
 const SERIES_KEY: &str = "/series/165";
@@ -110,9 +110,16 @@ fn title_sort_follows_the_arrow() {
 
 #[aidoku_test]
 fn popularity_sort_puts_the_top_ranked_first() {
-	let first = search(None, vec![sort(1, true)]).entries.remove(0);
-	let last = search(None, vec![sort(1, false)]).entries.remove(0);
-	assert_ne!(first.key, last.key);
+	let series = next_data::<BrowseProps>("/browse").unwrap().series;
+	let top = series
+		.iter()
+		.min_by_key(|entry| entry.popularity_rank.unwrap_or(u32::MAX))
+		.unwrap();
+	let descending = search(None, vec![sort(1, false)]).entries;
+	assert_eq!(descending[0].title, top.title);
+	let ascending = search(None, vec![sort(1, true)]).entries;
+	assert_ne!(ascending[0].title, top.title);
+	assert_eq!(ascending.last().unwrap().title, top.title);
 }
 
 #[aidoku_test]

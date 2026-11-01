@@ -64,13 +64,15 @@ impl Source for FlameComics {
 		}
 		let mut series = next_data::<BrowseProps>("/browse")?.series;
 		series.retain(|entry| params.matches(entry));
+		// As on the site: descending popularity starts at rank 1, and ties stay A to Z.
 		series.sort_by_cached_key(|entry| {
-			let rank = params
-				.popular
-				.then(|| entry.popularity_rank.unwrap_or(u32::MAX));
+			let rank = params.popular.then(|| {
+				let rank = i64::from(entry.popularity_rank.unwrap_or(u32::MAX));
+				if params.descending { rank } else { -rank }
+			});
 			(rank, entry.title.to_lowercase())
 		});
-		if params.descending {
+		if params.descending && !params.popular {
 			series.reverse();
 		}
 		Ok(MangaPageResult {
