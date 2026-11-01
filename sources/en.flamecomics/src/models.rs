@@ -1,9 +1,10 @@
-use crate::{BASE_URL, CDN_URL, helpers::paragraphs};
+use crate::{BASE_URL, CDN_URL, helpers::markdown};
 use aidoku::{
 	Chapter, ContentRating, Link, LinkValue, Manga, MangaStatus, MangaWithChapter, Viewer,
 	alloc::{String, Vec, collections::BTreeMap, string::ToString},
 	prelude::*,
 };
+use core::mem;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -20,26 +21,26 @@ pub struct Props<T> {
 /// A series or novel as browse, the home blocks and the details pages list it.
 #[derive(Deserialize)]
 pub struct Entry {
-	pub series_id: Option<u32>,
-	pub novel_id: Option<u32>,
+	series_id: Option<u32>,
+	novel_id: Option<u32>,
 	pub title: String,
-	pub cover: Option<String>,
-	pub last_edit: Option<i64>,
+	cover: Option<String>,
+	last_edit: Option<i64>,
 	pub status: Option<String>,
 	pub r#type: Option<String>,
 	pub year: Option<i32>,
 	#[serde(rename = "popularityRank")]
 	pub popularity_rank: Option<u32>,
-	pub description: Option<String>,
+	description: Option<String>,
 	// Browse calls the tags `categories`.
 	#[serde(default, alias = "categories")]
 	pub tags: Vec<String>,
 	#[serde(default)]
-	pub author: Vec<String>,
+	author: Vec<String>,
 	#[serde(default)]
-	pub artist: Vec<String>,
+	artist: Vec<String>,
 	#[serde(default)]
-	pub chapters: Vec<ChapterItem>,
+	chapters: Vec<ChapterItem>,
 	#[serde(flatten)]
 	pub unlock: Unlock,
 }
@@ -55,7 +56,7 @@ pub struct Unlock {
 
 impl Entry {
 	/// Novel and series ids overlap, so the key keeps the site's path.
-	pub fn key(&self) -> String {
+	fn key(&self) -> String {
 		match self.novel_id {
 			Some(id) => format!("/novel/{id}"),
 			None => format!("/series/{}", self.series_id.unwrap_or_default()),
@@ -67,45 +68,32 @@ impl Entry {
 			Some(id) => ("novels", id),
 			None => ("series", self.series_id?),
 		};
-		let file = self.cover.as_deref()?;
 		Some(format!(
-			"{CDN_URL}/uploads/images/{folder}/{id}/{file}?{}",
+			"{CDN_URL}/uploads/images/{folder}/{id}/{}?{}",
+			self.cover.as_deref()?,
 			self.last_edit.unwrap_or_default()
 		))
 	}
 
-	/// A card: key, title and cover only.
-	pub fn into_card(self) -> Manga {
-		Manga {
-			key: self.key(),
-			cover: self.cover_url(),
-			title: self.title,
-			..Default::default()
-		}
-	}
-
-	/// A latest row, which names the title's newest chapter.
 	pub fn into_latest(mut self) -> Option<MangaWithChapter> {
-		let chapter = (!self.chapters.is_empty()).then(|| self.chapters.remove(0))?;
+		let chapter = mem::take(&mut self.chapters).into_iter().next()?;
 		let url = format!("{BASE_URL}{}", self.key());
 		Some(MangaWithChapter {
 			chapter: chapter.into_chapter(&url, false),
-			manga: self.into_card(),
+			manga: self.into(),
 		})
 	}
-}
 
-impl From<Entry> for Manga {
-	fn from(entry: Entry) -> Self {
-		let key = entry.key();
-		let status = match entry.status.as_deref().map(str::to_lowercase).as_deref() {
+	pub fn into_details(self) -> Manga {
+		let key = self.key();
+		let status = match self.status.as_deref().map(str::to_lowercase).as_deref() {
 			Some("ongoing") => MangaStatus::Ongoing,
 			Some("completed") => MangaStatus::Completed,
 			Some("hiatus") => MangaStatus::Hiatus,
 			Some("cancelled" | "dropped") => MangaStatus::Cancelled,
 			_ => MangaStatus::Unknown,
 		};
-		let content_rating = if entry
+		let content_rating = if self
 			.tags
 			.iter()
 			.any(|tag| matches!(tag.as_str(), "Ecchi" | "Ecchi comedy" | "Mature"))
@@ -114,11 +102,12 @@ impl From<Entry> for Manga {
 		} else {
 			ContentRating::Safe
 		};
-		let viewer = match entry.r#type.as_deref() {
-			_ if entry.novel_id.is_some() => Viewer::Unknown,
+		let viewer = match self.r#type.as_deref() {
 			Some("Manga") => Viewer::RightToLeft,
+			Some("Novel" | "Web Novel") => Viewer::Unknown,
 			_ => Viewer::Webtoon,
 		};
+		// A few credits arrive blank or padded.
 		let names = |list: Vec<String>| {
 			let list: Vec<String> = list
 				.into_iter()
@@ -128,21 +117,33 @@ impl From<Entry> for Manga {
 			(!list.is_empty()).then_some(list)
 		};
 		Manga {
-			cover: entry.cover_url(),
+			cover: self.cover_url(),
 			url: Some(format!("{BASE_URL}{key}")),
-			description: entry
+			description: self
 				.description
 				.as_deref()
-				.map(|html| paragraphs(html).join("\n\n"))
+				.map(markdown)
 				.filter(|text| !text.is_empty()),
-			authors: names(entry.author),
-			artists: names(entry.artist),
-			tags: (!entry.tags.is_empty()).then_some(entry.tags),
+			authors: names(self.author),
+			artists: names(self.artist),
+			tags: (!self.tags.is_empty()).then_some(self.tags),
 			key,
-			title: entry.title,
+			title: self.title,
 			status,
 			content_rating,
 			viewer,
+			..Default::default()
+		}
+	}
+}
+
+/// A card: key, title and cover only.
+impl From<Entry> for Manga {
+	fn from(entry: Entry) -> Self {
+		Manga {
+			key: entry.key(),
+			cover: entry.cover_url(),
+			title: entry.title,
 			..Default::default()
 		}
 	}
@@ -180,20 +181,20 @@ impl ChapterItem {
 #[derive(Deserialize)]
 pub struct HomeProps {
 	pub carousel: Vec<Slide>,
-	pub novels: Blocks,
 	#[serde(rename = "popularEntries")]
 	pub popular: Blocks,
-	#[serde(rename = "staffPicks")]
-	pub staff_picks: Blocks,
 	#[serde(rename = "latestEntries")]
 	pub latest: Blocks,
+	pub novels: Blocks,
+	#[serde(rename = "staffPicks")]
+	pub staff_picks: Blocks,
 	#[serde(rename = "latestNovels")]
 	pub latest_novels: Blocks,
 }
 
 #[derive(Deserialize)]
 pub struct Blocks {
-	pub blocks: Vec<Block>,
+	blocks: Vec<Block>,
 }
 
 #[derive(Deserialize)]
@@ -210,32 +211,26 @@ impl Blocks {
 
 #[derive(Deserialize)]
 pub struct Slide {
-	pub series_id: Option<u32>,
-	pub novel_id: Option<u32>,
-	pub title: String,
-	pub image: String,
-	pub link: Option<String>,
+	series_id: Option<u32>,
+	novel_id: Option<u32>,
+	title: String,
+	image: String,
 }
 
 impl Slide {
-	/// A banner opens its series by key; a slide without one opens its link.
 	pub fn into_link(self) -> Option<Link> {
 		let key = match (self.novel_id, self.series_id) {
-			(Some(id), _) => Some(format!("/novel/{id}")),
-			(None, Some(id)) => Some(format!("/series/{id}")),
-			(None, None) => None,
-		};
-		let value = match key {
-			Some(key) => LinkValue::Manga(Manga {
-				key,
-				..Default::default()
-			}),
-			None => LinkValue::Url(self.link.filter(|link| !link.is_empty())?),
+			(Some(id), _) => format!("/novel/{id}"),
+			(None, Some(id)) => format!("/series/{id}"),
+			(None, None) => return None,
 		};
 		Some(Link {
 			title: self.title,
 			image_url: Some(format!("{CDN_URL}/uploads/images/carousel/{}", self.image)),
-			value: Some(value),
+			value: Some(LinkValue::Manga(Manga {
+				key,
+				..Default::default()
+			})),
 			..Default::default()
 		})
 	}
@@ -261,8 +256,6 @@ pub struct ChapterProps {
 
 #[derive(Deserialize)]
 pub struct ReaderChapter {
-	pub series_id: Option<u32>,
-	pub token: String,
 	pub edit_time: Option<i64>,
 	#[serde(default)]
 	pub images: BTreeMap<u32, Image>,

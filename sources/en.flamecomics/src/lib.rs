@@ -2,8 +2,8 @@
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent, HomeComponentValue,
 	HomeLayout, Link, Manga, MangaPageResult, Page, PageContent, Result, Source,
-	alloc::{String, Vec, string::ToString, vec},
-	helpers::{string::PlainText, uri::encode_uri_component},
+	alloc::{String, Vec, vec},
+	helpers::uri::encode_uri_component,
 	imports::std::current_date,
 	prelude::*,
 };
@@ -13,7 +13,7 @@ mod models;
 #[cfg(test)]
 mod test;
 
-use helpers::{locked_chapters, next_data, paragraphs};
+use helpers::{SearchParams, locked_chapters, markdown, next_data};
 use models::{Block, BrowseProps, ChapterProps, Entry, HomeProps, SeriesProps, Slide};
 
 const BASE_URL: &str = "https://flamecomics.xyz";
@@ -26,27 +26,23 @@ impl Source for FlameComics {
 		Self
 	}
 
-	// Browse lists the whole catalogue in one page, which the site also filters locally.
 	fn get_search_manga_list(
 		&self,
 		query: Option<String>,
 		_page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let mut series = next_data::<BrowseProps>("/browse")?.series;
-		let query = query.map(|query| query.to_lowercase());
-		let (mut popular, mut ascending) = (false, true);
-		let (mut genres, mut hidden_genres) = (Vec::new(), Vec::new());
-		let (mut types, mut statuses, mut years) = (Vec::new(), Vec::new(), Vec::new());
+		let mut params = SearchParams {
+			query: query.map(|query| query.to_lowercase()),
+			..Default::default()
+		};
 		for filter in filters {
 			match filter {
 				FilterValue::Sort {
-					index,
-					ascending: order,
-					..
+					index, ascending, ..
 				} => {
-					popular = index == 1;
-					ascending = order;
+					params.popular = index == 1;
+					params.descending = !ascending;
 				}
 				FilterValue::MultiSelect {
 					id,
@@ -54,44 +50,30 @@ impl Source for FlameComics {
 					excluded,
 				} => match id.as_str() {
 					"genre" => {
-						genres = included;
-						hidden_genres = excluded;
+						params.genres = included;
+						params.hidden_genres = excluded;
 					}
-					"type" => types = included,
-					"status" => statuses = included,
-					"year" => years = included,
+					"type" => params.types = included,
+					"status" => params.statuses = included,
+					"year" => params.years = included,
 					_ => {}
 				},
 				_ => {}
 			}
 		}
-		series.retain(|entry| {
-			query
-				.as_deref()
-				.is_none_or(|query| entry.title.to_lowercase().contains(query))
-				&& genres.iter().all(|genre| entry.tags.contains(genre))
-				&& !hidden_genres.iter().any(|genre| entry.tags.contains(genre))
-				&& (types.is_empty() || entry.r#type.as_ref().is_some_and(|t| types.contains(t)))
-				&& (statuses.is_empty()
-					|| entry.status.as_deref().is_some_and(|status| {
-						statuses.iter().any(|s| s.eq_ignore_ascii_case(status))
-					})) && (years.is_empty()
-				|| entry
-					.year
-					.is_some_and(|year| years.contains(&year.to_string())))
+		let mut series = next_data::<BrowseProps>("/browse")?.series;
+		series.retain(|entry| params.matches(entry));
+		series.sort_by_cached_key(|entry| {
+			let rank = params
+				.popular
+				.then(|| entry.popularity_rank.unwrap_or(u32::MAX));
+			(rank, entry.title.to_lowercase())
 		});
-		series.sort_by(|a, b| {
-			let title = a.title.to_lowercase().cmp(&b.title.to_lowercase());
-			let order = if popular {
-				let rank = |entry: &Entry| entry.popularity_rank.unwrap_or(u32::MAX);
-				rank(a).cmp(&rank(b)).then(title)
-			} else {
-				title
-			};
-			if ascending { order } else { order.reverse() }
-		});
+		if params.descending {
+			series.reverse();
+		}
 		Ok(MangaPageResult {
-			entries: series.into_iter().map(Entry::into_card).collect(),
+			entries: series.into_iter().map(Into::into).collect(),
 			has_next_page: false,
 		})
 	}
@@ -115,7 +97,7 @@ impl Source for FlameComics {
 			);
 		}
 		if needs_details {
-			manga.copy_from(series.into());
+			manga.copy_from(series.into_details());
 		}
 		Ok(manga)
 	}
@@ -126,11 +108,7 @@ impl Source for FlameComics {
 			let Some(content) = reader.content else {
 				bail!("This chapter is in early access on Flame Comics");
 			};
-			let text = paragraphs(&content)
-				.iter()
-				.map(|paragraph| paragraph.escape_markdown())
-				.collect::<Vec<_>>()
-				.join("\n\n");
+			let text = markdown(&content);
 			if text.is_empty() {
 				bail!("This chapter has no text");
 			}
@@ -139,17 +117,16 @@ impl Source for FlameComics {
 				..Default::default()
 			}]);
 		}
-		let series_id = reader
-			.series_id
-			.ok_or_else(|| error!("This chapter has no series"))?;
+		// Image folders follow the series and chapter paths. The site's reader adds the edit
+		// time, so re-uploaded pages aren't served from a cache.
 		let pages: Vec<Page> = reader
 			.images
 			.into_values()
 			.map(|image| Page {
-				// The site's reader adds the edit time, so re-uploaded pages aren't cached.
 				content: PageContent::url(format!(
-					"{CDN_URL}/uploads/images/series/{series_id}/{}/{}?{}",
-					reader.token,
+					"{CDN_URL}/uploads/images{}{}/{}?{}",
+					manga.key,
+					chapter.key,
 					encode_uri_component(image.name),
 					reader.edit_time.unwrap_or_default()
 				)),
@@ -164,7 +141,6 @@ impl Source for FlameComics {
 }
 
 impl Home for FlameComics {
-	// Sections follow the site's home page, under its banner carousel.
 	fn get_home(&self) -> Result<HomeLayout> {
 		let home = next_data::<HomeProps>("/")?;
 		let mut components = Vec::new();
@@ -195,7 +171,7 @@ impl Home for FlameComics {
 				entries: block
 					.series
 					.into_iter()
-					.map(|entry| entry.into_card().into())
+					.map(|entry| Manga::from(entry).into())
 					.collect(),
 				listing: None,
 			},
@@ -204,7 +180,7 @@ impl Home for FlameComics {
 			title: Some(block.title),
 			subtitle: None,
 			value: HomeComponentValue::MangaChapterList {
-				page_size: Some(5),
+				page_size: Some(3),
 				entries: block
 					.series
 					.into_iter()
@@ -213,10 +189,15 @@ impl Home for FlameComics {
 				listing: None,
 			},
 		};
-		components.extend(home.novels.into_block().map(scroller));
 		components.extend(home.popular.into_block().map(scroller));
+		components.extend(home.latest.into_block().map(|block| {
+			latest(Block {
+				title: "Latest Updates".into(),
+				..block
+			})
+		}));
+		components.extend(home.novels.into_block().map(scroller));
 		components.extend(home.staff_picks.into_block().map(scroller));
-		components.extend(home.latest.into_block().map(latest));
 		components.extend(home.latest_novels.into_block().map(latest));
 		Ok(HomeLayout { components })
 	}

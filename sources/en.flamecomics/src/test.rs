@@ -2,8 +2,9 @@
 
 use super::*;
 use aidoku::{
-	ContentRating, MangaStatus, Viewer,
+	ContentRating, LinkValue, MangaStatus, Viewer,
 	alloc::{Vec, vec},
+	imports::net::Request,
 };
 use aidoku_test::aidoku_test;
 use helpers::locked_chapters;
@@ -154,7 +155,7 @@ fn series_details_and_chapters() {
 	assert_eq!(manga.authors, Some(vec!["Markellaha".into()]));
 	assert_eq!(manga.artists, Some(vec!["Studio GreenKirin".into()]));
 	assert!(manga.tags.unwrap().contains(&"Academy".into()));
-	assert!(manga.description.unwrap().starts_with("I 'transmigrated'"));
+	assert!(manga.description.unwrap().contains("transmigrated"));
 	assert_eq!(
 		manga.url.as_deref(),
 		Some("https://flamecomics.xyz/series/165")
@@ -208,7 +209,7 @@ fn novel_early_access_chapters_are_locked() {
 // The site renders each locked chapter link with data-locked="true".
 #[aidoku_test]
 fn novel_locks_match_the_site() {
-	let page = aidoku::imports::net::Request::get(format!("{BASE_URL}{NOVEL_KEY}"))
+	let page = Request::get(format!("{BASE_URL}{NOVEL_KEY}"))
 		.unwrap()
 		.html()
 		.unwrap();
@@ -282,7 +283,7 @@ fn unknown_key_fails() {
 }
 
 #[aidoku_test]
-fn home_follows_the_site_with_named_latest_rows() {
+fn home_puts_the_banner_first_and_names_latest_rows() {
 	let layout = FlameComics::new().get_home().unwrap();
 	let titles: Vec<&str> = layout
 		.components
@@ -293,10 +294,10 @@ fn home_follows_the_site_with_named_latest_rows() {
 		titles,
 		[
 			"Featured",
-			"Novels",
 			"Popular",
+			"Latest Updates",
+			"Novels",
 			"Staff Picks",
-			"Latest",
 			"Latest Novels"
 		]
 	);
@@ -305,20 +306,24 @@ fn home_follows_the_site_with_named_latest_rows() {
 	};
 	assert!(links.iter().all(|link| matches!(
 		&link.value,
-		Some(aidoku::LinkValue::Manga(m)) if m.key.starts_with("/series/") || m.key.starts_with("/novel/")
+		Some(LinkValue::Manga(m)) if m.key.starts_with("/series/") || m.key.starts_with("/novel/")
 	)));
-	let HomeComponentValue::Scroller { entries, .. } = &layout.components[1].value else {
-		panic!("expected novels second");
+	let HomeComponentValue::Scroller { entries, .. } = &layout.components[3].value else {
+		panic!("expected the novels row");
 	};
 	assert!(entries.iter().all(|link| matches!(
 		&link.value,
-		Some(aidoku::LinkValue::Manga(m)) if m.key.starts_with("/novel/")
+		Some(LinkValue::Manga(m)) if m.key.starts_with("/novel/")
 	)));
 	// The reported bug: every latest row read "Untitled".
-	for component in &layout.components[4..] {
-		let HomeComponentValue::MangaChapterList { entries, .. } = &component.value else {
+	for index in [2, 5] {
+		let HomeComponentValue::MangaChapterList {
+			entries, page_size, ..
+		} = &layout.components[index].value
+		else {
 			panic!("expected a latest row");
 		};
+		assert_eq!(*page_size, Some(3));
 		assert!(!entries.is_empty());
 		assert!(
 			entries
@@ -364,6 +369,21 @@ fn review_rolling_policy_locks_the_newest_priced_chapters() {
 	reversed.reverse();
 	let reversed_locks = locked_chapters(&unlock, &reversed, 0);
 	assert!(reversed_locks[29] && !reversed_locks[0]);
+}
+
+#[aidoku_test]
+fn review_markdown_keeps_emphasis_and_escapes_text() {
+	assert_eq!(
+		helpers::markdown(
+			"<p><br /></p>\n<p>He said <em>no </em>twice.</p><p><strong>Chapter 1</strong></p><p>* * *</p>"
+		),
+		"He said *no* twice\\.\n\n**Chapter 1**\n\n\\* \\* \\*"
+	);
+	assert_eq!(
+		helpers::markdown("A bare description."),
+		"A bare description\\."
+	);
+	assert_eq!(helpers::markdown("<p> </p>"), "");
 }
 
 #[aidoku_test]

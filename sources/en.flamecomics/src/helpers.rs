@@ -1,11 +1,15 @@
 use crate::{
 	BASE_URL,
-	models::{ChapterItem, NextData, Unlock},
+	models::{ChapterItem, Entry, NextData, Unlock},
 };
 use aidoku::{
 	Result,
-	alloc::{String, Vec, collections::BTreeSet, string::ToString},
-	imports::{html::Html, net::Request},
+	alloc::{String, Vec, string::ToString},
+	helpers::string::PlainText,
+	imports::{
+		html::{Element, Html, Kind},
+		net::Request,
+	},
 	prelude::*,
 };
 use serde::de::DeserializeOwned;
@@ -15,7 +19,7 @@ use serde::de::DeserializeOwned;
 pub fn next_data<T: DeserializeOwned>(path: &str) -> Result<T> {
 	let response = Request::get(format!("{BASE_URL}{path}"))?.send()?;
 	if response.status_code() == 404 {
-		bail!("This title is no longer on Flame Comics");
+		bail!("Flame Comics has no page at {path}");
 	}
 	let json = response
 		.get_html()?
@@ -27,28 +31,106 @@ pub fn next_data<T: DeserializeOwned>(path: &str) -> Result<T> {
 		.map_err(|err| error!("Unexpected page data at {path}: {err}"))
 }
 
-/// The text of each non-empty paragraph in an html fragment, or all of its text when it has
-/// no paragraphs.
-pub fn paragraphs(html: &str) -> Vec<String> {
-	let Ok(document) = Html::parse_fragment(html) else {
-		return Vec::new();
-	};
-	let mut texts: Vec<String> = document
-		.select("p")
-		.map(|list| list.filter_map(|paragraph| paragraph.text()).collect())
-		.unwrap_or_default();
-	if texts.is_empty() {
-		texts.extend(document.select_first("body").and_then(|body| body.text()));
-	}
-	texts
-		.into_iter()
-		.map(|text| text.trim().to_string())
-		.filter(|text| !text.is_empty())
-		.collect()
+/// A search over browse, which lists the whole catalogue; the site filters it locally too.
+#[derive(Default)]
+pub struct SearchParams {
+	pub query: Option<String>,
+	pub popular: bool,
+	pub descending: bool,
+	pub genres: Vec<String>,
+	pub hidden_genres: Vec<String>,
+	pub types: Vec<String>,
+	pub statuses: Vec<String>,
+	pub years: Vec<String>,
 }
 
-/// The site's own early-access rule: a priced chapter is public once its release time
-/// passes, or, under a rolling policy, once it is no longer among the newest few.
+impl SearchParams {
+	pub fn matches(&self, entry: &Entry) -> bool {
+		let listed = |wanted: &[String], value: Option<&str>| {
+			wanted.is_empty()
+				|| value.is_some_and(|value| wanted.iter().any(|w| w.eq_ignore_ascii_case(value)))
+		};
+		self.query
+			.as_deref()
+			.is_none_or(|query| entry.title.to_lowercase().contains(query))
+			&& self.genres.iter().all(|genre| entry.tags.contains(genre))
+			&& !self
+				.hidden_genres
+				.iter()
+				.any(|genre| entry.tags.contains(genre))
+			&& listed(&self.types, entry.r#type.as_deref())
+			&& listed(&self.statuses, entry.status.as_deref())
+			&& listed(
+				&self.years,
+				entry.year.map(|year| year.to_string()).as_deref(),
+			)
+	}
+}
+
+/// An html fragment as Markdown paragraphs, keeping its italics and bold.
+pub fn markdown(html: &str) -> String {
+	// Some descriptions are bare text with no paragraphs.
+	let wrapped;
+	let html = if html.contains("<p") {
+		html
+	} else {
+		wrapped = format!("<p>{html}</p>");
+		&wrapped
+	};
+	let Some(paragraphs) = Html::parse_fragment(html)
+		.ok()
+		.and_then(|document| document.select("p"))
+	else {
+		return String::new();
+	};
+	paragraphs
+		.map(|paragraph| {
+			let mut text = String::new();
+			inline(&paragraph, &mut text);
+			text.trim().into()
+		})
+		.filter(|text: &String| !text.is_empty())
+		.collect::<Vec<_>>()
+		.join("\n\n")
+}
+
+// Text nodes come only from `child_nodes` and elements only from `children`, so they are walked
+// together. Markers wrap the trimmed text, since `* word *` isn't emphasis.
+fn inline(element: &Element, output: &mut String) {
+	let mut children = element.children();
+	for node in element.child_nodes() {
+		match node.kind() {
+			Kind::TextNode => output.extend(node.text().map(|text| text.escape_markdown())),
+			Kind::Element => {
+				let Some(child) = children.next() else {
+					continue;
+				};
+				let mut inner = String::new();
+				inline(&child, &mut inner);
+				let marker = match child.tag_name().as_deref() {
+					Some("strong" | "b") => "**",
+					Some("em" | "i") => "*",
+					_ => "",
+				};
+				let text = inner.trim();
+				if text.is_empty() {
+					output.push_str(&inner);
+					continue;
+				}
+				let start = inner.len() - inner.trim_start().len();
+				output.push_str(&inner[..start]);
+				output.push_str(marker);
+				output.push_str(text);
+				output.push_str(marker);
+				output.push_str(&inner[start + text.len()..]);
+			}
+			_ => {}
+		}
+	}
+}
+
+/// The site's own early-access rule: a priced chapter is public once its release time passes,
+/// or, under a rolling policy, once it is no longer among the newest few.
 pub fn locked_chapters(unlock: &Unlock, chapters: &[ChapterItem], now: i64) -> Vec<bool> {
 	let rolling = unlock.unlock_policy.as_deref() == Some("ROLLING_LATEST");
 	let mut count = unlock
@@ -56,15 +138,15 @@ pub fn locked_chapters(unlock: &Unlock, chapters: &[ChapterItem], now: i64) -> V
 		.filter(|count| *count > 0)
 		.unwrap_or(10) as usize;
 	if let Some(percent) = unlock.locked_chapter_percent.filter(|p| *p > 0) {
-		let share = (chapters.len() * percent.min(100) as usize).div_ceil(100);
-		count = count.max(share);
+		count = count.max((chapters.len() * percent.min(100) as usize).div_ceil(100));
 		if let Some(max) = unlock.locked_chapter_max.filter(|max| *max > 0) {
 			count = count.min(max.min(100) as usize);
 		}
 	}
 	let mut numbers: Vec<f32> = chapters.iter().filter_map(ChapterItem::number).collect();
 	numbers.sort_by(|a, b| b.total_cmp(a));
-	let newest: BTreeSet<u32> = numbers.iter().take(count).map(|n| n.to_bits()).collect();
+	// The oldest chapter number still among the newest `count`.
+	let cutoff = numbers.get(count - 1).or(numbers.last()).copied();
 
 	chapters
 		.iter()
@@ -78,7 +160,8 @@ pub fn locked_chapters(unlock: &Unlock, chapters: &[ChapterItem], now: i64) -> V
 				Some(time) => now >= time,
 				None if rolling => !chapter
 					.number()
-					.is_some_and(|number| newest.contains(&number.to_bits())),
+					.zip(cutoff)
+					.is_some_and(|(number, cutoff)| number >= cutoff),
 				None => true,
 			};
 			priced && !public
