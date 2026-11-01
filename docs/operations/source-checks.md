@@ -10,7 +10,7 @@ sources:
   - code: .github/workflows/check.yaml
   - code: .githooks/pre-push
   - code: scripts/pr-branch.sh
-verified_at: 2cbd8e0
+verified_at: a99bd93
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`

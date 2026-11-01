@@ -19,3 +19,8 @@ Append-only. Newest entries at the bottom.
 
 - New page [[source-checks]] for `scripts/check-sources.py`, which the commit hook
   named as uncovered. Verified against `e9c39f5`.
+
+## [2026-11-01] add | subsystems/flamecomics
+
+- New page [[flamecomics]] after rewriting the source on the site's embedded data.
+- [[source-checks]] re-verified at `a99bd93` (the new rules are described there).
