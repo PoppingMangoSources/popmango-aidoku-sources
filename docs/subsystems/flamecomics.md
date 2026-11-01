@@ -10,7 +10,7 @@ sources:
   - code: sources/en.flamecomics/src/test.rs
   - code: sources/en.flamecomics/res/filters.json
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: ad33a72
+verified_at: 66f6971
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site with no separate API. Every page embeds
@@ -35,7 +35,7 @@ keys the old source used, so libraries and read history carry over without a
 
 The banner carousel comes first as an image scroller, then the sections in the site's
 `blocksConfig` order: Novels, Popular, Staff Picks, Latest and Latest Novels
-(`sources/en.flamecomics/src/lib.rs:166`). The site's blog blocks are left out.
+(`sources/en.flamecomics/src/lib.rs:168`). The site's blog blocks are left out.
 
 ## Novels
 
