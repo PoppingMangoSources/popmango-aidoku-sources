@@ -10,7 +10,7 @@ sources:
   - code: sources/en.flamecomics/src/test.rs
   - code: sources/en.flamecomics/res/filters.json
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: e3dd71d
+verified_at: 59ccb1f
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
@@ -37,7 +37,7 @@ keys the old source used, so libraries and read history carry over without a
 ## Home
 
 The banner carousel comes first as an image scroller, then Popular, Latest Updates, Novels, Staff
-Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:147`). That is the owner's order,
+Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:149`). That is the owner's order,
 not the site's (`blocksConfig` puts Novels first and Latest after Staff Picks), and the latest
 rows page five at a time. The site's blog blocks are left out.
 
@@ -84,3 +84,9 @@ out of the list when it is off, the same switch en.asurascans and the gigaviewer
 
 > ⚠️ The site's browse has no genre filter; the source keeps one, matched locally, so tags on
 > a details page stay tappable. Year options are a static list and need a new year added.
+
+> ⚠️ Browse defaults to Title A to Z, like the site. Popularity runs the other way from Title:
+> the site's descending order starts at rank 1, and ties (most entries are unranked) stay A to
+> Z whichever way the arrow points, so the sort doesn't just reverse the list
+> (`sources/en.flamecomics/src/lib.rs:67`). `popularity_sort_puts_the_top_ranked_first`
+> checks it against the site's ranks.
