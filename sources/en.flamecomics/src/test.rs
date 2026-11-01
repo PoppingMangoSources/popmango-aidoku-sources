@@ -206,6 +206,7 @@ fn novel_and_series_with_one_id_stay_apart() {
 
 #[aidoku_test]
 fn novel_early_access_chapters_are_locked() {
+	defaults_set("showLocked", DefaultValue::Bool(true));
 	let chapters = FlameComics::new()
 		.get_manga_update(manga(NOVEL_KEY), false, true)
 		.unwrap()
@@ -226,9 +227,9 @@ fn hiding_locked_chapters_keeps_the_public_ones() {
 			.unwrap()
 	};
 	let source = FlameComics::new();
-	let all = chapters(&source);
-	defaults_set("showLocked", DefaultValue::Bool(false));
 	let public = chapters(&source);
+	defaults_set("showLocked", DefaultValue::Bool(true));
+	let all = chapters(&source);
 	assert!(public.iter().all(|chapter| !chapter.locked));
 	assert_eq!(
 		public.len(),
@@ -240,6 +241,7 @@ fn hiding_locked_chapters_keeps_the_public_ones() {
 // The site renders each locked chapter link with data-locked="true".
 #[aidoku_test]
 fn novel_locks_match_the_site() {
+	defaults_set("showLocked", DefaultValue::Bool(true));
 	let page = Request::get(format!("{BASE_URL}{NOVEL_KEY}"))
 		.unwrap()
 		.html()
@@ -288,6 +290,7 @@ fn series_pages_come_from_the_cdn() {
 
 #[aidoku_test]
 fn novel_chapters_read_as_text_or_fail_when_locked() {
+	defaults_set("showLocked", DefaultValue::Bool(true));
 	let source = FlameComics::new();
 	let chapters = source
 		.get_manga_update(manga(NOVEL_KEY), false, true)
