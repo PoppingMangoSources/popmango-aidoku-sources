@@ -10,7 +10,7 @@ sources:
   - code: sources/en.flamecomics/src/test.rs
   - code: sources/en.flamecomics/res/filters.json
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: 59ccb1f
+verified_at: 2ce2397
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
@@ -37,7 +37,7 @@ keys the old source used, so libraries and read history carry over without a
 ## Home
 
 The banner carousel comes first as an image scroller, then Popular, Latest Updates, Novels, Staff
-Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:149`). That is the owner's order,
+Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:152`). That is the owner's order,
 not the site's (`blocksConfig` puts Novels first and Latest after Staff Picks), and the latest
 rows page five at a time. The site's blog blocks are left out.
 
@@ -52,8 +52,15 @@ Novel chapters are html `content`. Descriptions and chapter text are converted t
 which ones are locked follows the site's own code, copied in `locked_chapters`
 (`sources/en.flamecomics/src/helpers.rs:141`).
 
-Show Locked Chapters (`showLocked`, on by default, read in `settings.rs`) leaves locked chapters
-out of the list when it is off, the same switch en.asurascans and the gigaviewer template have.
+Show Locked Chapters (`showLocked`, off by default, read in `settings.rs`) leaves locked chapters
+out of the list unless it is on, the same switch en.asurascans and the gigaviewer template have.
+
+> ⚠️ Off by default because the source has no login: locked chapters can't be opened, so showing
+> them confuses readers (kkantan on review). Keep the Rust fallback and the JSON default equal.
+
+> ⚠️ Cards and details are built with `TryFrom<Entry> for Manga` and `Entry::into_details`, which
+> fail on an entry with no id rather than return a manga with an empty key. Lists drop such an
+> entry; none exists in the live data.
 
 > ⚠️ `markdown` walks text nodes with `child_nodes`, which needs app 0.8.3, so `minAppVersion`
 > is 0.8.3, as on the merged novel sources. Bare-text descriptions (3 of 26 sampled) are wrapped

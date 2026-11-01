@@ -349,6 +349,13 @@ below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in rev
 | The two newest chapters of a long series didn't load (#819) | Reviewers read in the app. Before submitting, open the newest chapters of a long series as well as the first. | R |
 | A chapter that failed to load returned "(empty chapter)" text (#819, fix commit) | Fail the chapter with `bail!` rather than return placeholder text, and don't skip a fragment that failed. | R |
 
+### From #860 (`en.flamecomics`)
+
+| What was flagged | The rule | |
+|---|---|---|
+| `impl From<Entry> for Manga` with `key(..).unwrap_or_default()` ("we don't want to return manga objects with empty keys") | A conversion that can fail is a `TryFrom` with an error, never a default key. Lists drop or report the entry that fails; the details path returns the error. | R |
+| A "Show Locked Chapters" switch defaulting on | Default it off when the source has no login, since chapters the reader can't open are confusing. The Rust fallback and the JSON default stay equal. | R |
+
 ### From #843 (`en.atsumaru`)
 
 - **Filter exclusions:** every multi-select with `canExclude: true` must process both
