@@ -13,7 +13,7 @@ mod models;
 #[cfg(test)]
 mod test;
 
-use helpers::{fetch_props, locked_chapters, paragraphs};
+use helpers::{locked_chapters, next_data, paragraphs};
 use models::{Block, BrowseProps, ChapterProps, Entry, HomeProps, SeriesProps, Slide};
 
 const BASE_URL: &str = "https://flamecomics.xyz";
@@ -33,7 +33,7 @@ impl Source for FlameComics {
 		_page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let mut series = fetch_props::<BrowseProps>("/browse")?.series;
+		let mut series = next_data::<BrowseProps>("/browse")?.series;
 		let query = query.map(|query| query.to_lowercase());
 		let (mut popular, mut ascending) = (false, true);
 		let (mut genres, mut hidden_genres) = (Vec::new(), Vec::new());
@@ -102,7 +102,7 @@ impl Source for FlameComics {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let SeriesProps { series, chapters } = fetch_props(&manga.key)?;
+		let SeriesProps { series, chapters } = next_data(&manga.key)?;
 		if needs_chapters {
 			let locks = locked_chapters(&series.unlock, &chapters, current_date());
 			let url = format!("{BASE_URL}{}", manga.key);
@@ -121,7 +121,7 @@ impl Source for FlameComics {
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let reader = fetch_props::<ChapterProps>(&format!("{}{}", manga.key, chapter.key))?.chapter;
+		let reader = next_data::<ChapterProps>(&format!("{}{}", manga.key, chapter.key))?.chapter;
 		if manga.key.starts_with("/novel/") {
 			let Some(content) = reader.content else {
 				bail!("This chapter is in early access on Flame Comics");
@@ -166,7 +166,7 @@ impl Source for FlameComics {
 impl Home for FlameComics {
 	// Sections follow the site's home page, under its banner carousel.
 	fn get_home(&self) -> Result<HomeLayout> {
-		let home = fetch_props::<HomeProps>("/")?;
+		let home = next_data::<HomeProps>("/")?;
 		let mut components = Vec::new();
 
 		let banners: Vec<Link> = home

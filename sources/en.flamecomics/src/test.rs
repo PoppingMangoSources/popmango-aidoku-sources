@@ -205,6 +205,34 @@ fn novel_early_access_chapters_are_locked() {
 	assert!(!chapters.last().unwrap().locked);
 }
 
+// The site renders each locked chapter link with data-locked="true".
+#[aidoku_test]
+fn novel_locks_match_the_site() {
+	let page = aidoku::imports::net::Request::get(format!("{BASE_URL}{NOVEL_KEY}"))
+		.unwrap()
+		.html()
+		.unwrap();
+	let mut rendered: Vec<String> = page
+		.select("a[data-locked=true]")
+		.unwrap()
+		.filter_map(|link| link.attr("href"))
+		.filter_map(|href| href.rsplit('/').next().map(|token| format!("/{token}")))
+		.collect();
+	let mut ours: Vec<String> = FlameComics::new()
+		.get_manga_update(manga(NOVEL_KEY), false, true)
+		.unwrap()
+		.chapters
+		.unwrap()
+		.into_iter()
+		.filter(|chapter| chapter.locked)
+		.map(|chapter| chapter.key)
+		.collect();
+	rendered.sort();
+	ours.sort();
+	assert!(!ours.is_empty());
+	assert_eq!(ours, rendered);
+}
+
 #[aidoku_test]
 fn series_pages_come_from_the_cdn() {
 	let pages = FlameComics::new()

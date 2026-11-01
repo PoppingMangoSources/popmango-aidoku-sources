@@ -10,9 +10,9 @@ use aidoku::{
 };
 use serde::de::DeserializeOwned;
 
-/// Every page embeds its data as JSON. Reading the page itself takes one request, where the
-/// site's data route would need the build id from another page first.
-pub fn fetch_props<T: DeserializeOwned>(path: &str) -> Result<T> {
+/// Every page embeds its data as JSON. The site's data route needs a build id that changes with
+/// each deploy and has to be read from another page first.
+pub fn next_data<T: DeserializeOwned>(path: &str) -> Result<T> {
 	let response = Request::get(format!("{BASE_URL}{path}"))?.send()?;
 	if response.status_code() == 404 {
 		bail!("This title is no longer on Flame Comics");
@@ -20,7 +20,7 @@ pub fn fetch_props<T: DeserializeOwned>(path: &str) -> Result<T> {
 	let json = response
 		.get_html()?
 		.select_first("script#__NEXT_DATA__")
-		.and_then(|script| script.html())
+		.and_then(|script| script.data().or_else(|| script.html()))
 		.ok_or_else(|| error!("No page data found at {path}"))?;
 	serde_json::from_str::<NextData<T>>(&json)
 		.map(|data| data.props.page_props)
