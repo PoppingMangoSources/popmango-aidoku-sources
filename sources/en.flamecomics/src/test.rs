@@ -4,7 +4,10 @@ use super::*;
 use aidoku::{
 	ContentRating, LinkValue, MangaStatus, Viewer,
 	alloc::{Vec, vec},
-	imports::net::Request,
+	imports::{
+		defaults::{DefaultValue, defaults_set},
+		net::Request,
+	},
 };
 use aidoku_test::aidoku_test;
 use helpers::locked_chapters;
@@ -204,6 +207,27 @@ fn novel_early_access_chapters_are_locked() {
 	assert!(chapters.len() > 20);
 	assert!(chapters[0].locked);
 	assert!(!chapters.last().unwrap().locked);
+}
+
+#[aidoku_test]
+fn hiding_locked_chapters_keeps_the_public_ones() {
+	let chapters = |source: &FlameComics| {
+		source
+			.get_manga_update(manga(NOVEL_KEY), false, true)
+			.unwrap()
+			.chapters
+			.unwrap()
+	};
+	let source = FlameComics::new();
+	let all = chapters(&source);
+	defaults_set("showLocked", DefaultValue::Bool(false));
+	let public = chapters(&source);
+	assert!(public.iter().all(|chapter| !chapter.locked));
+	assert_eq!(
+		public.len(),
+		all.iter().filter(|chapter| !chapter.locked).count()
+	);
+	assert!(public.len() < all.len());
 }
 
 // The site renders each locked chapter link with data-locked="true".

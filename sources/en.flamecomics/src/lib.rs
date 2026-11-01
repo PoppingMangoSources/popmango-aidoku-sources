@@ -10,6 +10,7 @@ use aidoku::{
 
 mod helpers;
 mod models;
+mod settings;
 #[cfg(test)]
 mod test;
 
@@ -87,11 +88,13 @@ impl Source for FlameComics {
 		let SeriesProps { series, chapters } = next_data(&manga.key)?;
 		if needs_chapters {
 			let locks = locked_chapters(&series.unlock, &chapters, current_date());
+			let show_locked = settings::show_locked();
 			let url = format!("{BASE_URL}{}", manga.key);
 			manga.chapters = Some(
 				chapters
 					.into_iter()
 					.zip(locks)
+					.filter(|(_, locked)| show_locked || !locked)
 					.map(|(chapter, locked)| chapter.into_chapter(&url, locked))
 					.collect(),
 			);
