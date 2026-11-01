@@ -222,7 +222,7 @@ fn series_pages_come_from_the_cdn() {
 	};
 	assert_eq!(
 		first,
-		"https://cdn.flamecomics.xyz/uploads/images/series/165/d8eb658e3a903420/30YRS-22-00.webp"
+		"https://cdn.flamecomics.xyz/uploads/images/series/165/d8eb658e3a903420/30YRS-22-00.webp?1793279454"
 	);
 }
 

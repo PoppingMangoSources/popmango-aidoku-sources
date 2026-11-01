@@ -263,6 +263,7 @@ pub struct ChapterProps {
 pub struct ReaderChapter {
 	pub series_id: Option<u32>,
 	pub token: String,
+	pub edit_time: Option<i64>,
 	#[serde(default)]
 	pub images: BTreeMap<u32, Image>,
 	pub content: Option<String>,

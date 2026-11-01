@@ -51,6 +51,11 @@ which ones are locked follows the site's own code, copied in `locked_chapters`
 > N is the larger of `locked_chapter_count` (10 if unset) and `locked_chapter_percent` of all
 > chapters, capped by `locked_chapter_max`. The `review_` tests pin this rule.
 
+> ⚠️ Page urls end in `?{edit_time}`, as the site's reader builds them, so pages re-uploaded
+> under the same names aren't served from a cache. The reader's "read on Flame" banners are
+> `decoy` entries it inserts between pages itself; chapter data carried none in five series
+> probed, so the source has no decoy filter. Add one if a chapter's `images` ever flags one.
+
 > ⚠️ Browse calls the tags `categories`, while the home blocks and details call them `tags`;
 > the model reads both through one alias. No entry carries both, which the alias needs.
 

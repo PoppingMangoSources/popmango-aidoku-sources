@@ -146,10 +146,12 @@ impl Source for FlameComics {
 			.images
 			.into_values()
 			.map(|image| Page {
+				// The site's reader adds the edit time, so re-uploaded pages aren't cached.
 				content: PageContent::url(format!(
-					"{CDN_URL}/uploads/images/series/{series_id}/{}/{}",
+					"{CDN_URL}/uploads/images/series/{series_id}/{}/{}?{}",
 					reader.token,
-					encode_uri_component(image.name)
+					encode_uri_component(image.name),
+					reader.edit_time.unwrap_or_default()
 				)),
 				..Default::default()
 			})
