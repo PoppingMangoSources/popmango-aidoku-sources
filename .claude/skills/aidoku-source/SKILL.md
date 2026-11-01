@@ -49,6 +49,10 @@ scripts/new-source.sh <id> <Name> <https://site> [safe|contains-nsfw|primarily-n
 It runs `aidoku init`, removes the nested repository it makes, and prints the README row.
 Replace `res/icon.png` (128×128, opaque, margin around the mark).
 
+For completion and checking while editing `res/*.json`, point the editor at the CLI's schemas,
+`crates/cli/src/supporting/schema/{source,filters,settings}.schema.json` in aidoku-rs (the
+aidoku-rs book, "Resource Files"). `aidoku verify` checks the same schemas on the package.
+
 ## Phase 3 — Implement
 
 Follow AGENTS.md / CLAUDE.md §2 and §6 for layout. Checklist, each item a real review comment or a bug

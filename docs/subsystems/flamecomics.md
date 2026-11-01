@@ -10,7 +10,7 @@ sources:
   - code: sources/en.flamecomics/src/test.rs
   - code: sources/en.flamecomics/res/filters.json
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: 66f6971
+verified_at: 75828b2
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
@@ -46,8 +46,15 @@ Novel chapters are html `content`, read as paragraphs. Every novel chapter carri
 which ones are locked follows the site's own code, copied in `locked_chapters`
 (`sources/en.flamecomics/src/helpers.rs:52`).
 
-> ⚠️ Read the embedded data with `.html()`, not `.data()`. The test runner finds the
-> `__NEXT_DATA__` script but returns `None` from `data()`; `html()` works there and in the app.
+> ⚠️ Read the embedded data with `data()`, falling back to `html()`, as the merged
+> `ja.soraraw` and `mangak` template do. The test runner finds the `__NEXT_DATA__` script but
+> returns `None` from `data()`, so `data()` alone fails every live test.
+
+> ⚠️ The lock rule matched the site's rendered `a[data-locked=true]` on all 13 novels
+> (2026-11-01), and `novel_locks_match_the_site` checks it on every test run. Reference
+> clients disagree here: one calls the price fields placeholders and reads `data-locked`
+> instead; another marks every priced chapter without a `public_release` as unknown. Both
+> conflict with this evidence, so trust the test over them.
 
 > ⚠️ A chapter's price doesn't mean it is locked. A priced chapter is public once its
 > `public_release` passes, or under `ROLLING_LATEST` once it is out of the newest N, where

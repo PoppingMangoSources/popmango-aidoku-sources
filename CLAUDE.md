@@ -490,7 +490,12 @@ same way. View the page source and watch the Network tab:
 - **Server-rendered HTML** (the data is in the page): scrape it with selectors —
   `en.weebcentral`. A WordPress theme (`wp-content` in the source) is a template (section 12).
 - **Next.js** (`/_next/`, `__NEXT_DATA__`): look for the API the pages call and use that
-  instead of the embedded data (section 3).
+  instead of the embedded data (section 3). Without one, read `script#__NEXT_DATA__` from the
+  page you need, as `ja.soraraw` and the `mangak` template do: deserialize
+  `props.pageProps`, and take the script's `data()` with `html()` as the fallback, since the
+  test runner returns `None` from `data()` (verified on `en.flamecomics`). Don't use
+  `/_next/data/<build id>/…`: the build id changes with every deploy and is only found on
+  another page (`ja.soraraw`'s home says so).
 - **A client-rendered app over a JSON API** (an empty root element, a hashed bundle such as
   `/assets/index-<hash>.js`, XHRs returning JSON): `en.toonkotsu`, `multi.kagane`,
   `en.chikari`, `en.comix`, `multi.mangadex`, `en.atsumaru` (section 16).
@@ -619,7 +624,10 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
   leave unset by accident.
 - `config.languageSelectType` in `source.json` accepts only `"single"`; the CLI
   schema also lists `"multi"` but the app rejects it and the source fails to
-  install. Omit the field for multi-select, which is the default.
+  install. Omit the field for multi-select, which is the default. AidokuRunner's
+  `LanguageSelectType` has the cases `single` and `multiple` (`Models/SourceInfo.swift`), and
+  an unset value is `.multiple` (`Source.swift`), so `"multi"` decodes to nothing. The
+  aidoku-rs book's "defaulting to single" is wrong.
 - `parse_date` formats with the **device's locale** unless given one, so English month or
   day names fail on a phone set to another language; pass `"en_US_POSIX"`.
 - Dynamic settings get their defaults registered only when the reader opens the settings
