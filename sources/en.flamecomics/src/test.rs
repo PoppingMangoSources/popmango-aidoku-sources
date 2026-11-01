@@ -347,7 +347,7 @@ fn home_puts_the_banner_first_and_names_latest_rows() {
 		else {
 			panic!("expected a latest row");
 		};
-		assert_eq!(*page_size, Some(3));
+		assert_eq!(*page_size, Some(5));
 		assert!(!entries.is_empty());
 		assert!(
 			entries

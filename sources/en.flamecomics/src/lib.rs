@@ -183,7 +183,7 @@ impl Home for FlameComics {
 			title: Some(block.title),
 			subtitle: None,
 			value: HomeComponentValue::MangaChapterList {
-				page_size: Some(3),
+				page_size: Some(5),
 				entries: block
 					.series
 					.into_iter()

@@ -39,7 +39,7 @@ keys the old source used, so libraries and read history carry over without a
 The banner carousel comes first as an image scroller, then Popular, Latest Updates, Novels, Staff
 Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:144`). That is the owner's order,
 not the site's (`blocksConfig` puts Novels first and Latest after Staff Picks), and the latest
-rows page three at a time. The site's blog blocks are left out.
+rows page five at a time. The site's blog blocks are left out.
 
 > ⚠️ A review may cite the "order the home as the site does" rule; the order here is
 > deliberate. "Latest Updates" is the site's own heading for that row.
