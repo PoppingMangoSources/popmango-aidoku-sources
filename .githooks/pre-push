@@ -29,7 +29,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         while IFS= read -r crate; do
             [ -f "$root/$crate/Cargo.toml" ] || continue
             case "$crate" in
-                sources/*) "$tooling/scripts/verify-source.sh" "$root/$crate" ;;
+                sources/*)
+                    "$tooling/scripts/verify-source.sh" "$root/$crate"
+                    # The review_ tests make no requests, so unlike the live suite they can gate a push.
+                    if [ -f "$root/$crate/src/test.rs" ]; then
+                        command -v aidoku-test-runner >/dev/null || { echo "Install aidoku-test-runner to run $crate's review_ tests (AGENTS.md / CLAUDE.md section 1)." >&2; exit 1; }
+                        (cd "$root/$crate"; cargo test -q review_)
+                    fi
+                    ;;
                 templates/*) (cd "$root/$crate"; cargo fmt --check; cargo clippy --target wasm32-unknown-unknown -- -D warnings) ;;
             esac
         done <<< "$crates"

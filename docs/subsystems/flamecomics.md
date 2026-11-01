@@ -10,7 +10,7 @@ sources:
   - code: sources/en.flamecomics/src/test.rs
   - code: sources/en.flamecomics/res/filters.json
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: 60c7057
+verified_at: 43ad4ba
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
@@ -51,6 +51,9 @@ Novel chapters are html `content`. Descriptions and chapter text are converted t
 `<em>`/`<strong>` as `*`/`**`, since the app renders both as Markdown. Every novel chapter carries a price;
 which ones are locked follows the site's own code, copied in `locked_chapters`
 (`sources/en.flamecomics/src/helpers.rs:134`).
+
+Show Locked Chapters (`showLocked`, on by default, read in `settings.rs`) leaves locked chapters
+out of the list when it is off, the same switch en.asurascans and the gigaviewer template have.
 
 > ⚠️ `markdown` walks text nodes with `child_nodes`, which needs app 0.8.3, so `minAppVersion`
 > is 0.8.3, as on the merged novel sources. Bare-text descriptions (3 of 26 sampled) are wrapped

@@ -764,6 +764,21 @@ went in one of these ways, and new ones go in the same way:
   checkout available. Scope validation runs before source/toolchain checks. The pre-push hook runs CI's lint and
   verify commands (section 1) for every source and template the push changes, then
   `scripts/check-sources.py`.
+- `scripts/review-source.sh <id>` is the one review command for a source: the gates plus live
+  tests (`verify-source.sh --test`), `check-sources.py --base origin/main`, `upstream-usage.py`, the
+  upstream scope of its `feat/`/`fix/` branch, and the section 3 rules printed as a checklist to
+  read against the diff. It records a stamp of the source's files under `.git/aidoku-review/`.
+- `.claude/settings.json` holds the shared Claude Code hooks (`scripts/agent-hooks.py`). Before
+  the first edit to a source or template in a session, Claude is pointed at the skill, section 6
+  and `review-source.sh`. When it tries to finish, the Stop hook blocks while a changed source
+  fails `check-sources.py` or has no passing review of its current files, so any edit after a
+  review needs another one. A second stop in the same turn only reports, so a live-site failure
+  can be explained rather than loop. Personal settings, such as a plugin's permission lists,
+  go in `.claude/settings.local.json`, which is ignored. Codex has no hooks, so for Codex this
+  file and the pre-push hook are the enforcement. Tests are in `scripts/tests/test_agent_hooks.py`.
+- The pre-push hook also runs each changed source's `review_` tests (`cargo test review_`), which
+  make no requests, and fails when `aidoku-test-runner` isn't installed. The live suite stays out
+  of the hook, since a site outage would block every push.
 - `scripts/check-sources.py [--base <ref>] [ids…]` checks the rules that need no network:
   tab-indented JSON, final newlines, no `"multi"` language, `minAppVersion` present,
   `breakingChangeVersion` in `config`, a 128×128 icon, redundant filter defaults, check

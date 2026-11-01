@@ -118,6 +118,11 @@ that shipped:
 
 ## Phase 4 — Verify
 
+Run `scripts/review-source.sh <id>` before calling any source work done. It runs every step
+below, prints the section 3 checklist to answer row by row, and stamps the result. In Claude Code
+the Stop hook refuses to finish until a passing stamp matches the source's current files; Codex
+has no such hook, so run it yourself. The individual commands follow.
+
 From the source directory:
 
 ```sh
