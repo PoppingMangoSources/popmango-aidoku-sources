@@ -10,7 +10,7 @@ sources:
   - code: sources/en.flamecomics/src/test.rs
   - code: sources/en.flamecomics/res/filters.json
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: 75828b2
+verified_at: 60c7057
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
@@ -18,7 +18,7 @@ Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow e
 or years to filter on, and `/api/novel/chapter/list` repeats the chapters a novel's page
 already carries. Every page embeds its data as `__NEXT_DATA__`, and the source reads that from
 the page it needs
-(`sources/en.flamecomics/src/helpers.rs:15`): one request per operation. The site's
+(`sources/en.flamecomics/src/helpers.rs:19`): one request per operation. The site's
 `/_next/data/{buildId}/…json` route carries the same data, but the build id only comes from
 another page, so it would cost two. Over the wire `/browse` is about 70 KB.
 
@@ -30,21 +30,31 @@ parser that called `expect`.
 
 Series and novels have separate id spaces that overlap (`/series/12` and `/novel/12` are
 different titles), so keys are the site's paths, `/series/{id}` and `/novel/{id}`
-(`sources/en.flamecomics/src/models.rs:58`), and chapter keys are `/{token}`. These are the
+(`sources/en.flamecomics/src/models.rs:59`), and chapter keys are `/{token}`. These are the
 keys the old source used, so libraries and read history carry over without a
 `breakingChangeVersion`.
 
 ## Home
 
-The banner carousel comes first as an image scroller, then the sections in the site's
-`blocksConfig` order: Novels, Popular, Staff Picks, Latest and Latest Novels
-(`sources/en.flamecomics/src/lib.rs:168`). The site's blog blocks are left out.
+The banner carousel comes first as an image scroller, then Popular, Latest Updates, Novels, Staff
+Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:144`). That is the owner's order,
+not the site's (`blocksConfig` puts Novels first and Latest after Staff Picks), and the latest
+rows page three at a time. The site's blog blocks are left out.
+
+> ⚠️ A review may cite the "order the home as the site does" rule; the order here is
+> deliberate. "Latest Updates" is the site's own heading for that row.
 
 ## Novels
 
-Novel chapters are html `content`, read as paragraphs. Every novel chapter carries a price;
+Novel chapters are html `content`. Descriptions and chapter text are converted to Markdown by
+`markdown` (`sources/en.flamecomics/src/helpers.rs:71`), which escapes the text and keeps
+`<em>`/`<strong>` as `*`/`**`, since the app renders both as Markdown. Every novel chapter carries a price;
 which ones are locked follows the site's own code, copied in `locked_chapters`
-(`sources/en.flamecomics/src/helpers.rs:52`).
+(`sources/en.flamecomics/src/helpers.rs:134`).
+
+> ⚠️ `markdown` walks text nodes with `child_nodes`, which needs app 0.8.3, so `minAppVersion`
+> is 0.8.3, as on the merged novel sources. Bare-text descriptions (3 of 26 sampled) are wrapped
+> in a `<p>` first; the test runner's fragments have no `body` to fall back to.
 
 > ⚠️ Read the embedded data with `data()`, falling back to `html()`, as the merged
 > `ja.soraraw` and `mangak` template do. The test runner finds the `__NEXT_DATA__` script but

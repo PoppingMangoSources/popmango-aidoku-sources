@@ -598,6 +598,11 @@ is short-lived, so a cache dies with it.
   partial one (`en.atsumaru`). Details in the skill's `references/aidoku-host.md`.
 - `MangaList` rows also show the **manga's tags** when it has any, so a row's manga carries
   none.
+- Descriptions and text pages are rendered as **Markdown** (`en.hentai2read` says so for
+  descriptions), so escape the site's text with `escape_markdown` and turn `<em>`/`<strong>` into
+  `*`/`**`, as `en.novelbuddy`, `en.chikari` and `en.freewebnovel` do. Walking text nodes needs
+  `Element::child_nodes` and `Kind`, which `aidoku verify` dates to app **0.8.3**, the
+  `minAppVersion` those three declare (verified on `en.flamecomics`).
 
 ### Global mutable state
 
