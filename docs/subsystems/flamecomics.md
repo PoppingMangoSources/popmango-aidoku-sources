@@ -10,7 +10,7 @@ sources:
   - code: sources/en.flamecomics/src/test.rs
   - code: sources/en.flamecomics/res/filters.json
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: 43ad4ba
+verified_at: e3dd71d
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
@@ -30,14 +30,14 @@ parser that called `expect`.
 
 Series and novels have separate id spaces that overlap (`/series/12` and `/novel/12` are
 different titles), so keys are the site's paths, `/series/{id}` and `/novel/{id}`
-(`sources/en.flamecomics/src/models.rs:59`), and chapter keys are `/{token}`. These are the
+(`sources/en.flamecomics/src/helpers.rs:33`), and chapter keys are `/{token}`. These are the
 keys the old source used, so libraries and read history carry over without a
 `breakingChangeVersion`.
 
 ## Home
 
 The banner carousel comes first as an image scroller, then Popular, Latest Updates, Novels, Staff
-Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:144`). That is the owner's order,
+Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:147`). That is the owner's order,
 not the site's (`blocksConfig` puts Novels first and Latest after Staff Picks), and the latest
 rows page five at a time. The site's blog blocks are left out.
 
@@ -47,10 +47,10 @@ rows page five at a time. The site's blog blocks are left out.
 ## Novels
 
 Novel chapters are html `content`. Descriptions and chapter text are converted to Markdown by
-`markdown` (`sources/en.flamecomics/src/helpers.rs:71`), which escapes the text and keeps
+`markdown` (`sources/en.flamecomics/src/helpers.rs:78`), which escapes the text and keeps
 `<em>`/`<strong>` as `*`/`**`, since the app renders both as Markdown. Every novel chapter carries a price;
 which ones are locked follows the site's own code, copied in `locked_chapters`
-(`sources/en.flamecomics/src/helpers.rs:134`).
+(`sources/en.flamecomics/src/helpers.rs:141`).
 
 Show Locked Chapters (`showLocked`, on by default, read in `settings.rs`) leaves locked chapters
 out of the list when it is off, the same switch en.asurascans and the gigaviewer template have.
