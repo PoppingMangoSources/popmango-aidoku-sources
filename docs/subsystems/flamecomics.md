@@ -13,8 +13,11 @@ sources:
 verified_at: 66f6971
 ---
 
-Flame Comics (`flamecomics.xyz`) is a Next.js site with no separate API. Every page embeds
-its data as `__NEXT_DATA__`, and the source reads that from the page it needs
+Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
+`/api/spotlight` lists every title's id, name and cover for the search box, with no tags, types
+or years to filter on, and `/api/novel/chapter/list` repeats the chapters a novel's page
+already carries. Every page embeds its data as `__NEXT_DATA__`, and the source reads that from
+the page it needs
 (`sources/en.flamecomics/src/helpers.rs:15`): one request per operation. The site's
 `/_next/data/{buildId}/…json` route carries the same data, but the build id only comes from
 another page, so it would cost two. Over the wire `/browse` is about 70 KB.
