@@ -2,7 +2,7 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 sources:
   - code: scripts/check-sources.py
   - code: scripts/tests/test_check_sources.py
@@ -10,7 +10,11 @@ sources:
   - code: .github/workflows/check.yaml
   - code: .githooks/pre-push
   - code: scripts/pr-branch.sh
-verified_at: a99bd93
+  - code: scripts/review-source.sh
+  - code: scripts/agent-hooks.py
+  - code: scripts/tests/test_agent_hooks.py
+  - code: .claude/settings.json
+verified_at: 3384cff
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -95,3 +99,24 @@ without a width.
 > ⚠️ The bump rule runs only with `--base` (`scripts/check-sources.py:287`), comparing
 > the source's version with its version at that ref. A plain run never reports a missing bump.
 > A source new since the ref has no file to compare and passes.
+
+## Review command and agent hooks
+
+`scripts/review-source.sh <id>` runs the gates with live tests, this checker, `upstream-usage.py`,
+the upstream scope of the source's branch, and prints the section 3 rules as a checklist, then
+stamps the result with a hash of the source's files (`scripts/agent-hooks.py:118`). The shared
+Claude Code hooks in `.claude/settings.json` call `agent-hooks.py`: `pre-edit` points the first
+edit of each source or template per session at the workflow, and `stop` blocks the end of a turn
+while a changed source fails this checker or has no passing stamp for its current files
+(`scripts/agent-hooks.py:92`). The pre-push hook runs each changed source's `review_` tests.
+
+> ⚠️ The stamp covers every file in the source except `target/` and `package.aix`, so `cargo fmt`
+> or a bump after the review invalidates it. Run the review last.
+
+> ⚠️ A Stop hook that blocks again on its own retry would loop, so with `stop_hook_active` set it
+> only prints the problems. A live-site failure gets reported to the person instead of fixed.
+
+> ⚠️ `.claude/settings.json` is shared and committed. A plugin that writes its own settings must
+> use `.claude/settings.local.json`, which `.gitignore` covers; one that rewrites `settings.json`
+> silently drops these hooks, and `git status` is the only sign.
+
