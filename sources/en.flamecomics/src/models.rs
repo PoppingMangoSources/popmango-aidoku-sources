@@ -59,10 +59,6 @@ pub struct Unlock {
 }
 
 impl Entry {
-	fn key(&self) -> Result<String> {
-		key(self.novel_id, self.series_id).ok_or_else(|| error!("{} has no id", self.title))
-	}
-
 	fn cover_url(&self) -> Option<String> {
 		let (folder, id) = match self.novel_id {
 			Some(id) => ("novels", id),
@@ -86,7 +82,7 @@ impl Entry {
 	}
 
 	pub fn into_details(self) -> Result<Manga> {
-		let key = self.key()?;
+		let key = key(self.novel_id, self.series_id)?;
 		let status = match self.status.as_deref().map(str::to_lowercase).as_deref() {
 			Some("ongoing") => MangaStatus::Ongoing,
 			Some("completed") => MangaStatus::Completed,
@@ -144,7 +140,7 @@ impl TryFrom<Entry> for Manga {
 
 	fn try_from(entry: Entry) -> Result<Self> {
 		Ok(Manga {
-			key: entry.key()?,
+			key: key(entry.novel_id, entry.series_id)?,
 			cover: entry.cover_url(),
 			title: entry.title,
 			..Default::default()
@@ -222,7 +218,7 @@ pub struct Slide {
 
 impl Slide {
 	pub fn into_link(self) -> Option<Link> {
-		let key = key(self.novel_id, self.series_id)?;
+		let key = key(self.novel_id, self.series_id).ok()?;
 		Some(Link {
 			title: self.title,
 			image_url: Some(format!("{CDN_URL}/uploads/images/carousel/{}", self.image)),
