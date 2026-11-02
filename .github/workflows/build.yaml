@@ -22,6 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate before packaging
+        run: python3 scripts/ci-gates.py --event
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -40,6 +45,17 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - uses: ./.github/actions/install-aidoku-cli
+
+      - name: Lint changed sources before packaging
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          base="$BASE_SHA"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base="origin/main"
+          fi
+          python3 scripts/changed-crates.py --base "$base" | bash scripts/lint-crates.sh
 
       - name: Build sources
         run: |

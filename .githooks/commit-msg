@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+tooling=$(cd "$(dirname "$0")/.." && pwd)
+python3 "$tooling/scripts/check-commits.py" --message "$1"

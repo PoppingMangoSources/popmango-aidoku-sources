@@ -733,7 +733,11 @@ and imports, even `pub` ones in private modules. What it doesn't fail, and what 
 
 - No issue or PR numbers (`#123`) and no links in commit messages: GitHub turns them into
   links and posts a reference on the upstream thread. Name the change in words instead.
-- No AI attribution in commit messages, PR bodies or code comments. No other sources or
+- No AI attribution in commit messages, PR bodies or code comments.
+  `.claude/settings.json` disables commit/PR attribution and session URLs.
+  Session start and `scripts/install-hooks.sh` configure the owner identity and unsigned
+  commits. The commit-message hook checks proposed messages; pre-push and CI check every
+  introduced commit, including commits hidden behind a merge or an already-pushed ref. No other sources or
   third-party clients named in code comments or test data.
 - Don't open a PR or post on one unless asked; draft the text for the person to post.
 
@@ -766,6 +770,13 @@ went in one of these ways, and new ones go in the same way:
    both corrected that way.
 
 ### Gates
+
+- Run `python3 scripts/ci-gates.py --base origin/main` for the offline repository gates.
+  CI and packaging invoke the same checks. Pre-push also runs instruction-copy checks,
+  script regressions and workflow checks even when no source changed. Rust source gates
+  and honest reporting of blocked live/device checks still apply.
+  A Stop-hook execution error blocks completion rather than silently reporting success.
+
 
 - `scripts/install-hooks.sh` once per clone from the tooling checkout on `main`. It installs
   an absolute hooks path so the same hook works in clean upstream worktrees; keep that

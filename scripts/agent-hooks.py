@@ -143,6 +143,8 @@ def main() -> int:
             (pre_edit if command == "pre-edit" else stop)(event)
         except Exception as error:  # noqa: BLE001
             print(f"agent-hooks {command}: {error}", file=sys.stderr)
+            if command == "stop":
+                print(json.dumps({"decision": "block", "reason": f"Workflow validation could not run: {error}"}))
     elif command == "stamp" and len(sys.argv) == 4:
         stamp(sys.argv[2], sys.argv[3])
     elif command == "checklist":

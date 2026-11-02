@@ -25,6 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate repository gates
+        run: python3 scripts/ci-gates.py --event
+
       - name: Check changed sources
         # Read from the environment: a ref name on a fork's pull request is attacker-chosen.
         env:
