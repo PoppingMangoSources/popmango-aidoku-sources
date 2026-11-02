@@ -2,13 +2,10 @@
 title: Flame Comics (en.flamecomics)
 type: subsystem
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 sources:
-  - code: sources/en.flamecomics/src/lib.rs
-  - code: sources/en.flamecomics/src/helpers.rs
-  - code: sources/en.flamecomics/src/models.rs
-  - code: sources/en.flamecomics/src/test.rs
-  - code: sources/en.flamecomics/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/171e770833b81843aa13c36514d13d6ca11ca25a/sources/en.flamecomics
+  - ext: https://github.com/Aidoku-Community/sources/pull/860
   - ext: https://github.com/Aidoku-Community/sources/issues/855
 verified_at: 2ce2397
 ---
@@ -18,7 +15,7 @@ Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow e
 or years to filter on, and `/api/novel/chapter/list` repeats the chapters a novel's page
 already carries. Every page embeds its data as `__NEXT_DATA__`, and the source reads that from
 the page it needs
-(`sources/en.flamecomics/src/helpers.rs:19`): one request per operation. The site's
+(`next_data` in `helpers.rs`): one request per operation. The site's
 `/_next/data/{buildId}/…json` route carries the same data, but the build id only comes from
 another page, so it would cost two. Over the wire `/browse` is about 70 KB.
 
@@ -26,18 +23,25 @@ The old source scraped Mantine class names by position. The site's markup moved 
 gave issue 855: untitled latest rows, novels that would not open, and a crash from a date
 parser that called `expect`.
 
+> ⚠️ The crate is not on `main`. It was removed while upstream PR 860 is open; the submission is
+> the `fix/en.flamecomics` branch, and the last copy on `main`, with its live tests in
+> `src/test.rs`, is commit `171e770`. A review round builds from that commit:
+> `scripts/pr-branch.sh en.flamecomics --branch fix/en.flamecomics --from 171e770 --fix …`, after
+> restoring the crate on `main` if the change needs testing there. Function names below refer
+> to that commit.
+
 ## Keys
 
 Series and novels have separate id spaces that overlap (`/series/12` and `/novel/12` are
 different titles), so keys are the site's paths, `/series/{id}` and `/novel/{id}`
-(`sources/en.flamecomics/src/helpers.rs:33`), and chapter keys are `/{token}`. These are the
+(`key` in `helpers.rs`), and chapter keys are `/{token}`. These are the
 keys the old source used, so libraries and read history carry over without a
 `breakingChangeVersion`.
 
 ## Home
 
 The banner carousel comes first as an image scroller, then Popular, Latest Updates, Novels, Staff
-Picks and Latest Novels (`sources/en.flamecomics/src/lib.rs:152`). That is the owner's order,
+Picks and Latest Novels (`get_home` in `lib.rs`). That is the owner's order,
 not the site's (`blocksConfig` puts Novels first and Latest after Staff Picks), and the latest
 rows page five at a time. The site's blog blocks are left out.
 
@@ -47,12 +51,12 @@ rows page five at a time. The site's blog blocks are left out.
 ## Novels
 
 Novel chapters are html `content`. Descriptions and chapter text are converted to Markdown by
-`markdown` (`sources/en.flamecomics/src/helpers.rs:78`), which escapes the text and keeps
+`markdown` in `helpers.rs`, which escapes the text and keeps
 `<em>`/`<strong>` as `*`/`**`, since the app renders both as Markdown. Every novel chapter carries a price;
 which ones are locked follows the site's own code, copied in `locked_chapters`
-(`sources/en.flamecomics/src/helpers.rs:141`).
+in `helpers.rs`.
 
-Show Locked Chapters (`showLocked`, off by default, read in `settings.rs`) leaves locked chapters
+Show Locked Chapters (`showLocked`, off by default, read in the settings module) leaves locked chapters
 out of the list unless it is on, the same switch en.asurascans and the gigaviewer template have.
 
 > ⚠️ Off by default because the source has no login: locked chapters can't be opened, so showing
@@ -95,5 +99,5 @@ out of the list unless it is on, the same switch en.asurascans and the gigaviewe
 > ⚠️ Browse defaults to Title A to Z, like the site. Popularity runs the other way from Title:
 > the site's descending order starts at rank 1, and ties (most entries are unranked) stay A to
 > Z whichever way the arrow points, so the sort doesn't just reverse the list
-> (`sources/en.flamecomics/src/lib.rs:67`). `popularity_sort_puts_the_top_ranked_first`
+> (the search sort in `lib.rs`). `popularity_sort_puts_the_top_ranked_first`
 > checks it against the site's ranks.

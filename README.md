@@ -39,7 +39,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 ## Manga, Manhwa & Manhua
 
-**24 sources** are currently packaged in this repository.
+**22 sources** are currently packaged in this repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/mkissa.png" width="24" align="top"/>&nbsp; Mkissa &nbsp;<sub><a href="https://mkissa.to">mkissa.to</a></sub></h3>
 
@@ -56,10 +56,6 @@ If you want the complete, actively maintained set, use the Paperback repository.
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.cocomic/res/icon.png" width="24" align="top"/>&nbsp; Cocomic &nbsp;<sub><a href="https://cocomic.co">cocomic.co</a></sub></h3>
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v11.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.cocomic-v11.aix">.aix (v11)</a></sub>
-
-<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.flamecomics/res/icon.png" width="24" align="top"/>&nbsp; Flame Comics &nbsp;<sub><a href="https://flamecomics.xyz">flamecomics.xyz</a></sub></h3>
-
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.flamecomics-v14.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.flamecomics-v14.aix">.aix (v14)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/kingofshojo.png" width="24" align="top"/>&nbsp; KingOfShojo &nbsp;<sub><a href="https://kingofshojo.com">kingofshojo.com</a></sub></h3>
 
@@ -80,10 +76,6 @@ If you want the complete, actively maintained set, use the Paperback repository.
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.mangahome/res/icon.png" width="24" align="top"/>&nbsp; MangaHome &nbsp;<sub><a href="https://www.mangahome.com">mangahome.com</a></sub></h3>
 
 <sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangahome-v5.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangahome-v5.aix">.aix (v5)</a></sub>
-
-<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/en.mangak/res/icon.png" width="24" align="top"/>&nbsp; MangaK &nbsp;<sub><a href="https://mangak.io">mangak.io</a></sub></h3>
-
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v17.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangak-v17.aix">.aix (v17)</a></sub>
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/mangatown.png" width="24" align="top"/>&nbsp; MangaTown &nbsp;<sub><a href="https://www.mangatown.com">mangatown.com</a></sub></h3>
 

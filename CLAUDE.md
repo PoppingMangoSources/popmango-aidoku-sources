@@ -100,7 +100,8 @@ RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 dev-dependencies on ~129 sources — the scaffold adds them. Tests go in `src/test.rs`,
 declared in `lib.rs` as `#[cfg(test)] mod test;`, and are marked `#[aidoku_test]`;
 `en.mangakakalot`, `ja.senmanga`, `ja.soraraw`, `ja.spoilerplus` and `en.chikari` (inline in
-`lib.rs`) have real ones upstream, and `en.mangak` here. They hit live endpoints and assert
+`lib.rs`) have real ones upstream; `en.mangak` and `en.flamecomics` had them here (in `main`'s
+history, last at `171e770`). They hit live endpoints and assert
 on actual results — pinned keys, whether a url resolves, whether a listing comes back sane,
 whether each setting and filter actually narrows what the site returns.
 
@@ -1021,9 +1022,8 @@ engine or theme:
 `pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`.
 
 Our `templates/` is upstream's copy, except `madara`, `madtheme` and `mangathemesia`, which
-carry additions our sources use (shared detail parsing, listings and dynamic filters), and
-`mangak`, which is ahead of upstream until #850 merges (search filters, the home page and
-featured details, moved there from `en.mangak` on review). The
+carry additions our sources use (shared detail parsing, listings and dynamic filters). `mangak`
+merged with #850 and is upstream's copy again; its consumers live upstream only. The
 `madtheme` ones (a home page and a chapter-list fallback) were for Kaliscan, which now sits on
 the `dead-sources` branch with Galaxy Manga and OManga. When syncing, take upstream's files for every other
 template and bring only upstream's own changes into those three.
@@ -1238,3 +1238,13 @@ reaches the site, unless marked.
   `/api/read/novelChapter` (`paragraphs`). Covers are AVIF with a WebP copy beside each.
 - **Errors.** Search answers `{"message": …}`; the other endpoints answer plain text
   (`Chapter not found`) or a validation object, so only search's message is shown.
+
+## 17. Sources kept off `main` while upstream
+
+`en.mangak` merged upstream (#850) and `en.flamecomics` waits on #860, so both were removed from
+`main`; their crates and live tests are in `main`'s history, last at `171e770`. The Flame
+submission is the `fix/en.flamecomics` branch. A review round restores the crate on `main` from
+that commit, fixes and tests it there, then runs `scripts/pr-branch.sh en.flamecomics --branch
+fix/en.flamecomics --fix …`; removing it again afterwards keeps `main` to the fork's own
+sources. What each site taught is in `docs/subsystems/flamecomics.md` and
+`docs/subsystems/mangak-template.md`, and the review rules from both PRs stay in section 3.

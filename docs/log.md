@@ -24,3 +24,8 @@ Append-only. Newest entries at the bottom.
 
 - New page [[flamecomics]] after rewriting the source on the site's embedded data.
 - [[source-checks]] re-verified at `a99bd93` (the new rules are described there).
+
+## [2026-11-02] update | flamecomics, mangak-template
+
+- `en.flamecomics` and `en.mangak` left `main` (last copies at `171e770`). Both pages now point
+  at that commit and upstream; the review rules stay in the root `CLAUDE.md`.
