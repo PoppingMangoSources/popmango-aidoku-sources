@@ -61,6 +61,14 @@ class CommitEnforcementTests(unittest.TestCase):
                                     env={**os.environ, "GITHUB_EVENT_PATH": str(event)}, capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn("attribution", result.stderr)
+            scripts = Path(folder) / "scripts"
+            scripts.mkdir()
+            for filename in ("ci-gates.py", "check-commits.py"):
+                shutil.copy2(SCRIPTS / filename, scripts / filename)
+            manual = subprocess.run(["python3", str(scripts / "ci-gates.py"), "--base", before], cwd=folder,
+                                    capture_output=True, text=True)
+            self.assertEqual(manual.returncode, 1)
+            self.assertIn("attribution", manual.stderr)
 
     def test_commit_hook_uses_owner_identity_and_rejects_attribution(self):
         with tempfile.TemporaryDirectory() as folder:
