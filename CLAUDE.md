@@ -945,7 +945,8 @@ was a parameter we sent and they didn't, not the endpoint or the sort key.
 ## 11. Toonkotsu specifics
 
 `en.toonkotsu` lives upstream only; it was removed from `main` once merged there, and a later
-change is a new branch from `upstream/main`, as for Kagane.
+change is a new branch from `upstream/main`, as for Kagane. The last copy and its tests are
+listed in section 17.
 Kept here because the API is undocumented. Everything below was confirmed by console
 probes or captures unless marked.
 
@@ -1093,7 +1094,8 @@ in section 3 came from doing exactly that.
 ## 14. Kagane specifics
 
 `multi.kagane` lives upstream only. The rework merged as #827; a later change is a new
-branch from `upstream/main` (it isn't on our `main`, so `scripts/pr-branch.sh` can't copy it).
+branch from `upstream/main` (it isn't on our `main`, so `scripts/pr-branch.sh` can't copy it
+until it is restored from its last copy, section 17).
 Confirmed by console probes on kagane.si unless marked.
 
 - Mirrors: kagane.cx (default), kagane.si, kagane.moe, kagane.net serve the same catalogue
@@ -1248,6 +1250,8 @@ crate and live tests stay in `main`'s history; what it taught stays in this file
 
 | Source | State | Last copy on `main` | Branch | What it taught |
 |---|---|---|---|---|
+| `multi.kagane` | merged (#827) | `99c3658`, never had tests | from `upstream/main` | sections 3 and 14 |
+| `en.toonkotsu` | merged (#815, #821) | `15762be`; tests last at `ff9e199` | from `upstream/main` | sections 3 and 11 |
 | `en.atsumaru` | merged (#843) | `43255ad` | from `upstream/main` | sections 3 and 16 |
 | `multi.xcomic` | update open (#853) | `b86969e` | `fix/multi.xcomic` | sections 3 and 10 |
 | `en.mangak` | merged (#850) | `171e770` | from `upstream/main` | section 3, `docs/subsystems/mangak-template.md` |
