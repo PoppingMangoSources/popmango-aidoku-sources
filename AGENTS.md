@@ -890,8 +890,10 @@ went in one of these ways, and new ones go in the same way:
 ## 10. xcomic specifics
 
 Kept here because the API is undocumented and this took a while to work out. `multi.xcomic`
-lives upstream; it left `main` while its update waits on `fix/multi.xcomic` (#853), and its
-crate and tests are at `b86969e` (section 17).
+lives upstream only: #735 added it, #738 added the yona.to mirror, #762 and #771 followed the
+site's title api and edition urls, and #853 added formats and Merge Editions. Its crate and
+tests are at `b86969e` (section 17); a later change restarts `fix/multi.xcomic` from
+`upstream/main`.
 
 - GraphQL, `POST {base}/query/`. Bato-family schema.
 - **Two id namespaces.** `/title/{id}` is the series; `/comic/{id}-{lang}-{slug}` is
@@ -1253,12 +1255,18 @@ crate and live tests stay in `main`'s history; what it taught stays in this file
 | `multi.kagane` | merged (#827) | `99c3658`, never had tests | from `upstream/main` | sections 3 and 14 |
 | `en.toonkotsu` | merged (#815, #821) | `15762be`; tests last at `ff9e199` | from `upstream/main` | sections 3 and 11 |
 | `en.atsumaru` | merged (#843) | `43255ad` | from `upstream/main` | sections 3 and 16 |
-| `multi.xcomic` | update open (#853) | `b86969e` | `fix/multi.xcomic` | sections 3 and 10 |
+| `multi.xcomic` | merged (#735, #738, #762, #771, #853) | `b86969e` | from `upstream/main` | sections 3 and 10 |
 | `en.mangak` | merged (#850) | `171e770` | from `upstream/main` | section 3, `docs/subsystems/mangak-template.md` |
 | `en.flamecomics` | fix open (#860) | `171e770` | `fix/en.flamecomics` | section 3, `docs/subsystems/flamecomics.md` |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a
 bump, then runs `scripts/pr-branch.sh <id> --branch <branch> --fix …`; removing it again
-afterwards keeps `main` to the fork's own sources. A later change to a merged source is
-`pr-branch.sh <id> --update …`, after the same restore.
+afterwards keeps `main` to the fork's own sources.
+
+A later change to a merged source starts from **upstream's** crate, not the last copy here:
+`git checkout upstream/main -- sources/<id>`, then take only `src/test.rs` from the last copy and
+add `#[cfg(test)] mod test;` back to `lib.rs`. Upstream is often ahead: XCOMIC's `b86969e` lacks
+the `canExclude: false` lines kkantan asked for on #853 and #807's warning fixes landed upstream
+only. Set the version above both upstream's and the fork's last one, then
+`pr-branch.sh <id> --update …`.
