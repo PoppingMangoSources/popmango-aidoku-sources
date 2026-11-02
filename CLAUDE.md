@@ -100,8 +100,8 @@ RUSTFLAGS=-Dwarnings aidoku package && aidoku verify package.aix
 dev-dependencies on ~129 sources — the scaffold adds them. Tests go in `src/test.rs`,
 declared in `lib.rs` as `#[cfg(test)] mod test;`, and are marked `#[aidoku_test]`;
 `en.mangakakalot`, `ja.senmanga`, `ja.soraraw`, `ja.spoilerplus` and `en.chikari` (inline in
-`lib.rs`) have real ones upstream; `en.mangak` and `en.flamecomics` had them here (in `main`'s
-history, last at `171e770`). They hit live endpoints and assert
+`lib.rs`) have real ones upstream; the sources in section 17 had them here, kept in `main`'s
+history. They hit live endpoints and assert
 on actual results — pinned keys, whether a url resolves, whether a listing comes back sane,
 whether each setting and filter actually narrows what the site returns.
 
@@ -889,7 +889,9 @@ went in one of these ways, and new ones go in the same way:
 
 ## 10. xcomic specifics
 
-Kept here because the API is undocumented and this took a while to work out.
+Kept here because the API is undocumented and this took a while to work out. `multi.xcomic`
+lives upstream; it left `main` while its update waits on `fix/multi.xcomic` (#853), and its
+crate and tests are at `b86969e` (section 17).
 
 - GraphQL, `POST {base}/query/`. Bato-family schema.
 - **Two id namespaces.** `/title/{id}` is the series; `/comic/{id}-{lang}-{slug}` is
@@ -1162,7 +1164,7 @@ matrix. Use the `.agents/skills/aidoku-source/references/source-review.md` copy 
 
 `en.atsumaru` lives upstream only; it was removed from `main` once merged (#843), and a later
 change is a new branch from `upstream/main`, as for Toonkotsu. Its tests went with it; the last
-copy is in `main`'s history.
+copy is at `43255ad` (section 17).
 
 `en.atsumaru` (atsu.moe): comics and novels. Confirmed by live requests from the sandbox, which
 reaches the site, unless marked.
@@ -1241,10 +1243,18 @@ reaches the site, unless marked.
 
 ## 17. Sources kept off `main` while upstream
 
-`en.mangak` merged upstream (#850) and `en.flamecomics` waits on #860, so both were removed from
-`main`; their crates and live tests are in `main`'s history, last at `171e770`. The Flame
-submission is the `fix/en.flamecomics` branch. A review round restores the crate on `main` from
-that commit, fixes and tests it there, then runs `scripts/pr-branch.sh en.flamecomics --branch
-fix/en.flamecomics --fix …`; removing it again afterwards keeps `main` to the fork's own
-sources. What each site taught is in `docs/subsystems/flamecomics.md` and
-`docs/subsystems/mangak-template.md`, and the review rules from both PRs stay in section 3.
+A source leaves `main` once it is upstream, or while its upstream branch waits on review. Its
+crate and live tests stay in `main`'s history; what it taught stays in this file and `docs/`.
+
+| Source | State | Last copy on `main` | Branch | What it taught |
+|---|---|---|---|---|
+| `en.atsumaru` | merged (#843) | `43255ad` | from `upstream/main` | sections 3 and 16 |
+| `multi.xcomic` | update open (#853) | `b86969e` | `fix/multi.xcomic` | sections 3 and 10 |
+| `en.mangak` | merged (#850) | `171e770` | from `upstream/main` | section 3, `docs/subsystems/mangak-template.md` |
+| `en.flamecomics` | fix open (#860) | `171e770` | `fix/en.flamecomics` | section 3, `docs/subsystems/flamecomics.md` |
+
+A review round on an open branch restores the crate on `main` from its last copy
+(`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a
+bump, then runs `scripts/pr-branch.sh <id> --branch <branch> --fix …`; removing it again
+afterwards keeps `main` to the fork's own sources. A later change to a merged source is
+`pr-branch.sh <id> --update …`, after the same restore.
