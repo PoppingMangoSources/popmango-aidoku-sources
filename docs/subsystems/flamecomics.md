@@ -41,7 +41,7 @@ keys the old source used, so libraries and read history carry over without a
 ## Home
 
 The banner carousel comes first as an image scroller, then Popular, Latest Updates, Novels, Staff
-Picks and Latest Novels (`get_home` in `lib.rs`). That is the owner's order,
+Picks and Latest Novels (`get_home` in the crate root). That is the owner's order,
 not the site's (`blocksConfig` puts Novels first and Latest after Staff Picks), and the latest
 rows page five at a time. The site's blog blocks are left out.
 
@@ -99,5 +99,5 @@ out of the list unless it is on, the same switch en.asurascans and the gigaviewe
 > ⚠️ Browse defaults to Title A to Z, like the site. Popularity runs the other way from Title:
 > the site's descending order starts at rank 1, and ties (most entries are unranked) stay A to
 > Z whichever way the arrow points, so the sort doesn't just reverse the list
-> (the search sort in `lib.rs`). `popularity_sort_puts_the_top_ranked_first`
+> (the search sort in the crate root). `popularity_sort_puts_the_top_ranked_first`
 > checks it against the site's ranks.
