@@ -2,7 +2,7 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-01
+updated: 2026-11-02
 sources:
   - code: scripts/check-sources.py
   - code: scripts/tests/test_check_sources.py
@@ -14,7 +14,11 @@ sources:
   - code: scripts/agent-hooks.py
   - code: scripts/tests/test_agent_hooks.py
   - code: .claude/settings.json
-verified_at: 3384cff
+  - code: scripts/check-commits.py
+  - code: scripts/ci-gates.py
+  - code: scripts/tests/test_commit_enforcement.py
+  - code: .github/workflows/build.yaml
+verified_at: 90f9d770a6bce46aaa5a91ff3c3087a0da042f70
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -118,5 +122,26 @@ while a changed source fails this checker or has no passing stamp for its curren
 
 > ⚠️ `.claude/settings.json` is shared and committed. A plugin that writes its own settings must
 > use `.claude/settings.local.json`, which `.gitignore` covers; one that rewrites `settings.json`
-> silently drops these hooks, and `git status` is the only sign.
+> can drop these hooks. The repository regression suite now checks the required hook entries
+> and attribution settings, so settings changes also need a passing gate run.
+
+## Repository and commit gates
+
+`python3 scripts/ci-gates.py --base origin/main` runs commit metadata checks, agent-doc sync,
+Python regression tests, offline workflow checks and changed-source rules. The checking and
+packaging workflows use its event mode to validate the actual GitHub update range. The pre-push
+hook also runs repository checks for tooling-only changes, while retaining source compilation,
+verification, review tests and upstream submission scope checks. Packaging checks changed
+Rust crates before building. Live-site and device checks remain separate.
+
+`scripts/install-hooks.sh` installs executable commit-message and pre-push hooks, configures
+the owner's identity and disables signing. Claude's SessionStart hook runs it automatically;
+the shared settings disable commit and PR attribution and session URLs. Pending messages and
+raw author, committer, signature and message metadata are checked, including merge parents
+and already-pushed commits in the update range. See the root guide for the canonical policy.
+
+Unexpected Stop-hook execution errors block completion. Regression tests cover the actual
+installed commit hook, an invalid merged commit that is already on the remote, broken hook
+input and the settings and workflow wiring. These checks supplement the existing source rules
+and review stamps; they do not replace live tests or manual review.
 

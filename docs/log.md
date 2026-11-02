@@ -29,3 +29,8 @@ Append-only. Newest entries at the bottom.
 
 - `en.flamecomics` and `en.mangak` left `main` (last copies at `171e770`). Both pages now point
   at that commit and upstream; the review rules stay in the root `CLAUDE.md`.
+
+## [2026-11-02] update | source-checks
+
+- [[source-checks]] updated for owner-only unsigned commit metadata, automatic hook setup,
+  repository checks before packaging and Stop-hook execution failures. Verified at `90f9d77`.
