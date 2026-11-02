@@ -10,7 +10,7 @@ sources:
   - code: templates/mangak/src/models.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/171e770833b81843aa13c36514d13d6ca11ca25a/sources/en.mangak
   - ext: https://github.com/Aidoku-Community/sources/pull/850
-verified_at: 07f5fdc
+verified_at: d1c881a
 ---
 
 MangaK (`mangak.io`, `en.mangak`) and ToonTop (`toontop.io`, `en.toonilyme`), both upstream only, run the

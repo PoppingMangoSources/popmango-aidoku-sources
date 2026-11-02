@@ -7,7 +7,7 @@ sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/171e770833b81843aa13c36514d13d6ca11ca25a/sources/en.flamecomics
   - ext: https://github.com/Aidoku-Community/sources/pull/860
   - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: 2ce2397
+verified_at: d1c881a
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
