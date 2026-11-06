@@ -8,10 +8,11 @@ sources:
   - code: sources/en.novelarchive/src/helpers.rs
   - code: sources/en.novelarchive/src/models.rs
   - code: sources/en.novelarchive/src/test.rs
+  - code: sources/en.novelarchive/src/settings.rs
   - code: sources/en.novelarchive/res/filters.json
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: 278b11a
+verified_at: 50181bf
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -26,16 +27,15 @@ Search is the library's browse call: `search` with `fuzzy=1`, `sort`, `status`, 
 Recently Updated is the default sort and is never sent. `has_next_page` comes from `pagination`.
 
 Genres are a dynamic filter from `/api/novels/genres`, about 700 merged upstream values, without
-the site's category values (`NON_GENRES`) (`sources/en.novelarchive/src/lib.rs:258`). A tapped tag
+the site's category values (`NON_GENRES`) (`sources/en.novelarchive/src/lib.rs:264`). A tapped tag
 sends its label lowercased, as the site lowercases every genre.
 
-> ⚠️ Hiding adult novels is a search check, Hide Adult Novels, off by default, as in the other
-> client the owner follows; the source has no settings. When checked it adds the site's twelve adult
-> genres to `genres_exclude`, as the site's library does (`ADULT_GENRES`,
-> `sources/en.novelarchive/src/helpers.rs:15`), so the server keeps pages full. Listings and Discover
-> never apply it. The site's own library switch starts on, and a review may cite the rule that a
-> source rated 1 hides adult titles by default; keeping it a search choice was the owner's call, with
-> the source still rated 1 and every card carrying its content rating.
+> ⚠️ Hide Adult Novels is a setting, on by default as the site's library switch is and as a
+> source rated 17+ must be, and a check in the search sheet that overrides it for one search: ticked
+> sends 1 and hides, excluded sends 2 and shows, unticked isn't sent and the setting decides. Hiding
+> adds the site's twelve adult genres to `genres_exclude`, as its library does (`ADULT_GENRES`,
+> `sources/en.novelarchive/src/helpers.rs:15`), so the server keeps pages full. The setting also
+> covers the listings and the three sorted Discover rows; the fixed feeds take no exclusions.
 
 > ⚠️ The fixed feeds (`trending`, `recently-updated`, `editors-choice`) ignore `genres_exclude`
 > (the same list came back with and without it, probed 2026-11-06), and the site's home shows them
@@ -47,10 +47,10 @@ sends its label lowercased, as the site lowercases every genre.
 Six rows, in one parallel request, in the owner's order: Trending (a big scroller), Popular,
 Recently Updated (each novel's newest chapter, five a page), Editor's Choice (a big scroller, since
 the feed carries each pick's description and genres), Top Rated and New in the Archive
-(`sources/en.novelarchive/src/lib.rs:114`). The fixed feeds are read with `limit=50`, the most
+(`sources/en.novelarchive/src/lib.rs:117`). The fixed feeds are read with `limit=50`, the most
 they return (asked for 120, trending answered 50). The three sorted rows are browse pages
 (`popular`, `rating`, the default sort) and link listings of the same name
-(`sources/en.novelarchive/src/lib.rs:240`). Recently Updated names each novel's newest chapter by
+(`sources/en.novelarchive/src/lib.rs:245`). Recently Updated names each novel's newest chapter by
 its count: lists carry no chapter names, only `total_chapters`, so that chapter has a number and the
 novel's `updated_at`, never a title (`sources/en.novelarchive/src/models.rs:155`). A feed that
 fails drops out; the home fails only when all six do.
