@@ -307,6 +307,19 @@ def check_cargo(path: Path) -> None:
         fail(path, f"[profile.release] lacks {', '.join(missing)}, which every upstream source sets")
 
 
+# aidoku-rs commits whose bail! ends in a semicolon; Rust 1.99 rejects that under -Dwarnings
+# wherever bail! is a match arm. Upstream moved every source to ae6485e, which removed it.
+STALE_AIDOKU_RS = ("1a6bb691", "a386ee40")
+
+
+def check_lock(path: Path) -> None:
+    if not path.exists():
+        return
+    for commit in STALE_AIDOKU_RS:
+        if f"aidoku-rs.git#{commit}" in path.read_text():
+            fail(path, f"locks aidoku-rs {commit}, whose bail! fails under -Dwarnings; run cargo update -p aidoku -p aidoku-test")
+
+
 def check_test_dependencies(source: Path) -> None:
     manifest = source / "Cargo.toml"
     data = tomllib.loads(manifest.read_text())
@@ -334,6 +347,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
         else:
             check_text_file(source / name)
     check_cargo(source / "Cargo.toml")
+    check_lock(source / "Cargo.lock")
     check_tests(source)
     check_test_dependencies(source)
     info = check_source_json(source / "res" / "source.json", source_id)

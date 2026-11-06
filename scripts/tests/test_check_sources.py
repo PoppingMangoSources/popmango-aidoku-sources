@@ -123,6 +123,19 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cargo(path)
         self.assertTrue(any('lto = true' in failure for failure in checks.failures))
 
+    def test_stale_aidoku_lock_fails(self):
+        path = self.source / 'Cargo.lock'
+        path.write_text('[[package]]\nname = "aidoku"\nsource = "git+https://github.com/Aidoku/aidoku-rs.git#1a6bb691dd67c7151fc76fc852fb5a364d325f72"\n')
+        checks.check_lock(path)
+        self.assertTrue(any('locks aidoku-rs 1a6bb691' in failure for failure in checks.failures))
+
+    def test_current_aidoku_lock_passes(self):
+        path = self.source / 'Cargo.lock'
+        path.write_text('[[package]]\nname = "aidoku"\nsource = "git+https://github.com/Aidoku/aidoku-rs.git#ae6485e3c14ecd1fd5497d170eae884c68d04a87"\n')
+        checks.failures.clear()
+        checks.check_lock(path)
+        self.assertEqual(checks.failures, [])
+
     def test_unused_json_test_dependency_is_noted(self):
         (self.source / 'src').mkdir()
         (self.source / 'Cargo.toml').write_text('[dev-dependencies]\nserde_json = "1"\n')

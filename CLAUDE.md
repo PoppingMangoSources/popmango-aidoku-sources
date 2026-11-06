@@ -821,8 +821,11 @@ went in one of these ways, and new ones go in the same way:
   since `<ref>`, and byte-identical `AGENTS.md`/`CLAUDE.md` plus matching physical skill trees. CI (`check.yaml`) runs it on the
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway. It also fails an endpoint constant used only with
-  a query, a constant sent once as a query value, and an adult-hiding switch that shows adult
-  titles by default on a source rated 1. It notes the section 3 **N** rows (page-size names,
+  a query, a constant sent once as a query value, an adult-hiding switch that shows adult
+  titles by default on a source rated 1, and a `Cargo.lock` pinning an aidoku-rs from before
+  `ae6485e`, whose `bail!` fails Rust 1.99 under `-Dwarnings` as a match arm. Upstream moved every
+  lock in #807; ours move when a source is next edited (`cargo update -p aidoku -p aidoku-test`),
+  since a sweep would first need each old source's backlog fixed. It notes the section 3 **N** rows (page-size names,
   own-field wrappers, single-call helpers used once, full-path calls, a sort filter that isn't
   first, an unsized image scroller) and a non-genre multi-select that leaves `canExclude` unstated.
 - `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
