@@ -11,7 +11,6 @@ use aidoku::{
 
 mod helpers;
 mod models;
-mod settings;
 #[cfg(test)]
 mod test;
 
@@ -67,6 +66,9 @@ impl Source for NovelArchive {
 					params.genres = included;
 					params.hidden_genres = excluded;
 				}
+				FilterValue::Check { id, value } if id == "hide_adult" => {
+					params.hide_adult = value == 1
+				}
 				_ => {}
 			}
 		}
@@ -110,18 +112,15 @@ impl Source for NovelArchive {
 
 impl Home for NovelArchive {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let hide_adult = settings::hide_adult();
 		let sorted = |sort| {
 			Request::get(
 				SearchParams {
 					sort,
 					..Default::default()
 				}
-				.url(1, hide_adult),
+				.url(1),
 			)
 		};
-		// Like the site's home, the fixed feeds are shown whole: they take no genre exclusions
-		// and the site hides adult titles only in its library, which the sorted rows read.
 		let feeds: Vec<Result<Vec<Novel>>> = Request::send_all([
 			Request::get(format!("{API_URL}/trending?limit={FEED_SIZE}"))?,
 			sorted(Some("popular"))?,

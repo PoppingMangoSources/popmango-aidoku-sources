@@ -1,10 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
 use super::*;
-use aidoku::{
-	ContentRating, MangaStatus,
-	imports::defaults::{DefaultValue, defaults_set},
-};
+use aidoku::{ContentRating, MangaStatus};
 use aidoku_test::aidoku_test;
 use helpers::{ADULT_GENRES, chapter_title, content_rating, genres};
 
@@ -41,6 +38,13 @@ fn genre_filter(included: &[&str], excluded: &[&str]) -> FilterValue {
 	}
 }
 
+fn hide_adult() -> FilterValue {
+	FilterValue::Check {
+		id: "hide_adult".into(),
+		value: 1,
+	}
+}
+
 fn manga(key: &str) -> Manga {
 	Manga {
 		key: key.into(),
@@ -50,7 +54,7 @@ fn manga(key: &str) -> Manga {
 
 #[aidoku_test]
 fn review_search_url_sends_what_the_site_sends() {
-	let plain = SearchParams::default().url(2, false);
+	let plain = SearchParams::default().url(2);
 	assert_eq!(plain, format!("{API_URL}?page=2&per_page=24"));
 
 	let filtered = SearchParams {
@@ -60,8 +64,9 @@ fn review_search_url_sends_what_the_site_sends() {
 		any_genre: true,
 		genres: vec!["fantasy".into(), "harem".into()],
 		hidden_genres: vec!["romance".into()],
+		hide_adult: false,
 	}
-	.url(1, false);
+	.url(1);
 	for part in [
 		"search=demon%20cult",
 		"fuzzy=1",
@@ -79,9 +84,10 @@ fn review_search_url_sends_what_the_site_sends() {
 fn review_hiding_adult_titles_adds_the_site_exclusions() {
 	let url = SearchParams {
 		hidden_genres: vec!["romance".into()],
+		hide_adult: true,
 		..Default::default()
 	}
-	.url(1, true);
+	.url(1);
 	let excluded = url.split("genres_exclude=").nth(1).unwrap();
 	assert!(excluded.starts_with("romance%2Cadult%2Csmut"));
 	assert_eq!(excluded.matches("%2C").count(), ADULT_GENRES.len());
@@ -237,12 +243,15 @@ fn search_pages_and_sorts() {
 
 #[aidoku_test]
 fn search_finds_a_title() {
-	let results = search(Some("Dual Cultivation Harem in the Demonic Cult"), vec![]);
-	// Adult titles are hidden by default, as on the site.
-	assert!(!results.entries.iter().any(|manga| manga.key == NOVEL_KEY));
-	defaults_set("hideAdult", DefaultValue::Bool(false));
-	let results = search(Some("Dual Cultivation Harem in the Demonic Cult"), vec![]);
-	assert!(results.entries.iter().any(|manga| manga.key == NOVEL_KEY));
+	let query = Some("Dual Cultivation Harem in the Demonic Cult");
+	assert!(
+		search(query, vec![])
+			.entries
+			.iter()
+			.any(|manga| manga.key == NOVEL_KEY)
+	);
+	let hidden = search(query, vec![hide_adult()]);
+	assert!(!hidden.entries.iter().any(|manga| manga.key == NOVEL_KEY));
 }
 
 #[aidoku_test]
@@ -265,7 +274,7 @@ fn genre_filter_includes_and_excludes() {
 
 #[aidoku_test]
 fn hidden_adult_titles_stay_out_of_search() {
-	let results = search(None, vec![]);
+	let results = search(None, vec![hide_adult()]);
 	assert!(
 		results
 			.entries

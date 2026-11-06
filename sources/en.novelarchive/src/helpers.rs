@@ -1,7 +1,6 @@
 use crate::{
 	API_URL, PAGE_SIZE,
 	models::{ErrorResponse, NovelList},
-	settings,
 };
 use aidoku::{
 	ContentRating, MangaPageResult, Result,
@@ -12,7 +11,7 @@ use aidoku::{
 };
 use serde::de::DeserializeOwned;
 
-/// The genres the site's own adult filter leaves out, sent as exclusions like it does.
+/// The genres the site's library leaves out when hiding adult novels, sent as exclusions like it does.
 pub const ADULT_GENRES: [&str; 12] = [
 	"adult",
 	"smut",
@@ -62,11 +61,12 @@ pub struct SearchParams {
 	pub any_genre: bool,
 	pub genres: Vec<String>,
 	pub hidden_genres: Vec<String>,
+	pub hide_adult: bool,
 }
 
 impl SearchParams {
-	pub fn url(mut self, page: i32, hide_adult: bool) -> String {
-		if hide_adult {
+	pub fn url(mut self, page: i32) -> String {
+		if self.hide_adult {
 			self.hidden_genres
 				.extend(ADULT_GENRES.iter().map(|genre| genre.to_string()));
 		}
@@ -98,7 +98,7 @@ impl SearchParams {
 
 /// One page of the library's browse, the endpoint behind search, listings and sorted rows.
 pub fn browse(params: SearchParams, page: i32) -> Result<MangaPageResult> {
-	let list: NovelList = get(&params.url(page, settings::hide_adult()))?;
+	let list: NovelList = get(&params.url(page))?;
 	Ok(MangaPageResult {
 		has_next_page: list
 			.pagination

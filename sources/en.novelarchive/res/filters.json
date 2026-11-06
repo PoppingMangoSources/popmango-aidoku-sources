@@ -40,5 +40,11 @@
 			"any"
 		],
 		"hideFromHeader": true
+	},
+	{
+		"type": "check",
+		"id": "hide_adult",
+		"title": "Hide Adult Novels",
+		"hideFromHeader": true
 	}
 ]
