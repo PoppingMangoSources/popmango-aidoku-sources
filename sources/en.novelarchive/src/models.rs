@@ -24,7 +24,7 @@ pub struct Novel {
 	title: String,
 	author: Option<String>,
 	#[serde(default)]
-	pub genres: String,
+	genres: String,
 	cover_url: Option<String>,
 	novel_image: Option<String>,
 	image_url: Option<String>,

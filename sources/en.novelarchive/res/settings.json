@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "When on, adult titles are left out of Discover and search, as the site does by default.",
+		"footer": "When on, adult titles are left out of search, listings and the sorted Discover rows, as the site's library does by default. Trending, Recently Updated and Editor's Choice are shown as the site shows them.",
 		"items": [
 			{
 				"type": "switch",

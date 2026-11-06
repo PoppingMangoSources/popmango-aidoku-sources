@@ -123,11 +123,6 @@ pub fn genres(list: &str) -> Vec<String> {
 	genres
 }
 
-pub fn is_adult(list: &str) -> bool {
-	list.split(',')
-		.any(|genre| ADULT_GENRES.contains(&genre.trim().to_lowercase().as_str()))
-}
-
 pub fn content_rating(list: &str) -> ContentRating {
 	let mut rating = ContentRating::Safe;
 	for genre in list.split(',').map(|genre| genre.trim().to_lowercase()) {

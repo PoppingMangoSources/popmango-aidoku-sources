@@ -325,9 +325,9 @@ fn home_has_the_site_sections() {
 		titles,
 		[
 			"Trending",
-			"Editor's Choice",
 			"Popular",
 			"Recently Updated",
+			"Editor's Choice",
 			"Top Rated",
 			"New in the Archive"
 		]

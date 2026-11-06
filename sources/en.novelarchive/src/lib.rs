@@ -15,12 +15,14 @@ mod settings;
 #[cfg(test)]
 mod test;
 
-use helpers::{NON_GENRES, SearchParams, browse, get, is_adult, parse};
+use helpers::{NON_GENRES, SearchParams, browse, get, parse};
 use models::{ChapterResponse, GenreList, Novel, NovelDetails, NovelList};
 
 const BASE_URL: &str = "https://novelarchive.st";
 const API_URL: &str = "https://novelarchive.st/api/novels";
 const PAGE_SIZE: i32 = 24;
+// The fixed feeds return at most 50, whatever the limit.
+const FEED_SIZE: i32 = 50;
 
 struct NovelArchive;
 
@@ -118,24 +120,18 @@ impl Home for NovelArchive {
 				.url(1, hide_adult),
 			)
 		};
-		// The fixed feeds ignore the site's genre exclusions, so adult titles are left out here.
+		// Like the site's home, the fixed feeds are shown whole: they take no genre exclusions
+		// and the site hides adult titles only in its library, which the sorted rows read.
 		let feeds: Vec<Result<Vec<Novel>>> = Request::send_all([
-			Request::get(format!("{API_URL}/trending?limit=5"))?,
-			Request::get(format!("{API_URL}/editors-choice"))?,
+			Request::get(format!("{API_URL}/trending?limit={FEED_SIZE}"))?,
 			sorted(Some("popular"))?,
-			Request::get(format!("{API_URL}/recently-updated?limit={PAGE_SIZE}"))?,
+			Request::get(format!("{API_URL}/recently-updated?limit={FEED_SIZE}"))?,
+			Request::get(format!("{API_URL}/editors-choice?limit={FEED_SIZE}"))?,
 			sorted(Some("rating"))?,
 			sorted(None)?,
 		])
 		.into_iter()
-		.map(|response| {
-			let list: NovelList = parse(response?)?;
-			Ok(list
-				.novels
-				.into_iter()
-				.filter(|novel| !hide_adult || !is_adult(&novel.genres))
-				.collect())
-		})
+		.map(|response| Ok(parse::<NovelList>(response?)?.novels))
 		.collect();
 		// A feed that fails drops out; the home only fails when none loaded.
 		if feeds.iter().all(Result::is_err) {
@@ -174,16 +170,6 @@ impl Home for NovelArchive {
 					}),
 			),
 			(
-				"Editor's Choice",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::Scroller {
-						entries: cards(novels),
-						listing: None,
-					}),
-			),
-			(
 				"Popular",
 				feeds
 					.next()
@@ -204,14 +190,23 @@ impl Home for NovelArchive {
 						listing: None,
 					}),
 			),
+			// The site's feed carries each pick's description and genres.
+			(
+				"Editor's Choice",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::BigScroller {
+						entries: novels.into_iter().map(Novel::into_details).collect(),
+						auto_scroll_interval: None,
+					}),
+			),
 			(
 				"Top Rated",
 				feeds
 					.next()
 					.flatten()
-					.map(|novels| HomeComponentValue::MangaList {
-						ranking: true,
-						page_size: Some(5),
+					.map(|novels| HomeComponentValue::Scroller {
 						entries: cards(novels),
 						listing: listing("rating", "Top Rated"),
 					}),
