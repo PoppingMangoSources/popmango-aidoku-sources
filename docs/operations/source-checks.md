@@ -18,7 +18,7 @@ sources:
   - code: scripts/ci-gates.py
   - code: scripts/tests/test_commit_enforcement.py
   - code: .github/workflows/build.yaml
-verified_at: 266b038
+verified_at: 149a7b7
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -152,4 +152,9 @@ and review stamps; they do not replace live tests or manual review.
 > checkout with `git rev-parse --local-env-vars` unset (`.githooks/pre-push:12`), and
 > `test_settings_and_publication_gate_cannot_drift` checks that line. After such an accident,
 > `git config core.bare false` and `scripts/install-hooks.sh` restore the checkout.
+
+> ⚠️ A lockfile-only change still makes a source "changed", so the pre-push hook and CI run its
+> full rules and the fork's extra lints. Moving the 18 old aidoku-rs locks at once surfaced 30
+> unrelated failures (2026-11-06), so `check_lock` instead fails each stale lock when its source is
+> next edited (`scripts/check-sources.py:315`).
 
