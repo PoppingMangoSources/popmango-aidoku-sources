@@ -6,6 +6,8 @@
   to keep up to date. Needs the network.
 - A step that installs aidoku-test-runner installs the fontconfig and freetype headers first;
   the hosted runner has neither, and the install fails without them.
+- A workflow that lints (`lint-crates.sh`, `cargo clippy`, `cargo fmt`) lists `clippy` and
+  `rustfmt` in its toolchain's `components` first; a pinned toolchain installs neither by itself.
 
 Usage: scripts/check-workflows.py [--offline]   (--offline skips the runtime check)
 """
@@ -23,6 +25,8 @@ USES = re.compile(r"^\s*(?:-\s*)?uses:\s*['\"]?([^\s'\"#]+)", re.M)
 RUNS_USING = re.compile(r"^runs:\s*\n(?:[ \t]+.*\n)*?[ \t]+using:\s*['\"]?([\w-]+)", re.M)
 TEST_RUNNER = "aidoku-test-runner"
 FONT_HEADERS = ("libfontconfig-dev", "libfreetype-dev")
+LINTERS = ("lint-crates.sh", "cargo clippy", "cargo fmt")
+COMPONENTS = re.compile(r"^\s*components:\s*(.+)$", re.M)
 
 
 def workflow_files(root: Path) -> list[Path]:
@@ -82,12 +86,26 @@ def check_test_runner(files: list[Path]) -> list[str]:
     return problems
 
 
+def check_lint_components(files: list[Path]) -> list[str]:
+    problems = []
+    for path in files:
+        text = path.read_text()
+        lint = min((i for i in (text.find(word) for word in LINTERS) if i >= 0), default=-1)
+        if lint < 0:
+            continue
+        components = COMPONENTS.findall(text[:lint])
+        missing = [name for name in ("clippy", "rustfmt") if not any(name in found for found in components)]
+        if missing:
+            problems.append(f"{path.name}: lints without installing {', '.join(missing)} on its toolchain first")
+    return problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--offline", action="store_true")
     args = parser.parse_args()
     files = workflow_files(ROOT)
-    problems = check_test_runner(files)
+    problems = check_test_runner(files) + check_lint_components(files)
     if not args.offline:
         problems += check_runtimes(files)
     for problem in problems:

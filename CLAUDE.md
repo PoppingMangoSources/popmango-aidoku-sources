@@ -827,7 +827,9 @@ went in one of these ways, and new ones go in the same way:
   first, an unsized image scroller) and a non-genre multi-select that leaves `canExclude` unstated.
 - `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
   `action.yml` at the pinned ref and fails a deprecated Node, and fails a workflow that installs
-  `aidoku-test-runner` without the font headers. `check.yaml` runs it on every push and
+  `aidoku-test-runner` without the font headers, or that lints (`lint-crates.sh`, `cargo clippy`,
+  `cargo fmt`) without `components: clippy, rustfmt` on its pinned toolchain: `build.yaml`'s lint
+  step once failed on that. `check.yaml` runs it on every push and
   **Action runtimes** (`action-runtimes.yaml`) every Monday, since deprecations arrive without a
   push. Its tests are in `scripts/tests/test_check_workflows.py`.
 - `scripts/calibrate-rules.sh [rule text]` runs `check-sources.py` over every merged upstream

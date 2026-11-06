@@ -52,6 +52,22 @@ class WorkflowTests(unittest.TestCase):
         )
         self.assertEqual(workflows.check_test_runner(files), [])
 
+    def test_lint_without_components_fails(self):
+        files = self.write(
+            'steps:\n  - uses: dtolnay/rust-toolchain@stable\n    with:\n      toolchain: "1.99.0"\n'
+            '  - run: python3 scripts/changed-crates.py | bash scripts/lint-crates.sh\n'
+        )
+        problems = workflows.check_lint_components(files)
+        self.assertEqual(len(problems), 1)
+        self.assertIn('clippy, rustfmt', problems[0])
+
+    def test_lint_after_components_passes(self):
+        files = self.write(
+            'steps:\n  - uses: dtolnay/rust-toolchain@stable\n    with:\n      toolchain: "1.99.0"\n'
+            '      components: clippy, rustfmt\n  - run: cargo clippy -- -D warnings\n'
+        )
+        self.assertEqual(workflows.check_lint_components(files), [])
+
 
 if __name__ == '__main__':
     unittest.main()
