@@ -34,9 +34,9 @@ that need no network and no toolchain. It is the third gate after `cargo fmt`/`c
 | `scripts/check-sources.py --base origin/main` | sources changed since the ref, plus the version-bump rule |
 | `--repo <dir> --upstream <ids>` | source rules only, against another checkout: no README row, no agent-doc sync |
 
-Arguments are parsed in `scripts/check-sources.py:364`. Output is one `NOTE` or `FAIL` line
+Arguments are parsed in `scripts/check-sources.py:430`. Output is one `NOTE` or `FAIL` line
 per finding, then a count; the exit code is non-zero only for failures
-(`scripts/check-sources.py:387`).
+(`scripts/check-sources.py:451`).
 
 Where it runs:
 
@@ -48,16 +48,16 @@ Where it runs:
 
 ## What a run covers
 
-`check_source` (`scripts/check-sources.py:327`) walks one source: Cargo manifest and release
+`check_source` (`scripts/check-sources.py:390`) walks one source: Cargo manifest and release
 profile, tests that assert nothing, unused test dependencies, the source, filter and settings
 JSON, the icon, the Rust rules, constant naming, then the README row and the version bump. Outside `--upstream` it also runs `sync-agent-docs.py --check`
-(`scripts/check-sources.py:375`), so a drifted `AGENTS.md` fails here too.
+(`scripts/check-sources.py:440`), so a drifted `AGENTS.md` fails here too.
 
-> ⚠️ Only `sources/` is walked (`scripts/check-sources.py:373`). Templates under `templates/`
+> ⚠️ Only `sources/` is walked (`scripts/check-sources.py:438`). Templates under `templates/`
 > are never checked, so a template's filters or Rust passes whatever it holds. Read a
 > template change against the rules by hand.
 
-> ⚠️ A directory without a Cargo manifest is skipped silently (`scripts/check-sources.py:329`),
+> ⚠️ A directory without a Cargo manifest is skipped silently (`scripts/check-sources.py:392`),
 > so a misspelled id on the command line reports "checked 1 source(s): 0 failure(s)".
 
 ## Fail or note
@@ -84,9 +84,9 @@ printed, never failing.
 `check_filters_json` (`scripts/check-sources.py:91`) fails a sort default the framework
 already uses, `usesTagStyle` beside `isGenre`, and a check filter shown in the header. It
 notes a multi-select that is not a genre filter and leaves `canExclude` unstated
-(`scripts/check-sources.py:106`), and a sort filter that is not first (`scripts/check-sources.py:110`).
+(`scripts/check-sources.py:106`), and a sort filter that is not first (`scripts/check-sources.py:109`).
 
-`check_settings_json` (`scripts/check-sources.py:116`) fails a `hide…`/`show…` adult switch whose
+`check_settings_json` (`scripts/check-sources.py:119`) fails a `hide…`/`show…` adult switch whose
 default shows adult titles on a source rated 1. `check_cards` notes an image scroller left
 without a width.
 
@@ -100,7 +100,7 @@ without a width.
 
 ## Version bump
 
-> ⚠️ The bump rule runs only with `--base` (`scripts/check-sources.py:287`), comparing
+> ⚠️ The bump rule runs only with `--base` (`scripts/check-sources.py:337`), comparing
 > the source's version with its version at that ref. A plain run never reports a missing bump.
 > A source new since the ref has no file to compare and passes.
 
@@ -108,11 +108,15 @@ without a width.
 
 `scripts/review-source.sh <id>` runs the gates with live tests, this checker, `upstream-usage.py`,
 the upstream scope of the source's branch, and prints the section 3 rules as a checklist, then
-stamps the result with a hash of the source's files (`scripts/agent-hooks.py:118`). The shared
+stamps the result with a hash of the source's files (`scripts/agent-hooks.py:199`). The shared
 Claude Code hooks in `.claude/settings.json` call `agent-hooks.py`: `pre-edit` points the first
 edit of each source or template per session at the workflow, and `stop` blocks the end of a turn
 while a changed source fails this checker or has no passing stamp for its current files
-(`scripts/agent-hooks.py:92`). The pre-push hook runs each changed source's `review_` tests.
+(`scripts/agent-hooks.py:173`). The pre-push hook runs each changed source's `review_` tests.
+`pre-bash` refuses a `git commit` outside `scripts/commit.sh`, reading the scratchpad scripts a
+command runs as well (`scripts/agent-hooks.py:111`), since a commit inside a helper script once
+skipped the documented form. It prints section 3 before a push or `pr-branch.sh`, and `digest`
+prints section 0 after a compaction.
 
 > ⚠️ The stamp covers every file in the source except `target/` and `package.aix`, so `cargo fmt`
 > or a bump after the review invalidates it. Run the review last.
@@ -156,5 +160,5 @@ and review stamps; they do not replace live tests or manual review.
 > ⚠️ A lockfile-only change still makes a source "changed", so the pre-push hook and CI run its
 > full rules and the fork's extra lints. Moving the 18 old aidoku-rs locks at once surfaced 30
 > unrelated failures (2026-11-06), so `check_lock` instead fails each stale lock when its source is
-> next edited (`scripts/check-sources.py:315`).
+> next edited (`scripts/check-sources.py:365`).
 

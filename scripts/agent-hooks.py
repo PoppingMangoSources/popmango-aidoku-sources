@@ -2,7 +2,11 @@
 """Claude Code hooks and review stamps that keep source work on the AGENTS.md / CLAUDE.md workflow.
 
 Usage:
-    scripts/agent-hooks.py pre-edit     PreToolUse hook: point at the workflow before a source edit
+    scripts/agent-hooks.py pre-edit     PreToolUse hook: point at the workflow before a source edit,
+                                        and print the home rules before a home edit
+    scripts/agent-hooks.py pre-bash     PreToolUse hook: refuse a git commit outside scripts/commit.sh,
+                                        and print the commit rules or section 3 before a commit or push
+    scripts/agent-hooks.py digest       SessionStart hook after compaction: print the hard rules
     scripts/agent-hooks.py stop         Stop hook: refuse to finish while a changed source fails its
                                         rules or has no review of its current files
     scripts/agent-hooks.py stamp <id> <status>
@@ -10,7 +14,9 @@ Usage:
     scripts/agent-hooks.py checklist    print the section 3 rules to read against the diff
 """
 
+import contextlib
 import hashlib
+import io
 import json
 import re
 import subprocess
@@ -72,21 +78,96 @@ def pre_edit(event: dict) -> None:
     crate = crate_of(str(relative))
     if not crate:
         return
+    messages = []
+    if remind_once(event, crate):
+        name = crate.split("/", 1)[1]
+        review = f"`scripts/review-source.sh {name}`" if crate.startswith("sources/") else \
+            "`scripts/review-source.sh` on each source that uses it"
+        messages.append(
+            f"You are editing {crate}. Follow the aidoku-source skill (.claude/skills/aidoku-source/SKILL.md; "
+            "load it if it isn't loaded), compare with merged sources built the same way (AGENTS.md / CLAUDE.md section 6), "
+            f"and before calling the work done run {review} and read AGENTS.md / CLAUDE.md section 3 against the diff row by row."
+        )
+    tool_input = event.get("tool_input", {})
+    written = tool_input.get("new_string", "") + tool_input.get("content", "")
+    if ("HomeComponent" in written or relative.name == "home.rs") and remind_once(event, f"{crate}#home"):
+        messages.append(section("### Home components", "### Global mutable state"))
+    if messages:
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                                 "additionalContext": "\n\n".join(messages)}}))
+
+
+def section(heading: str, end: str) -> str:
+    text = (ROOT / "AGENTS.md").read_text()  # identical to CLAUDE.md
+    start = text.index(heading)
+    return text[start:text.index(end, start + len(heading))].strip()
+
+
+GIT_COMMIT = re.compile(r"(?:^|[\s;&|(`])git(?:\s+-[cC]\s+\S+)*\s+commit(?![\w-])", re.M)
+SCRIPT_PATH = re.compile(r"(?:^|\s)((?:/|\.{0,2}/?)[\w./-]*\.sh)\b")
+TRUSTED = ("scripts", ".githooks")
+
+
+def commands_run(command: str) -> list[tuple[str, str]]:
+    """The command, plus each shell script it runs from outside the trusted tooling folders."""
+    found = [("the command", command)]
+    for name in SCRIPT_PATH.findall(command):
+        path = (ROOT / name).resolve()
+        try:
+            trusted = path.relative_to(ROOT).parts[0] in TRUSTED
+        except ValueError:
+            trusted = False
+        if path.is_file() and not trusted:
+            found.append((str(path), path.read_text(errors="replace")))
+    return found
+
+
+def remind_once(event: dict, key: str) -> bool:
     seen = Path(tempfile.gettempdir()) / "aidoku-hooks" / f"{event.get('session_id', 'session')}.json"
     reminded = json.loads(seen.read_text()) if seen.exists() else []
-    if crate in reminded:
-        return
+    if key in reminded:
+        return False
     seen.parent.mkdir(parents=True, exist_ok=True)
-    seen.write_text(json.dumps(reminded + [crate]))
-    name = crate.split("/", 1)[1]
-    review = f"`scripts/review-source.sh {name}`" if crate.startswith("sources/") else \
-        "`scripts/review-source.sh` on each source that uses it"
-    message = (
-        f"You are editing {crate}. Follow the aidoku-source skill (.claude/skills/aidoku-source/SKILL.md; "
-        "load it if it isn't loaded), compare with merged sources built the same way (AGENTS.md / CLAUDE.md section 6), "
-        f"and before calling the work done run {review} and read AGENTS.md / CLAUDE.md section 3 against the diff row by row."
-    )
-    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": message}}))
+    seen.write_text(json.dumps(reminded + [key]))
+    return True
+
+
+def pre_bash(event: dict) -> None:
+    command = event.get("tool_input", {}).get("command", "")
+    commits = [where for where, text in commands_run(command) if GIT_COMMIT.search(text)]
+    if commits:
+        reason = (
+            f"Refused: {', '.join(commits)} runs git commit directly. Commit with "
+            "scripts/commit.sh -m \"<subject>\" -m \"<body>\" instead.\n\n"
+            + section("## 0. Hard rules", "\n---")
+        )
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason,
+        }}))
+        return
+    context = []
+    if re.search(r"(?:^|[\s;&|(])(?:\./)?scripts/commit\.sh\s+-", command):
+        rules = section("## 9. This repo's workflow", "### How a rule")
+        context.append("Commit rules (AGENTS.md / CLAUDE.md section 9):\n" +
+                       "\n".join(b for b in re.split(r"\n(?=- )", rules) if "ommit" in b.split("\n", 1)[0]))
+    if re.search(r"\bgit\s+push\b|pr-branch\.sh", command):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            checklist()
+        context.append(
+            "Before this push: list each item the person asked for and what shows it, then read "
+            "every row below against the diff.\n" + out.getvalue()
+        )
+    if context:
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                                 "additionalContext": "\n\n".join(context)}}))
+
+
+def digest() -> None:
+    """Printed after a compaction, which otherwise keeps only a pointer to AGENTS.md / CLAUDE.md."""
+    print(section("## 0. Hard rules", "\n---"))
+    print("\nRe-read the AGENTS.md / CLAUDE.md sections for the work in progress before continuing, "
+          "and the aidoku-source skill before a source edit.")
 
 
 def stop(event: dict) -> None:
@@ -136,11 +217,12 @@ def checklist() -> None:
 
 def main() -> int:
     command = sys.argv[1] if len(sys.argv) > 1 else ""
-    if command in ("pre-edit", "stop"):
-        # A hook that breaks must not stop edits or the end of a turn.
+    hooks = {"pre-edit": pre_edit, "pre-bash": pre_bash, "stop": stop}
+    if command in hooks:
+        # A hook that breaks must not stop edits, commands or the end of a turn.
         try:
             event = json.loads(sys.stdin.read() or "{}")
-            (pre_edit if command == "pre-edit" else stop)(event)
+            hooks[command](event)
         except Exception as error:  # noqa: BLE001
             print(f"agent-hooks {command}: {error}", file=sys.stderr)
             if command == "stop":
@@ -149,6 +231,8 @@ def main() -> int:
         stamp(sys.argv[2], sys.argv[3])
     elif command == "checklist":
         checklist()
+    elif command == "digest":
+        digest()
     else:
         print(__doc__, file=sys.stderr)
         return 2

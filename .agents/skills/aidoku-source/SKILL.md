@@ -118,6 +118,10 @@ that shipped:
 
 ## Phase 4 — Verify
 
+First number each thing the person asked for in this task, from their messages, and name beside
+it the code, test or output that shows it (AGENTS.md / CLAUDE.md section 0). An item with nothing
+beside it isn't done; an order or layout they specified gets a `review_` test.
+
 Run `scripts/review-source.sh <id>` before calling any source work done. It runs every step
 below, prints the section 3 checklist to answer row by row, and stamps the result. In Claude Code
 the Stop hook refuses to finish until a passing stamp matches the source's current files; Codex

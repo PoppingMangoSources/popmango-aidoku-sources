@@ -80,6 +80,71 @@ class AgentHookTests(unittest.TestCase):
         with mock.patch.object(hooks, 'changed_crates', return_value=['sources/en.example']), self.checked():
             self.assertIn('changed since its last review', json.loads(run(hooks.stop, {}))['reason'])
 
+    def write_rules(self):
+        (self.root / 'AGENTS.md').write_text(
+            '## 0. Hard rules\n\n- Commit with scripts/commit.sh.\n\n---\n\n'
+            '## 3. Review feedback\n\n| What was flagged | The rule |\n|---|---|\n'
+            '| Search returned tags | Cards carry key, title and cover. |\n\n## 4. Next\n\n'
+            '### Home components\n\n- Rows are cards.\n\n### Global mutable state\n\n'
+            "## 9. This repo's workflow\n\n- Work on main.\n- Commits are unsigned.\n\n### How a rule\n"
+        )
+
+    def bash(self, command):
+        return run(hooks.pre_bash, {'session_id': 'b', 'tool_input': {'command': command}})
+
+    def test_direct_commit_is_refused(self):
+        self.write_rules()
+        for command in ('git commit -m "x"', 'git -c commit.gpgsign=false commit -q -m x', 'cd a && git -C b commit'):
+            out = json.loads(self.bash(command))['hookSpecificOutput']
+            self.assertEqual(out['permissionDecision'], 'deny', command)
+            self.assertIn('scripts/commit.sh', out['permissionDecisionReason'])
+
+    def test_commit_inside_a_script_is_refused(self):
+        self.write_rules()
+        script = self.root / 'pad/release.sh'
+        script.parent.mkdir()
+        script.write_text('gc() { git -c commit.gpgsign=false commit --no-gpg-sign "$@"; }\n')
+        out = json.loads(self.bash(f'bash {script}'))['hookSpecificOutput']
+        self.assertEqual(out['permissionDecision'], 'deny')
+        self.assertIn(str(script), out['permissionDecisionReason'])
+        script.write_text('scripts/commit.sh -m "fix: x" -m "Body."\n')
+        self.assertNotIn('deny', self.bash(f'bash {script}'))
+
+    def test_commit_wrapper_and_other_git_pass(self):
+        self.write_rules()
+        (self.root / 'scripts').mkdir()
+        (self.root / 'scripts/commit.sh').write_text('git -c commit.gpgsign=false commit "$@"\n')
+        out = json.loads(self.bash('scripts/commit.sh -m "fix: x" -m "Body."'))['hookSpecificOutput']
+        self.assertNotIn('permissionDecision', out)
+        self.assertIn('Commits are unsigned.', out['additionalContext'])
+        self.assertNotIn('Work on main.', out['additionalContext'])
+        for command in ('git log --grep commit', 'git commit-tree HEAD^{tree}', 'git status'):
+            self.assertEqual(self.bash(command), '', command)
+
+    def test_push_prints_the_checklist(self):
+        self.write_rules()
+        for command in ('git push -u origin main', 'scripts/pr-branch.sh en.example --push'):
+            context = json.loads(self.bash(command))['hookSpecificOutput']['additionalContext']
+            self.assertIn('Cards carry key, title and cover.', context)
+            self.assertIn('each item the person asked for', context)
+
+    def test_home_edit_prints_home_rules_once(self):
+        self.write_rules()
+        event = {'session_id': 'h', 'tool_input': {
+            'file_path': str(self.root / 'sources/en.example/src/lib.rs'),
+            'new_string': 'HomeComponentValue::Scroller {',
+        }}
+        self.assertIn('Rows are cards.', json.loads(run(hooks.pre_edit, event))['hookSpecificOutput']['additionalContext'])
+        self.assertEqual(run(hooks.pre_edit, event), '')
+
+    def test_digest_prints_the_hard_rules(self):
+        self.write_rules()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            hooks.digest()
+        self.assertIn('Commit with scripts/commit.sh.', out.getvalue())
+        self.assertNotIn('Review feedback', out.getvalue())
+
     def test_checklist_reads_section_three(self):
         (self.root / 'AGENTS.md').write_text(
             '## 3. Review feedback\n\n| What was flagged | The rule |\n|---|---|\n'

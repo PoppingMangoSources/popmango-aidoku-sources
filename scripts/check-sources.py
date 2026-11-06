@@ -113,21 +113,30 @@ def check_filters_json(path: Path) -> None:
 ADULT_SWITCH = re.compile(r"^(hide|show)\w*(adult|nsfw|18)", re.I)
 
 
+LOCKED_SWITCH = re.compile(r"^show\w*locked", re.I)
+
+
 def check_settings_json(path: Path, rating: object) -> None:
-    """A source rated 1 hides adult titles until the reader asks for them."""
-    if rating != 1:
-        check_json(path)
-        return
+    """A source rated 1 hides adult titles, and one without a login hides locked chapters, by default."""
     stack = [check_json(path)]
+    items = []
     while stack:
         item = stack.pop()
         if isinstance(item, list):
             stack.extend(item)
         elif isinstance(item, dict):
             stack.extend(item.get("items", []))
-            match = ADULT_SWITCH.match(str(item.get("key", "")))
-            if item.get("type") == "switch" and match and item.get("default") is (match.group(1).lower() == "show"):
-                fail(path, f"switch {item['key']!r} shows adult titles by default with contentRating 1; hide them by default or rate the source 2")
+            items.append(item)
+    has_login = any(item.get("type") == "login" for item in items)
+    for item in items:
+        if item.get("type") != "switch":
+            continue
+        key = str(item.get("key", ""))
+        match = ADULT_SWITCH.match(key)
+        if rating == 1 and match and item.get("default") is (match.group(1).lower() == "show"):
+            fail(path, f"switch {key!r} shows adult titles by default with contentRating 1; hide them by default or rate the source 2")
+        if not has_login and LOCKED_SWITCH.match(key) and item.get("default") is True:
+            fail(path, f"switch {key!r} shows locked chapters by default on a source with no login; default it off")
 
 
 def check_icon(path: Path) -> None:
@@ -200,6 +209,46 @@ SINGLE_CALL_FN = re.compile(
 )
 
 
+BARE_PUSH = re.compile(r'\.push\(\s*"([^"]+)"\s*,\s*None\s*\)')
+DEFAULT_KEY_FROM = re.compile(r"^impl\s+From<[^\n]+>\s+for\s+(?:Manga|Chapter)\b.*?^\}", re.M | re.S)
+DEFAULT_KEY = re.compile(r"\bkey\b[^\n]*\.unwrap_or_default\(\)")
+NAMED_DATE = re.compile(r'\bparse_date\(\s*[^,()]+(?:\([^()]*\))?[^,()]*,\s*"([^"]*(?:MMM|EEE)[^"]*)"')
+STRING_BODY = re.compile(r"let (\w+)\s*=[^;]*\.(?:string|data)\(\)\?;")
+INLINE_STRING_JSON = re.compile(r"serde_json::from_(?:str|slice)\([^;]*\.(?:string|data)\(\)\?")
+MULTI_SELECT = re.compile(r"\bMultiSelectFilter\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
+EMPTY_INCLUDED = re.compile(r"!\s*included\.is_empty\(\)")
+LENGTH_SLICE = re.compile(r"\[\s*[\w.]+\.len\(\)\s*\.\.\s*\]")
+REMAPPED_REQUEST = re.compile(r"Request::(?:get|post|put)\([^;]*?\)\s*\.map_err\(", re.S)
+
+
+def check_api_use(path: Path, text: str) -> None:
+    """aidoku-rs calls that review comments replaced (AGENTS.md / CLAUDE.md sections 3 and 7)."""
+    line = lambda match: text.count("\n", 0, match.start()) + 1
+    for match in BARE_PUSH.finditer(text):
+        fail(path, f"line {line(match)} pushes {match.group(1)!r} with None, which sends a bare key; push only when there is a value")
+    for match in DEFAULT_KEY_FROM.finditer(text):
+        if DEFAULT_KEY.search(match.group(0)):
+            fail(path, f"line {line(match)} defaults a missing key in From; make it TryFrom with an error")
+    for match in NAMED_DATE.finditer(text):
+        fail(path, f"line {line(match)} parses {match.group(1)!r} in the device's locale; use parse_date_with_options with \"en_US_POSIX\"")
+    for name in STRING_BODY.findall(text):
+        for match in re.finditer(rf"serde_json::from_(?:str|slice)\(\s*&?{name}\b", text):
+            fail(path, f"line {line(match)} parses a response body with serde_json; use .json_owned()")
+    for match in INLINE_STRING_JSON.finditer(text):
+        fail(path, f"line {line(match)} parses a response body with serde_json; use .json_owned()")
+    for match in MULTI_SELECT.finditer(text):
+        body = match.group(1)
+        if re.search(r"\bis_genre:\s*true", body) and not re.search(r"\buses_tag_style:\s*true", body):
+            fail(path, f"line {line(match)} builds a genre multi-select without uses_tag_style: true")
+    # Merged sources keep both, xcomic's to let a setting survive an empty override.
+    for match in EMPTY_INCLUDED.finditer(text):
+        note(path, f"line {line(match)} checks included for emptiness; a multi-select with nothing chosen isn't sent")
+    for match in LENGTH_SLICE.finditer(text):
+        note(path, f"line {line(match)} slices off a prefix by its length; consider strip_prefix")
+    for match in REMAPPED_REQUEST.finditer(text):
+        fail(path, f"line {line(match)} remaps a request error; Request only fails on a bad url, so use ?")
+
+
 def crate_text(source: Path) -> str:
     return "\n".join(p.read_text() for p in sorted((source / "src").rglob("*.rs")) if p.name != "test.rs")
 
@@ -256,6 +305,7 @@ def check_rust(source: Path, single_language: bool) -> None:
         if path.name == "test.rs":
             continue
         check_cards(path, path.read_text())
+        check_api_use(path, path.read_text())
         for number, line in enumerate(path.read_text().splitlines(), 1):
             where = f"line {number}"
             if SECTION_BANNER.match(line):

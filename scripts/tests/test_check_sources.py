@@ -111,6 +111,53 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cards(self.path, unsized.replace('width: None', 'width: Some(300)'))
         self.assertEqual(checks.notes, [])
 
+    def api_use(self, text):
+        checks.failures.clear()
+        checks.notes.clear()
+        checks.check_api_use(self.path, text)
+        return checks.failures + checks.notes
+
+    def test_api_use_rules_fail(self):
+        cases = {
+            'bare key': 'query.push("sort", None);\n',
+            'TryFrom': 'impl From<Entry> for Manga {\n\tfn from(e: Entry) -> Self {\n\t\tlet key = e.key().unwrap_or_default();\n\t}\n}\n',
+            'en_US_POSIX': 'let date = parse_date(text.trim(), "MMM d, yyyy");\n',
+            'json_owned': 'let body = Request::get(url)?.string()?;\nlet list: List = serde_json::from_str(&body)?;\n',
+            'uses_tag_style': 'MultiSelectFilter {\n\tid: "genre".into(),\n\tis_genre: true,\n\t..Default::default()\n}\n',
+            'included for emptiness': 'if !included.is_empty() {\n}\n',
+            'strip_prefix': 'let rest = &url[BASE_URL.len()..];\n',
+            'remaps a request': 'Request::get(url)\n\t.map_err(|_| error!("bad"))?;\n',
+        }
+        for rule, text in cases.items():
+            self.assertTrue(any(rule in message for message in self.api_use(text)), rule)
+
+    def test_api_use_rules_pass(self):
+        text = (
+            'if let Some(sort) = sort {\n\tquery.push("sort", Some(sort));\n}\n'
+            'impl TryFrom<Entry> for Manga {\n\tfn try_from(e: Entry) -> Result<Self> {\n\t\tlet key = e.key().ok_or_else(|| error!("no key"))?;\n\t}\n}\n'
+            'impl From<Entry> for Manga {\n\tfn from(e: Entry) -> Self {\n\t\tlet description = e.text.unwrap_or_default();\n\t}\n}\n'
+            'let date = parse_date(text, "yyyy-MM-dd");\n'
+            'let date = parse_date_with_options(text, "MMM d, yyyy", "en_US_POSIX", "current");\n'
+            'let list: List = Request::get(url)?.send()?.json_owned()?;\n'
+            'let data: Next = serde_json::from_str(&script.data().unwrap_or_default())?;\n'
+            'MultiSelectFilter {\n\tis_genre: true,\n\tuses_tag_style: true,\n\t..Default::default()\n}\n'
+            'let rest = url.strip_prefix(BASE_URL)?;\n'
+            'Request::get(url)?.send()?;\n'
+        )
+        self.assertEqual(self.api_use(text), [])
+
+    def test_locked_shown_by_default_fails_without_login(self):
+        path = self.source / 'res/settings.json'
+        path.write_text('[\n\t{"type": "switch", "key": "showLocked", "default": true}\n]\n')
+        checks.check_settings_json(path, 0)
+        self.assertTrue(any('locked chapters' in f for f in checks.failures))
+        checks.failures.clear()
+        path.write_text('[\n\t{"type": "login", "key": "login"},\n\t{"type": "switch", "key": "showLocked", "default": true}\n]\n')
+        checks.check_settings_json(path, 0)
+        path.write_text('[\n\t{"type": "switch", "key": "showLocked", "default": false}\n]\n')
+        checks.check_settings_json(path, 0)
+        self.assertEqual(checks.failures, [])
+
     def test_test_without_assertion_fails(self):
         (self.source / 'src').mkdir()
         (self.source / 'src/test.rs').write_text('#[aidoku_test]\nfn found_type_is_used() {\n\tlet _ = Found { hits: Vec::new() }.hits;\n}\n')

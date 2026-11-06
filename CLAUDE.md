@@ -26,6 +26,34 @@ reference implementation and could be wrong.
 
 ---
 
+## 0. Hard rules
+
+The rules missed most often. A Claude hook prints this section again after every compaction; the
+rest of this file still applies, so read each section before the work it covers.
+
+- **Commit with `scripts/commit.sh -m "<subject>" -m "<body>"`** (section 9). The Claude hook
+  refuses any other `git commit`, including one inside a script it runs. Conventional subject;
+  a one- or two-sentence body, or `- ` bullets for a first `feat: add <id>`. No `#123`, links or
+  AI attribution.
+- **Every push that changes a source bumps it** (`scripts/bump.sh <id>`), after
+  `scripts/review-source.sh <id>` passes on its current files.
+- **Before a push or `pr-branch.sh`, read section 3 against the diff row by row.** The hook
+  prints it as a checklist at that moment.
+- **List what the person asked for before calling it done.** Number each item from their
+  messages and name beside it the code, test or output that shows it; an item with nothing
+  beside it isn't done. An order or layout they specify gets a `review_` test.
+- Read the merged sources built the same way (section 6), and any reference client the person
+  names, before writing a feature.
+- Cards everywhere but `BigScroller` carry key, title and cover, optionally status and rating,
+  and never a subtitle (sections 3 and 6).
+- Branches are `main`, `feat/<id>`, `fix/<id>`, `chore/<topic>` or `docs/<topic>`, never
+  `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`.
+- Don't open or post on a PR, and don't resolve review threads; draft the text for the person.
+- A mechanical rule that slipped goes into `check-sources.py` with a test, in the same commit
+  as its fix (section 9).
+
+---
+
 ## 1. Upstream rules
 
 Summarised from `CONTRIBUTING.md` in the Aidoku-Community sources repo and the
@@ -728,9 +756,12 @@ and imports, even `pub` ones in private modules. What it doesn't fail, and what 
   already above `origin/main`'s version, and it says so and changes nothing.
 - Commits are authored **and** committed by
   `Popmango Extensions <297959108+PoppingMangoSources@users.noreply.github.com>`,
-  **unsigned**, with a conventional subject and a one- or two-sentence body.
-  `--reset-author` only works with `--amend`; for a new commit set the author through
-  the environment:
+  **unsigned**, with a conventional subject and a one- or two-sentence body (a first
+  `feat: add <id>` submission may list its features as `- ` bullets, as our merged ones do).
+  Commit with `scripts/commit.sh`, which runs exactly the form below; the Claude Bash hook
+  refuses any other `git commit`, in a command or in a script it runs, and `scripts/` and
+  `.githooks/` are trusted to set the identity themselves. `--reset-author` only works with
+  `--amend`; for a new commit the author is set through the environment:
 
   ```sh
   GIT_AUTHOR_NAME="Popmango Extensions" \
@@ -802,7 +833,12 @@ went in one of these ways, and new ones go in the same way:
   and `review-source.sh`. When it tries to finish, the Stop hook blocks while a changed source
   fails `check-sources.py` or has no passing review of its current files, so any edit after a
   review needs another one. A second stop in the same turn only reports, so a live-site failure
-  can be explained rather than loop. Personal settings, such as a plugin's permission lists,
+  can be explained rather than loop. The Bash hook refuses a `git commit` outside
+  `scripts/commit.sh` (it also reads the scripts a command runs, except `scripts/` and
+  `.githooks/`), prints the section 9 commit rules beside each `commit.sh`, and prints section 3
+  as a checklist before a `git push` or `pr-branch.sh`. An edit that writes a home component
+  gets the section 6 home rules once per source, and after a compaction the SessionStart hook
+  prints section 0, since a summary keeps only a pointer to this file. Personal settings, such as a plugin's permission lists,
   go in `.claude/settings.local.json`, which is ignored. Codex has no hooks, so for Codex this
   file and the pre-push hook are the enforcement. Tests are in `scripts/tests/test_agent_hooks.py`.
 - The pre-push hook also runs each changed source's `review_` tests (`cargo test review_`), which
@@ -828,6 +864,12 @@ went in one of these ways, and new ones go in the same way:
   since a sweep would first need each old source's backlog fixed. It notes the section 3 **N** rows (page-size names,
   own-field wrappers, single-call helpers used once, full-path calls, a sort filter that isn't
   first, an unsized image scroller) and a non-genre multi-select that leaves `canExclude` unstated.
+  From sections 3 and 7 it also fails a `push(name, None)`, a `From` into `Manga` or `Chapter`
+  that defaults its key, a `parse_date` of month or day names without a locale, a response body
+  parsed with `serde_json` rather than `json_owned`, a Rust genre multi-select without
+  `uses_tag_style: true`, a remapped `Request` error, and a "Show Locked" switch on by default
+  without a login. It notes `!included.is_empty()` and slicing off a prefix by its length, both
+  in recent merges (`multi.xcomic`, `multi.sumidoku`, `multi.mangadex`).
 - `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
   `action.yml` at the pinned ref and fails a deprecated Node, and fails a workflow that installs
   `aidoku-test-runner` without the font headers, or that lints (`lint-crates.sh`, `cargo clippy`,
