@@ -18,7 +18,7 @@ sources:
   - code: scripts/ci-gates.py
   - code: scripts/tests/test_commit_enforcement.py
   - code: .github/workflows/build.yaml
-verified_at: 90f9d770a6bce46aaa5a91ff3c3087a0da042f70
+verified_at: c1556db
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -42,7 +42,7 @@ Where it runs:
 
 - CI's Checks workflow with `--base` on every push (`.github/workflows/check.yaml:41`)
 - the pre-push hook, both ways: `--upstream` per submission source, `--base` for `main`
-  (`.githooks/pre-push:21`, `.githooks/pre-push:36`)
+  (`.githooks/pre-push:29`, `.githooks/pre-push:51`)
 - the submission builder on its prepared worktree (`scripts/pr-branch.sh:131`)
 - `scripts/calibrate-rules.sh` over every merged upstream source
 
