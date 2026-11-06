@@ -130,8 +130,8 @@ impl Home for NovelArchive {
 			Request::get(format!("{API_URL}/trending?limit={FEED_SIZE}"))?,
 			sorted(Some("popular"))?,
 			Request::get(format!("{API_URL}/recently-updated?limit={FEED_SIZE}"))?,
-			Request::get(format!("{API_URL}/editors-choice?limit={FEED_SIZE}"))?,
 			sorted(Some("rating"))?,
+			Request::get(format!("{API_URL}/editors-choice?limit={FEED_SIZE}"))?,
 			sorted(None)?,
 		])
 		.into_iter()
@@ -194,17 +194,6 @@ impl Home for NovelArchive {
 						listing: None,
 					}),
 			),
-			// The site's feed carries each pick's description and genres.
-			(
-				"Editor's Choice",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::BigScroller {
-						entries: novels.into_iter().map(Novel::into_details).collect(),
-						auto_scroll_interval: None,
-					}),
-			),
 			(
 				"Top Rated",
 				feeds
@@ -213,6 +202,17 @@ impl Home for NovelArchive {
 					.map(|novels| HomeComponentValue::Scroller {
 						entries: cards(novels),
 						listing: listing("rating", "Top Rated"),
+					}),
+			),
+			// The feed carries each pick's description and genres.
+			(
+				"Editor's Choice",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::BigScroller {
+						entries: novels.into_iter().map(Novel::into_details).collect(),
+						auto_scroll_interval: None,
 					}),
 			),
 			(

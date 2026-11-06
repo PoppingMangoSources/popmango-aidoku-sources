@@ -1,5 +1,5 @@
 use crate::{
-	API_URL, PAGE_SIZE,
+	API_URL, BASE_URL, PAGE_SIZE,
 	models::{ErrorResponse, NovelList},
 };
 use aidoku::{
@@ -11,7 +11,7 @@ use aidoku::{
 };
 use serde::de::DeserializeOwned;
 
-/// The genres the site's library leaves out when hiding adult novels, sent as exclusions like it does.
+/// The genres the site's library excludes when hiding adult novels.
 pub const ADULT_GENRES: [&str; 12] = [
 	"adult",
 	"smut",
@@ -105,6 +105,10 @@ pub fn browse(params: SearchParams, page: i32) -> Result<MangaPageResult> {
 			.is_some_and(|pagination| pagination.has_next),
 		entries: list.novels.into_iter().map(Into::into).collect(),
 	})
+}
+
+pub fn chapter_url(id: &str, number: usize) -> String {
+	format!("{BASE_URL}/reader?novel={id}&chapter={number}")
 }
 
 /// A novel's genres as the site lists them: deduplicated, without its category values.

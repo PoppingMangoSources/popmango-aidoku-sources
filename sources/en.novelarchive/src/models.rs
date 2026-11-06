@@ -1,6 +1,6 @@
 use crate::{
 	BASE_URL,
-	helpers::{chapter_title, content_rating, genres},
+	helpers::{chapter_title, chapter_url, content_rating, genres},
 };
 use aidoku::{
 	Chapter, Manga, MangaStatus, MangaWithChapter,
@@ -19,7 +19,7 @@ pub struct ErrorResponse {
 /// A novel as the lists and the details endpoint return it; only details fill `chapter_names`.
 #[derive(Deserialize)]
 pub struct Novel {
-	pub id: String,
+	id: String,
 	#[serde(default)]
 	title: String,
 	author: Option<String>,
@@ -142,10 +142,7 @@ impl Novel {
 					.get(number - 1)
 					.and_then(|name| chapter_title(name, number)),
 				chapter_number: Some(number as f32),
-				url: Some(format!(
-					"{BASE_URL}/reader?novel={}&chapter={number}",
-					self.id
-				)),
+				url: Some(chapter_url(&self.id, number)),
 				..Default::default()
 			})
 			.collect()
@@ -161,7 +158,7 @@ impl Novel {
 			.updated_at
 			.as_deref()
 			.and_then(|date| parse_date(date, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
-		let url = format!("{BASE_URL}/reader?novel={}&chapter={number}", self.id);
+		let url = chapter_url(&self.id, number);
 		Some(MangaWithChapter {
 			manga: self.into(),
 			chapter: Chapter {

@@ -344,8 +344,8 @@ fn home_has_the_site_sections() {
 			"Trending",
 			"Popular",
 			"Recently Updated",
-			"Editor's Choice",
 			"Top Rated",
+			"Editor's Choice",
 			"New in the Archive"
 		]
 	);
