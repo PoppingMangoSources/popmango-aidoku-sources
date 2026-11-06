@@ -7,7 +7,9 @@ updates=$(cat)
 [ -n "$updates" ] || exit 0
 printf '%s\n' "$updates" | python3 "$tooling/scripts/check-commits.py" --pre-push
 python3 "$tooling/scripts/sync-agent-docs.py" --check
-python3 -m unittest discover -s "$tooling/scripts/tests" -v
+# Git exports GIT_DIR to hooks, most visibly in worktrees; the tests' own git commands in
+# temporary repositories would otherwise write to the repository being pushed.
+(cd "$tooling" && unset $(git rev-parse --local-env-vars) && python3 -m unittest discover -s scripts/tests -v)
 python3 "$tooling/scripts/check-workflows.py" --offline
 while read -r local_ref local_sha remote_ref remote_sha; do
     [[ "$local_sha" =~ ^0+$ ]] && continue

@@ -35,6 +35,8 @@ class CommitEnforcementTests(unittest.TestCase):
             workflow = (ROOT / ".github/workflows" / filename).read_text()
             self.assertIn("run: python3 scripts/ci-gates.py --event", workflow)
             self.assertIn("fetch-depth: 0", workflow)
+        hook = (ROOT / ".githooks/pre-push").read_text()
+        self.assertLess(hook.index("unset $(git rev-parse --local-env-vars)"), hook.index("unittest discover"))
         build = (ROOT / ".github/workflows/build.yaml").read_text()
         self.assertLess(build.index("scripts/ci-gates.py --event"), build.index("- name: Build sources"))
         self.assertIn("bash scripts/lint-crates.sh", build)

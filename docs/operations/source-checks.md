@@ -2,7 +2,7 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-02
+updated: 2026-11-06
 sources:
   - code: scripts/check-sources.py
   - code: scripts/tests/test_check_sources.py
@@ -144,4 +144,12 @@ Unexpected Stop-hook execution errors block completion. Regression tests cover t
 installed commit hook, an invalid merged commit that is already on the remote, broken hook
 input and the settings and workflow wiring. These checks supplement the existing source rules
 and review stamps; they do not replace live tests or manual review.
+
+> ⚠️ Git exports `GIT_DIR` to hooks, and in a `pr-branch.sh` worktree it points at the repository
+> being pushed. The script tests build throwaway repositories with plain `git` calls, so run from
+> the hook as they were they wrote into it: `core.bare=true`, a temporary `core.hooksPath`, a
+> "Guard tests" identity and a test branch (2026-11-06). The hook now runs them from the tooling
+> checkout with `git rev-parse --local-env-vars` unset (`.githooks/pre-push:12`), and
+> `test_settings_and_publication_gate_cannot_drift` checks that line. After such an accident,
+> `git config core.bare false` and `scripts/install-hooks.sh` restore the checkout.
 
