@@ -18,7 +18,7 @@ sources:
   - code: scripts/ci-gates.py
   - code: scripts/tests/test_commit_enforcement.py
   - code: .github/workflows/build.yaml
-verified_at: c1556db
+verified_at: 266b038
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
