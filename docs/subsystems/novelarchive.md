@@ -11,7 +11,7 @@ sources:
   - code: sources/en.novelarchive/res/filters.json
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: c8b21b1
+verified_at: 3bd0d7f
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -26,23 +26,29 @@ Search is the library's browse call: `search` with `fuzzy=1`, `sort`, `status`, 
 Recently Updated is the default sort and is never sent. `has_next_page` comes from `pagination`.
 
 Genres are a dynamic filter from `/api/novels/genres`, about 700 merged upstream values, without
-the site's category values (`NON_GENRES`) (`sources/en.novelarchive/src/lib.rs:264`). A tapped tag
+the site's category values (`NON_GENRES`) (`sources/en.novelarchive/src/lib.rs:259`). A tapped tag
 sends its label lowercased, as the site lowercases every genre.
 
 > ⚠️ Hide Adult Content is on by default on the site and here. On search it adds the site's twelve
 > adult genres to `genres_exclude`, as the library script does (`ADULT_GENRES`,
 > `sources/en.novelarchive/src/helpers.rs:16`), so the server keeps pages full.
 
-> ⚠️ The home feeds (`trending`, `editors-choice`, `recently-updated`) ignore `genres_exclude`;
-> the same twelve came back with and without it (probed 2026-11-06). So the home filters adult titles
-> out locally from each novel's genres instead (`sources/en.novelarchive/src/lib.rs:110`).
+> ⚠️ The fixed feeds (`trending`, `recently-updated`, `editors-choice`) ignore `genres_exclude`
+> (the same list came back with and without it, probed 2026-11-06), and the site's home shows them
+> unfiltered: it hides adult titles only in its library. So Hide Adult Content applies to search,
+> the listings and the three sorted rows, and the fixed feeds are shown whole. Filtering them
+> locally emptied Editor's Choice (both picks were tagged Mature or Adult) and cut Trending to
+> two of five, which is why it was dropped.
 
 ## Home
 
-Six rows, in one parallel request: Trending (the site's hero, five rotating every 8 seconds),
-Editor's Choice, Popular, Recently Updated, Top Rated and New in the Archive. The three sorted rows
-are browse pages (`popular`, `rating`, the default sort) and link listings of the same name
-(`sources/en.novelarchive/src/lib.rs:246`). Recently Updated names each novel's newest chapter by
+Six rows, in one parallel request, in the owner's order: Trending (a big scroller), Popular,
+Recently Updated (each novel's newest chapter, five a page), Editor's Choice (a big scroller, since
+the feed carries each pick's description and genres), Top Rated and New in the Archive
+(`sources/en.novelarchive/src/lib.rs:112`). The fixed feeds are read with `limit=50`, the most
+they return (asked for 120, trending answered 50). The three sorted rows are browse pages
+(`popular`, `rating`, the default sort) and link listings of the same name
+(`sources/en.novelarchive/src/lib.rs:241`). Recently Updated names each novel's newest chapter by
 its count: lists carry no chapter names, only `total_chapters`, so that chapter has a number and the
 novel's `updated_at`, never a title (`sources/en.novelarchive/src/models.rs:155`). A feed that
 fails drops out; the home fails only when all six do.
@@ -63,7 +69,7 @@ them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never coll
 `/chapters/{n}?prefetch=1`, which leaves out the name list; it is plain text, escaped as Markdown.
 
 > ⚠️ A chapter title drops a leading "Chapter n" only when n is its own position, so
-> "Chapter 10" at position 1 stays whole (`sources/en.novelarchive/src/helpers.rs:144`).
+> "Chapter 10" at position 1 stays whole (`sources/en.novelarchive/src/helpers.rs:139`).
 
 > ⚠️ Errors answer `{"error": …}` with a status, such as a 404 "Novel not found"; the message is
 > shown as is.
