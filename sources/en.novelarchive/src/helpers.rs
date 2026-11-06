@@ -1,6 +1,10 @@
-use crate::{API_URL, PAGE_SIZE, models::ErrorResponse};
+use crate::{
+	API_URL, PAGE_SIZE,
+	models::{ErrorResponse, NovelList},
+	settings,
+};
 use aidoku::{
-	ContentRating, Result,
+	ContentRating, MangaPageResult, Result,
 	alloc::{String, Vec, string::ToString},
 	helpers::uri::QueryParameters,
 	imports::net::{Request, Response},
@@ -90,6 +94,17 @@ impl SearchParams {
 		}
 		format!("{API_URL}?{qs}")
 	}
+}
+
+/// One page of the library's browse, the endpoint behind search, listings and sorted rows.
+pub fn browse(params: SearchParams, page: i32) -> Result<MangaPageResult> {
+	let list: NovelList = get(&params.url(page, settings::hide_adult()))?;
+	Ok(MangaPageResult {
+		has_next_page: list
+			.pagination
+			.is_some_and(|pagination| pagination.has_next),
+		entries: list.novels.into_iter().map(Into::into).collect(),
+	})
 }
 
 /// A novel's genres as the site lists them: deduplicated, without its category values.

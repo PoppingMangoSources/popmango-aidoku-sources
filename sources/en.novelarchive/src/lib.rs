@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
-	HomeComponent, HomeComponentValue, HomeLayout, Manga, MangaPageResult, MultiSelectFilter, Page,
-	PageContent, Result, Source,
+	HomeComponent, HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga,
+	MangaPageResult, MultiSelectFilter, Page, PageContent, Result, Source,
 	alloc::{String, Vec, vec},
 	helpers::string::PlainText,
 	imports::net::Request,
@@ -15,7 +15,7 @@ mod settings;
 #[cfg(test)]
 mod test;
 
-use helpers::{NON_GENRES, SearchParams, get, is_adult, parse};
+use helpers::{NON_GENRES, SearchParams, browse, get, is_adult, parse};
 use models::{ChapterResponse, GenreList, Novel, NovelDetails, NovelList};
 
 const BASE_URL: &str = "https://novelarchive.st";
@@ -68,13 +68,7 @@ impl Source for NovelArchive {
 				_ => {}
 			}
 		}
-		let list: NovelList = get(&params.url(page, settings::hide_adult()))?;
-		Ok(MangaPageResult {
-			has_next_page: list
-				.pagination
-				.is_some_and(|pagination| pagination.has_next),
-			entries: list.novels.into_iter().map(Into::into).collect(),
-		})
+		browse(params, page)
 	}
 
 	fn get_manga_update(
@@ -115,11 +109,23 @@ impl Source for NovelArchive {
 impl Home for NovelArchive {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let hide_adult = settings::hide_adult();
-		// The feeds ignore the site's genre exclusions, so adult titles are left out here.
+		let sorted = |sort| {
+			Request::get(
+				SearchParams {
+					sort,
+					..Default::default()
+				}
+				.url(1, hide_adult),
+			)
+		};
+		// The fixed feeds ignore the site's genre exclusions, so adult titles are left out here.
 		let feeds: Vec<Result<Vec<Novel>>> = Request::send_all([
 			Request::get(format!("{API_URL}/trending?limit=5"))?,
 			Request::get(format!("{API_URL}/editors-choice"))?,
+			sorted(Some("popular"))?,
 			Request::get(format!("{API_URL}/recently-updated?limit={PAGE_SIZE}"))?,
+			sorted(Some("rating"))?,
+			sorted(None)?,
 		])
 		.into_iter()
 		.map(|response| {
@@ -142,42 +148,115 @@ impl Home for NovelArchive {
 			.into_iter()
 			.map(|feed| feed.ok().filter(|novels| !novels.is_empty()));
 
-		let mut components = Vec::new();
-		if let Some(novels) = feeds.next().flatten() {
-			components.push(HomeComponent {
-				title: Some("Trending".into()),
-				subtitle: None,
-				value: HomeComponentValue::BigScroller {
-					entries: novels.into_iter().map(Novel::into_details).collect(),
-					auto_scroll_interval: Some(8.0),
-				},
-			});
-		}
-		if let Some(novels) = feeds.next().flatten() {
-			components.push(HomeComponent {
-				title: Some("Editor's Choice".into()),
-				subtitle: None,
-				value: HomeComponentValue::Scroller {
-					entries: novels
-						.into_iter()
-						.map(|novel| Manga::from(novel).into())
-						.collect(),
-					listing: None,
-				},
-			});
-		}
-		if let Some(novels) = feeds.next().flatten() {
-			components.push(HomeComponent {
-				title: Some("Latest Updates".into()),
-				subtitle: None,
-				value: HomeComponentValue::MangaChapterList {
-					page_size: Some(5),
-					entries: novels.into_iter().filter_map(Novel::into_latest).collect(),
-					listing: None,
-				},
-			});
-		}
-		Ok(HomeLayout { components })
+		let cards = |novels: Vec<Novel>| -> Vec<Link> {
+			novels
+				.into_iter()
+				.map(|novel| Manga::from(novel).into())
+				.collect()
+		};
+		let listing = |id: &str, name: &str| {
+			Some(Listing {
+				id: id.into(),
+				name: name.into(),
+				..Default::default()
+			})
+		};
+		// Array elements are evaluated in order, so each section takes its own feed.
+		let sections = [
+			(
+				"Trending",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::BigScroller {
+						entries: novels.into_iter().map(Novel::into_details).collect(),
+						auto_scroll_interval: Some(8.0),
+					}),
+			),
+			(
+				"Editor's Choice",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::Scroller {
+						entries: cards(novels),
+						listing: None,
+					}),
+			),
+			(
+				"Popular",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::Scroller {
+						entries: cards(novels),
+						listing: listing("popular", "Popular"),
+					}),
+			),
+			(
+				"Recently Updated",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::MangaChapterList {
+						page_size: Some(5),
+						entries: novels.into_iter().filter_map(Novel::into_latest).collect(),
+						listing: None,
+					}),
+			),
+			(
+				"Top Rated",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::MangaList {
+						ranking: true,
+						page_size: Some(5),
+						entries: cards(novels),
+						listing: listing("rating", "Top Rated"),
+					}),
+			),
+			(
+				"New in the Archive",
+				feeds
+					.next()
+					.flatten()
+					.map(|novels| HomeComponentValue::Scroller {
+						entries: cards(novels),
+						listing: listing("recent", "New in the Archive"),
+					}),
+			),
+		];
+		Ok(HomeLayout {
+			components: sections
+				.into_iter()
+				.filter_map(|(title, value)| {
+					Some(HomeComponent {
+						title: Some(title.into()),
+						subtitle: None,
+						value: value?,
+					})
+				})
+				.collect(),
+		})
+	}
+}
+
+impl ListingProvider for NovelArchive {
+	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
+		let sort = match listing.id.as_str() {
+			"popular" => Some("popular"),
+			"rating" => Some("rating"),
+			"recent" => None,
+			_ => bail!("Unknown listing"),
+		};
+		browse(
+			SearchParams {
+				sort,
+				..Default::default()
+			},
+			page,
+		)
 	}
 }
 
@@ -231,4 +310,10 @@ impl DeepLinkHandler for NovelArchive {
 	}
 }
 
-register_source!(NovelArchive, Home, DynamicFilters, DeepLinkHandler);
+register_source!(
+	NovelArchive,
+	Home,
+	ListingProvider,
+	DynamicFilters,
+	DeepLinkHandler
+);

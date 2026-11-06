@@ -321,7 +321,43 @@ fn home_has_the_site_sections() {
 		.into_iter()
 		.filter_map(|component| component.title)
 		.collect();
-	assert_eq!(titles, ["Trending", "Editor's Choice", "Latest Updates"]);
+	assert_eq!(
+		titles,
+		[
+			"Trending",
+			"Editor's Choice",
+			"Popular",
+			"Recently Updated",
+			"Top Rated",
+			"New in the Archive"
+		]
+	);
+}
+
+#[aidoku_test]
+fn home_listings_page() {
+	let source = NovelArchive::new();
+	for id in ["popular", "rating", "recent"] {
+		let listing = Listing {
+			id: id.into(),
+			..Default::default()
+		};
+		let first = source.get_manga_list(listing.clone(), 1).unwrap();
+		let second = source.get_manga_list(listing, 2).unwrap();
+		assert!(first.has_next_page);
+		assert_ne!(first.entries[0].key, second.entries[0].key);
+	}
+	assert!(
+		source
+			.get_manga_list(
+				Listing {
+					id: "unknown".into(),
+					..Default::default()
+				},
+				1
+			)
+			.is_err()
+	);
 }
 
 #[aidoku_test]

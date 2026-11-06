@@ -2,12 +2,26 @@
 	"info": {
 		"id": "en.novelarchive",
 		"name": "Novel Archive",
-		"version": 9,
+		"version": 10,
 		"url": "https://novelarchive.st",
 		"contentRating": 1,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
 	},
+	"listings": [
+		{
+			"id": "popular",
+			"name": "Popular"
+		},
+		{
+			"id": "rating",
+			"name": "Top Rated"
+		},
+		{
+			"id": "recent",
+			"name": "New in the Archive"
+		}
+	],
 	"config": {
 		"supportsTagSearch": true
 	}
