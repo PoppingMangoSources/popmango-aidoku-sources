@@ -11,6 +11,7 @@ use aidoku::{
 
 mod helpers;
 mod models;
+mod settings;
 #[cfg(test)]
 mod test;
 
@@ -38,6 +39,7 @@ impl Source for NovelArchive {
 	) -> Result<MangaPageResult> {
 		let mut params = SearchParams {
 			query,
+			hide_adult: settings::hide_adult(),
 			..Default::default()
 		};
 		for filter in filters {
@@ -66,6 +68,7 @@ impl Source for NovelArchive {
 					params.genres = included;
 					params.hidden_genres = excluded;
 				}
+				// Ticked hides adult novels and excluded shows them, overriding the setting.
 				FilterValue::Check { id, value } if id == "hide_adult" => {
 					params.hide_adult = value == 1
 				}
@@ -112,10 +115,12 @@ impl Source for NovelArchive {
 
 impl Home for NovelArchive {
 	fn get_home(&self) -> Result<HomeLayout> {
+		let hide_adult = settings::hide_adult();
 		let sorted = |sort| {
 			Request::get(
 				SearchParams {
 					sort,
+					hide_adult,
 					..Default::default()
 				}
 				.url(1),
@@ -247,6 +252,7 @@ impl ListingProvider for NovelArchive {
 		browse(
 			SearchParams {
 				sort,
+				hide_adult: settings::hide_adult(),
 				..Default::default()
 			},
 			page,

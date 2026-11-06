@@ -1,7 +1,10 @@
 #![expect(clippy::unwrap_used)]
 
 use super::*;
-use aidoku::{ContentRating, MangaStatus};
+use aidoku::{
+	ContentRating, MangaStatus,
+	imports::defaults::{DefaultValue, defaults_set},
+};
 use aidoku_test::aidoku_test;
 use helpers::{ADULT_GENRES, chapter_title, content_rating, genres};
 
@@ -38,10 +41,11 @@ fn genre_filter(included: &[&str], excluded: &[&str]) -> FilterValue {
 	}
 }
 
-fn hide_adult() -> FilterValue {
+// The check sends 1 when ticked and 2 when excluded.
+fn hide_adult(value: i32) -> FilterValue {
 	FilterValue::Check {
 		id: "hide_adult".into(),
-		value: 1,
+		value,
 	}
 }
 
@@ -244,14 +248,18 @@ fn search_pages_and_sorts() {
 #[aidoku_test]
 fn search_finds_a_title() {
 	let query = Some("Dual Cultivation Harem in the Demonic Cult");
-	assert!(
-		search(query, vec![])
+	let found = |filters| {
+		search(query, filters)
 			.entries
 			.iter()
 			.any(|manga| manga.key == NOVEL_KEY)
-	);
-	let hidden = search(query, vec![hide_adult()]);
-	assert!(!hidden.entries.iter().any(|manga| manga.key == NOVEL_KEY));
+	};
+	// Hidden by the setting's default, shown when the search excludes the check.
+	assert!(!found(vec![]));
+	assert!(found(vec![hide_adult(2)]));
+	defaults_set("hideAdult", DefaultValue::Bool(false));
+	assert!(found(vec![]));
+	assert!(!found(vec![hide_adult(1)]));
 }
 
 #[aidoku_test]
@@ -274,7 +282,7 @@ fn genre_filter_includes_and_excludes() {
 
 #[aidoku_test]
 fn hidden_adult_titles_stay_out_of_search() {
-	let results = search(None, vec![hide_adult()]);
+	let results = search(None, vec![]);
 	assert!(
 		results
 			.entries
