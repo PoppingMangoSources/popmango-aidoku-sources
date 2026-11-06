@@ -12,7 +12,7 @@ sources:
   - code: sources/en.novelarchive/res/filters.json
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: 50181bf
+verified_at: c8d96e6
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -45,14 +45,14 @@ sends its label lowercased, as the site lowercases every genre.
 ## Home
 
 Six rows, in one parallel request, in the owner's order: Trending (a big scroller), Popular,
-Recently Updated (each novel's newest chapter, five a page), Editor's Choice (a big scroller, since
-the feed carries each pick's description and genres), Top Rated and New in the Archive
+Recently Updated (each novel's newest chapter, five a page), Top Rated, Editor's Choice (a big
+scroller, since the feed carries each pick's description and genres) and New in the Archive
 (`sources/en.novelarchive/src/lib.rs:117`). The fixed feeds are read with `limit=50`, the most
 they return (asked for 120, trending answered 50). The three sorted rows are browse pages
 (`popular`, `rating`, the default sort) and link listings of the same name
 (`sources/en.novelarchive/src/lib.rs:245`). Recently Updated names each novel's newest chapter by
 its count: lists carry no chapter names, only `total_chapters`, so that chapter has a number and the
-novel's `updated_at`, never a title (`sources/en.novelarchive/src/models.rs:155`). A feed that
+novel's `updated_at`, never a title (`sources/en.novelarchive/src/models.rs:152`). A feed that
 fails drops out; the home fails only when all six do.
 
 > ⚠️ The site's own home shows only Trending, Editor's Choice and Latest Updates. The six rows are
@@ -71,7 +71,7 @@ them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never coll
 `/chapters/{n}?prefetch=1`, which leaves out the name list; it is plain text, escaped as Markdown.
 
 > ⚠️ A chapter title drops a leading "Chapter n" only when n is its own position, so
-> "Chapter 10" at position 1 stays whole (`sources/en.novelarchive/src/helpers.rs:139`).
+> "Chapter 10" at position 1 stays whole (`sources/en.novelarchive/src/helpers.rs:143`).
 
 > ⚠️ Errors answer `{"error": …}` with a status, such as a 404 "Novel not found"; the message is
 > shown as is.
