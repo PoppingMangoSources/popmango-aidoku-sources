@@ -836,7 +836,8 @@ went in one of these ways, and new ones go in the same way:
   can be explained rather than loop. The Bash hook refuses a `git commit` outside
   `scripts/commit.sh` (it also reads the scripts a command runs, except `scripts/` and
   `.githooks/`), prints the section 9 commit rules beside each `commit.sh`, and prints section 3
-  as a checklist before a `git push` or `pr-branch.sh`. An edit that writes a home component
+  as a checklist, one line per rule, before a `pr-branch.sh` or a `git push` that changes a source
+  or template (the full rows overflow a hook's inline output). An edit that writes a home component
   gets the section 6 home rules once per source, and after a compaction the SessionStart hook
   prints section 0, since a summary keeps only a pointer to this file. Personal settings, such as a plugin's permission lists,
   go in `.claude/settings.local.json`, which is ignored. Codex has no hooks, so for Codex this

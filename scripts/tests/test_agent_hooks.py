@@ -121,12 +121,19 @@ class AgentHookTests(unittest.TestCase):
         for command in ('git log --grep commit', 'git commit-tree HEAD^{tree}', 'git status'):
             self.assertEqual(self.bash(command), '', command)
 
-    def test_push_prints_the_checklist(self):
+    def test_source_push_prints_the_compact_checklist(self):
         self.write_rules()
-        for command in ('git push -u origin main', 'scripts/pr-branch.sh en.example --push'):
-            context = json.loads(self.bash(command))['hookSpecificOutput']['additionalContext']
-            self.assertIn('Cards carry key, title and cover.', context)
-            self.assertIn('each item the person asked for', context)
+        with mock.patch.object(hooks, 'changed_crates', return_value=['sources/en.example']):
+            for command in ('git push -u origin main', 'scripts/pr-branch.sh en.example --push'):
+                context = json.loads(self.bash(command))['hookSpecificOutput']['additionalContext']
+                self.assertIn('- [ ] Cards carry key, title and cover.', context)
+                self.assertNotIn('(Search returned tags)', context)
+                self.assertIn('each item the person asked for', context)
+
+    def test_push_without_source_changes_is_quiet(self):
+        self.write_rules()
+        with mock.patch.object(hooks, 'changed_crates', return_value=[]):
+            self.assertEqual(self.bash('git push -u origin main'), '')
 
     def test_home_edit_prints_home_rules_once(self):
         self.write_rules()

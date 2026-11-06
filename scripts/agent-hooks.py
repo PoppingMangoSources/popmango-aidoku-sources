@@ -11,7 +11,8 @@ Usage:
                                         rules or has no review of its current files
     scripts/agent-hooks.py stamp <id> <status>
                                         record that scripts/review-source.sh ran on <id>'s files
-    scripts/agent-hooks.py checklist    print the section 3 rules to read against the diff
+    scripts/agent-hooks.py checklist [--compact]
+                                        print the section 3 rules to read against the diff
 """
 
 import contextlib
@@ -150,13 +151,14 @@ def pre_bash(event: dict) -> None:
         rules = section("## 9. This repo's workflow", "### How a rule")
         context.append("Commit rules (AGENTS.md / CLAUDE.md section 9):\n" +
                        "\n".join(b for b in re.split(r"\n(?=- )", rules) if "ommit" in b.split("\n", 1)[0]))
-    if re.search(r"\bgit\s+push\b|pr-branch\.sh", command):
+    pushes_source = re.search(r"\bgit\s+push\b", command) and changed_crates()
+    if pushes_source or re.search(r"pr-branch\.sh\s", command):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            checklist()
+            checklist(compact=True)
         context.append(
             "Before this push: list each item the person asked for and what shows it, then read "
-            "every row below against the diff.\n" + out.getvalue()
+            "every rule below against the diff (full rows: scripts/agent-hooks.py checklist).\n" + out.getvalue()
         )
     if context:
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
@@ -203,14 +205,18 @@ def stamp(name: str, status: str) -> None:
     path.write_text(json.dumps({"tree": tree_hash(crate), "status": status}))
 
 
-def checklist() -> None:
+def checklist(compact: bool = False) -> None:
+    """Section 3's rules; compact keeps each rule's first sentence, so a hook's output stays inline."""
     text = (ROOT / "AGENTS.md").read_text()  # identical to CLAUDE.md
     section = text[text.index("## 3. Review feedback"):text.index("## 4. ")]
     rows = re.findall(r"^\| (?!What was flagged|---)(.+?) \| (.+?) \|", section, re.M)
     bullets = re.findall(r"^- \*\*(.+?)\*\*", section, re.M)
     print("Read each against the diff (AGENTS.md / CLAUDE.md section 3):")
     for flagged, rule in rows:
-        print(f"- [ ] {rule}  ({flagged})")
+        if compact:
+            print(f"- [ ] {re.split(r'(?<=[.;])\s', rule, maxsplit=1)[0]}")
+        else:
+            print(f"- [ ] {rule}  ({flagged})")
     for bullet in bullets:
         print(f"- [ ] {bullet} (see section 3)")
 
@@ -230,7 +236,7 @@ def main() -> int:
     elif command == "stamp" and len(sys.argv) == 4:
         stamp(sys.argv[2], sys.argv[3])
     elif command == "checklist":
-        checklist()
+        checklist(compact="--compact" in sys.argv)
     elif command == "digest":
         digest()
     else:
