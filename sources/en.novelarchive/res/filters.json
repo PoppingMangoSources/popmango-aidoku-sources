@@ -4,10 +4,10 @@
 		"id": "sort",
 		"canAscend": false,
 		"options": [
-			"Recent",
+			"Recently Updated",
 			"Popular",
 			"Top Rated",
-			"Chapters"
+			"Most Chapters"
 		]
 	},
 	{
@@ -32,8 +32,8 @@
 		"id": "genre_match",
 		"title": "Genre Match",
 		"options": [
-			"AND",
-			"OR"
+			"All",
+			"Any"
 		],
 		"ids": [
 			"all",

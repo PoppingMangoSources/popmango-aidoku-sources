@@ -131,6 +131,13 @@ Running them:
   red run can be the site or the network. Read the failing assertion before blaming either.
 - The runner simulates most of the app, not all of it: WebView calls return `-1`, and the
   layout of a home page or how a component renders can only be seen in the app.
+- The runner's `parse_date` converts the format to chrono's and drops quoted literals and
+  fractional seconds, so an ISO format such as `"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"` (the app parses
+  it, `en.novelbuddy` ships it) returns `None` there (verified on `en.novelarchive`). Check such
+  dates in the app, not with an assertion.
+- Sites behind Cloudflare can refuse the sandbox outright (403 "Attention Required" for curl
+  and headless Chromium alike, `en.novelarchive`). Their live tests then fail on the network, not
+  the code; read the site through Firecrawl and say the live suite could not run.
 
 For behaviour only the app shows, `aidoku logcat` starts a log server; enter its url in the
 app's Advanced settings under Log Server and every `println!` from a device on the same
@@ -643,6 +650,9 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
   aidoku-rs book's "defaulting to single" is wrong.
 - `parse_date` formats with the **device's locale** unless given one, so English month or
   day names fail on a phone set to another language; pass `"en_US_POSIX"`.
+- `QueryParameters::push(name, None)` writes the bare name (`&sort&status`): `None` means a
+  key-only parameter (`helpers/uri.rs`), which an API can read as an empty value. Push only when
+  there is a value (caught by a `review_` test on `en.novelarchive`).
 - Dynamic settings get their defaults registered only when the reader opens the settings
   page, so `defaults_get` returns `None` for them until then; read them with a fallback.
 - `defaults_get::<Vec<String>>(key)` returns `None` when unset and `Some(vec![])`

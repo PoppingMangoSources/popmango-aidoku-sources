@@ -1,17 +1,14 @@
 {
 	"info": {
 		"id": "en.novelarchive",
-		"name": "NovelArchive",
-		"version": 8,
-		"url": "https://novelarchive.cc",
+		"name": "Novel Archive",
+		"version": 9,
+		"url": "https://novelarchive.st",
 		"contentRating": 1,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
 	},
-	"listings": [
-		{ "id": "popular", "name": "Popular" },
-		{ "id": "recent", "name": "Recently Updated" },
-		{ "id": "rating", "name": "Top Rated" },
-		{ "id": "chapters", "name": "Most Chapters" }
-	]
+	"config": {
+		"supportsTagSearch": true
+	}
 }
