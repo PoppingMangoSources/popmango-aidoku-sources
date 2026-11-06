@@ -19,7 +19,7 @@ sources:
   - code: scripts/tests/test_commit_enforcement.py
   - code: .github/workflows/build.yaml
   - code: scripts/commit.sh
-verified_at: 101f4a3
+verified_at: 1279894
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -109,17 +109,22 @@ without a width.
 
 `scripts/review-source.sh <id>` runs the gates with live tests, this checker, `upstream-usage.py`,
 the upstream scope of the source's branch, and prints the section 3 rules as a checklist, then
-stamps the result with a hash of the source's files (`scripts/agent-hooks.py:199`). The shared
+stamps the result with a hash of the source's files (`scripts/agent-hooks.py:201`). The shared
 Claude Code hooks in `.claude/settings.json` call `agent-hooks.py`: `pre-edit` points the first
 edit of each source or template per session at the workflow, and `stop` blocks the end of a turn
 while a changed source fails this checker or has no passing stamp for its current files
-(`scripts/agent-hooks.py:173`). The pre-push hook runs each changed source's `review_` tests.`pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
+(`scripts/agent-hooks.py:175`). The pre-push hook runs each changed source's `review_` tests.`pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
 or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 
 > ⚠️ A commit inside a helper script is invisible to a check on the command line alone: a
 > scratchpad script's `git commit` once skipped the documented form. `pre-bash` reads every
-> `.sh` a command runs outside `scripts/` and `.githooks/` (`scripts/agent-hooks.py:111`), so
+> `.sh` a command runs outside `scripts/` and `.githooks/` (`scripts/agent-hooks.py:112`), so
 > keep tooling that commits on purpose (`pr-branch.sh`) inside those folders.
+
+> ⚠️ Hook output over about 10 KB is saved to a file and only a 2 KB preview reaches the
+> agent, so the full section 3 rows (13 KB) arrived cut off on the first push. The push hook
+> prints one line per rule (`checklist --compact`, about 6 KB) and only when the push changes a
+> source or template; keep anything a hook adds below that size.
 
 > ⚠️ The stamp covers every file in the source except `target/` and `package.aix`, so `cargo fmt`
 > or a bump after the review invalidates it. Run the review last.
