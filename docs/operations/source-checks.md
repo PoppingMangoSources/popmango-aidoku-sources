@@ -18,7 +18,8 @@ sources:
   - code: scripts/ci-gates.py
   - code: scripts/tests/test_commit_enforcement.py
   - code: .github/workflows/build.yaml
-verified_at: 149a7b7
+  - code: scripts/commit.sh
+verified_at: 101f4a3
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -112,11 +113,13 @@ stamps the result with a hash of the source's files (`scripts/agent-hooks.py:199
 Claude Code hooks in `.claude/settings.json` call `agent-hooks.py`: `pre-edit` points the first
 edit of each source or template per session at the workflow, and `stop` blocks the end of a turn
 while a changed source fails this checker or has no passing stamp for its current files
-(`scripts/agent-hooks.py:173`). The pre-push hook runs each changed source's `review_` tests.
-`pre-bash` refuses a `git commit` outside `scripts/commit.sh`, reading the scratchpad scripts a
-command runs as well (`scripts/agent-hooks.py:111`), since a commit inside a helper script once
-skipped the documented form. It prints section 3 before a push or `pr-branch.sh`, and `digest`
-prints section 0 after a compaction.
+(`scripts/agent-hooks.py:173`). The pre-push hook runs each changed source's `review_` tests.`pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
+or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
+
+> ⚠️ A commit inside a helper script is invisible to a check on the command line alone: a
+> scratchpad script's `git commit` once skipped the documented form. `pre-bash` reads every
+> `.sh` a command runs outside `scripts/` and `.githooks/` (`scripts/agent-hooks.py:111`), so
+> keep tooling that commits on purpose (`pr-branch.sh`) inside those folders.
 
 > ⚠️ The stamp covers every file in the source except `target/` and `package.aix`, so `cargo fmt`
 > or a bump after the review invalidates it. Run the review last.
