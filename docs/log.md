@@ -34,3 +34,8 @@ Append-only. Newest entries at the bottom.
 
 - [[source-checks]] updated for owner-only unsigned commit metadata, automatic hook setup,
   repository checks before packaging and Stop-hook execution failures. Verified at `90f9d77`.
+
+## [2026-11-06] add | subsystems/novelarchive
+
+- New page [[novelarchive]] after reworking the source for the moved site and its library
+  script: adult exclusions sent like the site, dynamic genres, the site's three home rows.

@@ -12,6 +12,7 @@ traps found in them. It grows as work touches new areas.
 - Working on MangaK or ToonTop: [[mangak-template]]
 - Adding or changing a source check: [[source-checks]]
 - Working on Flame Comics: [[flamecomics]]
+- Working on Novel Archive: [[novelarchive]]
 
 ---
 
@@ -27,6 +28,7 @@ _(none yet)_
 
 - [[mangak-template]] -- the template MangaK and ToonTop share: search, home, ratings
 - [[flamecomics]] -- Flame's embedded page data, path keys, the novel lock rule
+- [[novelarchive]] -- Novel Archive's API, adult exclusions, dynamic genres, home feeds
 
 ## decisions
 
