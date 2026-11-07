@@ -41,7 +41,9 @@ def inspect_push(before, after, branch):
             if not re.fullmatch(r"[0-9a-f]{40,64}", before):
                 raise ValueError("Invalid previous commit SHA")
             subprocess.check_call(["git", "fetch", "--no-tags", "origin", before])
-        arguments = [f"{before}..{after}"]
+        # A rebuilt submission branch moves onto a newer upstream; other contributors' commits there aren't ours.
+        upstream = git("for-each-ref", "--format=%(refname)", "refs/remotes/upstream/").split()
+        arguments = [after, "--not", before, *upstream]
     else:
         refs = [ref for ref in git("for-each-ref", "--format=%(refname)", "refs/remotes/").splitlines()
                 if ref != f"refs/remotes/origin/{branch}"]

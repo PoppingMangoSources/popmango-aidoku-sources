@@ -121,6 +121,11 @@ or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 > `.sh` a command runs outside `scripts/` and `.githooks/` (`scripts/agent-hooks.py:112`), so
 > keep tooling that commits on purpose (`pr-branch.sh`) inside those folders.
 
+> ⚠️ A rebuilt submission branch sits on a newer `upstream/main`, so a push's `before..after`
+> holds other contributors' upstream commits, and the identity check failed on them. The pre-push
+> check leaves out `refs/remotes/upstream/*` (`scripts/check-commits.py:44`); our own commits in the
+> range are still checked.
+
 > ⚠️ Hook output over about 10 KB is saved to a file and only a 2 KB preview reaches the
 > agent, so the full section 3 rows (13 KB) arrived cut off on the first push. The push hook
 > prints one line per rule (`checklist --compact`, about 6 KB) and only when the push changes a

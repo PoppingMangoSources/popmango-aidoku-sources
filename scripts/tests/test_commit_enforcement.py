@@ -1,3 +1,4 @@
+import contextlib
 import importlib.util
 import io
 import json
@@ -71,6 +72,30 @@ class CommitEnforcementTests(unittest.TestCase):
                                     capture_output=True, text=True)
             self.assertEqual(manual.returncode, 1)
             self.assertIn("attribution", manual.stderr)
+
+    def test_rebuild_onto_newer_upstream_checks_only_our_commits(self):
+        with tempfile.TemporaryDirectory() as folder:
+            git = lambda *args, **env: subprocess.check_output(
+                ["git", *args], cwd=folder, text=True, stderr=subprocess.PIPE, env={**os.environ, **env}).strip()
+            other = {"GIT_AUTHOR_NAME": "Other", "GIT_AUTHOR_EMAIL": "o@example.invalid",
+                     "GIT_COMMITTER_NAME": "Other", "GIT_COMMITTER_EMAIL": "o@example.invalid"}
+            git("init", "-q", "-b", "main")
+            git("config", "commit.gpgsign", "false")
+            git("commit", "--allow-empty", "-qm", "chore: upstream base", **other)
+            git("config", "user.name", checks.NAME)
+            git("config", "user.email", checks.EMAIL)
+            git("commit", "--allow-empty", "-qm", "feat: add en.example")
+            before = git("rev-parse", "HEAD")
+            git("reset", "-q", "--hard", "HEAD~1")
+            git("commit", "--allow-empty", "-qm", "chore: newer upstream", **other)
+            git("update-ref", "refs/remotes/upstream/main", "HEAD")
+            git("commit", "--allow-empty", "-qm", "feat: add en.example")
+            after = git("rev-parse", "HEAD")
+            with contextlib.chdir(folder):
+                self.assertEqual(checks.inspect_push(before, after, "feat/en.example"), [])
+                git("commit", "--allow-empty", "-qm", "fix: x", "-m", "Co-Authored-By: Example <a@example.invalid>")
+                errors = checks.inspect_push(before, git("rev-parse", "HEAD"), "feat/en.example")
+            self.assertTrue(any("attribution" in error for error in errors))
 
     def test_commit_hook_uses_owner_identity_and_rejects_attribution(self):
         with tempfile.TemporaryDirectory() as folder:
