@@ -31,8 +31,9 @@ window holds the repository url, and the sources are "routes" on a Route Select 
   `localStorage`, wrapped in try/catch, so it survives a reload when storage allows.
 
 > ⚠️ Dark mode is `:root[data-theme="dark"]`, not a `prefers-color-scheme` query. A script in
-> `index.html`'s head sets `data-theme` before the first paint (the saved toggle choice, else the
-> device setting) and the moon/sun toggle in `main.js` flips and saves it. A theme rule on a bare
+> `index.html`'s head sets `data-theme` before the first paint (light, unless the reader chose dark
+> with the toggle; the owner wants light as the default whatever the device setting) and the
+> moon/sun toggle in `main.js` flips and saves it. A theme rule on a bare
 > element must sit in `:where(...)`: `[data-theme="dark"] a` out-ranked `.brand` and the button
 > links and turned them pink.
 
@@ -44,8 +45,15 @@ window holds the repository url, and the sources are "routes" on a Route Select 
 > ⚠️ Hover effects sit inside `@media (hover: hover)`: iOS keeps `:hover` on whatever was last
 > tapped, which left cards highlighted and choices shifted on a phone.
 
-> ⚠️ The ticker carries icons only and animates `transform`. With names it grew to several
-> thousand pixels, and iOS Safari drew the rotated strip as an empty red band.
+> ⚠️ The ticker's clipping strip must not be rotated. iOS Safari drew the moving row as an empty
+> red band while `.ticker` itself carried `rotate` (with a `100vw` negative-margin bleed and
+> `will-change`); shrinking the row to icons did not cure it. The Mana site's straight ticker
+> never blanks, so the strip now matches it: `.ticker` sits outside `.wrap` at full width, the tilt
+> is a still `::before` band, and the row is two `.ticker__set`s sliding by `translateX(-50%)`.
+
+> ⚠️ Spacing, type sizes, radii and the fixed colours are named in `:root` (`--sp-N` in 4px steps
+> by multiple, `--text-*`, `--r-*`, `--ink-fixed`, `--white`, `--safe-*`). Write a new value as
+> one of these; the dialogue's 13rem room for Mango-chan is the one deliberate literal.
 - The README lists sources as two-column Route select card tables (`media/route-button.svg`,
   `media/heat-<contentRating>.svg`). Each card keeps the two `.aix` links and the `.aix (vN)` label
   that `scripts/bump.sh` rewrites and `scripts/check-sources.py` reads, and `scripts/new-source.sh`

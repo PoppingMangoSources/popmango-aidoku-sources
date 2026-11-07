@@ -24,14 +24,13 @@
 		/>
 		<link rel="stylesheet" href="styles.css?v=dev" />
 		<script>
-			// Set the theme before the first paint: the saved choice, else the device setting.
+			// Set the theme before the first paint: light unless the reader chose dark.
 			(function () {
 				var theme;
 				try {
 					theme = localStorage.getItem("theme");
 				} catch (e) {}
-				if (theme !== "light" && theme !== "dark")
-					theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+				if (theme !== "dark") theme = "light";
 				document.documentElement.dataset.theme = theme;
 			})();
 		</script>
@@ -94,6 +93,7 @@
 		</header>
 
 		<main id="top">
+			<div class="wrap">
 			<section class="hero">
 				<div class="hero__copy">
 					<p class="eyebrow"><span class="pulse"></span>Reading system online</p>
@@ -148,11 +148,13 @@
 					</div>
 				</div>
 			</section>
+			</div>
 
 			<section class="ticker" aria-label="Sources in this repository">
 				<div class="ticker__track" id="ticker"></div>
 			</section>
 
+			<div class="wrap">
 			<section class="window quest" id="quest" aria-label="Main quest">
 				<div class="window__bar"><span>[ SYSTEM ] MAIN QUEST</span><span class="window__dots">!</span></div>
 				<div class="quest__body">
@@ -216,6 +218,7 @@
 				<noscript><p class="empty">Turn on JavaScript to see the routes.</p></noscript>
 				<div class="route-grid" id="source-list"></div>
 			</section>
+			</div>
 		</main>
 
 		<footer class="footer">

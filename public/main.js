@@ -270,19 +270,22 @@ document.addEventListener("DOMContentLoaded", () => {
 			document.getElementById("lv").textContent = "LV. " + sources.length;
 			document.getElementById("reward").textContent = sources.length + " routes unlocked";
 
-			// Icons only: a ticker of names grows wide enough that iOS Safari stops drawing it.
-			// The set repeats once so the loop has no gap.
+			// Two identical sets: the track slides by one set's width, so the loop has no seam.
 			const ticker = document.getElementById("ticker");
-			const set = sources.filter((s) => s.iconURL).map((s) => {
+			const set = document.createElement("div");
+			set.className = "ticker__set";
+			for (const s of sources.filter((s) => s.iconURL)) {
 				const item = document.createElement("span");
 				item.className = "ticker__item";
 				const img = icon(s, "ticker__icon");
 				img.alt = s.name;
 				img.loading = "eager";
 				item.appendChild(img);
-				return item;
-			});
-			ticker.append(...set, ...set.map((n) => Object.assign(n.cloneNode(true), { ariaHidden: "true" })));
+				set.appendChild(item);
+			}
+			const copy = set.cloneNode(true);
+			copy.setAttribute("aria-hidden", "true");
+			ticker.append(set, copy);
 			filter();
 		})
 		.catch(() => {
