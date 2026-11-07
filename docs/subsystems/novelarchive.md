@@ -2,7 +2,7 @@
 title: Novel Archive (en.novelarchive)
 type: subsystem
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-07
 sources:
   - code: sources/en.novelarchive/src/lib.rs
   - code: sources/en.novelarchive/src/helpers.rs
@@ -54,6 +54,10 @@ they return (asked for 120, trending answered 50). The three sorted rows are bro
 its count: lists carry no chapter names, only `total_chapters`, so that chapter has a number and the
 novel's `updated_at`, never a title (`sources/en.novelarchive/src/models.rs:152`). A feed that
 fails drops out; the home fails only when all six do.
+
+> ⚠️ The two big scrollers take the site's description unescaped, since the app draws it as plain
+> text; `get_manga_update` escapes it for the details page, which renders Markdown
+> (`sources/en.novelarchive/src/lib.rs:91`). Escaping both showed `life\,` and `\[` on Discover.
 
 > ⚠️ The site's own home shows only Trending, Editor's Choice and Latest Updates. The six rows are
 > the owner's choice, taken from another client of the site, so a review may cite the "order the

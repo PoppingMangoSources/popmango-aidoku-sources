@@ -162,8 +162,11 @@ fn review_details_read_the_captured_novel() {
 		details.url.as_deref(),
 		Some("https://novelarchive.st/novel?id=6aedf2f22fe18aff37a5a186")
 	);
-	// Descriptions are Markdown, so the site's punctuation is escaped.
-	assert!(details.description.unwrap().ends_with("internet\\."));
+	// The big scroller shows this text verbatim; only the details page escapes it as Markdown.
+	assert_eq!(
+		details.description.as_deref(),
+		Some("The most scandalous murim novel on the internet.")
+	);
 }
 
 #[aidoku_test]

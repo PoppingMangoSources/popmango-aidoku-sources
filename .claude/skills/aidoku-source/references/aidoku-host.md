@@ -130,7 +130,8 @@ filter doesn't count.
   components that did load as `get_home`'s result.
 - What each component shows (app `Home/HomeComponents/`):
   - `BigScroller`: cover, title, **authors, description, tags**, and a content rating badge
-    for suggestive and NSFW. This is the component for details.
+    for suggestive and NSFW. This is the component for details. The description is drawn with
+    `Text(description)`, which shows a string as it is, so Markdown escapes appear as backslashes.
   - `Scroller`: cover, title and the link's `subtitle`.
   - `MangaList`: cover, title, `subtitle` and **the manga's tags** when the link's manga has
     any. A row is only compact when the manga carries no tags.

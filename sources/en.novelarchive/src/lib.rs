@@ -89,7 +89,10 @@ impl Source for NovelArchive {
 			manga.chapters = Some(novel.chapters());
 		}
 		if needs_details {
-			manga.copy_from(novel.into_details());
+			let mut details = novel.into_details();
+			// The details page renders Markdown; the big scroller shows the text as it is.
+			details.description = details.description.map(|text| text.escape_markdown());
+			manga.copy_from(details);
 		}
 		Ok(manga)
 	}

@@ -5,7 +5,6 @@ use crate::{
 use aidoku::{
 	Chapter, Manga, MangaStatus, MangaWithChapter,
 	alloc::{String, Vec, string::ToString, vec},
-	helpers::string::PlainText,
 	imports::std::parse_date,
 	prelude::*,
 };
@@ -120,7 +119,7 @@ impl Novel {
 				.map(|author| vec![author]),
 			description: self
 				.description
-				.map(|description| description.trim().escape_markdown())
+				.map(|description| description.trim().to_string())
 				.filter(|description| !description.is_empty()),
 			content_rating: content_rating(&self.genres),
 			tags: (!tags.is_empty()).then_some(tags),

@@ -272,6 +272,7 @@ Each of these was a real comment. They generalise.
 |---|---|
 | Search returned tags + descriptions | Search/listing results carry **key, title, cover** and optionally status and content rating. Everything else is filled in by `get_manga_update`. |
 | Home rows showed "Manhwa · ★ 8.3" (our own miss, `en.atsumaru`) | The same rule covers every card: search, listings, `Scroller`, `MangaList`, `MangaChapterList` and a pasted-link result. Build rows as `Link::from(compact Manga)`, never with a `subtitle`. **Only `BigScroller` shows details.** |
+| Big scroller descriptions showed `life\, while` and `\[Domestic` (our own miss, `en.novelarchive`) | `escape_markdown` only on the details path. A `BigScroller` shows its description verbatim, so give it the site's plain text (section 6). |
 | A "chapter" invented for `MangaChapterList` from a feed with no chapters | Use `MangaChapterList` only when the feed carries a real chapter; otherwise the section is a `Scroller`. |
 | A pasted link answered with the full series | Look the series up the way a search card is built — one compact request — and fall back to text search when it isn't found. |
 | Explicit `"default"` on a sort filter | Don't set what the framework already defaults to. |
@@ -641,9 +642,12 @@ is short-lived, so a cache dies with it.
   partial one (`en.atsumaru`). Details in the skill's `references/aidoku-host.md`.
 - `MangaList` rows also show the **manga's tags** when it has any, so a row's manga carries
   none.
-- Descriptions and text pages are rendered as **Markdown** (`en.hentai2read` says so for
+- The details page and text pages render **Markdown** (`en.hentai2read` says so for
   descriptions), so escape the site's text with `escape_markdown` and turn `<em>`/`<strong>` into
-  `*`/`**`, as `en.novelbuddy`, `en.chikari` and `en.freewebnovel` do. Walking text nodes needs
+  `*`/`**`, as `en.novelbuddy`, `en.chikari` and `en.freewebnovel` do. A `BigScroller` shows its
+  entries' descriptions verbatim (`Text(description)` in the app's `HomeBigScrollerView.swift`),
+  so escape on the details path only: escaped text there shows every backslash
+  (`en.novelarchive`, found by the owner in the app). Walking text nodes needs
   `Element::child_nodes` and `Kind`, which `aidoku verify` dates to app **0.8.3**, the
   `minAppVersion` those three declare (verified on `en.flamecomics`).
 
