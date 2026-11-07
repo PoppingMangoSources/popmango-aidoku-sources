@@ -105,12 +105,19 @@ impl Source for NovelArchive {
 		.chapter
 		.content
 		.unwrap_or_default();
-		let text = content.trim();
+		// One Markdown paragraph per line, as the site's reader shows them.
+		let text = content
+			.lines()
+			.map(str::trim)
+			.filter(|line| !line.is_empty())
+			.map(|line| line.escape_markdown())
+			.collect::<Vec<_>>()
+			.join("\n\n");
 		if text.is_empty() {
 			bail!("This chapter has no text on Novel Archive yet");
 		}
 		Ok(vec![Page {
-			content: PageContent::text(text.escape_markdown()),
+			content: PageContent::text(text),
 			..Default::default()
 		}])
 	}

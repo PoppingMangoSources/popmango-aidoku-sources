@@ -127,6 +127,7 @@ class CardRuleTests(unittest.TestCase):
             'included for emptiness': 'if !included.is_empty() {\n}\n',
             'strip_prefix': 'let rest = &url[BASE_URL.len()..];\n',
             'remaps a request': 'Request::get(url)\n\t.map_err(|_| error!("bad"))?;\n',
+            'escapes a whole chapter': 'content: PageContent::text(text.escape_markdown()),\n',
         }
         for rule, text in cases.items():
             self.assertTrue(any(rule in message for message in self.api_use(text)), rule)
@@ -143,6 +144,8 @@ class CardRuleTests(unittest.TestCase):
             'MultiSelectFilter {\n\tis_genre: true,\n\tuses_tag_style: true,\n\t..Default::default()\n}\n'
             'let rest = url.strip_prefix(BASE_URL)?;\n'
             'Request::get(url)?.send()?;\n'
+            'let text = lines.map(|line| line.escape_markdown()).collect::<Vec<_>>().join("\\n\\n");\n'
+            'content: PageContent::text(text),\n'
         )
         self.assertEqual(self.api_use(text), [])
 

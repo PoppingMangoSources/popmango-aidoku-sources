@@ -273,6 +273,7 @@ Each of these was a real comment. They generalise.
 | Search returned tags + descriptions | Search/listing results carry **key, title, cover** and optionally status and content rating. Everything else is filled in by `get_manga_update`. |
 | Home rows showed "Manhwa · ★ 8.3" (our own miss, `en.atsumaru`) | The same rule covers every card: search, listings, `Scroller`, `MangaList`, `MangaChapterList` and a pasted-link result. Build rows as `Link::from(compact Manga)`, never with a `subtitle`. **Only `BigScroller` shows details.** |
 | Big scroller descriptions showed `life\, while` and `\[Domestic` (our own miss, `en.novelarchive`) | `escape_markdown` only on the details path. A `BigScroller` shows its description verbatim, so give it the site's plain text (section 6). |
+| A chapter escaped whole, one paragraph of 600 hard breaks; the owner's reader crashed on one (our own miss, `en.novelarchive`) | Make each line its own paragraph: escape it and join with blank lines, as `en.atsumaru` and `zh.wenku8` do. `check-sources.py` fails `PageContent::text(x.escape_markdown())`. |
 | A "chapter" invented for `MangaChapterList` from a feed with no chapters | Use `MangaChapterList` only when the feed carries a real chapter; otherwise the section is a `Scroller`. |
 | A pasted link answered with the full series | Look the series up the way a search card is built — one compact request — and fall back to text search when it isn't found. |
 | Explicit `"default"` on a sort filter | Don't set what the framework already defaults to. |
@@ -872,8 +873,8 @@ went in one of these ways, and new ones go in the same way:
   From sections 3 and 7 it also fails a `push(name, None)`, a `From` into `Manga` or `Chapter`
   that defaults its key, a `parse_date` of month or day names without a locale, a response body
   parsed with `serde_json` rather than `json_owned`, a Rust genre multi-select without
-  `uses_tag_style: true`, a remapped `Request` error, and a "Show Locked" switch on by default
-  without a login. It notes `!included.is_empty()` and slicing off a prefix by its length, both
+  `uses_tag_style: true`, a remapped `Request` error, a "Show Locked" switch on by default
+  without a login, and a chapter escaped whole into one `PageContent::text`. It notes `!included.is_empty()` and slicing off a prefix by its length, both
   in recent merges (`multi.xcomic`, `multi.sumidoku`, `multi.mangadex`).
 - `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
   `action.yml` at the pinned ref and fails a deprecated Node, and fails a workflow that installs

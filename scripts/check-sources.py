@@ -218,6 +218,7 @@ INLINE_STRING_JSON = re.compile(r"serde_json::from_(?:str|slice)\([^;]*\.(?:stri
 MULTI_SELECT = re.compile(r"\bMultiSelectFilter\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
 EMPTY_INCLUDED = re.compile(r"!\s*included\.is_empty\(\)")
 LENGTH_SLICE = re.compile(r"\[\s*[\w.]+\.len\(\)\s*\.\.\s*\]")
+WHOLE_TEXT_ESCAPED = re.compile(r"PageContent::text\(\s*[\w.]+\.escape_markdown\(\)\s*\)")
 REMAPPED_REQUEST = re.compile(r"Request::(?:get|post|put)\([^;]*?\)\s*\.map_err\(", re.S)
 
 
@@ -245,6 +246,8 @@ def check_api_use(path: Path, text: str) -> None:
         note(path, f"line {line(match)} checks included for emptiness; a multi-select with nothing chosen isn't sent")
     for match in LENGTH_SLICE.finditer(text):
         note(path, f"line {line(match)} slices off a prefix by its length; consider strip_prefix")
+    for match in WHOLE_TEXT_ESCAPED.finditer(text):
+        fail(path, f"line {line(match)} escapes a whole chapter, making one paragraph of hard breaks; escape each line and join them with blank lines")
     for match in REMAPPED_REQUEST.finditer(text):
         fail(path, f"line {line(match)} remaps a request error; Request only fails on a bad url, so use ?")
 

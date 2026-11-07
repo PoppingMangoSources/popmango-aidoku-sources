@@ -74,7 +74,15 @@ which fails only when all six do.
 Chapter n is the n-th entry of `chapter_names`, numbered by position as the site's reader links
 them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never collected still lists
 `total_chapters` chapters (`sources/en.novelarchive/src/models.rs:133`). Text comes from
-`/chapters/{n}?prefetch=1`, which leaves out the name list; it is plain text, escaped as Markdown.
+`/chapters/{n}?prefetch=1`, which leaves out the name list; it is plain text, one line per paragraph.
+
+> ⚠️ Each line is escaped and becomes its own Markdown paragraph (joined with blank lines). Escaping
+> the whole text made one paragraph of hard breaks, and chapter 1 of *Got Dropped into a Ghost Story,
+> Still Gotta Work* (`6a162ec14f942c668d69a598`) crashed the reader with it.
+
+> ⚠️ Chapter names stop matching positions in long novels: that novel's names run "Chapter 1" to
+> "Chapter 374", then restart at "Chapter 165.2" for its remaining 261 entries. Keys and numbers stay
+> positions, as the site's reader links them, so those chapters show a name unlike their number.
 
 > ⚠️ A chapter title drops a leading "Chapter n" only when n is its own position, so
 > "Chapter 10" at position 1 stays whole (`sources/en.novelarchive/src/helpers.rs:143`).

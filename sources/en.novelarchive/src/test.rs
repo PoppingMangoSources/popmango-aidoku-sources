@@ -321,6 +321,8 @@ fn chapter_text_loads() {
 		unreachable!("a novel chapter is text");
 	};
 	assert!(text.contains("Kang Do\\-yun"));
+	// Each line is its own paragraph, never one paragraph of hard breaks.
+	assert!(text.contains("\n\n") && !text.contains("  \n"));
 }
 
 #[aidoku_test]
