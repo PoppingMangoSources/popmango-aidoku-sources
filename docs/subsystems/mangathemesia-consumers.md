@@ -43,6 +43,10 @@ and `genre[]` with the site's own ids (numeric on KingOfShojo, slugs on Rokari).
 > ⚠️ The template's deep links open series only: it looks the path up as a series, and a chapter
 > link returns `None`.
 
+> ⚠️ Both merged upstream on 2026-11-08 (KingOfShojo #875, RokariComics #874) and left `main`. Their
+> last copy with tests is `c667b2d` and the `merged-sources` branch; a later change starts from
+> upstream's crate (section 17 of the rules).
+
 ## Icons
 
 > ⚠️ Each `res/icon.png` is the site's 512 px circular favicon (`cropped-…png` under

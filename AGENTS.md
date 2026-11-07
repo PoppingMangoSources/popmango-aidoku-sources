@@ -1121,10 +1121,10 @@ engine or theme:
 Our `templates/` is upstream's copy, except `madara` and `madtheme`, which carry additions our
 sources use (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and
 is upstream's copy again; its consumers live upstream only. `mangathemesia` is upstream's copy
-again too: its two consumers (`en.kingofshojo`, `en.rokaricomics`) take filters, Discover and
-details from it unchanged, so `main` and their submissions run the same template. The
+again too: its two consumers (`en.kingofshojo`, `en.rokaricomics`) took filters, Discover and
+details from it unchanged and are now upstream (section 17). The
 `madtheme` ones (a home page and a chapter-list fallback) were for Kaliscan, which now sits on
-the `dead-sources` branch with Galaxy Manga and OManga. When syncing, take upstream's files for every other
+the `dead-sources` branch with Galaxy Manga, OManga and LikeManga (its site went offline). When syncing, take upstream's files for every other
 template and bring only upstream's own changes into those two.
 
 **Check for one before writing a source from scratch.** Two ways: see whether the
@@ -1343,6 +1343,8 @@ reaches the site, unless marked.
 
 A source leaves `main` once it is upstream, or while its upstream branch waits on review. Its
 crate and live tests stay in `main`'s history; what it taught stays in this file and `docs/`.
+The `merged-sources` branch keeps the last copy of each merged one, tests included (Atsumaru,
+MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics), so they can be read and tested in one place.
 
 | Source | State | Last copy on `main` | Branch | What it taught |
 |---|---|---|---|---|
@@ -1352,6 +1354,8 @@ crate and live tests stay in `main`'s history; what it taught stays in this file
 | `multi.xcomic` | merged (#735, #738, #762, #771, #853) | `b86969e` | from `upstream/main` | sections 3 and 10 |
 | `en.mangak` | merged (#850) | `171e770` | from `upstream/main` | section 3, `docs/subsystems/mangak-template.md` |
 | `en.flamecomics` | fix open (#860) | `171e770` | `fix/en.flamecomics` | section 3, `docs/subsystems/flamecomics.md` |
+| `en.kingofshojo` | merged (#875) | `c667b2d` | from `upstream/main` | `docs/subsystems/mangathemesia-consumers.md` |
+| `en.rokaricomics` | merged (#874) | `c667b2d` | from `upstream/main` | `docs/subsystems/mangathemesia-consumers.md` |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a
