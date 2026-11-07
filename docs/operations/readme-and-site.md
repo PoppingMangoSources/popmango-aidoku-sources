@@ -53,6 +53,12 @@ window holds the repository url, and the sources are "routes" on a Route Select 
 > `::before` band on the `.ticker-band` around it. With the band inside the clip the row still
 > froze now and then, so keep the clip holding the row alone.
 
+> ⚠️ The ticker's animation starts only once its icons are in (`ticker__track--running`, added by
+> `main.js`). Running from page load, it began on an empty row: iOS Safari fixed the
+> `translateX(-50%)` distance at zero, so the strip sat at its first icon whenever the source list
+> loaded after the animation began, which looked random. The Mana site sets its duration after
+> inserting the row, which is why it never stalled.
+
 > ⚠️ Keep the page's animation light. The ticker froze on iOS while eight floating hearts animated
 > a `clip-path` and a ray layer 1.8 times the scene's size spun behind Mango-chan. The hearts are
 > now `♥` glyphs and the rays are still.

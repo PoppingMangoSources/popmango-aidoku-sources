@@ -286,6 +286,8 @@ document.addEventListener("DOMContentLoaded", () => {
 			const copy = set.cloneNode(true);
 			copy.setAttribute("aria-hidden", "true");
 			ticker.append(set, copy);
+			// Start sliding only now that the row has its width (see styles.css).
+			requestAnimationFrame(() => ticker.classList.add("ticker__track--running"));
 			filter();
 		})
 		.catch(() => {

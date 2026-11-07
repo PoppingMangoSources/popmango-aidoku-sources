@@ -583,10 +583,14 @@ h1 span {
 	color: var(--white);
 	overflow: hidden;
 }
+/* main.js starts the animation once the icons are in. Started while the row was empty, iOS Safari
+   worked out the slide distance as zero and the row sat still. */
 .ticker__track {
 	position: relative;
 	display: flex;
 	width: max-content;
+}
+.ticker__track--running {
 	animation: drift 40s linear infinite;
 }
 .ticker__set {
