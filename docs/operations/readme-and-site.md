@@ -36,6 +36,11 @@ window holds the repository url, and the sources are "routes" on a Route Select 
 > element must sit in `:where(...)`: `[data-theme="dark"] a` out-ranked `.brand` and the button
 > links and turned them pink.
 
+> ⚠️ `index.html` loads `styles.css?v=dev` and `main.js?v=dev`, and `build.yaml` replaces `dev`
+> with the commit before deploying. Without it Safari kept the previous deploy's script and
+> stylesheet under the new markup: the old script crashed on a renamed button before loading the
+> sources (LV. ?, an empty ticker, no routes) and the old CSS left the new buttons unstyled.
+
 > ⚠️ Hover effects sit inside `@media (hover: hover)`: iOS keeps `:hover` on whatever was last
 > tapped, which left cards highlighted and choices shifted on a phone.
 

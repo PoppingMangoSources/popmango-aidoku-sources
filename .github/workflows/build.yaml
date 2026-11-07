@@ -78,6 +78,11 @@ jobs:
         run: |
           aidoku build sources/*/package.aix --name "PoppingMango Sources"
 
+      # Phones keep the old stylesheet and script cached after a deploy, so the page would mix
+      # new markup with old code. Each deploy asks for its own copies.
+      - name: Version the install page assets
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" public/index.html
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.9.0
         if: ${{ github.ref == 'refs/heads/main' }}
