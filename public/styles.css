@@ -83,6 +83,8 @@ a {
 	font-weight: 800;
 	text-decoration-thickness: 2px;
 	text-underline-offset: 3px;
+	/* One unbroken line; the default gaps under p and y read as a cut underline. */
+	text-decoration-skip-ink: none;
 }
 
 /* :where keeps this as weak as a plain `a`, so link classes still set their own colors. */
