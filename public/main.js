@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				toast("Open this page on your iPhone or iPad, or paste the URL in Aidoku under Settings → Source Lists.");
 				return;
 			}
-			gain(40, "Quest accepted.");
+			gain(40, "Route locked in.");
 		});
 	}
 	setTimeout(() => toast("New quest: Save the villainess."), 900);
