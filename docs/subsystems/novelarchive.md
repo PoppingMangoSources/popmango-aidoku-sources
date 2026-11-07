@@ -13,7 +13,7 @@ sources:
   - code: sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: 1abe491
+verified_at: 08479e1
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -90,8 +90,8 @@ them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never coll
 `/chapters/{n}?prefetch=1`, which leaves out the name list; it is plain text, one line per paragraph.
 
 Mirrors come from `/{id}/sources` (`{id, label}`), each with `/{id}/sources/{mirror}/chapters`
-(`{number, title}`) and `/{id}/sources/{mirror}/chapters/{number}` (`content_html`, so far plain
-text with whole scenes on one line), as the owner's Paperback source reads them. They join the
+(`{number, title}`) and `/{id}/sources/{mirror}/chapters/{number}` (`content_html`, HTML the site's
+reader inserts as is), as the owner's Paperback source reads them. They join the
 chapter list keyed `{mirror}:{number}`, grouped under their label, with the site's own copies
 grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_chapters`).
 
@@ -120,11 +120,22 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 > ⚠️ Chapter text escapes only Markdown syntax (`paragraphs`), not all punctuation: cmark makes
 > each escape its own node, and a mirror's thousand-character lines would rebuild the crash below.
 
-> ⚠️ No copy carried bold or italics when checked on 2026-11-07: the archive's own text (the site
-> HTML-escapes it) and all seven mirrors' `content_html` were plain text, Royal Road's included, and
-> Ranobes prints literal `<Dark Exploration Records>`. The site inserts mirror text as HTML, so a
-> mirror that sends `p`, `br`, `div`, `em`, `i`, `strong` or `b` is walked into Markdown
-> (`html_paragraphs`, as `en.freewebnovel` does), keeping `*` and `**`; anything else stays text.
+> ⚠️ Mirror `content_html` is real HTML: the fucknovelpia copy of the Ghost Story novel's chapter 3
+> has `h1`, `hr`, `p`, `b`, `i`, `br`, `center`, `div` and `span`, with `&lt;Dark Exploration
+> Records&gt;` as text, and chapter 1 opens with an `img`. `html_paragraphs` walks it into Markdown, as
+> `en.freewebnovel` does: bold and italics stay open across a `<br>` and nested tags, a heading is a
+> bold line, `hr` a rule and an http image `![](<url>)`, which the reader's MarkdownUI loads. The
+> archive's own text is plain, which the site HTML-escapes and prints as is.
+
+> ⚠️ Firecrawl strips the tags out of HTML inside a JSON response's strings, so the mirror endpoint
+> read through it looks like plain text with paragraphs run together (read that way on 2026-11-07,
+> wrongly). Read the markup from the rendered reader page (`formats: ["html"]` with
+> `includeTags: ["article"]`), which is what the site inserted.
+
+> ⚠️ The site's bold runs come split, as `<b>[Roulette Event]</b><b><br></b><b>: Create…</b>`
+> and `<b>will </b><b><i>not</i></b><b> be</b>`. Written as is that is `****` and `** be`, which
+> Markdown prints literally, so a marker is written before a line's first character, closed before a
+> line break and trailing spaces, and a run that reopens straight after closing continues instead.
 
 > ⚠️ Each line is escaped and becomes its own Markdown paragraph (joined with blank lines). Escaping
 > the whole text made one paragraph of hard breaks, and chapter 1 of *Got Dropped into a Ghost Story,

@@ -138,8 +138,8 @@ impl Source for NovelArchive {
 				))?
 				.content_html
 				.unwrap_or_default();
-				// Mirrors send plain text so far, some of it with literal "<Title>" brackets, so
-				// only known tags make it HTML.
+				// Most mirrors send HTML, which the site inserts as is; a plain-text one keeps
+				// its lines.
 				if [
 					"<p>", "<p ", "<br", "<em>", "<i>", "<strong>", "<b>", "<div",
 				]

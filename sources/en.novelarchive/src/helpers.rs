@@ -199,6 +199,11 @@ pub fn leading_chapter_number(name: &str) -> Option<(f32, &str)> {
 pub struct Markdown {
 	paragraphs: Vec<String>,
 	line: String,
+	// Bold and italic markers open here; a line writes them before its first character.
+	open: Vec<&'static str>,
+	written: usize,
+	// A marker that closed with nothing after it, which reopening continues ("**A****B**" isn't bold).
+	just_closed: Option<&'static str>,
 }
 
 impl Markdown {
@@ -208,9 +213,23 @@ impl Markdown {
 				self.end_line();
 			}
 			for c in part.chars() {
-				if self.line.is_empty() && c.is_whitespace() {
+				// Spaces stay outside markers, since "** word**" isn't bold.
+				if c.is_whitespace() {
+					if !self.line.is_empty() {
+						self.line.push(c);
+						self.just_closed = None;
+					}
 					continue;
 				}
+				while let Some(&marker) = self.open.get(self.written) {
+					if self.just_closed.take() == Some(marker) {
+						self.line.truncate(self.line.len() - marker.len());
+					} else {
+						self.line.push_str(marker);
+					}
+					self.written += 1;
+				}
+				self.just_closed = None;
 				// "-", "#" or "1." at the start would begin a list or heading.
 				let block = (self.line.is_empty() && matches!(c, '#' | '-' | '+' | '='))
 					|| (matches!(c, '.' | ')')
@@ -228,29 +247,37 @@ impl Markdown {
 		}
 	}
 
-	// Spaces stay outside the markers, since "* word*" isn't emphasis.
-	pub fn emphasis(&mut self, marker: &str, text: &str) {
-		let inner = text.trim();
-		if inner.is_empty() {
-			return self.text(text);
+	pub fn open(&mut self, marker: &'static str) {
+		self.open.push(marker);
+	}
+
+	pub fn close(&mut self) {
+		if self.written > 0 && self.written == self.open.len() {
+			let trailing = self.line.split_off(self.line.trim_end().len());
+			let marker = self.open[self.written - 1];
+			self.line.push_str(marker);
+			self.line.push_str(&trailing);
+			self.just_closed = trailing.is_empty().then_some(marker);
+			self.written -= 1;
 		}
-		if text.starts_with(char::is_whitespace) {
-			self.line.push(' ');
-		}
-		self.line.push_str(marker);
-		self.text(&inner.replace('\n', " "));
-		self.line.push_str(marker);
-		if text.ends_with(char::is_whitespace) {
-			self.line.push(' ');
-		}
+		self.open.pop();
 	}
 
 	pub fn end_line(&mut self) {
-		let line = take(&mut self.line);
-		let line = line.trim_end();
-		if !line.is_empty() {
-			self.paragraphs.push(line.into());
+		self.line.truncate(self.line.trim_end().len());
+		for marker in self.open[..self.written].iter().rev() {
+			self.line.push_str(marker);
 		}
+		self.written = 0;
+		self.just_closed = None;
+		if !self.line.is_empty() {
+			self.paragraphs.push(take(&mut self.line));
+		}
+	}
+
+	pub fn block(&mut self, markdown: String) {
+		self.end_line();
+		self.paragraphs.push(markdown);
 	}
 
 	fn element(&mut self, element: &Element) {
@@ -263,9 +290,33 @@ impl Markdown {
 					};
 					match child.tag_name().unwrap_or_default().as_str() {
 						"br" => self.end_line(),
-						"strong" | "b" => self.emphasis("**", &child.text().unwrap_or_default()),
-						"em" | "i" => self.emphasis("*", &child.text().unwrap_or_default()),
-						"p" | "div" => {
+						"hr" => self.block("---".into()),
+						"img" => {
+							if let Some(src) =
+								child.attr("src").filter(|src| src.starts_with("http"))
+							{
+								self.block(format!("![](<{}>)", src.replace(' ', "%20")));
+							}
+						}
+						"strong" | "b" => {
+							self.open("**");
+							self.element(&child);
+							self.close();
+						}
+						"em" | "i" => {
+							self.open("*");
+							self.element(&child);
+							self.close();
+						}
+						// The site's headings are chapter titles, shown as bold lines.
+						"h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
+							self.end_line();
+							self.open("**");
+							self.element(&child);
+							self.close();
+							self.end_line();
+						}
+						"p" | "div" | "center" => {
 							self.end_line();
 							self.element(&child);
 							self.end_line();

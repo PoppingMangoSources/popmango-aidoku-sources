@@ -493,21 +493,43 @@ fn review_paragraphs_escape_only_markdown_syntax() {
 
 #[aidoku_test]
 fn review_mirror_html_keeps_bold_and_italics() {
-	// What html_paragraphs writes for "<p>He said <em>never </em>and <strong>meant</strong> it,
-	// a_b.</p><p>- Line<br>1. two</p>"; the runner can't name a child element's tag.
+	// The calls html_paragraphs makes for a fucknovelpia chapter's markup, since the runner can't
+	// name a child element's tag. "<p>He said <i>never </i>and it, a_b.</p><hr>"
 	let mut markdown = Markdown::default();
 	markdown.text("He said ");
-	markdown.emphasis("*", "never ");
-	markdown.text("and ");
-	markdown.emphasis("**", "meant");
-	markdown.text(" it, a_b.");
+	markdown.open("*");
+	markdown.text("never ");
+	markdown.close();
+	markdown.text("and it, a_b.");
 	markdown.end_line();
-	markdown.text("- Line");
+	markdown.block("---".into());
+	// "<p><b>[Roulette Event]</b><b><br></b><b>: Create your own &lt;Records&gt;.</b></p>"
+	for part in ["[Roulette Event]", "\n", ": Create your own <Records>."] {
+		markdown.open("**");
+		markdown.text(part);
+		markdown.close();
+	}
 	markdown.end_line();
-	markdown.text("1. two");
+	// "<p><b>Freeloading will </b><b><i>not</i></b><b> be tolerated!</b><b>]</b></p>"
+	markdown.open("**");
+	markdown.text("Freeloading will ");
+	markdown.close();
+	markdown.open("**");
+	markdown.open("*");
+	markdown.text("not");
+	markdown.close();
+	markdown.close();
+	for part in [" be tolerated!", "]"] {
+		markdown.open("**");
+		markdown.text(part);
+		markdown.close();
+	}
+	markdown.end_line();
+	// "<p>- Line</p><p>1. two</p>"
+	markdown.text("- Line\n1. two");
 	assert_eq!(
 		markdown.finish(),
-		"He said *never* and **meant** it, a\\_b.\n\n\\- Line\n\n1\\. two"
+		"He said *never* and it, a\\_b.\n\n---\n\n**\\[Roulette Event\\]**\n\n**: Create your own \\<Records\\>.**\n\n**Freeloading will** ***not*** **be tolerated!\\]**\n\n\\- Line\n\n1\\. two"
 	);
 	// The text itself survives the walk there too.
 	let walked = html_paragraphs("<p>He said <em>never</em> it.</p>").unwrap();

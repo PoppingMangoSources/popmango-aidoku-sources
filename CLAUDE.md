@@ -170,7 +170,9 @@ Running them:
   calls, as `en.novelarchive` tests its `Markdown` builder, and check the tags in the app.
 - Sites behind Cloudflare can refuse the sandbox outright (403 "Attention Required" for curl
   and headless Chromium alike, `en.novelarchive`). Their live tests then fail on the network, not
-  the code; read the site through Firecrawl and say the live suite could not run.
+  the code; read the site through Firecrawl and say the live suite could not run. Firecrawl strips
+  the tags from HTML inside a JSON response's strings, so read such markup from the page that
+  renders it (`en.novelarchive`'s mirror chapters looked like plain text that way).
 
 For behaviour only the app shows, `aidoku logcat` starts a log server; enter its url in the
 app's Advanced settings under Log Server and every `println!` from a device on the same
