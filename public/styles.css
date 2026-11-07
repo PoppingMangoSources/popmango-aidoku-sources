@@ -19,17 +19,17 @@
 	--pixel: "DotGothic16", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--ink: #fff0f4;
-		--ink-soft: #d9a9bd;
-		--bg: #1a0b14;
-		--card: #2a1222;
-		--line: #4a2142;
-		--paper: #2a1222;
-		--blush: #3a1730;
-		--window: #12060e;
-	}
+/* The theme comes from the toggle, or the device setting until it is used (see index.html). */
+:root[data-theme="dark"] {
+	--ink: #fff0f4;
+	--ink-soft: #d9a9bd;
+	--bg: #1a0b14;
+	--card: #2a1222;
+	--line: #4a2142;
+	--paper: #2a1222;
+	--blush: #3a1730;
+	--window: #12060e;
+	color-scheme: dark;
 }
 
 * {
@@ -61,10 +61,9 @@ a {
 	text-underline-offset: 3px;
 }
 
-@media (prefers-color-scheme: dark) {
-	a {
-		color: var(--pink);
-	}
+/* :where keeps this as weak as a plain `a`, so link classes still set their own colors. */
+:where([data-theme="dark"]) a {
+	color: var(--pink);
 }
 
 /* floating hearts */
@@ -103,7 +102,7 @@ a {
 /* toasts */
 .toasts {
 	position: fixed;
-	top: 1rem;
+	top: 4.6rem;
 	right: 1rem;
 	left: 1rem;
 	z-index: 50;
@@ -178,7 +177,41 @@ main,
 }
 .topbar__links {
 	display: flex;
+	align-items: center;
 	gap: 0.3rem;
+}
+.theme-toggle {
+	display: grid;
+	place-items: center;
+	width: 2.4rem;
+	height: 2.4rem;
+	margin-left: 0.2rem;
+	border: 2px solid var(--line);
+	border-radius: 50%;
+	background: var(--card);
+	color: var(--red);
+	cursor: pointer;
+	transition: border-color 0.15s, rotate 0.4s;
+}
+.theme-toggle svg {
+	width: 1.3rem;
+	height: 1.3rem;
+}
+.theme-toggle .icon-sun,
+[data-theme="dark"] .theme-toggle .icon-moon {
+	display: block;
+}
+.theme-toggle .icon-moon,
+[data-theme="dark"] .theme-toggle .icon-sun {
+	display: none;
+}
+.theme-toggle:active {
+	rotate: 30deg;
+}
+@media (hover: hover) {
+	.theme-toggle:hover {
+		border-color: var(--red);
+	}
 }
 .topbar__links a {
 	padding: 0.4rem 0.8rem;
@@ -464,7 +497,7 @@ h1 span {
 	border: 2px solid #fff;
 	border-radius: 0.8rem;
 	background: rgba(255, 255, 255, 0.85);
-	color: var(--ink);
+	color: #33162a;
 	font: inherit;
 	font-weight: 800;
 	text-align: left;
@@ -472,11 +505,6 @@ h1 span {
 	cursor: pointer;
 	animation: choice-in 0.4s backwards;
 	transition: background 0.15s, translate 0.15s;
-}
-@media (prefers-color-scheme: dark) {
-	.choice {
-		color: #33162a;
-	}
 }
 .choice:nth-child(2) { animation-delay: 0.08s; }
 .choice:nth-child(3) { animation-delay: 0.16s; }
@@ -750,10 +778,8 @@ h1 span {
 	color: var(--red-deep);
 	box-shadow: inset 0 0 0 1.5px var(--pink);
 }
-@media (prefers-color-scheme: dark) {
-	.route__heat--1 {
-		color: var(--pink);
-	}
+[data-theme="dark"] .route__heat--1 {
+	color: var(--pink);
 }
 .route__heat--2 {
 	background: var(--red);
@@ -857,7 +883,7 @@ h1 span {
 		padding-inline: 0.4rem;
 		font-size: 0.85rem;
 	}
-	.topbar__links a:not(:last-child) {
+	.topbar__links a:not(:last-of-type) {
 		display: none;
 	}
 }

@@ -16,6 +16,20 @@ document.addEventListener("DOMContentLoaded", () => {
 		return langMap[languages[0]] || languages[0];
 	};
 
+	// The icon shows the current theme: moon in dark mode, sun in light mode.
+	const toggle = document.getElementById("theme-toggle");
+	const root = document.documentElement;
+	const labelToggle = () =>
+		toggle.setAttribute("aria-label", root.dataset.theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+	labelToggle();
+	toggle.addEventListener("click", () => {
+		root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+		try {
+			localStorage.setItem("theme", root.dataset.theme);
+		} catch {}
+		labelToggle();
+	});
+
 	// System toasts
 	const toasts = document.getElementById("toasts");
 	function toast(text) {

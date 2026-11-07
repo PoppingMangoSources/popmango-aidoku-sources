@@ -30,6 +30,12 @@ window holds the repository url, and the sources are "routes" on a Route Select 
   off Apple devices they show a toast with the manual steps instead. Affection is kept in
   `localStorage`, wrapped in try/catch, so it survives a reload when storage allows.
 
+> ⚠️ Dark mode is `:root[data-theme="dark"]`, not a `prefers-color-scheme` query. A script in
+> `index.html`'s head sets `data-theme` before the first paint (the saved toggle choice, else the
+> device setting) and the moon/sun toggle in `main.js` flips and saves it. A theme rule on a bare
+> element must sit in `:where(...)`: `[data-theme="dark"] a` out-ranked `.brand` and the button
+> links and turned them pink.
+
 > ⚠️ Hover effects sit inside `@media (hover: hover)`: iOS keeps `:hover` on whatever was last
 > tapped, which left cards highlighted and choices shifted on a phone.
 
