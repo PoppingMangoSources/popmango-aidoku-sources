@@ -11,7 +11,7 @@ use aidoku::{
 };
 use serde::de::DeserializeOwned;
 
-/// The genres the site's library excludes when hiding adult novels.
+// The genres the site's library excludes when hiding adult novels.
 pub const ADULT_GENRES: [&str; 12] = [
 	"adult",
 	"smut",
@@ -27,7 +27,7 @@ pub const ADULT_GENRES: [&str; 12] = [
 	"pornographic",
 ];
 
-/// Values the genre list carries that the site treats as categories, not genres.
+// Values the genre list carries that the site treats as categories, not genres.
 pub const NON_GENRES: [&str; 7] = [
 	"browse",
 	"completed novel",
@@ -96,7 +96,6 @@ impl SearchParams {
 	}
 }
 
-/// One page of the library's browse, the endpoint behind search, listings and sorted rows.
 pub fn browse(params: SearchParams, page: i32) -> Result<MangaPageResult> {
 	let list: NovelList = get(&params.url(page))?;
 	Ok(MangaPageResult {
@@ -111,7 +110,6 @@ pub fn chapter_url(id: &str, number: usize) -> String {
 	format!("{BASE_URL}/reader?novel={id}&chapter={number}")
 }
 
-/// A novel's genres as the site lists them: deduplicated, without its category values.
 pub fn genres(list: &str) -> Vec<String> {
 	let mut genres: Vec<String> = Vec::new();
 	for genre in list.split(',').map(str::trim) {
@@ -139,7 +137,7 @@ pub fn content_rating(list: &str) -> ContentRating {
 	rating
 }
 
-/// The chapter's name without a leading "Chapter n", which the app already shows.
+// Drops a leading "Chapter n", which the app already shows.
 pub fn chapter_title(name: &str, number: usize) -> Option<String> {
 	let name = name.trim();
 	let prefix = format!("chapter {number}");

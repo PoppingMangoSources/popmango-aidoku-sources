@@ -68,7 +68,7 @@ impl Source for NovelArchive {
 					params.genres = included;
 					params.hidden_genres = excluded;
 				}
-				// Ticked hides adult novels and excluded shows them, overriding the setting.
+				// Ticked (1) hides adult novels, excluded (2) shows them, overriding the setting.
 				FilterValue::Check { id, value } if id == "hide_adult" => {
 					params.hide_adult = value == 1
 				}
@@ -105,7 +105,7 @@ impl Source for NovelArchive {
 		.chapter
 		.content
 		.unwrap_or_default();
-		// One Markdown paragraph per line, as the site's reader shows them.
+		// One paragraph per line: a single long paragraph overflows the app's Markdown renderer.
 		let text = content
 			.lines()
 			.map(str::trim)
@@ -169,7 +169,6 @@ impl Home for NovelArchive {
 		.into_iter()
 		.map(|response| Ok(parse::<NovelList>(response?)?.novels))
 		.collect();
-		// A feed that fails drops out; the home only fails when none loaded.
 		if feeds.iter().all(Result::is_err)
 			&& let Err(error) = feeds.swap_remove(0)
 		{

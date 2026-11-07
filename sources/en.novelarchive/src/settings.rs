@@ -1,6 +1,6 @@
 use aidoku::imports::defaults::defaults_get;
 
-// The source is rated 17+, so adult novels stay hidden until the reader turns this off.
+// Rated 17+, so adult novels are hidden by default.
 pub fn hide_adult() -> bool {
 	defaults_get::<bool>("hideAdult").unwrap_or(true)
 }

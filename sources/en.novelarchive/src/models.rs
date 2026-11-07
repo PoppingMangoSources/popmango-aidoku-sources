@@ -15,7 +15,6 @@ pub struct ErrorResponse {
 	pub error: String,
 }
 
-/// A novel as the lists and the details endpoint return it; only details fill `chapter_names`.
 #[derive(Deserialize)]
 pub struct Novel {
 	id: String,
@@ -31,7 +30,7 @@ pub struct Novel {
 	release_status: Option<String>,
 	total_chapters: Option<String>,
 	#[serde(default)]
-	chapter_names: Vec<String>,
+	chapter_names: Vec<String>, // Only the details endpoint fills it.
 	updated_at: Option<String>,
 }
 
@@ -129,7 +128,7 @@ impl Novel {
 		}
 	}
 
-	/// Chapter n is the n-th name; a novel whose names were never collected still has a count.
+	// Chapter n is the n-th name; a novel whose names were never collected still has a count.
 	pub fn chapters(&self) -> Vec<Chapter> {
 		let count = self.chapter_names.len().max(self.chapter_count());
 		(1..=count)
@@ -147,7 +146,7 @@ impl Novel {
 			.collect()
 	}
 
-	/// The feed names no chapter, so the newest is the last one the novel counts.
+	// The feed names no chapter, so the newest is the last one the novel counts.
 	pub fn into_latest(self) -> Option<MangaWithChapter> {
 		let number = self.chapter_count();
 		if number == 0 {
@@ -171,7 +170,6 @@ impl Novel {
 	}
 }
 
-/// A card: key, title, cover and content rating only.
 impl From<Novel> for Manga {
 	fn from(novel: Novel) -> Self {
 		Manga {
