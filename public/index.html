@@ -118,8 +118,7 @@
 					</div>
 					<div class="choices" id="choices" hidden>
 						<a
-							class="choice"
-							id="choice-add"
+							class="choice add-repo"
 							href="aidoku://addSourceList?url=https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json"
 							>♥ Add the repository to Aidoku</a
 						>
@@ -146,13 +145,20 @@
 						<li><b>Reward</b> <span id="reward">every route below</span></li>
 						<li><b>Warning</b> Best effort, not maintained 24/7. A route may break when its site changes.</li>
 					</ul>
+					<div class="quest__actions">
+						<a
+							class="button button--big add-repo"
+							href="aidoku://addSourceList?url=https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json"
+							>♥ Accept quest: add to Aidoku</a
+						>
+					</div>
 					<div class="quest__url">
 						<code id="repo-url">https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json</code>
-						<button class="button" id="copy-url" type="button">Copy</button>
+						<button class="button button--ghost" id="copy-url" type="button">Copy</button>
 					</div>
 					<p class="quest__hint">
-						On an iPhone or iPad, tap <b>Add the repository</b> above. Anywhere else, paste the URL
-						in Aidoku under <b>Settings → Source Lists</b>.
+						The button opens Aidoku on an iPhone or iPad. Anywhere else, paste the URL in Aidoku
+						under <b>Settings → Source Lists</b>.
 					</p>
 				</div>
 			</section>

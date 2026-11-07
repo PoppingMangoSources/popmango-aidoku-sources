@@ -26,8 +26,15 @@ window holds the repository url, and the sources are "routes" on a Route Select 
 - `public/main.js` sets the level (`LV.`), reward and bar from `index.min.json`: the level is the
   catalogue size, the bar fills with what the search and filters show, and an empty result shows
   a "bad ending" with a reset. Nothing in the page hardcodes a source count.
-- The Add choice is an `aidoku://` link; off Apple devices it shows a toast with the manual steps
-  instead of following the link.
+- The Add choice and the quest's "Accept quest" button (both `.add-repo`) are `aidoku://` links;
+  off Apple devices they show a toast with the manual steps instead. Affection is kept in
+  `localStorage`, wrapped in try/catch, so it survives a reload when storage allows.
+
+> ⚠️ Hover effects sit inside `@media (hover: hover)`: iOS keeps `:hover` on whatever was last
+> tapped, which left cards highlighted and choices shifted on a phone.
+
+> ⚠️ The ticker carries icons only and animates `transform`. With names it grew to several
+> thousand pixels, and iOS Safari drew the rotated strip as an empty red band.
 - The README lists sources as two-column Route select card tables (`media/route-button.svg`,
   `media/heat-<contentRating>.svg`). Each card keeps the two `.aix` links and the `.aix (vN)` label
   that `scripts/bump.sh` rewrites and `scripts/check-sources.py` reads, and `scripts/new-source.sh`

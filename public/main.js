@@ -28,8 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
 		setTimeout(() => el.remove(), 4200);
 	}
 
-	// Affection: five hearts, 20 points each
+	// Affection: five hearts, 20 points each, remembered in this browser when storage allows
 	let affection = 0;
+	try {
+		affection = Math.min(100, Number(localStorage.getItem("affection")) || 0);
+	} catch {}
 	const affectionEl = document.getElementById("affection");
 	function renderAffection() {
 		const full = Math.min(5, Math.floor(affection / 20));
@@ -39,6 +42,9 @@ document.addEventListener("DOMContentLoaded", () => {
 	function gain(points, reason) {
 		const before = Math.floor(affection / 20);
 		affection = Math.min(100, affection + points);
+		try {
+			localStorage.setItem("affection", String(affection));
+		} catch {}
 		renderAffection();
 		affectionEl.classList.remove("affection--pop");
 		void affectionEl.offsetWidth;
@@ -107,14 +113,16 @@ document.addEventListener("DOMContentLoaded", () => {
 	}
 	document.getElementById("choice-copy").addEventListener("click", copyUrl);
 	document.getElementById("copy-url").addEventListener("click", copyUrl);
-	document.getElementById("choice-add").addEventListener("click", (e) => {
-		if (!isApple) {
-			e.preventDefault();
-			toast("Open this page on your iPhone or iPad, or paste the URL in Aidoku under Settings → Source Lists.");
-			return;
-		}
-		gain(40, "Route locked in.");
-	});
+	for (const link of document.querySelectorAll(".add-repo")) {
+		link.addEventListener("click", (e) => {
+			if (!isApple) {
+				e.preventDefault();
+				toast("Open this page on your iPhone or iPad, or paste the URL in Aidoku under Settings → Source Lists.");
+				return;
+			}
+			gain(40, "Quest accepted.");
+		});
+	}
 	setTimeout(() => toast("New quest: Save the villainess."), 900);
 
 	// Routes
@@ -198,7 +206,6 @@ document.addEventListener("DOMContentLoaded", () => {
 	function card(source) {
 		const el = document.createElement("article");
 		el.className = "route";
-		el.style.setProperty("--tilt", ((source.name.length % 5) - 2) * 0.6 + "deg");
 
 		const top = document.createElement("div");
 		top.className = "route__top";
@@ -249,13 +256,16 @@ document.addEventListener("DOMContentLoaded", () => {
 			document.getElementById("lv").textContent = "LV. " + sources.length;
 			document.getElementById("reward").textContent = sources.length + " routes unlocked";
 
-			// The ticker repeats its set once so the loop has no gap.
+			// Icons only: a ticker of names grows wide enough that iOS Safari stops drawing it.
+			// The set repeats once so the loop has no gap.
 			const ticker = document.getElementById("ticker");
-			const set = sources.map((s) => {
+			const set = sources.filter((s) => s.iconURL).map((s) => {
 				const item = document.createElement("span");
 				item.className = "ticker__item";
-				if (s.iconURL) item.appendChild(icon(s, "ticker__icon"));
-				item.append(s.name);
+				const img = icon(s, "ticker__icon");
+				img.alt = s.name;
+				img.loading = "eager";
+				item.appendChild(img);
 				return item;
 			});
 			ticker.append(...set, ...set.map((n) => Object.assign(n.cloneNode(true), { ariaHidden: "true" })));
