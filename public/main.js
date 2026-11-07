@@ -1,352 +1,267 @@
 document.addEventListener("DOMContentLoaded", () => {
-	const sourceList = document.getElementById("source-list");
-	const searchBar = document.getElementById("source-search");
-	const languageSelect = document.getElementById("language-select");
-	const ratingSelect = document.getElementById("rating-select");
+	const REPO_URL = document.getElementById("repo-url").textContent.trim();
+	const isApple = /iphone|ipad|ipados|macintosh|mac os x/i.test(navigator.userAgent);
+	const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 	const langMap = {
-		en: "English",
-		es: "Spanish",
-		fr: "French",
-		de: "German",
-		ja: "Japanese",
-		zh: "Chinese",
-		ru: "Russian",
-		it: "Italian",
-		ko: "Korean",
-		pt: "Portuguese",
-		id: "Indonesian",
-		th: "Thai",
-		vi: "Vietnamese",
-		tr: "Turkish",
-		pl: "Polish",
-		ar: "Arabic",
-		hi: "Hindi",
+		en: "English", es: "Spanish", fr: "French", de: "German", ja: "Japanese",
+		zh: "Chinese", ru: "Russian", it: "Italian", ko: "Korean", pt: "Portuguese",
+		id: "Indonesian", th: "Thai", vi: "Vietnamese", tr: "Turkish", pl: "Polish",
+		ar: "Arabic", hi: "Hindi",
 	};
-	const labelToCode = Object.fromEntries(
-		Object.entries(langMap).map(([code, label]) => [label, code]),
-	);
-	function getLanguageLabel(languages) {
-		if (!Array.isArray(languages) || languages.length === 0)
-			return "Unknown";
-		if (languages.length > 1 || languages.includes("multi"))
-			return "Multi-Language";
+	const labelToCode = Object.fromEntries(Object.entries(langMap).map(([c, l]) => [l, c]));
+	const languageLabel = (languages) => {
+		if (!Array.isArray(languages) || languages.length === 0) return "Unknown";
+		if (languages.length > 1 || languages.includes("multi")) return "Multi-Language";
 		return langMap[languages[0]] || languages[0];
-	}
-
-	// store filter state, sources, and the source dom elements
-	const filterState = {
-		query: "",
-		language: "",
-		rating: "",
 	};
-	let allSources = [];
-	let allSourceElements = [];
 
-	// filter sources and hide filtered out elements
-	function filterAndShowSources() {
-		let visibleCount = 0;
-		const sectionToVisible = new Map();
-		for (const { source, li, section } of allSourceElements) {
-			// check language
-			const languageLabel = getLanguageLabel(source.languages);
-			const languageMatch =
-				!filterState.language ||
-				filterState.language === "" ||
-				(filterState.language === "Multi-Language" &&
-					languageLabel === "Multi-Language") ||
-				languageLabel === filterState.language ||
-				(filterState.language !== "" &&
-					filterState.language !== "Multi-Language" &&
-					languageLabel === "Multi-Language" &&
-					Array.isArray(source.languages) &&
-					source.languages.includes(
-						labelToCode[filterState.language],
-					));
-
-			// check content rating
-			let ratingMatch = true;
-			if (filterState.rating === "safe") {
-				ratingMatch =
-					!source.contentRating || source.contentRating === 0;
-			} else if (filterState.rating === "contains-nsfw") {
-				ratingMatch = source.contentRating === 1;
-			} else if (filterState.rating === "nsfw") {
-				ratingMatch = source.contentRating === 2;
-			}
-
-			// check search query (match name, alt name, or url)
-			const q = filterState.query.trim().toLowerCase();
-			const nameMatch =
-				!q || (source.name && source.name.toLowerCase().includes(q));
-			const altNames = Array.isArray(source.altNames)
-				? source.altNames
-				: [];
-			const altMatch = !q
-				? true
-				: altNames.some((alt) => alt && alt.toLowerCase().includes(q));
-			const urlMatch = !q
-				? true
-				: source.baseURL && source.baseURL.toLowerCase().includes(q);
-			const queryMatch = nameMatch || altMatch || urlMatch;
-
-			const shouldShow = languageMatch && ratingMatch && queryMatch;
-			li.style.display = shouldShow ? "" : "none";
-			if (shouldShow) {
-				visibleCount++;
-				sectionToVisible.set(
-					section,
-					(sectionToVisible.get(section) || 0) + 1,
-				);
-			}
-		}
-
-		// hide sections if they don't have any visible children
-		const allSections = document.querySelectorAll(".language-section");
-		allSections.forEach((section) => {
-			const visible = sectionToVisible.get(section) || 0;
-			section.style.display = visible > 0 ? "" : "none";
-		});
-
-		// update total source count
-		const totalCountSpan = document.querySelector(".total-count");
-		if (totalCountSpan) {
-			totalCountSpan.textContent =
-				visibleCount > 0
-					? "Total: " + visibleCount
-					: "No source found. The villainess remains doomed.";
-		}
-		// the level is the whole catalogue; the bar fills with what the filters show
-		const total = allSourceElements.length;
-		document.getElementById("level-label").textContent = "LV. " + total;
-		document.getElementById("level-fill").style.width =
-			(total ? (visibleCount / total) * 100 : 0) + "%";
-		document.getElementById("reward").textContent = total + " sources";
+	// System toasts
+	const toasts = document.getElementById("toasts");
+	function toast(text) {
+		const el = document.createElement("div");
+		el.className = "toast";
+		el.innerHTML = '<span class="toast__tag">SYSTEM</span>';
+		el.append(text);
+		toasts.appendChild(el);
+		setTimeout(() => el.classList.add("toast--out"), 3600);
+		setTimeout(() => el.remove(), 4200);
 	}
 
-	// add event listeners for filter changes
-	searchBar.addEventListener("input", (e) => {
-		filterState.query = e.target.value;
-		filterAndShowSources();
-	});
-	languageSelect.addEventListener("change", (e) => {
-		filterState.language = e.target.value;
-		filterAndShowSources();
-	});
-	ratingSelect.addEventListener("change", (e) => {
-		filterState.rating = e.target.value;
-		filterAndShowSources();
-	});
+	// Affection: five hearts, 20 points each
+	let affection = 0;
+	const affectionEl = document.getElementById("affection");
+	function renderAffection() {
+		const full = Math.min(5, Math.floor(affection / 20));
+		affectionEl.textContent = "♥".repeat(full) + "♡".repeat(5 - full);
+		affectionEl.setAttribute("aria-label", "Affection " + full + " of 5");
+	}
+	function gain(points, reason) {
+		const before = Math.floor(affection / 20);
+		affection = Math.min(100, affection + points);
+		renderAffection();
+		affectionEl.classList.remove("affection--pop");
+		void affectionEl.offsetWidth;
+		affectionEl.classList.add("affection--pop");
+		toast(reason + " Affection +" + points + ".");
+		if (before < 5 && affection >= 100) setTimeout(() => toast("True ending unlocked. The villainess lives!"), 900);
+	}
+	renderAffection();
 
-	// fetch and render initial sources from index.min.json
+	// Visual novel dialogue
+	const lines = [
+		"Ah! A reader! You came all this way with... zero sources?",
+		"The System says the villainess dies in chapter 1 unless someone gives her something to read.",
+		"I-it's not like I ported these for you or anything. Just pick one, okay?",
+	];
+	const lineEl = document.getElementById("line");
+	const nextBtn = document.getElementById("next");
+	const choices = document.getElementById("choices");
+	let index = 0;
+	let typing = null;
+	function showLine(i) {
+		clearInterval(typing);
+		const text = lines[i];
+		if (reduceMotion) {
+			lineEl.textContent = text;
+			return;
+		}
+		let n = 0;
+		lineEl.textContent = "";
+		typing = setInterval(() => {
+			lineEl.textContent = text.slice(0, ++n);
+			if (n >= text.length) {
+				clearInterval(typing);
+				typing = null;
+			}
+		}, 28);
+	}
+	function advance() {
+		if (typing) {
+			clearInterval(typing);
+			typing = null;
+			lineEl.textContent = lines[index];
+			return;
+		}
+		if (index < lines.length - 1) {
+			showLine(++index);
+		}
+		if (index === lines.length - 1) {
+			choices.hidden = false;
+			nextBtn.hidden = true;
+		}
+	}
+	nextBtn.addEventListener("click", advance);
+	document.querySelector(".dialogue").addEventListener("click", (e) => {
+		if (e.target !== nextBtn) advance();
+	});
+	showLine(0);
+
+	async function copyUrl() {
+		try {
+			await navigator.clipboard.writeText(REPO_URL);
+			gain(10, "Repository URL copied.");
+		} catch {
+			toast("Couldn't copy. Select the URL in the quest window instead.");
+		}
+	}
+	document.getElementById("choice-copy").addEventListener("click", copyUrl);
+	document.getElementById("copy-url").addEventListener("click", copyUrl);
+	document.getElementById("choice-add").addEventListener("click", (e) => {
+		if (!isApple) {
+			e.preventDefault();
+			toast("Open this page on your iPhone or iPad, or paste the URL in Aidoku under Settings → Source Lists.");
+			return;
+		}
+		gain(40, "Route locked in.");
+	});
+	setTimeout(() => toast("New quest: Save the villainess."), 900);
+
+	// Routes
+	const list = document.getElementById("source-list");
+	const search = document.getElementById("source-search");
+	const languageSelect = document.getElementById("language-select");
+	const ratingSelect = document.getElementById("rating-select");
+	const count = document.getElementById("total-count");
+	let cards = [];
+
+	const heat = (rating) => (rating === 2 ? "18+" : rating === 1 ? "17+" : "Safe");
+
+	function matches(source) {
+		const lang = languageSelect.value;
+		const label = languageLabel(source.languages);
+		const langOk =
+			!lang ||
+			label === lang ||
+			(lang !== "Multi-Language" &&
+				label === "Multi-Language" &&
+				Array.isArray(source.languages) &&
+				source.languages.includes(labelToCode[lang]));
+
+		const rating = ratingSelect.value;
+		const r = source.contentRating || 0;
+		const ratingOk =
+			!rating || (rating === "safe" && r === 0) || (rating === "contains-nsfw" && r === 1) || (rating === "nsfw" && r === 2);
+
+		const q = search.value.trim().toLowerCase();
+		const queryOk =
+			!q ||
+			[source.name, source.baseURL, ...(Array.isArray(source.altNames) ? source.altNames : [])].some(
+				(s) => s && s.toLowerCase().includes(q),
+			);
+		return langOk && ratingOk && queryOk;
+	}
+
+	function filter() {
+		let visible = 0;
+		for (const { source, card } of cards) {
+			const show = matches(source);
+			card.hidden = !show;
+			if (show) visible++;
+		}
+		const total = cards.length;
+		document.getElementById("lv-fill").style.width = (total ? (visible / total) * 100 : 0) + "%";
+		count.textContent = visible + " of " + total + " routes";
+		let empty = list.querySelector(".empty");
+		if (visible === 0 && total > 0) {
+			if (!empty) {
+				empty = document.createElement("div");
+				empty.className = "empty";
+				empty.innerHTML =
+					"<b>BAD ENDING</b><span>No route matches. The villainess remains doomed.</span>" +
+					'<button class="button" type="button">Load last save</button>';
+				empty.querySelector("button").addEventListener("click", () => {
+					search.value = "";
+					languageSelect.value = "";
+					ratingSelect.value = "";
+					filter();
+				});
+				list.appendChild(empty);
+			}
+		} else if (empty) {
+			empty.remove();
+		}
+	}
+	search.addEventListener("input", filter);
+	languageSelect.addEventListener("change", filter);
+	ratingSelect.addEventListener("change", filter);
+
+	function icon(source, className) {
+		const img = document.createElement("img");
+		img.className = className;
+		img.src = source.iconURL;
+		img.alt = "";
+		img.loading = "lazy";
+		return img;
+	}
+
+	function card(source) {
+		const el = document.createElement("article");
+		el.className = "route";
+		el.style.setProperty("--tilt", ((source.name.length % 5) - 2) * 0.6 + "deg");
+
+		const top = document.createElement("div");
+		top.className = "route__top";
+		if (source.iconURL) top.appendChild(icon(source, "route__icon"));
+		const badge = document.createElement("span");
+		badge.className = "route__heat route__heat--" + (source.contentRating || 0);
+		badge.textContent = heat(source.contentRating);
+		top.appendChild(badge);
+
+		const name = document.createElement("h3");
+		name.textContent = source.name;
+		const meta = document.createElement("p");
+		meta.className = "route__meta";
+		meta.textContent = languageLabel(source.languages) + " · v" + source.version;
+		const url = document.createElement("p");
+		url.className = "route__url";
+		url.textContent = (source.baseURL || "").replace(/^https?:\/\/(www\.)?/, "");
+
+		const get = document.createElement("a");
+		get.className = "route__get";
+		get.href = source.downloadURL;
+		get.setAttribute("download", "");
+		get.textContent = "Choose route ♥";
+		get.addEventListener("click", () => gain(5, "Route “" + source.name + "” saved."));
+
+		el.append(top, name, meta, url, get);
+		return el;
+	}
+
 	fetch("index.min.json")
 		.then((response) => {
 			if (!response.ok) throw new Error("Failed to load sources");
 			return response.json();
 		})
 		.then((data) => {
-			if (
-				!data.sources ||
-				!Array.isArray(data.sources) ||
-				data.sources.length === 0
-			) {
-				sourceList.textContent = "No sources found.";
+			const sources = (data.sources || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+			if (sources.length === 0) {
+				list.innerHTML = '<p class="empty">No routes yet. The villainess waits.</p>';
 				return;
 			}
 
-			allSources = data.sources;
+			const labels = [...new Set(sources.map((s) => languageLabel(s.languages)))].sort();
+			for (const label of labels) languageSelect.add(new Option(label, label));
 
-			// populate language dropdown
-			const languageSet = new Set();
-			allSources.forEach((source) => {
-				const label = getLanguageLabel(source.languages);
-				languageSet.add(label);
+			cards = sources.map((source) => ({ source, card: card(source) }));
+			list.replaceChildren(...cards.map((c) => c.card));
+
+			document.getElementById("lv").textContent = "LV. " + sources.length;
+			document.getElementById("reward").textContent = sources.length + " routes unlocked";
+
+			// The ticker repeats its set once so the loop has no gap.
+			const ticker = document.getElementById("ticker");
+			const set = sources.map((s) => {
+				const item = document.createElement("span");
+				item.className = "ticker__item";
+				if (s.iconURL) item.appendChild(icon(s, "ticker__icon"));
+				item.append(s.name);
+				return item;
 			});
-			const languageList = Array.from(languageSet).sort((a, b) => {
-				if (a === "Multi-Language") return -1;
-				if (b === "Multi-Language") return 1;
-				return a.localeCompare(b);
-			});
-			languageList.forEach((lang) => {
-				if (
-					[...languageSelect.options].some(
-						(opt) => opt.value === lang,
-					)
-				)
-					return;
-				const opt = document.createElement("option");
-				opt.value = lang;
-				opt.textContent = lang;
-				languageSelect.appendChild(opt);
-			});
-
-			// apply language label to sources
-			const sources = allSources.map((source) => {
-				let languageLabel = getLanguageLabel(source.languages);
-				let sortLang =
-					languageLabel === "Multi-Language"
-						? ""
-						: languageLabel.toLowerCase();
-				return {
-					...source,
-					languageLabel,
-					sortLang,
-				};
-			});
-
-			// sort by language and name
-			sources.sort((a, b) => {
-				if (a.sortLang !== b.sortLang) {
-					return a.sortLang.localeCompare(b.sortLang);
-				}
-				// sort alphabetically if language is the same
-				return a.name.localeCompare(b.name);
-			});
-
-			// group by language label
-			const grouped = {};
-			sources.forEach((source) => {
-				if (!grouped[source.languageLabel]) {
-					grouped[source.languageLabel] = [];
-				}
-				grouped[source.languageLabel].push(source);
-			});
-
-			// render source cells
-			sourceList.innerHTML = "";
-			allSourceElements = [];
-			let isFirst = true;
-			Object.keys(grouped).forEach((language) => {
-				// create a section for the language group
-				const section = document.createElement("section");
-				section.className = "language-section";
-				section.setAttribute("data-lang-label", language);
-
-				// language header
-				const headerRow = document.createElement("div");
-				headerRow.className = "language-header-row";
-				const langHeader = document.createElement("h2");
-				langHeader.textContent = language;
-
-				headerRow.appendChild(langHeader);
-				section.appendChild(headerRow);
-
-				// source list
-				const ul = document.createElement("ul");
-				grouped[language].forEach((source) => {
-					const li = document.createElement("li");
-					li.className = "source-row";
-					li.setAttribute("data-name", source.name.toLowerCase());
-					li.setAttribute("data-version", String(source.version));
-					li.setAttribute(
-						"data-languages",
-						(source.languages || []).join(","),
-					);
-					li.setAttribute(
-						"data-content-rating",
-						source.contentRating != null
-							? String(source.contentRating)
-							: "0",
-					);
-					li.setAttribute("data-lang-label", language);
-
-					const leftDiv = document.createElement("div");
-					leftDiv.className = "source-left";
-
-					const infoWrapper = document.createElement("div");
-					infoWrapper.className = "source-info-wrapper";
-
-					if (source.iconURL) {
-						const icon = document.createElement("img");
-						icon.src = source.iconURL;
-						icon.alt = source.name + " icon";
-						icon.className = "source-icon";
-						infoWrapper.appendChild(icon);
-					}
-
-					const infoRowStack = document.createElement("div");
-					infoRowStack.className = "source-info-row-stack";
-
-					const titleRow = document.createElement("div");
-					titleRow.className = "source-title-row";
-
-					const name = document.createElement("span");
-					name.textContent = source.name;
-					titleRow.appendChild(name);
-
-					const version = document.createElement("span");
-					version.textContent = " v" + source.version;
-					version.className = "source-version";
-					titleRow.appendChild(version);
-
-					let ratingBadge = null;
-					if (
-						source.contentRating === 1 ||
-						source.contentRating === 2
-					) {
-						ratingBadge = document.createElement("span");
-						ratingBadge.className =
-							"source-rating-badge " +
-							(source.contentRating === 1
-								? "source-rating-17"
-								: "source-rating-18");
-						ratingBadge.textContent =
-							source.contentRating === 1 ? "17+" : "18+";
-						const tooltip = document.createElement("span");
-						tooltip.className = "tooltip";
-						tooltip.textContent =
-							source.contentRating === 1
-								? "This source contains NSFW content"
-								: "This source contains primarily NSFW content";
-						ratingBadge.appendChild(tooltip);
-						ratingBadge.addEventListener("mouseenter", () => {
-							tooltip.style.opacity = "1";
-							tooltip.style.pointerEvents = "auto";
-						});
-						ratingBadge.addEventListener("mouseleave", () => {
-							tooltip.style.opacity = "0";
-							tooltip.style.pointerEvents = "none";
-						});
-					}
-					if (ratingBadge) titleRow.appendChild(ratingBadge);
-
-					infoRowStack.appendChild(titleRow);
-
-					if (source.baseURL) {
-						const urlRow = document.createElement("div");
-						urlRow.className = "source-url";
-						urlRow.textContent = source.baseURL;
-						infoRowStack.appendChild(urlRow);
-					}
-
-					infoWrapper.appendChild(infoRowStack);
-					leftDiv.appendChild(infoWrapper);
-					const rightDiv = document.createElement("div");
-					rightDiv.className = "source-right";
-
-					const button = document.createElement("a");
-					button.href = source.downloadURL;
-					button.textContent = "↓";
-					button.setAttribute("download", "");
-					button.className = "source-download";
-					rightDiv.appendChild(button);
-
-					li.appendChild(leftDiv);
-					li.appendChild(rightDiv);
-
-					ul.appendChild(li);
-
-					allSourceElements.push({ source, li, section });
-				});
-				section.appendChild(ul);
-				sourceList.appendChild(section);
-			});
-
-			// initial filter
-			filterAndShowSources();
+			ticker.append(...set, ...set.map((n) => Object.assign(n.cloneNode(true), { ariaHidden: "true" })));
+			filter();
 		})
-		.catch((error) => {
-			sourceList.textContent = "Error loading sources.";
-			console.error(error);
+		.catch(() => {
+			list.innerHTML = '<p class="empty">The System failed to load the routes. Try again in a moment.</p>';
 		});
 });

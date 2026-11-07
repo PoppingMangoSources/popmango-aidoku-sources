@@ -17,12 +17,17 @@ verified_at: f082439
 
 The README header (banner, four badges, add button) is hand-written SVG in `media/`, in the
 red "doki doki" heart style of the owner's profile art: ink `#33162a`, heart red `#ff4d63`,
-blush gradient `#ff5a76` to `#ffe9f2`. The install page in `public/` uses the same palette and
-opens with a manhwa-style "System" quest window.
+blush gradient `#ff5a76` to `#ffe9f2`. The install page in `public/` uses the same palette as a
+manhwa system crossed with a dating sim: Mango-chan (the heart mascot) talks in a visual novel
+dialogue box that ends in choices (add, copy, browse), a STATUS window carries the level and an
+affection meter that choices and downloads fill, SYSTEM toasts report each action, a quest
+window holds the repository url, and the sources are "routes" on a Route Select grid.
 
-- `public/main.js` sets the window's level (`LV.`), reward and bar from `index.min.json`: the
-  level is the catalogue size, the bar fills with what the search and filters show, and an empty
-  result prints a line in the same voice. Nothing in the page hardcodes a source count.
+- `public/main.js` sets the level (`LV.`), reward and bar from `index.min.json`: the level is the
+  catalogue size, the bar fills with what the search and filters show, and an empty result shows
+  a "bad ending" with a reset. Nothing in the page hardcodes a source count.
+- The Add choice is an `aidoku://` link; off Apple devices it shows a toast with the manual steps
+  instead of following the link.
 - `media/badge-sources.svg` and the README's "**N sources**" line do hardcode the count, so
   they change whenever a source joins or leaves `main` (a merge upstream removes it).
 

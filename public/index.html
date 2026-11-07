@@ -3,194 +3,201 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 		<meta
 			name="description"
 			content="Aidoku sources for sites not in Aidoku Community yet, on their way there. Best effort, not maintained 24/7."
 		/>
+		<meta name="theme-color" content="#ff4d63" />
 		<title>PoppingMango Sources</title>
-		<link
-			rel="canonical"
-			href="https://poppingmangosources.github.io/popmango-aidoku-sources/"
-		/>
+		<link rel="canonical" href="https://poppingmangosources.github.io/popmango-aidoku-sources/" />
 		<meta property="og:title" content="PoppingMango Sources" />
 		<meta
 			property="og:description"
 			content="Aidoku sources for sites not in Aidoku Community yet, on their way there. Best effort, not maintained 24/7."
 		/>
-		<meta
-			property="og:url"
-			content="https://poppingmangosources.github.io/popmango-aidoku-sources/"
+		<meta property="og:url" content="https://poppingmangosources.github.io/popmango-aidoku-sources/" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap"
 		/>
 		<link rel="stylesheet" href="styles.css" />
 	</head>
 	<body>
-		<a
-			href="https://github.com/PoppingMangoSources/popmango-aidoku-sources"
-			id="github-link"
-			target="_blank"
-			rel="noopener"
-			aria-label="GitHub Repository"
-		>
-			<svg
-				viewBox="0 0 16 16"
-				width="28"
-				height="28"
-				fill="currentColor"
-				aria-hidden="true"
-			>
+		<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+			<defs>
+				<linearGradient id="heart-fill" x1="0" y1="0" x2="0.6" y2="1">
+					<stop offset="0" stop-color="#ff8a8f" />
+					<stop offset="0.55" stop-color="#ff4d63" />
+					<stop offset="1" stop-color="#e2324f" />
+				</linearGradient>
 				<path
-					d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
-					0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52
-					-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2
-					-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64
-					-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08
-					2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01
-					1.93-.01 2.19 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+					id="heart-path"
+					d="M0,22 C-5,17 -26,4 -26,-9 C-26,-19 -18,-25 -10,-25 C-4.5,-25 -1.2,-21.5 0,-18 C1.2,-21.5 4.5,-25 10,-25 C18,-25 26,-19 26,-9 C26,4 5,17 0,22 Z"
 				/>
-			</svg>
-		</a>
-		<header>
-			<p class="doki">DOKI DOKI</p>
-			<h1 class="main-heading">
-				<svg class="heart" viewBox="-30 -32 60 56" aria-hidden="true">
-					<path
-						d="M0,22 C-5,17 -26,4 -26,-9 C-26,-19 -18,-25 -10,-25 C-4.5,-25 -1.2,-21.5 0,-18 C1.2,-21.5 4.5,-25 10,-25 C18,-25 26,-19 26,-9 C26,4 5,17 0,22 Z"
-						fill="#ff4d63"
-					/>
+				<symbol id="mango-chan" viewBox="-32 -34 64 60">
+					<use href="#heart-path" fill="url(#heart-fill)" />
 					<ellipse cx="-13" cy="-12" rx="5" ry="7.5" fill="#fff" opacity="0.5" transform="rotate(-30 -13 -12)" />
+					<circle cx="-5" cy="-17" r="2" fill="#fff" opacity="0.7" />
 					<path d="M0,-18 C0,-23 2,-27 5,-28.5" fill="none" stroke="#a8d48c" stroke-width="2.6" stroke-linecap="round" />
 					<ellipse cx="10" cy="-28.5" rx="5.5" ry="2.8" fill="#bde3a4" transform="rotate(14 10 -28.5)" />
-				</svg>
-				PoppingMango Sources
-			</h1>
-			<p class="main-description">
-				Aidoku sources for sites that aren't in
-				<a href="https://github.com/Aidoku-Community/sources">Aidoku Community</a>
-				yet: clones of my
-				<a href="https://github.com/PoppingMangoSources/general-extensions-mangago">Paperback sources</a>,
-				plus popular sites Aidoku doesn't have. Each one leaves once it's
-				merged into Aidoku Community. Best effort, not maintained 24/7.
-			</p>
+					<g class="chara-eyes">
+						<circle cx="-4.6" cy="-2" r="1.9" fill="#33162a" />
+						<circle cx="4.6" cy="-2" r="1.9" fill="#33162a" />
+						<circle cx="-4.1" cy="-2.6" r="0.6" fill="#fff" />
+						<circle cx="5.1" cy="-2.6" r="0.6" fill="#fff" />
+					</g>
+					<ellipse cx="-8" cy="1.4" rx="2.6" ry="1.5" fill="#ff8fab" />
+					<ellipse cx="8" cy="1.4" rx="2.6" ry="1.5" fill="#ff8fab" />
+					<path d="M-1.8,0.6 Q0,2.4 1.8,0.6" fill="none" stroke="#33162a" stroke-width="1.3" stroke-linecap="round" />
+				</symbol>
+			</defs>
+		</svg>
+
+		<div class="sky" aria-hidden="true">
+			<span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+		</div>
+		<div class="toasts" id="toasts" aria-live="polite"></div>
+
+		<header class="topbar">
+			<a class="brand" href="#top">
+				<svg class="brand__mark" aria-hidden="true"><use href="#mango-chan" /></svg>
+				<span>PoppingMango</span>
+			</a>
+			<nav class="topbar__links" aria-label="Site links">
+				<a href="#quest">Install</a>
+				<a href="#routes">Sources</a>
+				<a href="https://github.com/PoppingMangoSources/popmango-aidoku-sources">GitHub</a>
+			</nav>
 		</header>
-		<main>
-			<section class="system" aria-label="System notification">
-				<div class="system-bar"><span class="system-dot"></span>SYSTEM</div>
-				<p class="system-line">
-					You have been reincarnated as a reader with nothing to read.
-				</p>
-				<p class="system-quest">
-					<b>Quest:</b> add the PoppingMango repository to Aidoku.<br />
-					<b>Reward:</b> <span id="reward">every source below</span>.<br />
-					<b>Failure:</b> the villainess dies in chapter 1.
-				</p>
-				<div class="level">
-					<span class="level-label" id="level-label">LV. ?</span>
-					<span class="level-bar"><span class="level-fill" id="level-fill"></span></span>
+
+		<main id="top">
+			<section class="hero">
+				<div class="hero__copy">
+					<p class="eyebrow"><span class="pulse"></span>Reading system online</p>
+					<h1>Ported with love,<br /><span>doki doki.</span></h1>
+					<p class="lede">
+						Aidoku sources for sites that aren't in
+						<a href="https://github.com/Aidoku-Community/sources">Aidoku Community</a> yet:
+						clones of my
+						<a href="https://github.com/PoppingMangoSources/general-extensions-mangago">Paperback sources</a>
+						plus popular sites Aidoku doesn't have. Each one graduates to Aidoku Community
+						once it's merged.
+					</p>
+
+					<div class="window status" aria-label="Status window">
+						<div class="window__bar"><span>STATUS</span><span class="window__dots">● ● ●</span></div>
+						<dl class="status__rows">
+							<dt>Name</dt>
+							<dd>Reader</dd>
+							<dt>Class</dt>
+							<dd>The villainess's last hope</dd>
+							<dt>Level</dt>
+							<dd>
+								<span class="lv" id="lv">LV. ?</span>
+								<span class="bar"><span class="bar__fill" id="lv-fill"></span></span>
+							</dd>
+							<dt>Affection</dt>
+							<dd class="affection" id="affection" aria-label="Affection 0 of 5"></dd>
+						</dl>
+					</div>
 				</div>
-				<div id="add-repo-btn" style="display: none">
-					<button
-						onclick='window.location = "aidoku://addSourceList?url=https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json";'
-					>
-						Accept Quest: Add Repository
-					</button>
-					<p>Requires <b>Aidoku 0.8</b> or newer.</p>
+
+				<div class="scene" aria-label="Mango-chan says hello">
+					<div class="scene__sparkles" aria-hidden="true">
+						<span>✦</span><span>♥</span><span>✦</span><span>♥</span><span>✦</span>
+					</div>
+					<div class="scene__chara" aria-hidden="true">
+						<svg><use href="#mango-chan" /></svg>
+					</div>
+					<div class="dialogue">
+						<span class="nameplate">Mango-chan</span>
+						<p class="dialogue__text" id="line"></p>
+						<button class="dialogue__next" id="next" type="button" aria-label="Next line">▼</button>
+					</div>
+					<div class="choices" id="choices" hidden>
+						<a
+							class="choice"
+							id="choice-add"
+							href="aidoku://addSourceList?url=https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json"
+							>♥ Add the repository to Aidoku</a
+						>
+						<button class="choice" id="choice-copy" type="button">Copy the repository URL</button>
+						<a class="choice" href="#routes">Show me every route first</a>
+					</div>
 				</div>
-			<div id="non-apple-note" style="display: none">
-				<p>
-					You can add this repository inside the Aidoku app in the
-					<b>Settings</b> tab under <b>Source Lists</b> by entering:
-					<code>
-						https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json
-					</code>
-				</p>
-			</div>
 			</section>
-			<div id="filter-container">
-				<div class="filter-group">
-					<label for="source-search" class="filter-label">
-						Search
+
+			<section class="ticker" aria-label="Sources in this repository">
+				<div class="ticker__track" id="ticker"></div>
+			</section>
+
+			<section class="window quest" id="quest" aria-label="Main quest">
+				<div class="window__bar"><span>[ SYSTEM ] MAIN QUEST</span><span class="window__dots">!</span></div>
+				<div class="quest__body">
+					<h2>Save the villainess</h2>
+					<p>
+						She dies in chapter 1 of every story she's in. Give her something to read and the
+						plot changes.
+					</p>
+					<ul class="quest__list">
+						<li><b>Objective</b> Add this repository in Aidoku 0.8 or newer</li>
+						<li><b>Reward</b> <span id="reward">every route below</span></li>
+						<li><b>Warning</b> Best effort, not maintained 24/7. A route may break when its site changes.</li>
+					</ul>
+					<div class="quest__url">
+						<code id="repo-url">https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json</code>
+						<button class="button" id="copy-url" type="button">Copy</button>
+					</div>
+					<p class="quest__hint">
+						On an iPhone or iPad, tap <b>Add the repository</b> above. Anywhere else, paste the URL
+						in Aidoku under <b>Settings → Source Lists</b>.
+					</p>
+				</div>
+			</section>
+
+			<section class="routes" id="routes">
+				<div class="routes__head">
+					<div>
+						<p class="eyebrow">Route select</p>
+						<h2>Choose your route</h2>
+					</div>
+					<p class="routes__count" id="total-count"></p>
+				</div>
+				<div class="filters">
+					<label class="field field--search">
+						<span>Search</span>
+						<input type="search" id="source-search" placeholder="Find a route..." autocomplete="off" />
 					</label>
-					<input
-						type="text"
-						id="source-search"
-						placeholder="Search sources..."
-						autocomplete="off"
-					/>
+					<label class="field">
+						<span>Language</span>
+						<select id="language-select">
+							<option value="">All languages</option>
+						</select>
+					</label>
+					<label class="field">
+						<span>Heat</span>
+						<select id="rating-select">
+							<option value="">Every rating</option>
+							<option value="safe">Safe</option>
+							<option value="contains-nsfw">17+</option>
+							<option value="nsfw">18+</option>
+						</select>
+					</label>
 				</div>
-				<div id="filter-menus-row">
-					<div class="filter-group">
-						<label for="language-select" class="filter-label">
-							Language
-						</label>
-						<div class="select-wrapper">
-							<select id="language-select">
-								<option value="">All Languages</option>
-							</select>
-							<svg
-								class="select-chevron"
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 1024 1024"
-								width="18"
-								height="18"
-							>
-								<path
-									fill="currentColor"
-									d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"
-								></path>
-							</svg>
-						</div>
-					</div>
-					<div class="filter-group">
-						<label for="rating-select" class="filter-label">
-							Content Rating
-						</label>
-						<div class="select-wrapper">
-							<select id="rating-select">
-								<option value="">All Content Ratings</option>
-								<option value="safe">Safe</option>
-								<option value="contains-nsfw">
-									Contains NSFW
-								</option>
-								<option value="nsfw">NSFW</option>
-							</select>
-							<svg
-								class="select-chevron"
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 1024 1024"
-								width="18"
-								height="18"
-							>
-								<path
-									fill="currentColor"
-									d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"
-								></path>
-							</svg>
-						</div>
-					</div>
-				</div>
-			</div>
-			<noscript>
-				You need to enable JavaScript to see and filter sources.
-			</noscript>
-			<div class="source-list-header-row">
-				<span class="total-count" id="total-count"></span>
-			</div>
-			<div id="source-list"></div>
+				<noscript><p class="empty">Turn on JavaScript to see the routes.</p></noscript>
+				<div class="route-grid" id="source-list"></div>
+			</section>
 		</main>
-		<script>
-			// show the add repo button if the user agent is an apple device, otherwise show note
-			(function () {
-				const ua = navigator.userAgent.toLowerCase();
-				const isApple = /iphone|ipad|ipados|macintosh|mac os x/.test(
-					ua,
-				);
-				const btn = document.getElementById("add-repo-btn");
-				const note = document.getElementById("non-apple-note");
-				if (btn && isApple) btn.style.display = "";
-				if (note && !isApple) note.style.display = "";
-			})();
-		</script>
+
+		<footer class="footer">
+			<p>No villainesses were harmed in the making of this repository. Mostly.</p>
+			<p>
+				<a href="https://github.com/PoppingMangoSources/popmango-aidoku-sources">GitHub</a> ·
+				<a href="https://github.com/Aidoku-Community/sources">Aidoku Community</a>
+			</p>
+		</footer>
 		<script src="main.js" defer></script>
 	</body>
 </html>
