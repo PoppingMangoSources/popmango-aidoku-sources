@@ -11,15 +11,14 @@ use aidoku::{
 };
 
 mod helpers;
+mod markdown;
 mod models;
 mod settings;
 #[cfg(test)]
 mod test;
 
-use helpers::{
-	SearchParams, browse, get, html_paragraphs, listed_genres, mirror_chapters, paragraphs, parse,
-	request,
-};
+use helpers::{SearchParams, browse, get, listed_genres, mirror_chapters, parse, request};
+use markdown::{html_to_markdown, paragraphs};
 use models::{ChapterResponse, MirrorChapterText, MirrorList, Novel, NovelDetails, NovelList};
 
 const BASE_URL: &str = "https://novelarchive.st";
@@ -131,26 +130,14 @@ impl Source for NovelArchive {
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let text = match chapter.key.split_once(':') {
-			Some((mirror, number)) => {
-				let html = get::<MirrorChapterText>(&format!(
+			Some((mirror, number)) => html_to_markdown(
+				&get::<MirrorChapterText>(&format!(
 					"{API_URL}/{}/sources/{mirror}/chapters/{number}",
 					manga.key
 				))?
 				.content_html
-				.unwrap_or_default();
-				// Most mirrors send HTML, which the site inserts as is; a plain-text one keeps
-				// its lines.
-				if [
-					"<p>", "<p ", "<br", "<em>", "<i>", "<strong>", "<b>", "<div",
-				]
-				.iter()
-				.any(|tag| html.contains(tag))
-				{
-					html_paragraphs(&html)?
-				} else {
-					paragraphs(&html)
-				}
-			}
+				.unwrap_or_default(),
+			)?,
 			// The archive's own copies are plain text, which the site prints as is.
 			None => paragraphs(
 				&get::<ChapterResponse>(&format!(

@@ -165,9 +165,10 @@ Running them:
   dates in the app, not with an assertion.
 - The runner stores an `Element` made with `Element::try_from(node)` as a plain node, so its
   `tag_name()`, `html()` and other element calls return `None` there (`store.rs`,
-  `as_html_element`), and a `child_nodes` walk sees only text. A document's own `child_nodes` is
-  empty too; walk from `select_first("html")`. Test what such a walk writes through the code it
-  calls, as `en.novelarchive` tests its `Markdown` builder, and check the tags in the app.
+  `as_html_element`), and a `child_nodes` walk sees only text. Take text from `child_nodes` and
+  elements from `children()`, pairing each element node with the next child, as `en.novelbuddy`,
+  `en.chikari` and `en.novelarchive` do; those elements work in the runner and the app alike. A
+  document's own `child_nodes` is empty too, so walk from a selected element.
 - Sites behind Cloudflare can refuse the sandbox outright (403 "Attention Required" for curl
   and headless Chromium alike, `en.novelarchive`). Their live tests then fail on the network, not
   the code; read the site through Firecrawl and say the live suite could not run. Firecrawl strips

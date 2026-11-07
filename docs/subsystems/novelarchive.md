@@ -6,6 +6,7 @@ updated: 2026-11-07
 sources:
   - code: sources/en.novelarchive/src/lib.rs
   - code: sources/en.novelarchive/src/helpers.rs
+  - code: sources/en.novelarchive/src/markdown.rs
   - code: sources/en.novelarchive/src/models.rs
   - code: sources/en.novelarchive/src/test.rs
   - code: sources/en.novelarchive/src/settings.rs
@@ -13,7 +14,7 @@ sources:
   - code: sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: c933a30
+verified_at: 3145f4a
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -117,19 +118,20 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 > import is what `aidoku verify` dates to app 0.8.3, hence `minAppVersion`, as on the merged novel
 > sources.
 
-> ⚠️ Chapter text escapes only Markdown syntax (`paragraphs`), not all punctuation: cmark makes
+> ⚠️ Chapter text escapes only Markdown syntax (`src/markdown.rs`), not all punctuation as the
+> merged converters' `escape_markdown` does: cmark makes
 > each escape its own node, and a mirror's thousand-character lines would rebuild the crash below.
 
 > ⚠️ Mirror `content_html` is real HTML: the fucknovelpia copy of the Ghost Story novel's chapter 3
 > has `h1`, `hr`, `p`, `b`, `i`, `br`, `center`, `div` and `span`, with `&lt;Dark Exploration
-> Records&gt;` as text, and chapter 1 opens with an `img`. `html_paragraphs` walks it into Markdown, as
-> `en.freewebnovel` does: bold and italics stay open across a `<br>` and nested tags, a heading is a
-> bold line, `hr` a rule and an image `![](<url>)`, which the reader's MarkdownUI loads. The
+> Records&gt;` as text, and chapter 1 opens with an `img`. `html_to_markdown` (`src/markdown.rs`) walks it into Markdown,
+> as `en.novelbuddy` and `en.chikari` do, with tags read through `children()`: bold and italics stay open across a `<br>` and nested tags, a heading is a
+> `#` heading of its level, `hr` a rule and an image `![](<url>)`, which the reader's MarkdownUI loads. The
 > archive's own text is plain, which the site HTML-escapes and prints as is.
 
 > ⚠️ Mirror images are served by the site (`/api/novels/{id}/sources/{mirror}/img/<hash>.jpg`), and
 > the rendered page shows them absolute only because Firecrawl resolves links; a site-relative or
-> protocol-relative `src` is resolved before use (`image_url`), and any other non-http one, such as
+> protocol-relative `src` is resolved before use, and any other non-http one, such as
 > `data:`, is left out.
 
 > ⚠️ Firecrawl strips the tags out of HTML inside a JSON response's strings, so the mirror endpoint
@@ -141,6 +143,13 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 > and `<b>will </b><b><i>not</i></b><b> be</b>`. Written as is that is `****` and `** be`, which
 > Markdown prints literally, so a marker is written before a line's first character, closed before a
 > line break and trailing spaces, and a run that reopens straight after closing continues instead.
+
+> ⚠️ Three things differ from the merged converters on purpose. They write `<br>` as a hard break
+> inside one paragraph and escape every punctuation mark, which rebuilds the stack-overflow crash
+> above, so `<br>` ends the paragraph here and only syntax is escaped. They render each emphasis on
+> its own and trim it, which drops the space in `will </b><b>not` and prints the split runs above as
+> `****`; here markers stay open across children. Lists, links, code and quotes, which they also
+> convert, appear in no mirror copy read, so they fall through as text.
 
 > ⚠️ Each line is escaped and becomes its own Markdown paragraph (joined with blank lines). Escaping
 > the whole text made one paragraph of hard breaks, and chapter 1 of *Got Dropped into a Ghost Story,

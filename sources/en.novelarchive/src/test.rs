@@ -6,10 +6,8 @@ use aidoku::{
 	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
-use helpers::{
-	ADULT_GENRES, Markdown, content_rating, genres, html_paragraphs, image_url,
-	leading_chapter_number, paragraphs,
-};
+use helpers::{ADULT_GENRES, content_rating, genres, leading_chapter_number};
+use markdown::{html_to_markdown, paragraphs};
 use models::{MirrorChapterList, MirrorList};
 
 // Captured from a novel whose only mirror is Ranobes.
@@ -493,56 +491,32 @@ fn review_paragraphs_escape_only_markdown_syntax() {
 
 #[aidoku_test]
 fn review_mirror_html_keeps_bold_and_italics() {
-	// The calls html_paragraphs makes for a fucknovelpia chapter's markup, since the runner can't
-	// name a child element's tag. "<p>He said <i>never </i>and it, a_b.</p><hr>"
-	let mut markdown = Markdown::default();
-	markdown.text("He said ");
-	markdown.open("*");
-	markdown.text("never ");
-	markdown.close();
-	markdown.text("and it, a_b.");
-	markdown.end_line();
-	markdown.block("---".into());
-	// "<p><b>[Roulette Event]</b><b><br></b><b>: Create your own &lt;Records&gt;.</b></p>"
-	for part in ["[Roulette Event]", "\n", ": Create your own <Records>."] {
-		markdown.open("**");
-		markdown.text(part);
-		markdown.close();
-	}
-	markdown.end_line();
-	// "<p><b>Freeloading will </b><b><i>not</i></b><b> be tolerated!</b><b>]</b></p>"
-	markdown.open("**");
-	markdown.text("Freeloading will ");
-	markdown.close();
-	markdown.open("**");
-	markdown.open("*");
-	markdown.text("not");
-	markdown.close();
-	markdown.close();
-	for part in [" be tolerated!", "]"] {
-		markdown.open("**");
-		markdown.text(part);
-		markdown.close();
-	}
-	markdown.end_line();
-	// "<p>- Line</p><p>1. two</p>"
-	markdown.text("- Line\n1. two");
-	assert_eq!(
-		markdown.finish(),
-		"He said *never* and it, a\\_b.\n\n---\n\n**\\[Roulette Event\\]**\n\n**: Create your own \\<Records\\>.**\n\n**Freeloading will** ***not*** **be tolerated!\\]**\n\n\\- Line\n\n1\\. two"
-	);
-	// Chapter 1's cover, as the site serves it, and the shapes a src can take.
+	// Shapes from the Ghost Story novel's fucknovelpia and Ranobes copies.
 	let cover =
 		"/api/novels/6a162ec14f942c668d69a598/sources/fucknovelpia/img/af678b901a321c18.jpg";
-	assert_eq!(image_url(cover), Some(format!("{BASE_URL}{cover}")));
-	assert_eq!(
-		image_url("//cdn.example.org/a b.png").as_deref(),
-		Some("https://cdn.example.org/a%20b.png")
+	let html = format!(
+		"<img src=\"{cover}\" alt=\"\">\n<h1>Part 1</h1>\n<hr>\n\
+		 <p>He said <i>never </i>and it, a_b.</p> <p>\n</p>\
+		 <p><b>[Roulette Event]</b><b><br></b><b>: Create your own &lt;</b><b>Records</b><b>&gt;.</b></p>\
+		 <p><b>Freeloading will </b><b><i>not</i></b><b> be tolerated!</b><b>]</b></p>\
+		 <center><b>--------------------</b></center>\
+		 <div><div></div>\n</div>“Loose text.”<p></p><p>- Line</p><p>1. two</p>\
+		 <img src=\"data:image/png;base64,AAAA\"><img src=\"//cdn.example.org/a b.png\">"
 	);
-	assert_eq!(image_url("data:image/png;base64,AAAA"), None);
-	// The text itself survives the walk there too.
-	let walked = html_paragraphs("<p>He said <em>never</em> it.</p>").unwrap();
-	assert!(walked.contains("never"), "{walked}");
+	assert_eq!(
+		html_to_markdown(&html).unwrap(),
+		format!(
+			"![](<{BASE_URL}{cover}>)\n\n# Part 1\n\n---\n\nHe said *never* and it, a\\_b.\n\n\
+			 **\\[Roulette Event\\]**\n\n**: Create your own \\<Records\\>.**\n\n\
+			 **Freeloading will** ***not*** **be tolerated!\\]**\n\n**--------------------**\n\n\
+			 “Loose text.”\n\n\\- Line\n\n1\\. two\n\n![](<https://cdn.example.org/a%20b.png>)"
+		)
+	);
+	// A copy without markup keeps its lines.
+	assert_eq!(
+		html_to_markdown("One <Title>.\nTwo").unwrap(),
+		"One \\<Title\\>.\n\nTwo"
+	);
 }
 
 #[aidoku_test]
