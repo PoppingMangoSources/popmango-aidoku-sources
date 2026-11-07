@@ -43,6 +43,7 @@ _(none yet)_
 ## operations
 
 - [[source-checks]] -- what `scripts/check-sources.py` checks, where it runs, fail vs note
+- [[readme-and-site]] -- the README art, the install page, and why images load from the repo
 
 ## history
 
