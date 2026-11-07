@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-platform.svg?v=2" alt="iOS / iPadOS" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-aidoku.svg?v=2" alt="Aidoku 0.8+" height="28"/>
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=5" alt="25 sources" height="28"/>
+  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=6" alt="16 sources" height="28"/>
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-unofficial.svg?v=2" alt="Best effort, not maintained 24/7" height="28"/>
 </p>
 
@@ -39,7 +39,7 @@ If you want the complete, actively maintained set, use the Paperback repository.
 
 ## Manga, Manhwa & Manhua
 
-**22 sources** are currently packaged in this repository.
+**16 sources** are currently packaged in this repository.
 
 <h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/sources/mkissa.png" width="24" align="top"/>&nbsp; Mkissa &nbsp;<sub><a href="https://mkissa.to">mkissa.to</a></sub></h3>
 
