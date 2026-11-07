@@ -78,7 +78,9 @@ them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never coll
 
 > ⚠️ Each line is escaped and becomes its own Markdown paragraph (joined with blank lines). Escaping
 > the whole text made one paragraph of hard breaks, and chapter 1 of *Got Dropped into a Ghost Story,
-> Still Gotta Work* (`6a162ec14f942c668d69a598`) crashed the reader with it.
+> Still Gotta Work* (`6a162ec14f942c668d69a598`) crashed the app with it: the scroll reader's MarkdownUI
+> joins each inline node of a paragraph into one `Text` with `+`, and the crash logs show the main
+> thread's stack overflowing in `ConcatenatedTextStorage.resolve` (650 frames, 1,943 more elided).
 
 > ⚠️ Chapter names stop matching positions in long novels: that novel's names run "Chapter 1" to
 > "Chapter 374", then restart at "Chapter 165.2" for its remaining 261 entries. Keys and numbers stay

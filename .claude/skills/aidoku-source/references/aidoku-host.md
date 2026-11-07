@@ -155,6 +155,12 @@ filter doesn't count.
 - `Chapter`: `key`, `title`, `chapterNumber`, `volumeNumber`, `dateUploaded`, `scanlators`,
   `url`, `language`, `thumbnail`, `locked`.
 - `DeepLinkResult`: a manga key, a chapter key (with its manga), or a listing.
+- Text pages (`PageContent::text`) are Markdown. The scroll reader draws them with MarkdownUI
+  (app `Features/Reader/Page/MarkdownView.swift`), whose `TextInlineRenderer` joins every inline
+  node of a paragraph into one SwiftUI `Text` with `+`. A paragraph of about a thousand nodes
+  (text runs and line breaks) overflows the main thread's stack and crashes the app, so give
+  each line of a chapter its own paragraph. The paged reader parses with Apple's
+  `AttributedString(markdown:)` instead (`Features/Reader/Readers/Text/Paged/TextPaginator.swift`).
 
 ## Network (`Imports/Net.swift`, `Utilities/NetRequest.swift`, `Utilities/RateLimit.swift`)
 
@@ -240,6 +246,8 @@ a7f13d1bf76bcef7fd4b21ff06151757dab38a1b Sources/AidokuRunner/Utilities/NetReque
 repo https://github.com/Aidoku/Aidoku ceee58b29d4f48106cf63042ca0cb075a8ac22b4
 456b537a372cd9101fc9b7866da4e4bc6ca5ae14 Aidoku/Features/Source/SourceHomeContentView.swift
 43eddb85cc3a0f0c1f50f0a5e9b8a8f6011a0c3b Aidoku/Features/Source/Home/HomeComponents/HomeBigScrollerView.swift
+17ca5ba3857f2d725f63eacc3153859076cdfca1 Aidoku/Features/Reader/Page/MarkdownView.swift
+ac8939bd5c22da56cbcbcd09f380ca786b402f03 Aidoku/Features/Reader/Readers/Text/Paged/TextPaginator.swift
 cb4a00225a980b7ffa21e0fa16b7e877784ecce8 Aidoku/Features/Source/Home/HomeComponents/HomeScrollerView.swift
 62beb2cf461ae8db0d0f5890b10d54e7cc5ec6a2 Aidoku/Features/Source/Home/HomeComponents/HomeListView.swift
 e24fec29263bfd01716e8120ee4727a0e6bcc817 Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
