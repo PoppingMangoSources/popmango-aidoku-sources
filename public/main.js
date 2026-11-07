@@ -111,8 +111,17 @@ document.addEventListener("DOMContentLoaded", () => {
 		// update total source count
 		const totalCountSpan = document.querySelector(".total-count");
 		if (totalCountSpan) {
-			totalCountSpan.textContent = "Total: " + visibleCount;
+			totalCountSpan.textContent =
+				visibleCount > 0
+					? "Total: " + visibleCount
+					: "No source found. The villainess remains doomed.";
 		}
+		// the level is the whole catalogue; the bar fills with what the filters show
+		const total = allSourceElements.length;
+		document.getElementById("level-label").textContent = "LV. " + total;
+		document.getElementById("level-fill").style.width =
+			(total ? (visibleCount / total) * 100 : 0) + "%";
+		document.getElementById("reward").textContent = total + " sources";
 	}
 
 	// add event listeners for filter changes

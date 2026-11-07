@@ -1,22 +1,22 @@
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/banner.svg?v=2" alt="PoppingMango Sources for Aidoku" width="100%"/>
+  <img src="media/banner.svg" alt="PoppingMango Sources for Aidoku" width="100%"/>
 </p>
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-platform.svg?v=2" alt="iOS / iPadOS" height="28"/>
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-aidoku.svg?v=2" alt="Aidoku 0.8+" height="28"/>
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-sources.svg?v=6" alt="16 sources" height="28"/>
-  <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/badge-unofficial.svg?v=2" alt="Best effort, not maintained 24/7" height="28"/>
+  <img src="media/badge-platform.svg" alt="iOS / iPadOS" height="28"/>
+  <img src="media/badge-aidoku.svg" alt="Aidoku 0.8+" height="28"/>
+  <img src="media/badge-sources.svg" alt="16 sources" height="28"/>
+  <img src="media/badge-unofficial.svg" alt="Best effort, not maintained 24/7" height="28"/>
 </p>
 
 <p align="center">
   <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/">
-    <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/add-button.svg?v=2" alt="Add PoppingMango to Aidoku" height="52"/>
+    <img src="media/add-button.svg" alt="Add PoppingMango to Aidoku" height="52"/>
   </a>
 </p>
 
 <p align="center">
-  The button opens the install page — tap <b>Add Repository</b> there on an iOS device.<br/>
+  The button opens the install page: tap <b>Add Repository</b> there on an iOS device.<br/>
   Or add it by hand in Aidoku under <b>Settings → Source Lists</b>:<br/>
   <code>https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json</code>
 </p>
@@ -25,15 +25,14 @@
 
 ## Please read first
 
-**This is a side project, not a maintained source list.**
+**This is a side project, kept up on a best effort basis.**
 
-These are Aidoku clones of my [Paperback sources](https://github.com/PoppingMangoSources/general-extensions-mangago). I built them so I could read the sources that weren't already available on Aidoku. They're public in case they're useful to someone else too.
+These are Aidoku sources for sites that aren't in [Aidoku Community sources](https://github.com/Aidoku-Community/sources) yet: Aidoku clones of my [Paperback sources](https://github.com/PoppingMangoSources/general-extensions-mangago), plus popular sites Aidoku doesn't have. They're public in case they're useful to someone else too.
 
-- **The Paperback repository is the main one.** That's where the work happens, where sources get fixed first, and where the full catalog lives.
-- **These are not maintained 24/7.** When a site changes its layout or API, the Aidoku version may stay broken for a while — or indefinitely.
-- **Sources already on other Aidoku repos aren't duplicated here.** If something I have on Paperback already exists in another Aidoku source list, use that one — it'll be better maintained than mine.
-
-If you want the complete, actively maintained set, use the Paperback repository.
+- **The goal is to get every source here merged into Aidoku Community.** Once one is merged, it leaves this repository, so switch to the Aidoku Community version.
+- **Sources already in Aidoku Community aren't duplicated here.** Use that one, it's maintained by more people than just me.
+- **These are not maintained 24/7.** When a site changes its layout or API, a source here may stay broken for a while.
+- **My Paperback repository is still the main one for my Paperback sources.** Those get fixed there first.
 
 ---
 

@@ -6,7 +6,7 @@
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 		<meta
 			name="description"
-			content="Aidoku clones of the PoppingMango Paperback sources. Best effort, not maintained 24/7."
+			content="Aidoku sources for sites not in Aidoku Community yet, on their way there. Best effort, not maintained 24/7."
 		/>
 		<title>PoppingMango Sources</title>
 		<link
@@ -16,7 +16,7 @@
 		<meta property="og:title" content="PoppingMango Sources" />
 		<meta
 			property="og:description"
-			content="Aidoku clones of the PoppingMango Paperback sources. Best effort, not maintained 24/7."
+			content="Aidoku sources for sites not in Aidoku Community yet, on their way there. Best effort, not maintained 24/7."
 		/>
 		<meta
 			property="og:url"
@@ -51,24 +51,51 @@
 			</svg>
 		</a>
 		<header>
-			<h1 class="main-heading">PoppingMango Sources</h1>
+			<p class="doki">DOKI DOKI</p>
+			<h1 class="main-heading">
+				<svg class="heart" viewBox="-30 -32 60 56" aria-hidden="true">
+					<path
+						d="M0,22 C-5,17 -26,4 -26,-9 C-26,-19 -18,-25 -10,-25 C-4.5,-25 -1.2,-21.5 0,-18 C1.2,-21.5 4.5,-25 10,-25 C18,-25 26,-19 26,-9 C26,4 5,17 0,22 Z"
+						fill="#ff4d63"
+					/>
+					<ellipse cx="-13" cy="-12" rx="5" ry="7.5" fill="#fff" opacity="0.5" transform="rotate(-30 -13 -12)" />
+					<path d="M0,-18 C0,-23 2,-27 5,-28.5" fill="none" stroke="#a8d48c" stroke-width="2.6" stroke-linecap="round" />
+					<ellipse cx="10" cy="-28.5" rx="5.5" ry="2.8" fill="#bde3a4" transform="rotate(14 10 -28.5)" />
+				</svg>
+				PoppingMango Sources
+			</h1>
 			<p class="main-description">
-				Aidoku clones of my
+				Aidoku sources for sites that aren't in
+				<a href="https://github.com/Aidoku-Community/sources">Aidoku Community</a>
+				yet: clones of my
 				<a href="https://github.com/PoppingMangoSources/general-extensions-mangago">Paperback sources</a>,
-				built so I could read the ones that weren't already on Aidoku.
-				The Paperback repository is the main one — these are best
-				effort and not maintained 24/7.
+				plus popular sites Aidoku doesn't have. Each one leaves once it's
+				merged into Aidoku Community. Best effort, not maintained 24/7.
 			</p>
 		</header>
 		<main>
-			<div id="add-repo-btn" style="display: none">
-				<button
-					onclick='window.location = "aidoku://addSourceList?url=https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json";'
-				>
-					Add Repository
-				</button>
-				<p>Requires <b>Aidoku 0.8</b> or newer.</p>
-			</div>
+			<section class="system" aria-label="System notification">
+				<div class="system-bar"><span class="system-dot"></span>SYSTEM</div>
+				<p class="system-line">
+					You have been reincarnated as a reader with nothing to read.
+				</p>
+				<p class="system-quest">
+					<b>Quest:</b> add the PoppingMango repository to Aidoku.<br />
+					<b>Reward:</b> <span id="reward">every source below</span>.<br />
+					<b>Failure:</b> the villainess dies in chapter 1.
+				</p>
+				<div class="level">
+					<span class="level-label" id="level-label">LV. ?</span>
+					<span class="level-bar"><span class="level-fill" id="level-fill"></span></span>
+				</div>
+				<div id="add-repo-btn" style="display: none">
+					<button
+						onclick='window.location = "aidoku://addSourceList?url=https://poppingmangosources.github.io/popmango-aidoku-sources/index.min.json";'
+					>
+						Accept Quest: Add Repository
+					</button>
+					<p>Requires <b>Aidoku 0.8</b> or newer.</p>
+				</div>
 			<div id="non-apple-note" style="display: none">
 				<p>
 					You can add this repository inside the Aidoku app in the
@@ -78,6 +105,7 @@
 					</code>
 				</p>
 			</div>
+			</section>
 			<div id="filter-container">
 				<div class="filter-group">
 					<label for="source-search" class="filter-label">

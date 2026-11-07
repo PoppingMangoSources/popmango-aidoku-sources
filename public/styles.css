@@ -1,38 +1,46 @@
 :root {
-	--bg: #fff6fb;
-	--fg: rgb(29, 21, 33);
-	--highlight: #ffe9f4;
-	--border: #ffcfe6;
-	--gray: rgb(126, 106, 122);
-	--badge-fg: #7a3560;
-	--badge-17-bg: rgba(34, 211, 238, 0.28);
-	--badge-18-bg: rgba(255, 77, 157, 0.3);
-	--button-bg: #ff4d9d;
-	--button-bg-hover: #e63c89;
+	--bg: #fff4f6;
+	--fg: #33162a;
+	--highlight: #ffe3ea;
+	--border: #ffc9d4;
+	--gray: #8a6478;
+	--badge-fg: #8a1f38;
+	--badge-17-bg: rgba(255, 154, 174, 0.4);
+	--badge-18-bg: rgba(255, 77, 99, 0.3);
+	--button-bg: #ff4d63;
+	--button-bg-hover: #e2324f;
 	--input-bg: #fff;
-	--input-fg: #1d1521;
-	--input-border: #ffcfe6;
-	--github-icon: #a3255f;
-	--accent-cyan: #0e9bb5;
+	--input-fg: #33162a;
+	--input-border: #ffc9d4;
+	--github-icon: #c42a46;
+	--accent-cyan: #d62d4b;
+	--panel: #33162a;
+	--panel-fg: #fff6fa;
+	--panel-dim: #ffc9d4;
+	--panel-edge: #ff8fab;
 }
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #140e1c;
-		--fg: #fbeaf4;
-		--highlight: #23162e;
-		--border: #3a2247;
-		--gray: #a892b8;
-		--badge-fg: #ff9ecb;
-		--badge-17-bg: rgba(34, 211, 238, 0.25);
-		--badge-18-bg: rgba(255, 77, 157, 0.28);
-		--button-bg: #ff4d9d;
-		--button-bg-hover: #ff70b3;
-		--input-bg: #23162e;
-		--input-fg: #fbeaf4;
-		--input-border: #3a2247;
-		--github-icon: #67e8f9;
-		--accent-cyan: #67e8f9;
+		--bg: #1a0b14;
+		--fg: #fff0f4;
+		--highlight: #2c1222;
+		--border: #4a2142;
+		--gray: #c49aae;
+		--badge-fg: #ffb3c2;
+		--badge-17-bg: rgba(255, 154, 174, 0.25);
+		--badge-18-bg: rgba(255, 77, 99, 0.3);
+		--button-bg: #ff4d63;
+		--button-bg-hover: #ff6f82;
+		--input-bg: #2c1222;
+		--input-fg: #fff0f4;
+		--input-border: #4a2142;
+		--github-icon: #ff8fab;
+		--accent-cyan: #ff8fab;
+		--panel: #2a1124;
+		--panel-fg: #fff6fa;
+		--panel-dim: #ffc9d4;
+		--panel-edge: #ff4d63;
 	}
 }
 
@@ -123,13 +131,14 @@ main {
 
 #add-repo-btn > button {
 	width: 100%;
-	padding: 0.6em 1.2em;
+	padding: 0.7em 1.2em;
 	font-size: 1em;
-	font-weight: 500;
-	border-radius: 0.6em;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+	border-radius: 999px;
 	border: 1.5px solid var(--button-bg);
-	background: linear-gradient(135deg, var(--button-bg), var(--accent-cyan));
-	color: #fff;
+	background: linear-gradient(90deg, #ff4d63, #ff9aae);
+	color: #33162a;
 	cursor: pointer;
 	transition:
 		background 0.15s,
@@ -309,7 +318,7 @@ main {
 	margin-bottom: 0;
 	margin-top: 0;
 	margin-left: 1em;
-	white-space: nowrap;
+	text-align: right;
 	pointer-events: none;
 	background: transparent;
 }
@@ -439,12 +448,134 @@ main {
 }
 
 
-/* Pink and cyan accents */
+/* doki doki heading */
+.doki {
+	margin: 0 0 -0.6em;
+	font-size: 0.8em;
+	font-weight: 800;
+	letter-spacing: 0.35em;
+	color: #e2324f;
+}
 .main-heading {
-	background: linear-gradient(135deg, #ff4d9d, #22d3ee);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
+	display: flex;
+	align-items: center;
+	gap: 0.35em;
+}
+.main-heading .heart {
+	width: 1.15em;
+	height: 1.15em;
+	flex: none;
+	animation: beat 1.2s ease-in-out infinite;
+}
+@keyframes beat {
+	0%, 40%, 100% { transform: scale(1); }
+	15% { transform: scale(1.14); }
+	28% { transform: scale(1.05); }
+}
+
+/* the system window */
+.system {
+	background: var(--panel);
+	color: var(--panel-fg);
+	border: 2px solid var(--panel-edge);
+	border-radius: 1em;
+	padding: 0 1.1em 1.1em;
+	margin-bottom: 1.6em;
+	box-shadow: 0 0 0 4px rgba(255, 77, 99, 0.14), 0 0 24px rgba(255, 77, 99, 0.25);
+}
+.system-bar {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+	margin: 0 -1.1em 0.9em;
+	padding: 0.55em 1.1em;
+	border-bottom: 1px solid rgba(255, 143, 171, 0.35);
+	font-size: 0.85em;
+	font-weight: 800;
+	letter-spacing: 0.3em;
+	color: var(--panel-dim);
+}
+.system-dot {
+	width: 0.6em;
+	height: 0.6em;
+	border-radius: 50%;
+	background: #ff4d63;
+	box-shadow: 0 0 8px #ff4d63;
+	animation: blink 1.6s steps(2, start) infinite;
+}
+@keyframes blink {
+	to { visibility: hidden; }
+}
+.system-line {
+	margin: 0 0 0.6em;
+	font-weight: 700;
+}
+.system-quest {
+	margin: 0 0 1em;
+	line-height: 1.6;
+	color: var(--panel-dim);
+}
+.system-quest b {
+	color: var(--panel-fg);
+}
+.level {
+	display: flex;
+	align-items: center;
+	gap: 0.8em;
+	margin-bottom: 1em;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+}
+.level-bar {
+	flex: 1;
+	height: 0.8em;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.18);
+	overflow: hidden;
+}
+.level-fill {
+	display: block;
+	height: 100%;
+	width: 0;
+	border-radius: 999px;
+	background: linear-gradient(90deg, #ff4d63, #ff9aae);
+	transition: width 0.3s;
+}
+.system #add-repo-btn,
+.system #non-apple-note {
+	margin-bottom: 0;
+}
+.system #add-repo-btn > p {
+	color: var(--panel-dim);
+}
+.system #add-repo-btn > p > b {
+	color: var(--panel-fg);
+}
+.system #non-apple-note {
+	background: rgba(255, 255, 255, 0.08);
+	color: var(--panel-fg);
+	border-color: rgba(255, 143, 171, 0.35);
+}
+.system #non-apple-note code {
+	background: rgba(0, 0, 0, 0.25);
+	color: var(--panel-fg);
+	border-color: rgba(255, 143, 171, 0.35);
+	word-break: break-all;
+}
+.system a {
+	color: var(--panel-edge);
+}
+
+#source-list h2::before {
+	content: "◆ ";
+	color: var(--button-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.main-heading .heart,
+	.system-dot {
+		animation: none;
+	}
 }
 
 a {

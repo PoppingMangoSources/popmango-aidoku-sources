@@ -1,14 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="104" viewBox="0 0 800 104" role="img" aria-label="Add PoppingMango to Aidoku">
   <defs>
     <linearGradient id="btn" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#ff4d9d"/>
-      <stop offset="0.55" stop-color="#c04bd6"/>
-      <stop offset="1" stop-color="#22d3ee"/>
+      <stop offset="0" stop-color="#ff4d63"/>
+      <stop offset="0.5" stop-color="#ff9aae"/>
+      <stop offset="1" stop-color="#ffc9c4"/>
     </linearGradient>
+    <path id="h" d="M0,22 C-5,17 -26,4 -26,-9 C-26,-19 -18,-25 -10,-25 C-4.5,-25 -1.2,-21.5 0,-18 C1.2,-21.5 4.5,-25 10,-25 C18,-25 26,-19 26,-9 C26,4 5,17 0,22 Z"/>
   </defs>
   <rect x="0" y="0" width="800" height="104" rx="52" fill="url(#btn)"/>
-  <rect x="6" y="6" width="788" height="46" rx="24" fill="#ffffff" opacity="0.2"/>
-  <circle cx="60" cy="52" r="28" fill="#1a0f1e" opacity="0.85"/>
-  <path d="M60 38 v28 M46 52 h28" stroke="#67e8f9" stroke-width="7" stroke-linecap="round"/>
-  <text x="400" y="64" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="35" font-weight="800" fill="#1a0f1e">Add PoppingMango to Aidoku</text>
+  <rect x="6" y="6" width="788" height="46" rx="24" fill="#ffffff" opacity="0.22"/>
+  <circle cx="60" cy="52" r="28" fill="#33162a"/>
+  <path d="M60 38 v28 M46 52 h28" stroke="#fff6fa" stroke-width="7" stroke-linecap="round"/>
+  <use href="#h" transform="translate(744,54) scale(0.72)" fill="#ff4d63"/>
+  <ellipse cx="737" cy="46" rx="3.6" ry="5.4" fill="#ffffff" opacity="0.55" transform="rotate(-30 737 46)"/>
+  <text x="400" y="64" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="35" font-weight="800" fill="#33162a">Add PoppingMango to Aidoku</text>
 </svg>
