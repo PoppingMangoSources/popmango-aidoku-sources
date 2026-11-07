@@ -406,6 +406,12 @@ below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in rev
 | `impl From<Entry> for Manga` with `key(..).unwrap_or_default()` ("we don't want to return manga objects with empty keys") | A conversion that can fail is a `TryFrom` with an error, never a default key. Lists drop or report the entry that fails; the details path returns the error. | R |
 | A "Show Locked Chapters" switch defaulting on | Default it off when the source has no login, since chapters the reader can't open are confusing. The Rust fallback and the JSON default stay equal. | R |
 
+### From #873 (`en.novelarchive`)
+
+| What was flagged | The rule | |
+|---|---|---|
+| A home row and listing titled "New in the Archive" for the library's default sort ("does this title come from somewhere?") | Name a row after what its feed orders by, checked against the data: compare `created_at` and `updated_at` down the first page. "New" reads as brand-new series, so a sort by date added is "Recently Added" (`en.atsumaru` names it that too), and one by new chapters is "Recently Updated". A title the site doesn't use needs that evidence ready for review. (inferred) | R |
+
 ### From #843 (`en.atsumaru`)
 
 - **Filter exclusions:** every multi-select with `canExclude: true` must process both
