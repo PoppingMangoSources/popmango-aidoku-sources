@@ -28,7 +28,11 @@ window holds the repository url, and the sources are "routes" on a Route Select 
   a "bad ending" with a reset. Nothing in the page hardcodes a source count.
 - The Add choice is an `aidoku://` link; off Apple devices it shows a toast with the manual steps
   instead of following the link.
-- `media/badge-sources.svg` and the README's "**N sources**" line do hardcode the count, so
+- The README lists sources as two-column Route select card tables (`media/route-button.svg`,
+  `media/heat-<contentRating>.svg`). Each card keeps the two `.aix` links and the `.aix (vN)` label
+  that `scripts/bump.sh` rewrites and `scripts/check-sources.py` reads, and `scripts/new-source.sh`
+  prints a card in the same shape.
+- `media/badge-sources.svg` and the README's "**N routes**" line do hardcode the count, so
   they change whenever a source joins or leaves `main` (a merge upstream removes it).
 
 > ⚠️ The README loads its header images by relative path (`media/banner.svg`), not through
@@ -36,6 +40,10 @@ window holds the repository url, and the sources are "routes" on a Route Select 
 > image proxy then caches whatever it was served under that url, so the sources badge kept
 > showing 25 after the file said 16. A relative path is served from the commit itself. The
 > source icons further down still use jsDelivr; an icon rarely changes.
+
+> ⚠️ `bump.sh` stops unless a source has exactly two `.aix` links in the README. A source shown in
+> both lists (ValirScans carries comics and novels) links only from its first card; the second
+> card says it is the same source.
 
 > ⚠️ The install page only reaches GitHub Pages when **Build source list** (`build.yaml`) runs,
 > since it deploys `public/` to `gh-pages`. Its push paths must keep `public/**`: without it, two

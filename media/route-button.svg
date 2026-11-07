@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="64" viewBox="0 0 300 64" role="img" aria-label="Choose route">
+  <defs>
+    <linearGradient id="b" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff4d63"/>
+      <stop offset="1" stop-color="#ff9aae"/>
+    </linearGradient>
+    <path id="h" d="M0,22 C-5,17 -26,4 -26,-9 C-26,-19 -18,-25 -10,-25 C-4.5,-25 -1.2,-21.5 0,-18 C1.2,-21.5 4.5,-25 10,-25 C18,-25 26,-19 26,-9 C26,4 5,17 0,22 Z"/>
+  </defs>
+  <rect width="300" height="64" rx="32" fill="url(#b)"/>
+  <rect x="5" y="5" width="290" height="26" rx="13" fill="#ffffff" opacity="0.22"/>
+  <text x="132" y="41" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="25" font-weight="800" fill="#33162a">Choose route</text>
+  <use href="#h" transform="translate(252,34) scale(0.6)" fill="#33162a"/>
+</svg>

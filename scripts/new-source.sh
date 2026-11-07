@@ -51,9 +51,8 @@ cat <<EOF
 Scaffolded sources/$id. Next:
   1. Replace res/icon.png (128x128, opaque, with margin).
   2. Work through .claude/skills/aidoku-source/SKILL.md (identical in .agents/skills).
-  3. Add this row to README.md, in alphabetical order:
+  3. Add this card to its Route select table in README.md, in alphabetical order
+     (two cards per <tr>; set heat-N.svg to the source's contentRating):
 
-<h3><img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/sources/$id/res/icon.png" width="24" align="top"/>&nbsp; $name &nbsp;<sub><a href="$url">$host</a></sub></h3>
-
-<sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/$id-v1.aix"><b>Add to Aidoku</b></a> &nbsp;·&nbsp; <a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/$id-v1.aix">.aix (v1)</a></sub>
+<td align="center" width="50%"><img src="sources/$id/res/icon.png" width="64"/><br/><b>$name</b><br/><sub><a href="$url">$host</a></sub><br/><img src="media/heat-0.svg" alt="Safe" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/$id-v1.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/$id-v1.aix">.aix (v1)</a></sub></td>
 EOF
