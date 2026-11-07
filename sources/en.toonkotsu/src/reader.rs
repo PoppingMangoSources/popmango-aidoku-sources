@@ -155,7 +155,7 @@ enum Retry {
 	Verify,
 }
 
-fn retry_for(limit: ReaderLimit) -> Result<Retry> {
+fn retry_for(limit: &ReaderLimit) -> Result<Retry> {
 	if limit.code.as_deref() != Some("manga-limit") {
 		bail!(
 			"Toonkotsu refused to load this chapter: {}",
@@ -216,7 +216,7 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 				response
 			}
 		};
-		match retry_for(serde_json::from_str(&response.1).unwrap_or_default())? {
+		match retry_for(&serde_json::from_str(&response.1).unwrap_or_default())? {
 			Retry::Verify => {
 				if checked || !site.pass_check(chapter_key)? {
 					bail!(

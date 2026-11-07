@@ -1,5 +1,4 @@
 #![no_std]
-extern crate alloc;
 
 mod api;
 mod filters;

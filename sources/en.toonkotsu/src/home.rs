@@ -50,12 +50,12 @@ pub fn section_request(id: &str, page: i32) -> Result<Request> {
 	}
 }
 
-fn listing(id: &str, name: &str) -> Option<Listing> {
-	Some(Listing {
+fn listing(id: &str, name: &str) -> Listing {
+	Listing {
 		id: id.into(),
 		name: name.into(),
 		kind: ListingKind::Default,
-	})
+	}
 }
 
 fn links(response: Response, ratings: &[String]) -> Result<Vec<Link>> {
@@ -109,7 +109,7 @@ fn fill(
 			ranking: true,
 			page_size: Some(5),
 			entries: links(response, ratings)?,
-			listing: listing(id, name),
+			listing: Some(listing(id, name)),
 		},
 		Layout::Chapters => HomeComponentValue::MangaChapterList {
 			page_size: Some(5),
@@ -118,7 +118,7 @@ fn fill(
 		},
 		Layout::Row => HomeComponentValue::Scroller {
 			entries: links(response, ratings)?,
-			listing: listing(id, name),
+			listing: Some(listing(id, name)),
 		},
 	})
 }
