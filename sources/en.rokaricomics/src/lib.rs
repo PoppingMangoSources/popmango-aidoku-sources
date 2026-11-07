@@ -1,41 +1,30 @@
 #![no_std]
-use aidoku::{
-	Source,
-	alloc::{String, string::ToString},
-	imports::defaults::defaults_get,
-	prelude::*,
-};
+use aidoku::{Source, prelude::*};
 use mangathemesia::{Impl, MangaThemesia, Params};
 
-const DEFAULT_BASE_URL: &str = "https://rokaricomics.com";
-const BASE_URL_KEY: &str = "baseUrl";
+#[cfg(test)]
+mod test;
 
-fn base_url() -> String {
-	defaults_get::<String>(BASE_URL_KEY)
-		.map(|url| url.trim().trim_end_matches('/').to_string())
-		.filter(|url| url.starts_with("http"))
-		.unwrap_or_else(|| DEFAULT_BASE_URL.into())
-}
+const BASE_URL: &str = "https://rokaricomics.com";
 
-struct Rokaricomics;
+struct RokariComics;
 
-impl Impl for Rokaricomics {
+impl Impl for RokariComics {
 	fn new() -> Self {
 		Self
 	}
 
 	fn params(&self) -> Params {
 		Params {
-			base_url: base_url().into(),
+			base_url: BASE_URL.into(),
 			..Default::default()
 		}
 	}
 }
 
 register_source!(
-	MangaThemesia<Rokaricomics>,
+	MangaThemesia<RokariComics>,
 	Home,
-	DynamicFilters,
 	ImageRequestProvider,
 	DeepLinkHandler
 );
