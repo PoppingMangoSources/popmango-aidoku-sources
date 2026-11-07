@@ -76,6 +76,25 @@ them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never coll
 `total_chapters` chapters (`sources/en.novelarchive/src/models.rs:133`). Text comes from
 `/chapters/{n}?prefetch=1`, which leaves out the name list; it is plain text, one line per paragraph.
 
+Mirrors come from `/{id}/sources` (`{id, label}`), each with `/{id}/sources/{mirror}/chapters`
+(`{number, title}`) and `/{id}/sources/{mirror}/chapters/{number}` (`content_html`, so far plain
+text with whole scenes on one line), as the owner's Paperback source reads them. They join the
+chapter list keyed `{mirror}:{number}`, grouped under their label, with the site's own copies
+grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_chapters`).
+
+> ⚠️ A mirror's `number` is only its own index and lists can be partial: Reverend Insanity's Ranobes
+> list holds one entry, number 56, titled "Chapter 2315 Nothing Is Certain Except Success". The
+> chapter number comes from a leading "Chapter N" in the title, else `number`; a title that is only
+> a part number ("2") is dropped.
+
+> ⚠️ `/sources` can hang about 30 seconds before a 504 (the Paperback source's finding), so it has
+> an 8-second timeout, and any mirror failure leaves the site's own chapters loading. The timeout
+> import is what `aidoku verify` dates to app 0.8.3, hence `minAppVersion`, as on the merged novel
+> sources.
+
+> ⚠️ Chapter text escapes only Markdown syntax (`paragraphs`), not all punctuation: cmark makes
+> each escape its own node, and a mirror's thousand-character lines would rebuild the crash below.
+
 > ⚠️ Each line is escaped and becomes its own Markdown paragraph (joined with blank lines). Escaping
 > the whole text made one paragraph of hard breaks, and chapter 1 of *Got Dropped into a Ghost Story,
 > Still Gotta Work* (`6a162ec14f942c668d69a598`) crashed the app with it: the scroll reader's MarkdownUI

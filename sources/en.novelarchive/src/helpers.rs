@@ -1,9 +1,9 @@
 use crate::{
 	API_URL, BASE_URL, PAGE_SIZE,
-	models::{ErrorResponse, NovelList},
+	models::{ErrorResponse, MirrorChapterList, MirrorList, NovelList},
 };
 use aidoku::{
-	ContentRating, MangaPageResult, Result,
+	Chapter, ContentRating, MangaPageResult, Result,
 	alloc::{String, Vec, string::ToString},
 	helpers::uri::QueryParameters,
 	imports::net::{Request, Response},
@@ -135,6 +135,86 @@ pub fn content_rating(list: &str) -> ContentRating {
 		}
 	}
 	rating
+}
+
+// "Chapter 2315 Nothing Is Certain" gives 2315 and "Nothing Is Certain".
+pub fn leading_chapter_number(name: &str) -> Option<(f32, &str)> {
+	let (start, rest) = name.split_at_checked("chapter ".len())?;
+	if !start.eq_ignore_ascii_case("chapter ") {
+		return None;
+	}
+	let (digits, title) = rest.split_at(
+		rest.find(|c: char| !c.is_ascii_digit() && c != '.')
+			.unwrap_or(rest.len()),
+	);
+	let number = digits.trim_end_matches('.').parse().ok()?;
+	Some((
+		number,
+		title.trim_start_matches([' ', ':', '-', '\u{2013}', '\u{2014}', '.']),
+	))
+}
+
+// One escaped paragraph per line. The app's Markdown renderer overflows its stack past a few
+// hundred inline nodes in one paragraph, and every escape is a node, so only syntax is escaped.
+pub fn paragraphs(text: &str) -> String {
+	text.lines()
+		.map(str::trim)
+		.filter(|line| !line.is_empty())
+		.map(|line| {
+			let mut paragraph = String::with_capacity(line.len());
+			let mut digits_only = true;
+			for (index, c) in line.char_indices() {
+				// "-", "#" or "1." at the start would begin a list or heading.
+				let block = (index == 0 && matches!(c, '#' | '-' | '+' | '='))
+					|| (digits_only && index > 0 && matches!(c, '.' | ')'));
+				digits_only &= c.is_ascii_digit();
+				if block
+					|| matches!(
+						c,
+						'\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '&' | '~' | '|'
+					) {
+					paragraph.push('\\');
+				}
+				paragraph.push(c);
+			}
+			paragraph
+		})
+		.collect::<Vec<_>>()
+		.join("\n\n")
+}
+
+// Mirrors are extra: when their list is slow or fails, the site's own chapters still load.
+pub fn mirror_chapters(id: &str) -> Vec<Chapter> {
+	let chapters = || -> Result<Vec<Chapter>> {
+		// The list can hang for half a minute before a 504.
+		let list: MirrorList = parse(
+			Request::get(format!("{API_URL}/{id}/sources"))?
+				.timeout(8.0)
+				.send()?,
+		)?;
+		let mut requests = Vec::new();
+		for mirror in &list.sources {
+			requests.push(Request::get(format!(
+				"{API_URL}/{id}/sources/{}/chapters",
+				mirror.id
+			))?);
+		}
+		Ok(list
+			.sources
+			.iter()
+			.zip(Request::send_all(requests))
+			.filter_map(|(mirror, response)| {
+				Some((mirror, parse::<MirrorChapterList>(response.ok()?).ok()?))
+			})
+			.flat_map(|(mirror, chapters)| {
+				chapters
+					.chapters
+					.into_iter()
+					.map(|chapter| chapter.into_chapter(mirror))
+			})
+			.collect())
+	};
+	chapters().unwrap_or_default()
 }
 
 // Drops a leading "Chapter n", which the app already shows.

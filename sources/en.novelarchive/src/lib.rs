@@ -5,7 +5,7 @@ use aidoku::{
 	Manga, MangaPageResult, MultiSelectFilter, Page, PageContent, Result, Source,
 	alloc::{String, Vec, vec},
 	helpers::string::PlainText,
-	imports::{net::Request, std::send_partial_result},
+	imports::{html::Html, net::Request, std::send_partial_result},
 	prelude::*,
 };
 
@@ -15,8 +15,8 @@ mod settings;
 #[cfg(test)]
 mod test;
 
-use helpers::{NON_GENRES, SearchParams, browse, get, parse};
-use models::{ChapterResponse, GenreList, Novel, NovelDetails, NovelList};
+use helpers::{NON_GENRES, SearchParams, browse, get, mirror_chapters, paragraphs, parse};
+use models::{ChapterResponse, GenreList, MirrorChapterText, Novel, NovelDetails, NovelList};
 
 const BASE_URL: &str = "https://novelarchive.st";
 const API_URL: &str = "https://novelarchive.st/api/novels";
@@ -86,7 +86,20 @@ impl Source for NovelArchive {
 	) -> Result<Manga> {
 		let novel = get::<NovelDetails>(&format!("{API_URL}/{}", manga.key))?.novel;
 		if needs_chapters {
-			manga.chapters = Some(novel.chapters());
+			let mut chapters = novel.chapters();
+			let mirrors = mirror_chapters(&manga.key);
+			if !mirrors.is_empty() {
+				for chapter in &mut chapters {
+					chapter.scanlators = Some(vec!["Novel Archive".into()]);
+				}
+				chapters.extend(mirrors);
+				// Stable, so the site's own copy stays above a mirror's of the same number.
+				chapters.sort_by(|a, b| {
+					let number = |chapter: &Chapter| chapter.chapter_number.unwrap_or_default();
+					number(b).total_cmp(&number(a))
+				});
+			}
+			manga.chapters = Some(chapters);
 		}
 		if needs_details {
 			let mut details = novel.into_details();
@@ -98,21 +111,38 @@ impl Source for NovelArchive {
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let content = get::<ChapterResponse>(&format!(
-			"{API_URL}/{}/chapters/{}?prefetch=1",
-			manga.key, chapter.key
-		))?
-		.chapter
-		.content
-		.unwrap_or_default();
-		// One paragraph per line: a single long paragraph overflows the app's Markdown renderer.
-		let text = content
-			.lines()
-			.map(str::trim)
-			.filter(|line| !line.is_empty())
-			.map(|line| line.escape_markdown())
-			.collect::<Vec<_>>()
-			.join("\n\n");
+		let content = match chapter.key.split_once(':') {
+			Some((mirror, number)) => {
+				let html = get::<MirrorChapterText>(&format!(
+					"{API_URL}/{}/sources/{mirror}/chapters/{number}",
+					manga.key
+				))?
+				.content_html
+				.unwrap_or_default();
+				// Most mirrors send plain text; some wrap paragraphs in <p>.
+				if html.contains("<p") {
+					Html::parse_fragment(&html)?
+						.select("p")
+						.map(|paragraphs| {
+							paragraphs
+								.filter_map(|p| p.text())
+								.collect::<Vec<_>>()
+								.join("\n")
+						})
+						.unwrap_or_default()
+				} else {
+					html
+				}
+			}
+			None => get::<ChapterResponse>(&format!(
+				"{API_URL}/{}/chapters/{}?prefetch=1",
+				manga.key, chapter.key
+			))?
+			.chapter
+			.content
+			.unwrap_or_default(),
+		};
+		let text = paragraphs(&content);
 		if text.is_empty() {
 			bail!("This chapter has no text on Novel Archive yet");
 		}

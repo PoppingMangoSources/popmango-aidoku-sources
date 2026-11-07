@@ -6,7 +6,15 @@ use aidoku::{
 	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
-use helpers::{ADULT_GENRES, chapter_title, content_rating, genres};
+use helpers::{
+	ADULT_GENRES, chapter_title, content_rating, genres, leading_chapter_number, paragraphs,
+};
+use models::{MirrorChapterList, MirrorList};
+
+// Captured from a novel whose only mirror is Ranobes.
+const GHOST_STORY_KEY: &str = "6a162ec14f942c668d69a598";
+const MIRRORS: &str = r#"{"sources":[{"id":"ranobes","label":"Ranobes"}]}"#;
+const MIRROR_CHAPTERS: &str = r#"{"source":"ranobes","total":3,"chapters":[{"number":2,"title":"2"},{"number":211,"title":"2 Illustration"},{"number":56,"title":"Chapter 2315 Nothing Is Certain Except Success"}]}"#;
 
 // An adult novel with 53 named chapters, so it only shows with adult titles on.
 const NOVEL_KEY: &str = "6aedf2f22fe18aff37a5a186";
@@ -320,7 +328,8 @@ fn chapter_text_loads() {
 	let PageContent::Text(text) = &pages[0].content else {
 		unreachable!("a novel chapter is text");
 	};
-	assert!(text.contains("Kang Do\\-yun"));
+	// Only Markdown syntax is escaped, so a name's hyphen stays as it is.
+	assert!(text.contains("Kang Do-yun"));
 	// Each line is its own paragraph, never one paragraph of hard breaks.
 	assert!(text.contains("\n\n") && !text.contains("  \n"));
 }
@@ -386,4 +395,91 @@ fn home_listings_page() {
 fn genre_filter_lists_the_site_genres() {
 	let filters = NovelArchive::new().get_dynamic_filters().unwrap();
 	assert_eq!(filters.len(), 1);
+}
+
+#[aidoku_test]
+fn review_paragraphs_escape_only_markdown_syntax() {
+	let text = paragraphs(
+		"“I’m fine,” Mr. Kim said, really.\n\n- RUN.\n1984. A year\n*Smirk* [Daydream Inc.] a_b <tag> & | ~\n",
+	);
+	assert_eq!(
+		text,
+		"“I’m fine,” Mr. Kim said, really.\n\n\\- RUN.\n\n1984\\. A year\n\n\\*Smirk\\* \\[Daydream Inc.\\] a\\_b \\<tag\\> \\& \\| \\~"
+	);
+	// Prose punctuation adds no escapes, so a long line stays one text run for the renderer.
+	let long = "Word, word. ".repeat(500);
+	assert!(!paragraphs(&long).contains('\\'));
+}
+
+#[aidoku_test]
+fn review_mirror_chapters_take_the_title_number_and_group() {
+	assert_eq!(
+		leading_chapter_number("Chapter 2315 Nothing Is Certain"),
+		Some((2315.0, "Nothing Is Certain"))
+	);
+	assert_eq!(leading_chapter_number("2 Illustration"), None);
+	let mirror = serde_json::from_str::<MirrorList>(MIRRORS)
+		.unwrap()
+		.sources
+		.remove(0);
+	let chapters: Vec<Chapter> = serde_json::from_str::<MirrorChapterList>(MIRROR_CHAPTERS)
+		.unwrap()
+		.chapters
+		.into_iter()
+		.map(|chapter| chapter.into_chapter(&mirror))
+		.collect();
+	let summary: Vec<(&str, Option<f32>, Option<&str>)> = chapters
+		.iter()
+		.map(|chapter| {
+			(
+				chapter.key.as_str(),
+				chapter.chapter_number,
+				chapter.title.as_deref(),
+			)
+		})
+		.collect();
+	assert_eq!(
+		summary,
+		[
+			("ranobes:2", Some(2.0), None),
+			("ranobes:211", Some(211.0), Some("2 Illustration")),
+			(
+				"ranobes:56",
+				Some(2315.0),
+				Some("Nothing Is Certain Except Success")
+			),
+		]
+	);
+	assert!(
+		chapters
+			.iter()
+			.all(|chapter| chapter.scanlators == Some(vec!["Ranobes".into()]))
+	);
+}
+
+#[aidoku_test]
+fn mirror_chapters_load_with_their_group_and_read() {
+	let chapters = NovelArchive::new()
+		.get_manga_update(manga(GHOST_STORY_KEY), false, true)
+		.unwrap()
+		.chapters
+		.unwrap();
+	let group = |chapter: &Chapter| chapter.scanlators.clone().unwrap_or_default();
+	assert!(
+		chapters
+			.iter()
+			.any(|chapter| group(chapter) == ["Novel Archive"])
+	);
+	let mirror = chapters
+		.iter()
+		.find(|chapter| group(chapter) == ["Ranobes"])
+		.unwrap();
+	assert!(mirror.key.starts_with("ranobes:"));
+	let pages = NovelArchive::new()
+		.get_page_list(manga(GHOST_STORY_KEY), mirror.clone())
+		.unwrap();
+	let PageContent::Text(text) = &pages[0].content else {
+		unreachable!("a mirror chapter is text");
+	};
+	assert!(text.len() > 1000);
 }

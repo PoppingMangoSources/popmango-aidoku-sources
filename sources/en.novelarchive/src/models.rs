@@ -1,6 +1,6 @@
 use crate::{
 	BASE_URL,
-	helpers::{chapter_title, chapter_url, content_rating, genres},
+	helpers::{chapter_title, chapter_url, content_rating, genres, leading_chapter_number},
 };
 use aidoku::{
 	Chapter, Manga, MangaStatus, MangaWithChapter,
@@ -69,6 +69,51 @@ pub struct GenreList {
 pub struct Genre {
 	pub value: String,
 	pub label: String,
+}
+
+#[derive(Deserialize)]
+pub struct MirrorList {
+	pub sources: Vec<Mirror>,
+}
+
+#[derive(Deserialize)]
+pub struct Mirror {
+	pub id: String,
+	label: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct MirrorChapterList {
+	pub chapters: Vec<MirrorChapter>,
+}
+
+#[derive(Deserialize)]
+pub struct MirrorChapter {
+	number: f64,
+	title: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct MirrorChapterText {
+	pub content_html: Option<String>,
+}
+
+impl MirrorChapter {
+	// `number` addresses the mirror's copy; the title, when it has one, carries the real chapter number.
+	pub fn into_chapter(self, mirror: &Mirror) -> Chapter {
+		let title = self.title.as_deref().unwrap_or_default().trim();
+		let (number, title) = leading_chapter_number(title).unwrap_or((self.number as f32, title));
+		Chapter {
+			key: format!("{}:{}", mirror.id, self.number),
+			// A mirror's part number ("2") isn't a title.
+			title: (!title.chars().all(|c| c.is_ascii_digit())).then(|| title.into()),
+			chapter_number: Some(number),
+			scanlators: Some(vec![
+				mirror.label.clone().unwrap_or_else(|| mirror.id.clone()),
+			]),
+			..Default::default()
+		}
+	}
 }
 
 impl Novel {

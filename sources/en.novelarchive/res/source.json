@@ -2,11 +2,11 @@
 	"info": {
 		"id": "en.novelarchive",
 		"name": "Novel Archive",
-		"version": 21,
+		"version": 22,
 		"url": "https://novelarchive.st",
 		"contentRating": 1,
 		"languages": ["en"],
-		"minAppVersion": "0.7.1"
+		"minAppVersion": "0.8.3"
 	},
 	"listings": [
 		{

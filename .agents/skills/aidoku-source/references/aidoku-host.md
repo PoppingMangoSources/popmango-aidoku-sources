@@ -159,7 +159,10 @@ filter doesn't count.
   (app `Features/Reader/Page/MarkdownView.swift`), whose `TextInlineRenderer` joins every inline
   node of a paragraph into one SwiftUI `Text` with `+`. A paragraph of about a thousand nodes
   (text runs and line breaks) overflows the main thread's stack and crashes the app, so give
-  each line of a chapter its own paragraph. The paged reader parses with Apple's
+  each line of a chapter its own paragraph. MarkdownUI maps cmark's text nodes one to one
+  (`Parser/MarkdownParser.swift`), and cmark ends a text node at every backslash escape, so each
+  escaped character costs two nodes: escaping all punctuation with `escape_markdown` multiplies
+  a long line's depth. The paged reader parses with Apple's
   `AttributedString(markdown:)` instead (`Features/Reader/Readers/Text/Paged/TextPaginator.swift`).
 
 ## Network (`Imports/Net.swift`, `Utilities/NetRequest.swift`, `Utilities/RateLimit.swift`)
