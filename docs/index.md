@@ -13,6 +13,7 @@ traps found in them. It grows as work touches new areas.
 - Adding or changing a source check: [[source-checks]]
 - Working on Flame Comics: [[flamecomics]]
 - Working on Novel Archive: [[novelarchive]]
+- Working on KingOfShojo or RokariComics: [[mangathemesia-consumers]]
 
 ---
 
@@ -29,6 +30,7 @@ _(none yet)_
 - [[mangak-template]] -- the template MangaK and ToonTop share: search, home, ratings
 - [[flamecomics]] -- Flame's embedded page data, path keys, the novel lock rule
 - [[novelarchive]] -- Novel Archive's API, adult exclusions, dynamic genres, home feeds
+- [[mangathemesia-consumers]] -- KingOfShojo and Rokari on upstream's template unchanged
 
 ## decisions
 

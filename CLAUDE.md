@@ -169,6 +169,10 @@ Running them:
   elements from `children()`, pairing each element node with the next child, as `en.novelbuddy`,
   `en.chikari` and `en.novelarchive` do; those elements work in the runner and the app alike. A
   document's own `child_nodes` is empty too, so walk from a selected element.
+- The runner parses selectors with `scraper`, which rejects jsoup's `:contains(…)`, so a whole
+  selector list containing one returns nothing there (the mangathemesia template's status, type,
+  author and genre selectors; verified on `en.kingofshojo`). The app's SwiftSoup supports it, so
+  check those fields in the app and test such filters by how they change the results.
 - Sites behind Cloudflare can refuse the sandbox outright (403 "Attention Required" for curl
   and headless Chromium alike, `en.novelarchive`). Their live tests then fail on the network, not
   the code; read the site through Firecrawl and say the live suite could not run. Firecrawl strips
