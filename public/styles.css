@@ -75,7 +75,8 @@ body {
 	font-family: var(--round);
 	font-weight: 500;
 	line-height: 1.55;
-	overflow-x: hidden;
+	/* clip, not hidden: iOS Safari widened the page to fit content hidden on body. */
+	overflow-x: clip;
 }
 
 a {
@@ -563,10 +564,12 @@ h1 span {
 /* ticker */
 /* The tilted band is a still background layer. The strip that clips the moving row stays
    straight: iOS Safari dropped the row when its clipping parent was rotated. */
+/* The band runs past both edges so its tilt has no gaps; clip keeps that off the page width. */
 .ticker-band {
 	position: relative;
 	margin-bottom: var(--sp-12);
 	padding: var(--sp-3) 0;
+	overflow-x: clip;
 }
 .ticker-band::before {
 	content: "";
