@@ -6,9 +6,7 @@ use aidoku::{
 	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
-use helpers::{
-	ADULT_GENRES, chapter_title, content_rating, genres, leading_chapter_number, paragraphs,
-};
+use helpers::{ADULT_GENRES, content_rating, genres, leading_chapter_number, paragraphs};
 use models::{MirrorChapterList, MirrorList};
 
 // Captured from a novel whose only mirror is Ranobes.
@@ -50,6 +48,10 @@ fn genre_filter(included: &[&str], excluded: &[&str]) -> FilterValue {
 }
 
 // The check sends 1 when ticked and 2 when excluded.
+fn keys(entries: &[Manga]) -> Vec<&str> {
+	entries.iter().map(|manga| manga.key.as_str()).collect()
+}
+
 fn hide_adult(value: i32) -> FilterValue {
 	FilterValue::Check {
 		id: "hide_adult".into(),
@@ -78,6 +80,9 @@ fn review_search_url_sends_what_the_site_sends() {
 		genres: vec!["fantasy".into(), "harem".into()],
 		hidden_genres: vec!["romance".into()],
 		hide_adult: false,
+		// The search's own harem, romance and fantasy win over the settings' choices for them.
+		default_genres: vec!["action".into(), "harem".into(), "romance".into()],
+		default_hidden_genres: vec!["fantasy".into(), "horror".into()],
 	}
 	.url(1);
 	for part in [
@@ -86,8 +91,8 @@ fn review_search_url_sends_what_the_site_sends() {
 		"sort=rating",
 		"status=completed",
 		"source=royalroad",
-		"genres_include=fantasy%2Charem",
-		"genres_exclude=romance",
+		"genres_include=fantasy%2Charem%2Caction&",
+		"genres_exclude=romance%2Chorror&",
 		"genre_match=any",
 	] {
 		assert!(filtered.contains(part), "{filtered} lacks {part}");
@@ -108,21 +113,39 @@ fn review_hiding_adult_titles_adds_the_site_exclusions() {
 }
 
 #[aidoku_test]
-fn review_chapter_titles_drop_only_their_own_number() {
+fn review_chapters_take_the_number_their_name_prints() {
+	// Names as the site lists them, positions 1 to 5.
+	let novel = novel(
+		r#"{"novel":{"id":"x","chapter_names":["Prologue","Chapter 1: Regressors First Day","Chapter 2 - 2: The Joy of Being a Background Character","Chapter 165.2","Chapter 173.1-2"]}}"#,
+	);
+	let chapters: Vec<(String, Option<f32>, Option<String>)> = novel
+		.chapters()
+		.into_iter()
+		.map(|chapter| (chapter.key, chapter.chapter_number, chapter.title))
+		.collect();
 	assert_eq!(
-		chapter_title("Chapter 1: The Blade at His Throat", 1).as_deref(),
-		Some("The Blade at His Throat")
+		chapters,
+		[
+			("5".into(), Some(173.1), None),
+			("4".into(), Some(165.2), None),
+			(
+				"3".into(),
+				Some(2.0),
+				Some("The Joy of Being a Background Character".into())
+			),
+			("2".into(), Some(1.0), Some("Regressors First Day".into())),
+			("1".into(), Some(1.0), Some("Prologue".into())),
+		]
 	);
 	assert_eq!(
-		chapter_title("Chapter 174 I Am The Only God!", 174).as_deref(),
-		Some("I Am The Only God!")
+		leading_chapter_number("Chapter 174 I Am The Only God!"),
+		Some((174.0, "I Am The Only God!"))
 	);
-	assert_eq!(chapter_title("Chapter 3", 3), None);
+	// A title that happens to start with the number keeps it.
 	assert_eq!(
-		chapter_title("Chapter 10", 1).as_deref(),
-		Some("Chapter 10")
+		leading_chapter_number("Chapter 1 1984 Begins"),
+		Some((1.0, "1984 Begins"))
 	);
-	assert_eq!(chapter_title("Prologue", 1).as_deref(), Some("Prologue"));
 }
 
 #[aidoku_test]
@@ -339,6 +362,60 @@ fn chapter_text_loads() {
 	assert!(text.contains("Kang Do-yun"));
 	// Each line is its own paragraph, never one paragraph of hard breaks.
 	assert!(text.contains("\n\n") && !text.contains("  \n"));
+}
+
+#[aidoku_test]
+fn pasted_links_answer_with_the_novel_card() {
+	let reader = search(
+		Some("https://novelarchive.st/reader?novel=6aedf2f22fe18aff37a5a186&chapter=2"),
+		vec![hide_adult(2)],
+	);
+	assert_eq!(reader.entries.len(), 1);
+	let card = &reader.entries[0];
+	assert_eq!(card.key, NOVEL_KEY);
+	// A card, not the full series.
+	assert!(card.description.is_none() && card.tags.is_none());
+	assert!(!reader.has_next_page);
+	// A link to no novel falls back to searching its text.
+	let unknown = search(
+		Some("https://novelarchive.st/novel?id=000000000000000000000000"),
+		vec![],
+	);
+	assert!(unknown.entries.iter().all(|card| card.key != NOVEL_KEY));
+}
+
+#[aidoku_test]
+fn default_genre_settings_narrow_every_search() {
+	let plain = search(None, vec![]).entries;
+	defaults_set(
+		"defaultGenres",
+		DefaultValue::StringArray(vec!["romance".into()]),
+	);
+	let required = search(None, vec![]).entries;
+	defaults_set("defaultGenres", DefaultValue::StringArray(vec![]));
+	defaults_set(
+		"hiddenGenres",
+		DefaultValue::StringArray(vec!["romance".into()]),
+	);
+	let hidden = search(None, vec![]).entries;
+	// A search that includes the hidden genre itself overrides the setting.
+	let overridden = search(None, vec![genre_filter(&["romance"], &[])]).entries;
+	defaults_set("hiddenGenres", DefaultValue::StringArray(vec![]));
+	assert_ne!(keys(&required), keys(&plain));
+	assert_ne!(keys(&hidden), keys(&plain));
+	assert!(!overridden.is_empty());
+}
+
+#[aidoku_test]
+fn source_filter_narrows_to_one_origin() {
+	let select = |value: &str| FilterValue::Select {
+		id: "source".into(),
+		value: value.into(),
+	};
+	let all = search(None, vec![select("all")]).entries;
+	let royal_road = search(None, vec![select("royalroad")]).entries;
+	assert!(!royal_road.is_empty());
+	assert_ne!(keys(&royal_road), keys(&all));
 }
 
 #[aidoku_test]

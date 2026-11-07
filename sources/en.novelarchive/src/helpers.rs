@@ -1,6 +1,7 @@
 use crate::{
 	API_URL, BASE_URL, PAGE_SIZE,
-	models::{ErrorResponse, MirrorChapterList, MirrorList, NovelList},
+	models::{ErrorResponse, Genre, GenreList, MirrorChapterList, MirrorList, NovelList},
+	settings,
 };
 use aidoku::{
 	Chapter, ContentRating, MangaPageResult, Result,
@@ -9,6 +10,7 @@ use aidoku::{
 	imports::net::{Request, Response},
 	prelude::*,
 };
+use core::mem::take;
 use serde::de::DeserializeOwned;
 
 // The genres the site's library excludes when hiding adult novels.
@@ -38,8 +40,19 @@ pub const NON_GENRES: [&str; 7] = [
 	"anime and comics",
 ];
 
+pub fn request<T: AsRef<str>>(url: T) -> Result<Request> {
+	Ok(Request::get(url)?.header("Accept", "application/json"))
+}
+
 pub fn get<T: DeserializeOwned>(url: &str) -> Result<T> {
-	parse(Request::get(url)?.send()?)
+	parse(request(url)?.send()?)
+}
+
+// The genres the filters and settings offer, without the site's category values.
+pub fn listed_genres(list: GenreList) -> impl Iterator<Item = Genre> {
+	list.genres
+		.into_iter()
+		.filter(|genre| !NON_GENRES.contains(&genre.value.to_lowercase().as_str()))
 }
 
 pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
@@ -63,10 +76,34 @@ pub struct SearchParams {
 	pub genres: Vec<String>,
 	pub hidden_genres: Vec<String>,
 	pub hide_adult: bool,
+	pub default_genres: Vec<String>,
+	pub default_hidden_genres: Vec<String>,
 }
 
 impl SearchParams {
+	pub fn from_settings() -> Self {
+		Self {
+			hide_adult: settings::hide_adult(),
+			default_genres: settings::default_genres(),
+			default_hidden_genres: settings::hidden_genres(),
+			..Default::default()
+		}
+	}
+
 	pub fn url(mut self, page: i32) -> String {
+		// A genre the search itself includes or excludes wins over the settings' choice for it.
+		let named =
+			|genre: &String| self.genres.contains(genre) || self.hidden_genres.contains(genre);
+		let defaults: Vec<String> = take(&mut self.default_genres)
+			.into_iter()
+			.filter(|genre| !named(genre))
+			.collect();
+		let default_hidden: Vec<String> = take(&mut self.default_hidden_genres)
+			.into_iter()
+			.filter(|genre| !named(genre))
+			.collect();
+		self.genres.extend(defaults);
+		self.hidden_genres.extend(default_hidden);
 		if self.hide_adult {
 			self.hidden_genres
 				.extend(ADULT_GENRES.iter().map(|genre| genre.to_string()));
@@ -152,10 +189,14 @@ pub fn leading_chapter_number(name: &str) -> Option<(f32, &str)> {
 			.unwrap_or(rest.len()),
 	);
 	let number = digits.trim_end_matches('.').parse().ok()?;
-	Some((
-		number,
-		title.trim_start_matches([' ', ':', '-', '\u{2013}', '\u{2014}', '.']),
-	))
+	let separators = [' ', ':', '-', '\u{2013}', '\u{2014}', '.'];
+	let title = title.trim_start_matches(separators);
+	// Some names repeat the number: "Chapter 2 - 2: The Joy of Being".
+	let title = title
+		.strip_prefix(digits)
+		.filter(|rest| rest.starts_with(separators))
+		.map_or(title, |rest| rest.trim_start_matches(separators));
+	Some((number, title.trim_end()))
 }
 
 // One escaped paragraph per line. The app's Markdown renderer overflows its stack past a few
@@ -192,13 +233,13 @@ pub fn mirror_chapters(id: &str) -> Vec<Chapter> {
 	let chapters = || -> Result<Vec<Chapter>> {
 		// The list can hang for half a minute before a 504.
 		let list: MirrorList = parse(
-			Request::get(format!("{API_URL}/{id}/sources"))?
+			request(format!("{API_URL}/{id}/sources"))?
 				.timeout(8.0)
 				.send()?,
 		)?;
 		let mut requests = Vec::new();
 		for mirror in &list.sources {
-			requests.push(Request::get(format!(
+			requests.push(request(format!(
 				"{API_URL}/{id}/sources/{}/chapters",
 				mirror.id
 			))?);
@@ -219,21 +260,4 @@ pub fn mirror_chapters(id: &str) -> Vec<Chapter> {
 			.collect())
 	};
 	chapters().unwrap_or_default()
-}
-
-// Drops a leading "Chapter n", which the app already shows.
-pub fn chapter_title(name: &str, number: usize) -> Option<String> {
-	let name = name.trim();
-	let prefix = format!("chapter {number}");
-	let rest = name
-		.split_at_checked(prefix.len())
-		.filter(|(start, rest)| {
-			start.eq_ignore_ascii_case(&prefix) && !rest.starts_with(|c: char| c.is_ascii_digit())
-		})
-		.map(|(_, rest)| {
-			rest.trim_start_matches([' ', ':', '-', '\u{2013}', '\u{2014}', '.'])
-				.trim()
-		})
-		.unwrap_or(name);
-	(!rest.is_empty()).then(|| rest.into())
 }

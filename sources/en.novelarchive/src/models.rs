@@ -1,6 +1,6 @@
 use crate::{
 	BASE_URL,
-	helpers::{chapter_title, chapter_url, content_rating, genres, leading_chapter_number},
+	helpers::{chapter_url, content_rating, genres, leading_chapter_number},
 };
 use aidoku::{
 	Chapter, Manga, MangaStatus, MangaWithChapter,
@@ -187,15 +187,21 @@ impl Novel {
 		let count = self.chapter_names.len().max(self.chapter_count());
 		(1..=count)
 			.rev()
-			.map(|number| Chapter {
-				key: number.to_string(),
-				title: self
+			.map(|position| {
+				let name = self
 					.chapter_names
-					.get(number - 1)
-					.and_then(|name| chapter_title(name, number)),
-				chapter_number: Some(number as f32),
-				url: Some(chapter_url(&self.id, number)),
-				..Default::default()
+					.get(position - 1)
+					.map_or("", |name| name.trim());
+				// The number a name prints ("Chapter 165.2"), else the position the reader links.
+				let (number, title) =
+					leading_chapter_number(name).unwrap_or((position as f32, name));
+				Chapter {
+					key: position.to_string(),
+					title: (!title.chars().all(|c| c.is_ascii_digit())).then(|| title.into()),
+					chapter_number: Some(number),
+					url: Some(chapter_url(&self.id, position)),
+					..Default::default()
+				}
 			})
 			.collect()
 	}

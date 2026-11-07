@@ -31,6 +31,19 @@ Genres are a dynamic filter from `/api/novels/genres`, about 700 merged upstream
 the site's category values (`NON_GENRES`) (`sources/en.novelarchive/src/lib.rs:239`). A tapped tag
 sends its label lowercased, as the site lowercases every genre.
 
+Default Genres and Hidden Genres are dynamic settings over the same genre list
+(`SearchParams::from_settings`, `sources/en.novelarchive/src/helpers.rs`), as the owner's Paperback
+source offers default genres. They join every search, listing and sorted Discover row, and a genre a
+search includes or excludes itself wins over the setting's opposite choice for it. A pasted novel or
+reader link is read through the deep-link handler and answered with that novel's card from one
+details request; a link to no novel falls back to searching its text. Every API request sends
+`Accept: application/json` (`request`), as section 4 of the rules asks.
+
+> ⚠️ The Paperback source also decoded HTML entities, dropped a trailing "show more" from
+> descriptions and repaired mirror text read as Latin-1. None of the 200 descriptions sampled on
+> 2026-11-07 (the 100 most popular and the 100 newest) had an entity or "show more", and no merged
+> source repairs mojibake, so neither is done until a payload shows it.
+
 > ⚠️ Hide Adult Novels is a setting, on by default as the site's library switch is and as a
 > source rated 17+ must be, and a check in the search sheet that overrides it for one search: ticked
 > sends 1 and hides, excluded sends 2 and shows, unticked isn't sent and the setting decides. Hiding
@@ -71,7 +84,7 @@ which fails only when all six do.
 
 ## Chapters
 
-Chapter n is the n-th entry of `chapter_names`, numbered by position as the site's reader links
+Chapter n is the n-th entry of `chapter_names`, keyed by position as the site's reader links
 them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never collected still lists
 `total_chapters` chapters (`sources/en.novelarchive/src/models.rs:133`). Text comes from
 `/chapters/{n}?prefetch=1`, which leaves out the name list; it is plain text, one line per paragraph.
@@ -113,9 +126,13 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 > joins each inline node of a paragraph into one `Text` with `+`, and the crash logs show the main
 > thread's stack overflowing in `ConcatenatedTextStorage.resolve` (650 frames, 1,943 more elided).
 
+> ⚠️ A chapter's number is the one its name prints ("Chapter 165.2" gives 165.2), as 19 merged
+> sources number from names, with the position as the fallback ("Prologue") and always as the key. The
+> Recently Updated row has no names, so its newest chapter keeps the count as its number.
+
 > ⚠️ Chapter names stop matching positions in long novels: that novel's names run "Chapter 1" to
-> "Chapter 374", then restart at "Chapter 165.2" for its remaining 261 entries. Keys and numbers stay
-> positions, as the site's reader links them, so those chapters show a name unlike their number.
+> "Chapter 374", then restart at "Chapter 165.2" for its remaining 261 entries. Keys stay positions, as the
+> site's reader links them; the numbers follow the names.
 
 > ⚠️ A chapter title drops a leading "Chapter n" only when n is its own position, so
 > "Chapter 10" at position 1 stays whole (`sources/en.novelarchive/src/helpers.rs:143`).

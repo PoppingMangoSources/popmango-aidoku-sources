@@ -1,8 +1,9 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
-	HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Listing, ListingProvider,
-	Manga, MangaPageResult, MultiSelectFilter, Page, PageContent, Result, SelectFilter, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, DynamicSettings, Filter, FilterValue,
+	GroupSetting, Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Listing,
+	ListingProvider, Manga, MangaPageResult, MultiSelectFilter, MultiSelectSetting, Page,
+	PageContent, Result, SelectFilter, Setting, Source,
 	alloc::{String, Vec, vec},
 	helpers::string::PlainText,
 	imports::{html::Html, net::Request, std::send_partial_result},
@@ -15,10 +16,10 @@ mod settings;
 #[cfg(test)]
 mod test;
 
-use helpers::{NON_GENRES, SearchParams, browse, get, mirror_chapters, paragraphs, parse};
-use models::{
-	ChapterResponse, GenreList, MirrorChapterText, MirrorList, Novel, NovelDetails, NovelList,
+use helpers::{
+	SearchParams, browse, get, listed_genres, mirror_chapters, paragraphs, parse, request,
 };
+use models::{ChapterResponse, MirrorChapterText, MirrorList, Novel, NovelDetails, NovelList};
 
 const BASE_URL: &str = "https://novelarchive.st";
 const API_URL: &str = "https://novelarchive.st/api/novels";
@@ -39,10 +40,24 @@ impl Source for NovelArchive {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
+		// A pasted novel or reader link answers with that novel's card; anything else is searched.
+		if let Some(url) = query
+			.as_deref()
+			.map(str::trim)
+			.filter(|q| q.starts_with(BASE_URL))
+			&& let Ok(Some(
+				DeepLinkResult::Manga { key } | DeepLinkResult::Chapter { manga_key: key, .. },
+			)) = self.handle_deep_link(url.into())
+			&& let Ok(details) = get::<NovelDetails>(&format!("{API_URL}/{key}"))
+		{
+			return Ok(MangaPageResult {
+				entries: vec![details.novel.into()],
+				has_next_page: false,
+			});
+		}
 		let mut params = SearchParams {
 			query,
-			hide_adult: settings::hide_adult(),
-			..Default::default()
+			..SearchParams::from_settings()
 		};
 		for filter in filters {
 			match filter {
@@ -180,23 +195,21 @@ impl Home for NovelArchive {
 		};
 		send_partial_result(&HomePartialResult::Layout(layout.clone()));
 
-		let hide_adult = settings::hide_adult();
 		let sorted = |sort| {
-			Request::get(
+			request(
 				SearchParams {
 					sort,
-					hide_adult,
-					..Default::default()
+					..SearchParams::from_settings()
 				}
 				.url(1),
 			)
 		};
 		let mut feeds: Vec<Result<Vec<Novel>>> = Request::send_all([
-			Request::get(format!("{API_URL}/trending?limit={FEED_SIZE}"))?,
+			request(format!("{API_URL}/trending?limit={FEED_SIZE}"))?,
 			sorted(Some("popular"))?,
-			Request::get(format!("{API_URL}/recently-updated?limit={FEED_SIZE}"))?,
+			request(format!("{API_URL}/recently-updated?limit={FEED_SIZE}"))?,
 			sorted(Some("rating"))?,
-			Request::get(format!("{API_URL}/editors-choice?limit={FEED_SIZE}"))?,
+			request(format!("{API_URL}/editors-choice?limit={FEED_SIZE}"))?,
 			sorted(None)?,
 		])
 		.into_iter()
@@ -267,8 +280,7 @@ impl ListingProvider for NovelArchive {
 		browse(
 			SearchParams {
 				sort,
-				hide_adult: settings::hide_adult(),
-				..Default::default()
+				..SearchParams::from_settings()
 			},
 			page,
 		)
@@ -278,17 +290,14 @@ impl ListingProvider for NovelArchive {
 impl DynamicFilters for NovelArchive {
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
 		let mut responses = Request::send_all([
-			Request::get(format!("{API_URL}/genres"))?,
-			Request::get(format!("{API_URL}/source-list"))?,
+			request(format!("{API_URL}/genres"))?,
+			request(format!("{API_URL}/source-list"))?,
 		])
 		.into_iter();
 		let (Some(genres), Some(sources)) = (responses.next(), responses.next()) else {
 			bail!("Novel Archive's filters didn't load");
 		};
-		let (options, ids) = parse::<GenreList>(genres?)?
-			.genres
-			.into_iter()
-			.filter(|genre| !NON_GENRES.contains(&genre.value.to_lowercase().as_str()))
+		let (options, ids) = listed_genres(parse(genres?)?)
 			.map(|genre| (genre.label.into(), genre.value.into()))
 			.unzip();
 		let (mut source_options, mut source_ids): (Vec<_>, Vec<_>) = parse::<MirrorList>(sources?)?
@@ -316,6 +325,41 @@ impl DynamicFilters for NovelArchive {
 				uses_tag_style: true,
 				options,
 				ids: Some(ids),
+				..Default::default()
+			}
+			.into(),
+		])
+	}
+}
+
+impl DynamicSettings for NovelArchive {
+	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
+		let (values, titles): (Vec<_>, Vec<_>) = listed_genres(get(&format!("{API_URL}/genres"))?)
+			.map(|genre| (genre.value.into(), genre.label.into()))
+			.unzip();
+		let genres = |key: &'static str, title: &'static str| -> Setting {
+			MultiSelectSetting {
+				key: key.into(),
+				title: title.into(),
+				values: values.clone(),
+				titles: Some(titles.clone()),
+				refreshes: Some(vec!["content".into(), "listings".into()]),
+				..Default::default()
+			}
+			.into()
+		};
+		Ok(vec![
+			GroupSetting {
+				title: "Genres".into(),
+				footer: Some(
+					"Applies to search, listings and the sorted Discover rows. A genre a search \
+					 includes or excludes itself overrides these."
+						.into(),
+				),
+				items: vec![
+					genres("defaultGenres", "Default Genres"),
+					genres("hiddenGenres", "Hidden Genres"),
+				],
 				..Default::default()
 			}
 			.into(),
@@ -357,5 +401,6 @@ register_source!(
 	Home,
 	ListingProvider,
 	DynamicFilters,
+	DynamicSettings,
 	DeepLinkHandler
 );
