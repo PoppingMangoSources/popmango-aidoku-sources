@@ -6,7 +6,10 @@ use aidoku::{
 	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
-use helpers::{ADULT_GENRES, content_rating, genres, leading_chapter_number, paragraphs};
+use helpers::{
+	ADULT_GENRES, Markdown, content_rating, genres, html_paragraphs, leading_chapter_number,
+	paragraphs,
+};
 use models::{MirrorChapterList, MirrorList};
 
 // Captured from a novel whose only mirror is Ranobes.
@@ -80,9 +83,8 @@ fn review_search_url_sends_what_the_site_sends() {
 		genres: vec!["fantasy".into(), "harem".into()],
 		hidden_genres: vec!["romance".into()],
 		hide_adult: false,
-		// The search's own harem, romance and fantasy win over the settings' choices for them.
-		default_genres: vec!["action".into(), "harem".into(), "romance".into()],
-		default_hidden_genres: vec!["fantasy".into(), "horror".into()],
+		// The search's own fantasy and romance win over the setting's choice for them.
+		default_hidden_genres: vec!["fantasy".into(), "horror".into(), "romance".into()],
 	}
 	.url(1);
 	for part in [
@@ -91,7 +93,7 @@ fn review_search_url_sends_what_the_site_sends() {
 		"sort=rating",
 		"status=completed",
 		"source=royalroad",
-		"genres_include=fantasy%2Charem%2Caction&",
+		"genres_include=fantasy%2Charem&",
 		"genres_exclude=romance%2Chorror&",
 		"genre_match=any",
 	] {
@@ -385,14 +387,8 @@ fn pasted_links_answer_with_the_novel_card() {
 }
 
 #[aidoku_test]
-fn default_genre_settings_narrow_every_search() {
+fn hidden_genres_setting_narrows_every_search() {
 	let plain = search(None, vec![]).entries;
-	defaults_set(
-		"defaultGenres",
-		DefaultValue::StringArray(vec!["romance".into()]),
-	);
-	let required = search(None, vec![]).entries;
-	defaults_set("defaultGenres", DefaultValue::StringArray(vec![]));
 	defaults_set(
 		"hiddenGenres",
 		DefaultValue::StringArray(vec!["romance".into()]),
@@ -401,7 +397,6 @@ fn default_genre_settings_narrow_every_search() {
 	// A search that includes the hidden genre itself overrides the setting.
 	let overridden = search(None, vec![genre_filter(&["romance"], &[])]).entries;
 	defaults_set("hiddenGenres", DefaultValue::StringArray(vec![]));
-	assert_ne!(keys(&required), keys(&plain));
 	assert_ne!(keys(&hidden), keys(&plain));
 	assert!(!overridden.is_empty());
 }
@@ -494,6 +489,29 @@ fn review_paragraphs_escape_only_markdown_syntax() {
 	// Prose punctuation adds no escapes, so a long line stays one text run for the renderer.
 	let long = "Word, word. ".repeat(500);
 	assert!(!paragraphs(&long).contains('\\'));
+}
+
+#[aidoku_test]
+fn review_mirror_html_keeps_bold_and_italics() {
+	// What html_paragraphs writes for "<p>He said <em>never </em>and <strong>meant</strong> it,
+	// a_b.</p><p>- Line<br>1. two</p>"; the runner can't name a child element's tag.
+	let mut markdown = Markdown::default();
+	markdown.text("He said ");
+	markdown.emphasis("*", "never ");
+	markdown.text("and ");
+	markdown.emphasis("**", "meant");
+	markdown.text(" it, a_b.");
+	markdown.end_line();
+	markdown.text("- Line");
+	markdown.end_line();
+	markdown.text("1. two");
+	assert_eq!(
+		markdown.finish(),
+		"He said *never* and **meant** it, a\\_b.\n\n\\- Line\n\n1\\. two"
+	);
+	// The text itself survives the walk there too.
+	let walked = html_paragraphs("<p>He said <em>never</em> it.</p>").unwrap();
+	assert!(walked.contains("never"), "{walked}");
 }
 
 #[aidoku_test]

@@ -13,7 +13,7 @@ sources:
   - code: sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: abe8bb2
+verified_at: 1abe491
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -31,10 +31,10 @@ Genres are a dynamic filter from `/api/novels/genres`, about 700 merged upstream
 the site's category values (`NON_GENRES`) (`sources/en.novelarchive/src/lib.rs:239`). A tapped tag
 sends its label lowercased, as the site lowercases every genre.
 
-Default Genres and Hidden Genres are dynamic settings over the same genre list
-(`SearchParams::from_settings`, `sources/en.novelarchive/src/helpers.rs`), as the owner's Paperback
-source offers default genres. They join every search, listing and sorted Discover row, and a genre a
-search includes or excludes itself wins over the setting's opposite choice for it. A pasted novel or
+Hidden Genres is a dynamic setting over the same genre list (`SearchParams::from_settings`,
+`sources/en.novelarchive/src/helpers.rs`). It joins every search, listing and sorted Discover row, and
+a genre a search includes itself wins over it. A Default Genres setting beside it was removed on the
+owner's call. A pasted novel or
 reader link is read through the deep-link handler and answered with that novel's card from one
 details request; a link to no novel falls back to searching its text. Every API request sends
 `Accept: application/json` (`request`), as section 4 of the rules asks.
@@ -119,6 +119,12 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 
 > ⚠️ Chapter text escapes only Markdown syntax (`paragraphs`), not all punctuation: cmark makes
 > each escape its own node, and a mirror's thousand-character lines would rebuild the crash below.
+
+> ⚠️ No copy carried bold or italics when checked on 2026-11-07: the archive's own text (the site
+> HTML-escapes it) and all seven mirrors' `content_html` were plain text, Royal Road's included, and
+> Ranobes prints literal `<Dark Exploration Records>`. The site inserts mirror text as HTML, so a
+> mirror that sends `p`, `br`, `div`, `em`, `i`, `strong` or `b` is walked into Markdown
+> (`html_paragraphs`, as `en.freewebnovel` does), keeping `*` and `**`; anything else stays text.
 
 > ⚠️ Each line is escaped and becomes its own Markdown paragraph (joined with blank lines). Escaping
 > the whole text made one paragraph of hard breaks, and chapter 1 of *Got Dropped into a Ghost Story,

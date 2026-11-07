@@ -7,7 +7,10 @@ use aidoku::{
 	Chapter, ContentRating, MangaPageResult, Result,
 	alloc::{String, Vec, string::ToString},
 	helpers::uri::QueryParameters,
-	imports::net::{Request, Response},
+	imports::{
+		html::{Element, Html, Kind},
+		net::{Request, Response},
+	},
 	prelude::*,
 };
 use core::mem::take;
@@ -76,7 +79,6 @@ pub struct SearchParams {
 	pub genres: Vec<String>,
 	pub hidden_genres: Vec<String>,
 	pub hide_adult: bool,
-	pub default_genres: Vec<String>,
 	pub default_hidden_genres: Vec<String>,
 }
 
@@ -84,25 +86,17 @@ impl SearchParams {
 	pub fn from_settings() -> Self {
 		Self {
 			hide_adult: settings::hide_adult(),
-			default_genres: settings::default_genres(),
 			default_hidden_genres: settings::hidden_genres(),
 			..Default::default()
 		}
 	}
 
 	pub fn url(mut self, page: i32) -> String {
-		// A genre the search itself includes or excludes wins over the settings' choice for it.
-		let named =
-			|genre: &String| self.genres.contains(genre) || self.hidden_genres.contains(genre);
-		let defaults: Vec<String> = take(&mut self.default_genres)
-			.into_iter()
-			.filter(|genre| !named(genre))
-			.collect();
+		// A genre the search itself includes or excludes wins over the setting.
 		let default_hidden: Vec<String> = take(&mut self.default_hidden_genres)
 			.into_iter()
-			.filter(|genre| !named(genre))
+			.filter(|genre| !self.genres.contains(genre) && !self.hidden_genres.contains(genre))
 			.collect();
-		self.genres.extend(defaults);
 		self.hidden_genres.extend(default_hidden);
 		if self.hide_adult {
 			self.hidden_genres
@@ -201,31 +195,108 @@ pub fn leading_chapter_number(name: &str) -> Option<(f32, &str)> {
 
 // One escaped paragraph per line. The app's Markdown renderer overflows its stack past a few
 // hundred inline nodes in one paragraph, and every escape is a node, so only syntax is escaped.
-pub fn paragraphs(text: &str) -> String {
-	text.lines()
-		.map(str::trim)
-		.filter(|line| !line.is_empty())
-		.map(|line| {
-			let mut paragraph = String::with_capacity(line.len());
-			let mut digits_only = true;
-			for (index, c) in line.char_indices() {
+#[derive(Default)]
+pub struct Markdown {
+	paragraphs: Vec<String>,
+	line: String,
+}
+
+impl Markdown {
+	pub fn text(&mut self, text: &str) {
+		for (index, part) in text.split('\n').enumerate() {
+			if index > 0 {
+				self.end_line();
+			}
+			for c in part.chars() {
+				if self.line.is_empty() && c.is_whitespace() {
+					continue;
+				}
 				// "-", "#" or "1." at the start would begin a list or heading.
-				let block = (index == 0 && matches!(c, '#' | '-' | '+' | '='))
-					|| (digits_only && index > 0 && matches!(c, '.' | ')'));
-				digits_only &= c.is_ascii_digit();
+				let block = (self.line.is_empty() && matches!(c, '#' | '-' | '+' | '='))
+					|| (matches!(c, '.' | ')')
+						&& !self.line.is_empty()
+						&& self.line.bytes().all(|b| b.is_ascii_digit()));
 				if block
 					|| matches!(
 						c,
 						'\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '&' | '~' | '|'
 					) {
-					paragraph.push('\\');
+					self.line.push('\\');
 				}
-				paragraph.push(c);
+				self.line.push(c);
 			}
-			paragraph
-		})
-		.collect::<Vec<_>>()
-		.join("\n\n")
+		}
+	}
+
+	// Spaces stay outside the markers, since "* word*" isn't emphasis.
+	pub fn emphasis(&mut self, marker: &str, text: &str) {
+		let inner = text.trim();
+		if inner.is_empty() {
+			return self.text(text);
+		}
+		if text.starts_with(char::is_whitespace) {
+			self.line.push(' ');
+		}
+		self.line.push_str(marker);
+		self.text(&inner.replace('\n', " "));
+		self.line.push_str(marker);
+		if text.ends_with(char::is_whitespace) {
+			self.line.push(' ');
+		}
+	}
+
+	pub fn end_line(&mut self) {
+		let line = take(&mut self.line);
+		let line = line.trim_end();
+		if !line.is_empty() {
+			self.paragraphs.push(line.into());
+		}
+	}
+
+	fn element(&mut self, element: &Element) {
+		for node in element.child_nodes() {
+			match node.kind() {
+				Kind::TextNode => self.text(&node.text().unwrap_or_default()),
+				Kind::Element => {
+					let Ok(child) = Element::try_from(node) else {
+						continue;
+					};
+					match child.tag_name().unwrap_or_default().as_str() {
+						"br" => self.end_line(),
+						"strong" | "b" => self.emphasis("**", &child.text().unwrap_or_default()),
+						"em" | "i" => self.emphasis("*", &child.text().unwrap_or_default()),
+						"p" | "div" => {
+							self.end_line();
+							self.element(&child);
+							self.end_line();
+						}
+						_ => self.element(&child),
+					}
+				}
+				_ => {}
+			}
+		}
+	}
+
+	pub fn finish(mut self) -> String {
+		self.end_line();
+		self.paragraphs.join("\n\n")
+	}
+}
+
+pub fn paragraphs(text: &str) -> String {
+	let mut markdown = Markdown::default();
+	markdown.text(text);
+	markdown.finish()
+}
+
+// Mirror copies the site inserts as HTML keep their bold and italics.
+pub fn html_paragraphs(html: &str) -> Result<String> {
+	let mut markdown = Markdown::default();
+	if let Some(root) = Html::parse_fragment(html)?.select_first("html") {
+		markdown.element(&root);
+	}
+	Ok(markdown.finish())
 }
 
 // Mirrors are extra: when their list is slow or fails, the site's own chapters still load.

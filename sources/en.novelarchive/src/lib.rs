@@ -6,7 +6,7 @@ use aidoku::{
 	PageContent, Result, SelectFilter, Setting, Source,
 	alloc::{String, Vec, vec},
 	helpers::string::PlainText,
-	imports::{html::Html, net::Request, std::send_partial_result},
+	imports::{net::Request, std::send_partial_result},
 	prelude::*,
 };
 
@@ -17,7 +17,8 @@ mod settings;
 mod test;
 
 use helpers::{
-	SearchParams, browse, get, listed_genres, mirror_chapters, paragraphs, parse, request,
+	SearchParams, browse, get, html_paragraphs, listed_genres, mirror_chapters, paragraphs, parse,
+	request,
 };
 use models::{ChapterResponse, MirrorChapterText, MirrorList, Novel, NovelDetails, NovelList};
 
@@ -129,7 +130,7 @@ impl Source for NovelArchive {
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let content = match chapter.key.split_once(':') {
+		let text = match chapter.key.split_once(':') {
 			Some((mirror, number)) => {
 				let html = get::<MirrorChapterText>(&format!(
 					"{API_URL}/{}/sources/{mirror}/chapters/{number}",
@@ -137,30 +138,30 @@ impl Source for NovelArchive {
 				))?
 				.content_html
 				.unwrap_or_default();
-				// Most mirrors send plain text; some wrap paragraphs in <p>.
-				if html.contains("<p") {
-					Html::parse_fragment(&html)?
-						.select("p")
-						.map(|paragraphs| {
-							paragraphs
-								.filter_map(|p| p.text())
-								.collect::<Vec<_>>()
-								.join("\n")
-						})
-						.unwrap_or_default()
+				// Mirrors send plain text so far, some of it with literal "<Title>" brackets, so
+				// only known tags make it HTML.
+				if [
+					"<p>", "<p ", "<br", "<em>", "<i>", "<strong>", "<b>", "<div",
+				]
+				.iter()
+				.any(|tag| html.contains(tag))
+				{
+					html_paragraphs(&html)?
 				} else {
-					html
+					paragraphs(&html)
 				}
 			}
-			None => get::<ChapterResponse>(&format!(
-				"{API_URL}/{}/chapters/{}?prefetch=1",
-				manga.key, chapter.key
-			))?
-			.chapter
-			.content
-			.unwrap_or_default(),
+			// The archive's own copies are plain text, which the site prints as is.
+			None => paragraphs(
+				&get::<ChapterResponse>(&format!(
+					"{API_URL}/{}/chapters/{}?prefetch=1",
+					manga.key, chapter.key
+				))?
+				.chapter
+				.content
+				.unwrap_or_default(),
+			),
 		};
-		let text = paragraphs(&content);
 		if text.is_empty() {
 			bail!("This chapter has no text on Novel Archive yet");
 		}
@@ -337,28 +338,24 @@ impl DynamicSettings for NovelArchive {
 		let (values, titles): (Vec<_>, Vec<_>) = listed_genres(get(&format!("{API_URL}/genres"))?)
 			.map(|genre| (genre.value.into(), genre.label.into()))
 			.unzip();
-		let genres = |key: &'static str, title: &'static str| -> Setting {
-			MultiSelectSetting {
-				key: key.into(),
-				title: title.into(),
-				values: values.clone(),
-				titles: Some(titles.clone()),
-				refreshes: Some(vec!["content".into(), "listings".into()]),
-				..Default::default()
-			}
-			.into()
-		};
 		Ok(vec![
 			GroupSetting {
 				title: "Genres".into(),
 				footer: Some(
 					"Applies to search, listings and the sorted Discover rows. A genre a search \
-					 includes or excludes itself overrides these."
+					 includes itself overrides it."
 						.into(),
 				),
 				items: vec![
-					genres("defaultGenres", "Default Genres"),
-					genres("hiddenGenres", "Hidden Genres"),
+					MultiSelectSetting {
+						key: "hiddenGenres".into(),
+						title: "Hidden Genres".into(),
+						values,
+						titles: Some(titles),
+						refreshes: Some(vec!["content".into(), "listings".into()]),
+						..Default::default()
+					}
+					.into(),
 				],
 				..Default::default()
 			}
