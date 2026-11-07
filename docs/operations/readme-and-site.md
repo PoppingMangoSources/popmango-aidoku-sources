@@ -37,5 +37,9 @@ window holds the repository url, and the sources are "routes" on a Route Select 
 > showing 25 after the file said 16. A relative path is served from the commit itself. The
 > source icons further down still use jsDelivr; an icon rarely changes.
 
+> ⚠️ The install page only reaches GitHub Pages when **Build source list** (`build.yaml`) runs,
+> since it deploys `public/` to `gh-pages`. Its push paths must keep `public/**`: without it, two
+> redesigns sat on `main` while the live site still served the original page.
+
 > ⚠️ The token-optimizer read guard blocks reading `.svg` and `.png` files whole. Edit SVGs by
 > writing a copy and `cp`, and view a screenshot with `Read` plus `limit: 1`.
