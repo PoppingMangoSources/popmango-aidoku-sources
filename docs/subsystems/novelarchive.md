@@ -22,6 +22,10 @@ site's own scripts read it. It moved from `novelarchive.cc` to `novelarchive.st`
 answers with a 301. Novel ids and the numbered chapter keys did not change, so libraries carry
 over without a `breakingChangeVersion`.
 
+> ⚠️ Merged upstream on 2026-11-08 (#873) and removed from `main`. The last copy with its tests is
+> `56e8bb7` and the `merged-sources` branch; a later change starts from upstream's crate (section 17
+> of the rules), and the code paths cited below are that copy's.
+
 ## Search and filters
 
 Search is the library's browse call: `search` with `fuzzy=1`, `sort`, `status`, `genres_include`,

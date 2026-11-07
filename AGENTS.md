@@ -1344,7 +1344,8 @@ reaches the site, unless marked.
 A source leaves `main` once it is upstream, or while its upstream branch waits on review. Its
 crate and live tests stay in `main`'s history; what it taught stays in this file and `docs/`.
 The `merged-sources` branch keeps the last copy of each merged one, tests included (Atsumaru,
-MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics), so they can be read and tested in one place.
+MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive), so they can be read and
+tested in one place.
 
 | Source | State | Last copy on `main` | Branch | What it taught |
 |---|---|---|---|---|
@@ -1356,6 +1357,7 @@ MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics), so they can be read and t
 | `en.flamecomics` | fix open (#860) | `171e770` | `fix/en.flamecomics` | section 3, `docs/subsystems/flamecomics.md` |
 | `en.kingofshojo` | merged (#875) | `c667b2d` | from `upstream/main` | `docs/subsystems/mangathemesia-consumers.md` |
 | `en.rokaricomics` | merged (#874) | `c667b2d` | from `upstream/main` | `docs/subsystems/mangathemesia-consumers.md` |
+| `en.novelarchive` | merged (#873) | `56e8bb7` | from `upstream/main` | section 3, `docs/subsystems/novelarchive.md` |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a
