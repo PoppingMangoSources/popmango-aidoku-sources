@@ -20,10 +20,12 @@ KingOfShojo and RokariComics are plain consumers of the mangathemesia template: 
 map to the template's `order` values by position), Status and Type with the site's lowercase ids,
 and `genre[]` with the site's own ids (numeric on KingOfShojo, slugs on Rokari).
 
-> ⚠️ They use upstream's template unchanged. The fork's template adds `DynamicFilters` and
-> `ListingProvider`, which none of upstream's 15 consumers registers; registering them here would
-> put a template change into each submission. A genre the site adds needs adding to
-> `filters.json` by hand, as on the upstream consumers.
+> ⚠️ They use upstream's template unchanged, and `templates/mangathemesia` on `main` is
+> upstream's copy, so Discover, details and search are the template's on `main` and in the
+> submissions alike. The fork's old copy added `DynamicFilters`, `ListingProvider` and its own
+> home rows, which none of upstream's 15 consumers uses; bringing them back would put a template
+> change into each submission. A genre the site adds needs adding to `filters.json` by hand, as
+> on the upstream consumers.
 
 > ⚠️ No base URL setting: no merged mangathemesia source has one. If a site moves, change
 > `BASE_URL`; keys are paths (`/manga/<slug>/`), so libraries carry over.

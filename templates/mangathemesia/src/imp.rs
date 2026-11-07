@@ -3,61 +3,18 @@ use crate::{
 	helpers::{self, ElementImageAttr},
 };
 use aidoku::{
-	Chapter, ContentRating, DeepLinkResult, Filter, FilterValue, HomeComponent, HomeComponentValue,
-	HomeLayout, Link, Listing, Manga, MangaPageResult, MangaStatus, MangaWithChapter,
-	MultiSelectFilter, Page, PageContent, PageContext, Result, Viewer,
+	Chapter, ContentRating, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue,
+	HomeLayout, Link, Manga, MangaPageResult, MangaStatus, MangaWithChapter, Page, PageContent,
+	PageContext, Result, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{string::StripPrefixOrSelf, uri::QueryParameters},
 	imports::{
 		html::{Document, Html},
 		net::Request,
-		std::{current_date, parse_date, parse_date_with_options, send_partial_result},
+		std::{current_date, parse_date_with_options, send_partial_result},
 	},
 	prelude::*,
 };
-
-/// Reads the release stamps the listing cards carry.
-///
-/// The theme writes them as a bare span such as `10 minutes` or `1 week`, with
-/// no `ago`, so the unit is matched on its stem and the amount subtracted from
-/// now. Absolute dates fall through to the usual formats.
-fn listing_date(text: &str) -> Option<i64> {
-	let trimmed = text.trim();
-	if trimmed.is_empty() {
-		return None;
-	}
-
-	let lowered = trimmed.to_lowercase();
-	let mut words = lowered.split_whitespace();
-	if let Some(amount) = words.next().and_then(|word| word.parse::<i64>().ok())
-		&& let Some(unit) = words.next()
-	{
-		let seconds = if unit.starts_with("second") {
-			Some(1)
-		} else if unit.starts_with("min") {
-			Some(60)
-		} else if unit.starts_with("hour") {
-			Some(3600)
-		} else if unit.starts_with("day") {
-			Some(86400)
-		} else if unit.starts_with("week") {
-			Some(604800)
-		} else if unit.starts_with("month") {
-			Some(2592000)
-		} else if unit.starts_with("year") {
-			Some(31536000)
-		} else {
-			None
-		};
-		if let Some(seconds) = seconds {
-			return Some(current_date() - amount * seconds);
-		}
-	}
-
-	parse_date(trimmed, "MMMM d, yyyy")
-		.or_else(|| parse_date(trimmed, "MMM d, yyyy"))
-		.or_else(|| parse_date(trimmed, "yyyy-MM-dd"))
-}
 
 pub trait Impl {
 	fn new() -> Self;
@@ -139,32 +96,6 @@ pub trait Impl {
 				.select_first("div.pagination .next, div.hpage .r")
 				.is_some(),
 		})
-	}
-
-	fn get_manga_list(
-		&self,
-		params: &Params,
-		listing: Listing,
-		page: i32,
-	) -> Result<MangaPageResult> {
-		let index = match listing.id.as_str() {
-			"alphabet" => 1,
-			"latest" => 3,
-			"fresh" | "new" => 4,
-			"popular" | "popular_today" | "popular_week" | "popular_month" | "popular_all"
-			| "recommendation" => 5,
-			_ => bail!("Unknown listing"),
-		};
-		self.get_search_manga_list(
-			params,
-			None,
-			page,
-			vec![FilterValue::Sort {
-				id: "order".into(),
-				index,
-				ascending: false,
-			}],
-		)
 	}
 
 	fn get_manga_update(
@@ -381,39 +312,6 @@ pub trait Impl {
 		}
 	}
 
-	/// Reads the genre list off the directory page's advanced search form.
-	///
-	/// Every site numbers its genre terms differently, so the ids cannot live in
-	/// `filters.json`; the theme renders them as checkboxes in `ul.genrez`.
-	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
-		let url = format!("{}{}/", params.base_url, params.manga_url_directory);
-		let (options, ids): (Vec<_>, Vec<_>) = Request::get(url)?
-			.html()?
-			.select("ul.genrez li")
-			.map(|els| {
-				els.filter_map(|el| {
-					let option = el.select_first("label")?.text()?;
-					let id = el.select_first("input[type=checkbox]")?.attr("value")?;
-					Some((option.into(), id.into()))
-				})
-				.unzip()
-			})
-			.unwrap_or_default();
-
-		Ok(vec![
-			MultiSelectFilter {
-				id: "genre[]".into(),
-				title: Some("Genre".into()),
-				is_genre: true,
-				can_exclude: true,
-				options,
-				ids: Some(ids),
-				..Default::default()
-			}
-			.into(),
-		])
-	}
-
 	fn get_image_request(
 		&self,
 		params: &Params,
@@ -563,55 +461,6 @@ pub trait Impl {
 			}
 		}
 
-		// The popular widget renders all three of its windows into the page, so
-		// the extra rows cost no extra request.
-		for (title, class_name) in [
-			("Popular Weekly", "wpop-weekly"),
-			("Popular Monthly", "wpop-monthly"),
-			("Popular All Time", "wpop-alltime"),
-		] {
-			let Some(items) = html.select(format!("#wpop-items .{class_name} li")) else {
-				continue;
-			};
-			let entries: Vec<Link> = items
-				.filter_map(|el| {
-					let link = el
-						.select_first(".leftseries h2 a")
-						.or_else(|| el.select_first("a.series"))?;
-					let name = link
-						.text()
-						.or_else(|| link.attr("title"))
-						.map(|name| name.trim().to_string())
-						.filter(|name| !name.is_empty())?;
-					Some(
-						Manga {
-							key: link
-								.attr("abs:href")?
-								.strip_prefix_or_self(&params.base_url)
-								.into(),
-							title: name,
-							cover: el.select_first("img").and_then(|img| img.img_attr()),
-							..Default::default()
-						}
-						.into(),
-					)
-				})
-				.collect();
-			if entries.is_empty() {
-				continue;
-			}
-			components.push(HomeComponent {
-				title: Some(title.into()),
-				subtitle: None,
-				value: HomeComponentValue::MangaList {
-					ranking: true,
-					page_size: Some(5),
-					entries,
-					listing: None,
-				},
-			});
-		}
-
 		if let Some(chapter_lists) = html.select(".postbody > .bixbox") {
 			for list in chapter_lists {
 				let Some(title) = list
@@ -635,15 +484,6 @@ pub trait Impl {
 								.attr("href")?
 								.strip_prefix_or_self(&params.base_url)
 								.into();
-							let released = chapter_link
-								.select_first("span.fivtime, .epxdate, .chapterdate, .timeago")
-								.or_else(|| {
-									el.select_first(
-										"span.fivtime, .epxdate, .chapterdate, .timeago",
-									)
-								})
-								.and_then(|el| el.text())
-								.and_then(|text| listing_date(&text));
 							let chapter_title = chapter_link
 								.select_first("span.fivchap")
 								.unwrap_or(chapter_link)
@@ -660,7 +500,6 @@ pub trait Impl {
 									key: chapter_key,
 									title: chapter_number.is_none().then_some(chapter_title),
 									chapter_number,
-									date_uploaded: released,
 									..Default::default()
 								},
 							})
@@ -673,7 +512,7 @@ pub trait Impl {
 						title: Some(title),
 						subtitle: None,
 						value: HomeComponentValue::MangaChapterList {
-							page_size: Some(5),
+							page_size: None,
 							entries,
 							listing: None,
 						},

@@ -1112,12 +1112,14 @@ engine or theme:
 `libgroup`, `mangabox`, `liliana`, `guya`, `mmrcms`, `tukutema`, `ezmanhwa`,
 `pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`.
 
-Our `templates/` is upstream's copy, except `madara`, `madtheme` and `mangathemesia`, which
-carry additions our sources use (shared detail parsing, listings and dynamic filters). `mangak`
-merged with #850 and is upstream's copy again; its consumers live upstream only. The
+Our `templates/` is upstream's copy, except `madara` and `madtheme`, which carry additions our
+sources use (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and
+is upstream's copy again; its consumers live upstream only. `mangathemesia` is upstream's copy
+again too: its two consumers (`en.kingofshojo`, `en.rokaricomics`) take filters, Discover and
+details from it unchanged, so `main` and their submissions run the same template. The
 `madtheme` ones (a home page and a chapter-list fallback) were for Kaliscan, which now sits on
 the `dead-sources` branch with Galaxy Manga and OManga. When syncing, take upstream's files for every other
-template and bring only upstream's own changes into those three.
+template and bring only upstream's own changes into those two.
 
 **Check for one before writing a source from scratch.** Two ways: see whether the
 matching keiyoushi extension declares a `themePkg`, or run the site through a
