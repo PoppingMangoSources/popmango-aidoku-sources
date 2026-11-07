@@ -82,6 +82,18 @@ text with whole scenes on one line), as the owner's Paperback source reads them.
 chapter list keyed `{mirror}:{number}`, grouped under their label, with the site's own copies
 grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_chapters`).
 
+> ⚠️ `/{id}/sources` names every mirror with a copy; asking one it leaves out answers 404 "Source has
+> no copy of this novel" (probed with NovelFire and fucknovelpia on the Ghost Story novel). The site
+> knows seven sources (`/source-list`: Royal Road, NovelFire, Ranobes, fucknovelpia, NovelBin, Tapas,
+> noveli-to), and `preferred_source` on a novel is where the archive's own copy came from. The list is
+> built lazily, so for a few seconds after a server restart it reports none (`reader-page.js`, which
+> retries once after 6 seconds; the source doesn't).
+
+> ⚠️ The library filters by that origin with `source=<id>` (13,266 novels for `royalroad`; an unknown
+> id is ignored, not empty), so the Source filter takes its options from `/source-list` beside the
+> genres. A mirror chapter's site link is `/reader?novel=…&chapter={number}&source={mirror}`, and the
+> deep link reads it back to the `{mirror}:{number}` key.
+
 > ⚠️ A mirror's `number` is only its own index and lists can be partial: Reverend Insanity's Ranobes
 > list holds one entry, number 56, titled "Chapter 2315 Nothing Is Certain Except Success". The
 > chapter number comes from a leading "Chapter N" in the title, else `number`; a title that is only

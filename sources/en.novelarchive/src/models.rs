@@ -76,10 +76,17 @@ pub struct MirrorList {
 	pub sources: Vec<Mirror>,
 }
 
+// Both a novel's mirrors and the site's whole source list.
 #[derive(Deserialize)]
 pub struct Mirror {
 	pub id: String,
 	label: Option<String>,
+}
+
+impl Mirror {
+	pub fn name(&self) -> String {
+		self.label.clone().unwrap_or_else(|| self.id.clone())
+	}
 }
 
 #[derive(Deserialize)]
@@ -100,7 +107,7 @@ pub struct MirrorChapterText {
 
 impl MirrorChapter {
 	// `number` addresses the mirror's copy; the title, when it has one, carries the real chapter number.
-	pub fn into_chapter(self, mirror: &Mirror) -> Chapter {
+	pub fn into_chapter(self, novel: &str, mirror: &Mirror) -> Chapter {
 		let title = self.title.as_deref().unwrap_or_default().trim();
 		let (number, title) = leading_chapter_number(title).unwrap_or((self.number as f32, title));
 		Chapter {
@@ -108,9 +115,11 @@ impl MirrorChapter {
 			// A mirror's part number ("2") isn't a title.
 			title: (!title.chars().all(|c| c.is_ascii_digit())).then(|| title.into()),
 			chapter_number: Some(number),
-			scanlators: Some(vec![
-				mirror.label.clone().unwrap_or_else(|| mirror.id.clone()),
-			]),
+			url: Some(format!(
+				"{BASE_URL}/reader?novel={novel}&chapter={}&source={}",
+				self.number, mirror.id
+			)),
+			scanlators: Some(vec![mirror.name()]),
 			..Default::default()
 		}
 	}

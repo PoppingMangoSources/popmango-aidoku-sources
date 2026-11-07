@@ -58,6 +58,7 @@ pub struct SearchParams {
 	pub query: Option<String>,
 	pub sort: Option<&'static str>,
 	pub status: Option<String>,
+	pub source: Option<String>,
 	pub any_genre: bool,
 	pub genres: Vec<String>,
 	pub hidden_genres: Vec<String>,
@@ -82,6 +83,9 @@ impl SearchParams {
 		}
 		if let Some(status) = &self.status {
 			qs.push("status", Some(status));
+		}
+		if let Some(source) = &self.source {
+			qs.push("source", Some(source));
 		}
 		if !self.genres.is_empty() {
 			qs.push("genres_include", Some(&self.genres.join(",")));
@@ -210,7 +214,7 @@ pub fn mirror_chapters(id: &str) -> Vec<Chapter> {
 				chapters
 					.chapters
 					.into_iter()
-					.map(|chapter| chapter.into_chapter(mirror))
+					.map(|chapter| chapter.into_chapter(id, mirror))
 			})
 			.collect())
 	};

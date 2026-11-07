@@ -2,7 +2,7 @@
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
 	HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Listing, ListingProvider,
-	Manga, MangaPageResult, MultiSelectFilter, Page, PageContent, Result, Source,
+	Manga, MangaPageResult, MultiSelectFilter, Page, PageContent, Result, SelectFilter, Source,
 	alloc::{String, Vec, vec},
 	helpers::string::PlainText,
 	imports::{html::Html, net::Request, std::send_partial_result},
@@ -16,7 +16,9 @@ mod settings;
 mod test;
 
 use helpers::{NON_GENRES, SearchParams, browse, get, mirror_chapters, paragraphs, parse};
-use models::{ChapterResponse, GenreList, MirrorChapterText, Novel, NovelDetails, NovelList};
+use models::{
+	ChapterResponse, GenreList, MirrorChapterText, MirrorList, Novel, NovelDetails, NovelList,
+};
 
 const BASE_URL: &str = "https://novelarchive.st";
 const API_URL: &str = "https://novelarchive.st/api/novels";
@@ -55,6 +57,7 @@ impl Source for NovelArchive {
 				}
 				FilterValue::Select { id, value } => match id.as_str() {
 					"status" => params.status = (value != "all").then_some(value),
+					"source" => params.source = (value != "all").then_some(value),
 					"genre_match" => params.any_genre = value == "any",
 					// A tapped tag carries the genre's label.
 					"genre" => params.genres = vec![value.to_lowercase()],
@@ -274,13 +277,37 @@ impl ListingProvider for NovelArchive {
 
 impl DynamicFilters for NovelArchive {
 	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let (options, ids) = get::<GenreList>(&format!("{API_URL}/genres"))?
+		let mut responses = Request::send_all([
+			Request::get(format!("{API_URL}/genres"))?,
+			Request::get(format!("{API_URL}/source-list"))?,
+		])
+		.into_iter();
+		let (Some(genres), Some(sources)) = (responses.next(), responses.next()) else {
+			bail!("Novel Archive's filters didn't load");
+		};
+		let (options, ids) = parse::<GenreList>(genres?)?
 			.genres
 			.into_iter()
 			.filter(|genre| !NON_GENRES.contains(&genre.value.to_lowercase().as_str()))
 			.map(|genre| (genre.label.into(), genre.value.into()))
 			.unzip();
+		let (mut source_options, mut source_ids): (Vec<_>, Vec<_>) = parse::<MirrorList>(sources?)?
+			.sources
+			.into_iter()
+			.map(|source| (source.name().into(), source.id.into()))
+			.unzip();
+		source_options.insert(0, "All".into());
+		source_ids.insert(0, "all".into());
 		Ok(vec![
+			// Where the archive's copy of a novel came from, as the site's library filters it.
+			SelectFilter {
+				id: "source".into(),
+				title: Some("Source".into()),
+				options: source_options,
+				ids: Some(source_ids),
+				..Default::default()
+			}
+			.into(),
 			MultiSelectFilter {
 				id: "genre".into(),
 				title: Some("Genres".into()),
@@ -315,7 +342,10 @@ impl DeepLinkHandler for NovelArchive {
 				.zip(param("chapter"))
 				.map(|(novel, chapter)| DeepLinkResult::Chapter {
 					manga_key: novel.into(),
-					key: chapter.into(),
+					key: match param("source") {
+						Some(mirror) => format!("{mirror}:{chapter}"),
+						None => chapter.into(),
+					},
 				}),
 			_ => None,
 		})

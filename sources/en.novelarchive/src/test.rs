@@ -73,6 +73,7 @@ fn review_search_url_sends_what_the_site_sends() {
 		query: Some("demon cult".into()),
 		sort: Some("rating"),
 		status: Some("completed".into()),
+		source: Some("royalroad".into()),
 		any_genre: true,
 		genres: vec!["fantasy".into(), "harem".into()],
 		hidden_genres: vec!["romance".into()],
@@ -84,6 +85,7 @@ fn review_search_url_sends_what_the_site_sends() {
 		"fuzzy=1",
 		"sort=rating",
 		"status=completed",
+		"source=royalroad",
 		"genres_include=fantasy%2Charem",
 		"genres_exclude=romance",
 		"genre_match=any",
@@ -235,6 +237,11 @@ fn review_deep_links_match_the_site_urls() {
 	assert!(matches!(
 		link("https://novelarchive.st/reader?novel=6aedf2f22fe18aff37a5a186&chapter=12#top"),
 		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == NOVEL_KEY && key == "12"
+	));
+	// A mirror's reader link opens the mirror's copy, keyed as the chapter list keys it.
+	assert!(matches!(
+		link("https://novelarchive.st/reader?novel=6a162ec14f942c668d69a598&chapter=56&source=ranobes"),
+		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == GHOST_STORY_KEY && key == "ranobes:56"
 	));
 	assert!(link("https://novelarchive.st/library").is_none());
 	assert!(link("https://novelarchive.st/novel?id=").is_none());
@@ -394,7 +401,8 @@ fn home_listings_page() {
 #[aidoku_test]
 fn genre_filter_lists_the_site_genres() {
 	let filters = NovelArchive::new().get_dynamic_filters().unwrap();
-	assert_eq!(filters.len(), 1);
+	// The source list and the genres.
+	assert_eq!(filters.len(), 2);
 }
 
 #[aidoku_test]
@@ -426,7 +434,7 @@ fn review_mirror_chapters_take_the_title_number_and_group() {
 		.unwrap()
 		.chapters
 		.into_iter()
-		.map(|chapter| chapter.into_chapter(&mirror))
+		.map(|chapter| chapter.into_chapter(GHOST_STORY_KEY, &mirror))
 		.collect();
 	let summary: Vec<(&str, Option<f32>, Option<&str>)> = chapters
 		.iter()
@@ -454,6 +462,13 @@ fn review_mirror_chapters_take_the_title_number_and_group() {
 		chapters
 			.iter()
 			.all(|chapter| chapter.scanlators == Some(vec!["Ranobes".into()]))
+	);
+	// The site's reader link for the mirror's copy, which the deep link reads back.
+	assert_eq!(
+		chapters[2].url.as_deref(),
+		Some(
+			"https://novelarchive.st/reader?novel=6a162ec14f942c668d69a598&chapter=56&source=ranobes"
+		)
 	);
 }
 
