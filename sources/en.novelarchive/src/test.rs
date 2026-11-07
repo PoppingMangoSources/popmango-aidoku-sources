@@ -437,7 +437,7 @@ fn home_has_the_site_sections() {
 			"Recently Updated",
 			"Top Rated",
 			"Editor's Choice",
-			"New in the Archive"
+			"Recently Added"
 		]
 	);
 }

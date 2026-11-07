@@ -61,7 +61,7 @@ details request; a link to no novel falls back to searching its text. Every API 
 
 Six rows, in one parallel request, in the owner's order: Trending (a big scroller), Popular,
 Recently Updated (each novel's newest chapter, five a page), Top Rated, Editor's Choice (a big
-scroller, since the feed carries each pick's description and genres) and New in the Archive
+scroller, since the feed carries each pick's description and genres) and Recently Added
 (`sources/en.novelarchive/src/lib.rs:119`). The fixed feeds are read with `limit=50`, the most
 they return (asked for 120, trending answered 50). The three sorted rows are browse pages
 (`popular`, `rating`, the default sort) and link listings of the same name
@@ -79,9 +79,13 @@ which fails only when all six do.
 > the owner's choice, taken from another client of the site, so a review may cite the "order the
 > home as the site does" rule; the extra rows are deliberate.
 
-> ⚠️ The browse default sort, labelled "Recently updated" in the site's library, lists newly added
-> novels first (the captured page's `created_at` and `updated_at` match), hence "New in the
-> Archive" for that row while the sort filter keeps the site's label.
+> ⚠️ The browse default sort, labelled "Recently updated" in the site's library, lists novels by
+> when the archive added them: on 2026-11-07 its first page was all novels added that day, each
+> `updated_at` within seconds of its `created_at`, while `/recently-updated` listed novels added
+> in August to October and updated that day. Hence "Recently Added" for that row and listing,
+> while the sort filter keeps the site's label. It was "New in the Archive" until review asked
+> whether the title came from somewhere, since "New" reads as brand-new series and many
+> additions are existing novels newly imported.
 
 ## Chapters
 
