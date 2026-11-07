@@ -10,6 +10,7 @@ sources:
   - code: sources/en.novelarchive/src/test.rs
   - code: sources/en.novelarchive/src/settings.rs
   - code: sources/en.novelarchive/res/filters.json
+  - code: sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
 verified_at: c8d96e6
@@ -79,6 +80,13 @@ them (`/reader?novel={id}&chapter={n}`), and a novel whose names were never coll
 
 > ⚠️ Errors answer `{"error": …}` with a status, such as a 404 "Novel not found"; the message is
 > shown as is.
+
+## Icon
+
+> ⚠️ `res/icon.png` is the site's own 1024 px favicon (`/favicon.ico`, served as PNG) scaled whole to
+> 128. Cloudflare refuses the sandbox the file, and Firecrawl returns only its text, so it came from
+> DuckDuckGo's favicon cache (`icons.duckduckgo.com/ip3/novelarchive.st.ico`), which keeps it at full
+> size. Scale it whole: cropping to the logo cuts off the dots in its corners.
 
 ## Testing
 
