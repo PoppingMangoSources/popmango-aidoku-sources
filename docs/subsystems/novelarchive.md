@@ -14,7 +14,7 @@ sources:
   - code: sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: 4cf995a
+verified_at: 46b15d9
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -170,8 +170,9 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 > "Chapter 374", then restart at "Chapter 165.2" for its remaining 261 entries. Keys stay positions, as the
 > site's reader links them; the numbers follow the names.
 
-> ⚠️ A chapter title drops a leading "Chapter n" only when n is its own position, so
-> "Chapter 10" at position 1 stays whole (`sources/en.novelarchive/src/helpers.rs:143`).
+> ⚠️ Native and mirror chapters share one rule (`number_and_title` in `helpers.rs`): a leading
+> "Chapter n" becomes the number and leaves the rest as the title, a name without one keeps the
+> position or mirror index as its number, and a title that is only digits ("2") is dropped.
 
 > ⚠️ Errors answer `{"error": …}` with a status, such as a 404 "Novel not found"; the message is
 > shown as is.

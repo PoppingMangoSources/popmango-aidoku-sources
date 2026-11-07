@@ -10,7 +10,7 @@ use aidoku::{
 	imports::net::{Request, Response},
 	prelude::*,
 };
-use core::mem::take;
+use core::{fmt::Display, mem::take};
 use serde::de::DeserializeOwned;
 
 // The genres the site's library excludes when hiding adult novels.
@@ -30,7 +30,7 @@ pub const ADULT_GENRES: [&str; 12] = [
 ];
 
 // Values the genre list carries that the site treats as categories, not genres.
-pub const NON_GENRES: [&str; 7] = [
+const NON_GENRES: [&str; 7] = [
 	"browse",
 	"completed novel",
 	"completed novels",
@@ -138,7 +138,7 @@ pub fn browse(params: SearchParams, page: i32) -> Result<MangaPageResult> {
 	})
 }
 
-pub fn chapter_url(id: &str, number: usize) -> String {
+pub fn chapter_url(id: &str, number: impl Display) -> String {
 	format!("{BASE_URL}/reader?novel={id}&chapter={number}")
 }
 
@@ -169,8 +169,16 @@ pub fn content_rating(list: &str) -> ContentRating {
 	rating
 }
 
-// "Chapter 2315 Nothing Is Certain" gives 2315 and "Nothing Is Certain".
-pub fn leading_chapter_number(name: &str) -> Option<(f32, &str)> {
+// "Chapter 2315 Nothing Is Certain" gives 2315 and "Nothing Is Certain"; a name without a leading
+// number keeps the fallback, and a title that is only a part number ("2") is none.
+pub fn number_and_title(name: &str, fallback: f32) -> (f32, Option<String>) {
+	let name = name.trim();
+	let (number, title) = leading_chapter_number(name).unwrap_or((fallback, name));
+	let title = (!title.chars().all(|c| c.is_ascii_digit())).then(|| title.into());
+	(number, title)
+}
+
+fn leading_chapter_number(name: &str) -> Option<(f32, &str)> {
 	let (start, rest) = name.split_at_checked("chapter ".len())?;
 	if !start.eq_ignore_ascii_case("chapter ") {
 		return None;

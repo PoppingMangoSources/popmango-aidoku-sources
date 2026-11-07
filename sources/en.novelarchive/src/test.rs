@@ -6,7 +6,7 @@ use aidoku::{
 	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
-use helpers::{ADULT_GENRES, content_rating, genres, leading_chapter_number};
+use helpers::{ADULT_GENRES, content_rating, genres, number_and_title};
 use markdown::{html_to_markdown, paragraphs};
 use models::{MirrorChapterList, MirrorList};
 
@@ -138,13 +138,13 @@ fn review_chapters_take_the_number_their_name_prints() {
 		]
 	);
 	assert_eq!(
-		leading_chapter_number("Chapter 174 I Am The Only God!"),
-		Some((174.0, "I Am The Only God!"))
+		number_and_title("Chapter 174 I Am The Only God!", 9.0),
+		(174.0, Some("I Am The Only God!".into()))
 	);
 	// A title that happens to start with the number keeps it.
 	assert_eq!(
-		leading_chapter_number("Chapter 1 1984 Begins"),
-		Some((1.0, "1984 Begins"))
+		number_and_title("Chapter 1 1984 Begins", 9.0),
+		(1.0, Some("1984 Begins".into()))
 	);
 }
 
@@ -522,10 +522,14 @@ fn review_mirror_html_keeps_bold_and_italics() {
 #[aidoku_test]
 fn review_mirror_chapters_take_the_title_number_and_group() {
 	assert_eq!(
-		leading_chapter_number("Chapter 2315 Nothing Is Certain"),
-		Some((2315.0, "Nothing Is Certain"))
+		number_and_title("Chapter 2315 Nothing Is Certain", 56.0),
+		(2315.0, Some("Nothing Is Certain".into()))
 	);
-	assert_eq!(leading_chapter_number("2 Illustration"), None);
+	assert_eq!(
+		number_and_title("2 Illustration", 56.0),
+		(56.0, Some("2 Illustration".into()))
+	);
+	assert_eq!(number_and_title(" 2 ", 56.0), (56.0, None));
 	let mirror = serde_json::from_str::<MirrorList>(MIRRORS)
 		.unwrap()
 		.sources

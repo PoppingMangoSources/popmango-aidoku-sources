@@ -1,6 +1,6 @@
 use crate::{
 	BASE_URL,
-	helpers::{chapter_url, content_rating, genres, leading_chapter_number},
+	helpers::{chapter_url, content_rating, genres, number_and_title},
 };
 use aidoku::{
 	Chapter, Manga, MangaStatus, MangaWithChapter,
@@ -108,16 +108,18 @@ pub struct MirrorChapterText {
 impl MirrorChapter {
 	// `number` addresses the mirror's copy; the title, when it has one, carries the real chapter number.
 	pub fn into_chapter(self, novel: &str, mirror: &Mirror) -> Chapter {
-		let title = self.title.as_deref().unwrap_or_default().trim();
-		let (number, title) = leading_chapter_number(title).unwrap_or((self.number as f32, title));
+		let (number, title) = number_and_title(
+			self.title.as_deref().unwrap_or_default(),
+			self.number as f32,
+		);
 		Chapter {
 			key: format!("{}:{}", mirror.id, self.number),
-			// A mirror's part number ("2") isn't a title.
-			title: (!title.chars().all(|c| c.is_ascii_digit())).then(|| title.into()),
+			title,
 			chapter_number: Some(number),
 			url: Some(format!(
-				"{BASE_URL}/reader?novel={novel}&chapter={}&source={}",
-				self.number, mirror.id
+				"{}&source={}",
+				chapter_url(novel, self.number),
+				mirror.id
 			)),
 			scanlators: Some(vec![mirror.name()]),
 			..Default::default()
@@ -188,16 +190,16 @@ impl Novel {
 		(1..=count)
 			.rev()
 			.map(|position| {
-				let name = self
-					.chapter_names
-					.get(position - 1)
-					.map_or("", |name| name.trim());
 				// The number a name prints ("Chapter 165.2"), else the position the reader links.
-				let (number, title) =
-					leading_chapter_number(name).unwrap_or((position as f32, name));
+				let (number, title) = number_and_title(
+					self.chapter_names
+						.get(position - 1)
+						.map_or("", String::as_str),
+					position as f32,
+				);
 				Chapter {
 					key: position.to_string(),
-					title: (!title.chars().all(|c| c.is_ascii_digit())).then(|| title.into()),
+					title,
 					chapter_number: Some(number),
 					url: Some(chapter_url(&self.id, position)),
 					..Default::default()
