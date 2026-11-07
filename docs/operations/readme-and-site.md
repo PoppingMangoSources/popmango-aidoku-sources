@@ -48,8 +48,14 @@ window holds the repository url, and the sources are "routes" on a Route Select 
 > ⚠️ The ticker's clipping strip must not be rotated. iOS Safari drew the moving row as an empty
 > red band while `.ticker` itself carried `rotate` (with a `100vw` negative-margin bleed and
 > `will-change`); shrinking the row to icons did not cure it. The Mana site's straight ticker
-> never blanks, so the strip now matches it: `.ticker` sits outside `.wrap` at full width, the tilt
-> is a still `::before` band, and the row is two `.ticker__set`s sliding by `translateX(-50%)`.
+> never blanks, so the strip now matches it: `.ticker` sits outside `.wrap` at full width and holds
+> only the row (two `.ticker__set`s sliding by `translateX(-50%)`), and the tilt is a still
+> `::before` band on the `.ticker-band` around it. With the band inside the clip the row still
+> froze now and then, so keep the clip holding the row alone.
+
+> ⚠️ Keep the page's animation light. The ticker froze on iOS while eight floating hearts animated
+> a `clip-path` and a ray layer 1.8 times the scene's size spun behind Mango-chan. The hearts are
+> now `♥` glyphs and the rays are still.
 
 > ⚠️ Spacing, type sizes, radii and the fixed colours are named in `:root` (`--sp-N` in 4px steps
 > by multiple, `--text-*`, `--r-*`, `--ink-fixed`, `--white`, `--safe-*`). Write a new value as
