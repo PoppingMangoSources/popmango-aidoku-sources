@@ -1,11 +1,11 @@
 #![no_std]
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
-	HomeComponent, HomeComponentValue, HomeLayout, Link, Listing, ListingProvider, Manga,
-	MangaPageResult, MultiSelectFilter, Page, PageContent, Result, Source,
+	HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Listing, ListingProvider,
+	Manga, MangaPageResult, MultiSelectFilter, Page, PageContent, Result, Source,
 	alloc::{String, Vec, vec},
 	helpers::string::PlainText,
-	imports::net::Request,
+	imports::{net::Request, std::send_partial_result},
 	prelude::*,
 };
 
@@ -118,6 +118,28 @@ impl Source for NovelArchive {
 
 impl Home for NovelArchive {
 	fn get_home(&self) -> Result<HomeLayout> {
+		let mut layout = HomeLayout {
+			components: [
+				("Trending", HomeComponentValue::empty_big_scroller()),
+				("Popular", HomeComponentValue::empty_scroller()),
+				(
+					"Recently Updated",
+					HomeComponentValue::empty_manga_chapter_list(),
+				),
+				("Top Rated", HomeComponentValue::empty_scroller()),
+				("Editor's Choice", HomeComponentValue::empty_big_scroller()),
+				("New in the Archive", HomeComponentValue::empty_scroller()),
+			]
+			.into_iter()
+			.map(|(title, value)| HomeComponent {
+				title: Some(title.into()),
+				subtitle: None,
+				value,
+			})
+			.collect(),
+		};
+		send_partial_result(&HomePartialResult::Layout(layout.clone()));
+
 		let hide_adult = settings::hide_adult();
 		let sorted = |sort| {
 			Request::get(
@@ -129,7 +151,7 @@ impl Home for NovelArchive {
 				.url(1),
 			)
 		};
-		let feeds: Vec<Result<Vec<Novel>>> = Request::send_all([
+		let mut feeds: Vec<Result<Vec<Novel>>> = Request::send_all([
 			Request::get(format!("{API_URL}/trending?limit={FEED_SIZE}"))?,
 			sorted(Some("popular"))?,
 			Request::get(format!("{API_URL}/recently-updated?limit={FEED_SIZE}"))?,
@@ -141,106 +163,57 @@ impl Home for NovelArchive {
 		.map(|response| Ok(parse::<NovelList>(response?)?.novels))
 		.collect();
 		// A feed that fails drops out; the home only fails when none loaded.
-		if feeds.iter().all(Result::is_err) {
-			return Err(feeds
-				.into_iter()
-				.find_map(Result::err)
-				.unwrap_or_else(|| error!("Novel Archive's home didn't load")));
+		if feeds.iter().all(Result::is_err)
+			&& let Err(error) = feeds.swap_remove(0)
+		{
+			return Err(error);
 		}
 		let mut feeds = feeds
 			.into_iter()
 			.map(|feed| feed.ok().filter(|novels| !novels.is_empty()));
+		let mut feed = || feeds.next().flatten();
 
-		let cards = |novels: Vec<Novel>| -> Vec<Link> {
-			novels
+		let big = |novels: Vec<Novel>, auto_scroll_interval| HomeComponentValue::BigScroller {
+			entries: novels.into_iter().map(Novel::into_details).collect(),
+			auto_scroll_interval,
+		};
+		let scroller = |novels: Vec<Novel>, id: &str, name: &str| HomeComponentValue::Scroller {
+			entries: novels
 				.into_iter()
 				.map(|novel| Manga::from(novel).into())
-				.collect()
-		};
-		let listing = |id: &str, name: &str| {
-			Some(Listing {
+				.collect(),
+			listing: Some(Listing {
 				id: id.into(),
 				name: name.into(),
 				..Default::default()
-			})
+			}),
 		};
-		// Array elements are evaluated in order, so each section takes its own feed.
-		let sections = [
-			(
-				"Trending",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::BigScroller {
-						entries: novels.into_iter().map(Novel::into_details).collect(),
-						auto_scroll_interval: Some(8.0),
-					}),
-			),
-			(
-				"Popular",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::Scroller {
-						entries: cards(novels),
-						listing: listing("popular", "Popular"),
-					}),
-			),
-			(
-				"Recently Updated",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::MangaChapterList {
-						page_size: Some(5),
-						entries: novels.into_iter().filter_map(Novel::into_latest).collect(),
-						listing: None,
-					}),
-			),
-			(
-				"Top Rated",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::Scroller {
-						entries: cards(novels),
-						listing: listing("rating", "Top Rated"),
-					}),
-			),
+		// Array elements are evaluated in order, so each takes its own feed.
+		let values = [
+			feed().map(|novels| big(novels, Some(8.0))),
+			feed().map(|novels| scroller(novels, "popular", "Popular")),
+			feed().map(|novels| HomeComponentValue::MangaChapterList {
+				page_size: Some(5),
+				entries: novels.into_iter().filter_map(Novel::into_latest).collect(),
+				listing: None,
+			}),
+			feed().map(|novels| scroller(novels, "rating", "Top Rated")),
 			// The feed carries each pick's description and genres.
-			(
-				"Editor's Choice",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::BigScroller {
-						entries: novels.into_iter().map(Novel::into_details).collect(),
-						auto_scroll_interval: None,
-					}),
-			),
-			(
-				"New in the Archive",
-				feeds
-					.next()
-					.flatten()
-					.map(|novels| HomeComponentValue::Scroller {
-						entries: cards(novels),
-						listing: listing("recent", "New in the Archive"),
-					}),
-			),
+			feed().map(|novels| big(novels, None)),
+			feed().map(|novels| scroller(novels, "recent", "New in the Archive")),
 		];
-		Ok(HomeLayout {
-			components: sections
-				.into_iter()
-				.filter_map(|(title, value)| {
-					Some(HomeComponent {
-						title: Some(title.into()),
-						subtitle: None,
-						value: value?,
-					})
+		layout.components = layout
+			.components
+			.into_iter()
+			.zip(values)
+			.filter_map(|(component, value)| {
+				Some(HomeComponent {
+					value: value?,
+					..component
 				})
-				.collect(),
-		})
+			})
+			.collect();
+		Ok(layout)
 	}
 }
 

@@ -144,11 +144,11 @@ pub fn chapter_title(name: &str, number: usize) -> Option<String> {
 	let name = name.trim();
 	let prefix = format!("chapter {number}");
 	let rest = name
-		.get(..prefix.len())
-		.filter(|start| start.eq_ignore_ascii_case(&prefix))
-		.map(|_| &name[prefix.len()..])
-		.filter(|rest| !rest.starts_with(|c: char| c.is_ascii_digit()))
-		.map(|rest| {
+		.split_at_checked(prefix.len())
+		.filter(|(start, rest)| {
+			start.eq_ignore_ascii_case(&prefix) && !rest.starts_with(|c: char| c.is_ascii_digit())
+		})
+		.map(|(_, rest)| {
 			rest.trim_start_matches([' ', ':', '-', '\u{2013}', '\u{2014}', '.'])
 				.trim()
 		})
