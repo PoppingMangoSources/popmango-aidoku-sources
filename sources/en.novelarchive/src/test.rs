@@ -7,8 +7,8 @@ use aidoku::{
 };
 use aidoku_test::aidoku_test;
 use helpers::{
-	ADULT_GENRES, Markdown, content_rating, genres, html_paragraphs, leading_chapter_number,
-	paragraphs,
+	ADULT_GENRES, Markdown, content_rating, genres, html_paragraphs, image_url,
+	leading_chapter_number, paragraphs,
 };
 use models::{MirrorChapterList, MirrorList};
 
@@ -531,6 +531,15 @@ fn review_mirror_html_keeps_bold_and_italics() {
 		markdown.finish(),
 		"He said *never* and it, a\\_b.\n\n---\n\n**\\[Roulette Event\\]**\n\n**: Create your own \\<Records\\>.**\n\n**Freeloading will** ***not*** **be tolerated!\\]**\n\n\\- Line\n\n1\\. two"
 	);
+	// Chapter 1's cover, as the site serves it, and the shapes a src can take.
+	let cover =
+		"/api/novels/6a162ec14f942c668d69a598/sources/fucknovelpia/img/af678b901a321c18.jpg";
+	assert_eq!(image_url(cover), Some(format!("{BASE_URL}{cover}")));
+	assert_eq!(
+		image_url("//cdn.example.org/a b.png").as_deref(),
+		Some("https://cdn.example.org/a%20b.png")
+	);
+	assert_eq!(image_url("data:image/png;base64,AAAA"), None);
 	// The text itself survives the walk there too.
 	let walked = html_paragraphs("<p>He said <em>never</em> it.</p>").unwrap();
 	assert!(walked.contains("never"), "{walked}");

@@ -13,7 +13,7 @@ sources:
   - code: sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: 08479e1
+verified_at: c933a30
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -124,8 +124,13 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 > has `h1`, `hr`, `p`, `b`, `i`, `br`, `center`, `div` and `span`, with `&lt;Dark Exploration
 > Records&gt;` as text, and chapter 1 opens with an `img`. `html_paragraphs` walks it into Markdown, as
 > `en.freewebnovel` does: bold and italics stay open across a `<br>` and nested tags, a heading is a
-> bold line, `hr` a rule and an http image `![](<url>)`, which the reader's MarkdownUI loads. The
+> bold line, `hr` a rule and an image `![](<url>)`, which the reader's MarkdownUI loads. The
 > archive's own text is plain, which the site HTML-escapes and prints as is.
+
+> ⚠️ Mirror images are served by the site (`/api/novels/{id}/sources/{mirror}/img/<hash>.jpg`), and
+> the rendered page shows them absolute only because Firecrawl resolves links; a site-relative or
+> protocol-relative `src` is resolved before use (`image_url`), and any other non-http one, such as
+> `data:`, is left out.
 
 > ⚠️ Firecrawl strips the tags out of HTML inside a JSON response's strings, so the mirror endpoint
 > read through it looks like plain text with paragraphs run together (read that way on 2026-11-07,

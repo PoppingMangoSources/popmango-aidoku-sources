@@ -292,10 +292,8 @@ impl Markdown {
 						"br" => self.end_line(),
 						"hr" => self.block("---".into()),
 						"img" => {
-							if let Some(src) =
-								child.attr("src").filter(|src| src.starts_with("http"))
-							{
-								self.block(format!("![](<{}>)", src.replace(' ', "%20")));
+							if let Some(url) = child.attr("src").as_deref().and_then(image_url) {
+								self.block(format!("![](<{url}>)"));
 							}
 						}
 						"strong" | "b" => {
@@ -333,6 +331,18 @@ impl Markdown {
 		self.end_line();
 		self.paragraphs.join("\n\n")
 	}
+}
+
+// Mirror images are served by the site under /api/novels/{id}/sources/{mirror}/img.
+pub fn image_url(src: &str) -> Option<String> {
+	let url = if let Some(path) = src.strip_prefix("//") {
+		format!("https://{path}")
+	} else if src.starts_with('/') {
+		format!("{BASE_URL}{src}")
+	} else {
+		src.into()
+	};
+	url.starts_with("http").then(|| url.replace(' ', "%20"))
 }
 
 pub fn paragraphs(text: &str) -> String {
