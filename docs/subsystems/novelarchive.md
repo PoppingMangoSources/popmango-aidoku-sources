@@ -14,7 +14,7 @@ sources:
   - code: sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
-verified_at: 3145f4a
+verified_at: 4cf995a
 ---
 
 Novel Archive is a web-novel archive with a plain JSON API under `/api/novels`, read the way the
@@ -130,9 +130,14 @@ grouped as "Novel Archive" (`sources/en.novelarchive/src/helpers.rs`, `mirror_ch
 > archive's own text is plain, which the site HTML-escapes and prints as is.
 
 > ⚠️ Mirror images are served by the site (`/api/novels/{id}/sources/{mirror}/img/<hash>.jpg`), and
-> the rendered page shows them absolute only because Firecrawl resolves links; a site-relative or
-> protocol-relative `src` is resolved before use, and any other non-http one, such as
-> `data:`, is left out.
+> the rendered page shows them absolute only because Firecrawl resolves links. The fragment is parsed
+> with the site as its base and read with `abs:src`, as `zh.jmcomic` does; a non-http result, such as
+> an inline `data:` image, is left out.
+
+> ⚠️ `zh.wenku8` keeps illustrations out of its text because "Aidoku's paged text reader cannot load
+> remote image URLs" (its `markdown.rs`); `zh.jmcomic`, `zh.zaimanhuanovel`, `en.novelbuddy` and
+> `en.chikari` put `![](url)` in the text as here. So a mirror image may show only in the scroll
+> reader (unverified in the app).
 
 > ⚠️ Firecrawl strips the tags out of HTML inside a JSON response's strings, so the mirror endpoint
 > read through it looks like plain text with paragraphs run together (read that way on 2026-11-07,

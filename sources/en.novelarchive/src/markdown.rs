@@ -111,16 +111,11 @@ impl Markdown {
 		match tag.as_str() {
 			"br" => self.end_line(),
 			"hr" => self.block("---".into()),
+			// Mirror images are served by the site under /api/novels/{id}/sources/{mirror}/img; an
+			// inline data: image would be its whole file in the text.
 			"img" => {
-				// Mirror images are served by the site under /api/novels/{id}/sources/{mirror}/img.
-				let src = child.attr("src").unwrap_or_default();
-				let url = match src.strip_prefix("//") {
-					Some(rest) => format!("https://{rest}"),
-					None if src.starts_with('/') => format!("{BASE_URL}{src}"),
-					None => src,
-				};
-				if url.starts_with("http") {
-					self.block(format!("![](<{}>)", url.replace(' ', "%20")));
+				if let Some(src) = child.attr("abs:src").filter(|src| src.starts_with("http")) {
+					self.block(format!("![]({src})"));
 				}
 			}
 			"strong" | "b" => self.emphasis("**", child),
@@ -169,7 +164,7 @@ pub fn html_to_markdown(content: &str) -> Result<String> {
 		return Ok(paragraphs(content));
 	}
 	let mut markdown = Markdown::default();
-	if let Some(root) = Html::parse_fragment(content)?.select_first("html") {
+	if let Some(root) = Html::parse_fragment_with_url(content, BASE_URL)?.select_first("html") {
 		markdown.element(&root);
 	}
 	Ok(markdown.finish())

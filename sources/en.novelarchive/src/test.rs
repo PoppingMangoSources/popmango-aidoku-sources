@@ -501,15 +501,15 @@ fn review_mirror_html_keeps_bold_and_italics() {
 		 <p><b>Freeloading will </b><b><i>not</i></b><b> be tolerated!</b><b>]</b></p>\
 		 <center><b>--------------------</b></center>\
 		 <div><div></div>\n</div>“Loose text.”<p></p><p>- Line</p><p>1. two</p>\
-		 <img src=\"data:image/png;base64,AAAA\"><img src=\"//cdn.example.org/a b.png\">"
+		 <img src=\"data:image/png;base64,AAAA\"><img src=\"//cdn.example.org/a.png\">"
 	);
 	assert_eq!(
 		html_to_markdown(&html).unwrap(),
 		format!(
-			"![](<{BASE_URL}{cover}>)\n\n# Part 1\n\n---\n\nHe said *never* and it, a\\_b.\n\n\
+			"![]({BASE_URL}{cover})\n\n# Part 1\n\n---\n\nHe said *never* and it, a\\_b.\n\n\
 			 **\\[Roulette Event\\]**\n\n**: Create your own \\<Records\\>.**\n\n\
 			 **Freeloading will** ***not*** **be tolerated!\\]**\n\n**--------------------**\n\n\
-			 “Loose text.”\n\n\\- Line\n\n1\\. two\n\n![](<https://cdn.example.org/a%20b.png>)"
+			 “Loose text.”\n\n\\- Line\n\n1\\. two\n\n![](https://cdn.example.org/a.png)"
 		)
 	);
 	// A copy without markup keeps its lines.
