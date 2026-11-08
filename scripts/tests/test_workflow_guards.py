@@ -151,6 +151,34 @@ class ScopeTests(unittest.TestCase):
         self.template_consumer(2)
         self.assertTrue(any('en.other' in e and 'version 3' in e for e in self.inspect()))
 
+    def new_template_consumer(self, consumer_version, change_template=True):
+        uses = 'theme = { path = "../../templates/theme" }\n'
+        (self.repo / 'templates/theme/src').mkdir(parents=True)
+        (self.repo / 'templates/theme/src/lib.rs').write_text('template\n')
+        self.commit('upstream template')
+        self.base = self.git('rev-parse', 'HEAD')
+        (self.source / 'Cargo.toml').write_text(uses)
+        if change_template:
+            (self.repo / 'templates/theme/src/lib.rs').write_text('shared feature\n')
+        other = self.repo / 'sources/en.other'
+        (other / 'res').mkdir(parents=True)
+        (other / 'Cargo.toml').write_text(uses)
+        (other / 'res/source.json').write_text(json.dumps({'info': {'id': 'en.other', 'version': consumer_version}}) + '\n')
+        self.metadata(2)
+        self.commit('template change with a new consumer')
+
+    def test_new_consumer_rides_with_template_change(self):
+        self.new_template_consumer(1)
+        self.assertEqual(self.inspect(), [])
+
+    def test_new_consumer_starts_at_version_one(self):
+        self.new_template_consumer(2)
+        self.assertTrue(any('en.other' in e and 'version 1' in e for e in self.inspect()))
+
+    def test_new_consumer_needs_a_template_change(self):
+        self.new_template_consumer(1, change_template=False)
+        self.assertTrue(any('en.other' in e and 'not upstream' in e for e in self.inspect()))
+
     def test_unrelated_template(self):
         (self.repo / 'templates/other/src').mkdir(parents=True)
         (self.repo / 'templates/other/src/lib.rs').write_text('unrelated\n')

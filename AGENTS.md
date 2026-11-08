@@ -950,8 +950,10 @@ went in one of these ways, and new ones go in the same way:
   wrong ids and wrong submission versions fail. A clean final diff cannot conceal unrelated
   commits that were later reverted.
 - A submission may also change `templates/<name>/` when its source depends on that template,
-  and other sources depending on it, each at exactly its upstream version plus one. Other
-  templates and sources still fail. `pr-branch.sh` copies one source only, so such a round is
+  and other sources depending on it, each at exactly its upstream version plus one. A source not
+  yet upstream may ride along at version 1 only when it uses the changed template, so a template
+  change ships with the new sources it serves (#824; Violet, Thunder and Madara share the
+  mangathemesia child theme module). Other templates and sources still fail. `pr-branch.sh` copies one source only, so such a round is
   built in a worktree from the PR branch: copy the template and the source from `main`, drop
   `src/test.rs` and its module line, keep version 1, and edit the other consumers there.
 - Submission branches are `feat/<id>` or `fix/<id>`; the existing

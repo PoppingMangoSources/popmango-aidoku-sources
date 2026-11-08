@@ -83,11 +83,18 @@ def inspect(repo, base, head, source):
         if len(parents) > 2:
             errors.add(f"merge commit {commit[:12]}; rebase the submission instead")
         check_paths(git(repo, "diff-tree", "--root", "--no-commit-id", "--no-renames", "--name-only", "-r", "-z", commit))
+    changed_templates = {
+        path.split("/")[1] for path in delta.decode("utf-8", "replace").split("\0") if path.startswith("templates/")
+    }
     for consumer in sorted(consumers):
         previous = source_version(repo, base, consumer)
         version = source_version(repo, head, consumer)
         if previous is None:
-            errors.add(f"{consumer} is not upstream; submit it on its own branch")
+            # A new source may ride along only to show a template change it uses (#824).
+            if not templates_used(repo, head, consumer) & changed_templates:
+                errors.add(f"{consumer} is not upstream; submit it on its own branch")
+            elif version != 1:
+                errors.add(f"{consumer} is new with the template change, so it must use version 1, found {version}")
         elif version != previous + 1:
             errors.add(f"{consumer} changes with the template, so it must use version {previous + 1}, found {version}")
     metadata_path = prefix + "res/source.json"
