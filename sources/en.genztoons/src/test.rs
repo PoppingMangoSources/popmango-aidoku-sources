@@ -2,8 +2,8 @@
 
 use super::*;
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue,
-	Manga, MangaPageResult, MangaStatus, PageContent, Viewer,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, HomeLayout,
+	LinkValue, Manga, MangaPageResult, MangaStatus, PageContent, Viewer,
 	alloc::{String, Vec, format, vec},
 	imports::html::Html,
 };
@@ -27,7 +27,7 @@ const HOME: &str = r#"
 <div><h2>Sync Local Library</h2></div>
 "#;
 
-fn home(aspect: &str) -> aidoku::HomeLayout {
+fn home(aspect: &str) -> HomeLayout {
 	let html = Html::parse(HOME.replace("{aspect}", aspect)).unwrap();
 	let source = GenzToons::new();
 	source.parse_home(&source.params(), &html)
@@ -74,7 +74,11 @@ fn review_home_keeps_the_site_rows() {
 			Some("Editor's Choice")
 		]
 	);
-	let values: Vec<&HomeComponentValue> = layout.components.iter().map(|c| &c.value).collect();
+	let values: Vec<&HomeComponentValue> = layout
+		.components
+		.iter()
+		.map(|component| &component.value)
+		.collect();
 	assert!(
 		matches!(values[0], HomeComponentValue::Scroller { entries, .. } if entries[0].title == "Featured")
 	);

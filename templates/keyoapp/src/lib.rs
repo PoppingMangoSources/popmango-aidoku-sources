@@ -13,7 +13,7 @@ pub use imp::Impl;
 #[derive(Default)]
 pub struct Params {
 	pub base_url: Cow<'static, str>,
-	/// Home rows to leave out by heading, such as one that repeats another row.
+	// Home rows left out by heading, such as one repeating another row
 	pub hidden_rows: &'static [&'static str],
 }
 

@@ -24,7 +24,7 @@ pub trait Impl {
 	fn params(&self) -> Params;
 
 	// The site sends its whole catalogue on one page and filters it in the browser, ignoring query
-	// parameters, so the source filters it the same way.
+	// parameters, so search does the same
 	fn get_search_manga_list(
 		&self,
 		params: &Params,
@@ -46,7 +46,7 @@ pub trait Impl {
 			}
 		}
 		let query = query.map(|query| query.to_lowercase());
-		// A pasted series link finds that series.
+		// A pasted series link finds that series
 		let pasted = query
 			.as_deref()
 			.and_then(|query| query.strip_prefix(params.base_url.as_ref()))
@@ -59,18 +59,28 @@ pub trait Impl {
 			.map(|cards| {
 				cards
 					.filter(|card| {
-						// The card's title also carries the series' alternative titles.
-						let title = card.attr("title").unwrap_or_default().to_lowercase();
-						// A JSON list such as `["Drama","Sports"]`, with apostrophes as `___`; a name
-						// can hold a comma, so it splits between quotes.
-						let tags: Vec<String> = card
-							.attr("tags")
-							.unwrap_or_default()
-							.trim_matches(['[', ']', '"'])
-							.split("\",\"")
-							// Some names carry stray spaces and tabs.
-							.map(|tag| tag.trim().replace("___", "'").to_lowercase())
-							.collect();
+						let matches_query = match pasted {
+							Some(path) => card
+								.select_first("a[href]")
+								.and_then(|link| link.attr("href"))
+								.is_some_and(|href| href.trim_end_matches('/') == path),
+							// The card's title also carries the series' alternative titles
+							None => query.as_ref().is_none_or(|query| {
+								card.attr("title")
+									.is_some_and(|title| title.to_lowercase().contains(query))
+							}),
+						};
+						// A JSON list such as `["Drama","Sports"]` with apostrophes as `___`; a name
+						// can hold a comma or stray spaces, so it splits between quotes and trims
+						let has_genres = genres.is_empty()
+							|| card.attr("tags").is_some_and(|tags| {
+								let tags: Vec<String> = tags
+									.trim_matches(['[', ']', '"'])
+									.split("\",\"")
+									.map(|tag| tag.trim().replace("___", "'").to_lowercase())
+									.collect();
+								genres.iter().all(|genre| tags.contains(genre))
+							});
 						let has = |values: &[String], attr: &str| {
 							values.is_empty()
 								|| card.attr(attr).is_some_and(|value| {
@@ -80,13 +90,7 @@ pub trait Impl {
 								})
 						};
 						!is_novel(card)
-							&& match pasted {
-								Some(path) => card
-									.select_first("a[href]")
-									.and_then(|link| link.attr("href"))
-									.is_some_and(|href| href.trim_end_matches('/') == path),
-								None => query.as_ref().is_none_or(|query| title.contains(query)),
-							} && genres.iter().all(|genre| tags.contains(genre))
+							&& matches_query && has_genres
 							&& has(&types, "data-type")
 							&& has(&statuses, "data-status")
 					})
@@ -115,7 +119,7 @@ pub trait Impl {
 	) -> Result<Manga> {
 		let url = format!("{}{}", params.base_url, manga.key);
 		let html = Request::get(&url)?.html()?;
-		// An unknown series redirects to a page without one.
+		// An unknown series redirects to a not-found page without one
 		let Some(title) = html.select_first("div.grid > h1").and_then(|h1| h1.text()) else {
 			bail!("Series not found");
 		};
@@ -147,15 +151,18 @@ pub trait Impl {
 				})
 				.unwrap_or_default();
 			// The page links only a series' first genres, while its keywords start with all of
-			// them, so the rating reads both.
+			// them, so the rating reads both
 			let keywords = html
 				.select_first("meta[name=keywords]")
-				.and_then(|meta| meta.attr("content"))
-				.unwrap_or_default();
+				.and_then(|meta| meta.attr("content"));
 			let has_any = |names: &[&str]| {
 				tags.iter()
 					.map(String::as_str)
-					.chain(keywords.split(',').map(str::trim))
+					.chain(
+						keywords
+							.iter()
+							.flat_map(|words| words.split(',').map(str::trim)),
+					)
 					.any(|tag| names.iter().any(|name| tag.eq_ignore_ascii_case(name)))
 			};
 			manga.content_rating = if has_any(&["Adult", "Smut", "Hentai"]) {
@@ -181,7 +188,7 @@ pub trait Impl {
 		if needs_chapters {
 			manga.chapters = html.select("#chapters > a").map(|rows| {
 				rows.filter(|row| {
-					// Coin chapters need a login, and upcoming ones can't be read yet.
+					// Coin chapters need a login, and upcoming ones can't be read yet
 					row.select_first("img[alt=Coin]").is_none() && !has_badge(row, "Upcoming")
 				})
 				.filter_map(|row| chapter(&row, &params.base_url))
@@ -193,9 +200,8 @@ pub trait Impl {
 	}
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let url = format!("{}{}", params.base_url, chapter.key);
-		let response = Request::get(&url)?.string()?;
-		// The reader builds each page's url from this template and the image's uid.
+		let response = Request::get(format!("{}{}", params.base_url, chapter.key))?.string()?;
+		// The reader builds each page's url from this template and the image's uid
 		let template = response
 			.split_once("realUrl")
 			.and_then(|(_, rest)| rest.split_once('`'))
@@ -227,12 +233,12 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let html = Request::get(params.base_url.as_ref())?.html()?;
+		let html = Request::get(&params.base_url)?.html()?;
 		Ok(self.parse_home(params, &html))
 	}
 
-	// Each row is an `h2` over its cards; the featured slider above them has no heading. Apart
-	// from the request, so a layout can be checked against a saved page.
+	// Each row is an `h2` over its cards, and the featured slider above them has none. Kept apart
+	// from the request so a layout can be checked against a saved page
 	fn parse_home(&self, params: &Params, html: &Document) -> HomeLayout {
 		let mut components = Vec::new();
 
@@ -252,7 +258,7 @@ pub trait Impl {
 			})
 			.unwrap_or_default();
 		if !featured.is_empty() {
-			// Some sites feature 2:1 banners rather than covers.
+			// Some sites feature 2:1 banners rather than covers
 			let value = if html
 				.select_first("a.splide__slide [class*='aspect-[2/1]']")
 				.is_some()
@@ -291,14 +297,15 @@ pub trait Impl {
 			});
 		}
 
-		let mut titles: Vec<String> = Vec::new();
 		for heading in html.select("h2").into_iter().flatten() {
 			let Some(title) = heading.text() else {
 				continue;
 			};
-			// The site repeats some rows for its mobile layout; the bulk discount row only sells
-			// coin chapters.
-			if titles.contains(&title)
+			// The site repeats some rows for its mobile layout, and the bulk discount row only
+			// sells coin chapters
+			if components
+				.iter()
+				.any(|component| component.title.as_ref() == Some(&title))
 				|| title == "Bulk Discounted Series"
 				|| params.hidden_rows.contains(&title.as_str())
 			{
@@ -338,7 +345,7 @@ pub trait Impl {
 					listing: None,
 				}
 			} else {
-				// Pinned Series shares the latest row's posters.
+				// Pinned Series shares the latest row's posters
 				let entries: Vec<Link> = section
 					.select("button[title], .latest-poster")
 					.map(|cards| {
@@ -363,7 +370,6 @@ pub trait Impl {
 					listing: None,
 				}
 			};
-			titles.push(title.clone());
 			components.push(HomeComponent {
 				title: Some(title),
 				subtitle: None,
@@ -375,17 +381,19 @@ pub trait Impl {
 	}
 
 	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
-		// "/series/" alone, or with a query, is the catalogue rather than a series.
+		let Some(path) = url.strip_prefix(params.base_url.as_ref()) else {
+			return Ok(None);
+		};
+		// "/series/" alone, or with a query, is the catalogue rather than a series
 		let is_series = |path: &str| {
 			path.strip_prefix("/series/")
 				.is_some_and(|slug| !slug.is_empty() && !slug.starts_with('?'))
 		};
-		let path = url.strip_prefix_or_self(&params.base_url);
 		if is_series(path) {
 			return Ok(Some(DeepLinkResult::Manga { key: path.into() }));
 		}
 		if path.starts_with("/chapter/") {
-			// A chapter path holds the series id, not the path its page lives at.
+			// A chapter path holds the series id, not the path its page lives at
 			let html = Request::get(&url)?.html()?;
 			let Some(series) = html.select("a[href*='/series/']").and_then(|mut links| {
 				links.find_map(|link| {
