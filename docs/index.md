@@ -14,6 +14,7 @@ traps found in them. It grows as work touches new areas.
 - Working on Flame Comics: [[flamecomics]]
 - Working on Novel Archive: [[novelarchive]]
 - Working on KingOfShojo or RokariComics: [[mangathemesia-consumers]]
+- Working on Genz Toons or another Keyoapp site: [[keyoapp-template]]
 
 ---
 
@@ -31,6 +32,7 @@ _(none yet)_
 - [[flamecomics]] -- Flame's embedded page data, path keys, the novel lock rule
 - [[novelarchive]] -- Novel Archive's API, adult exclusions, dynamic genres, home feeds
 - [[mangathemesia-consumers]] -- KingOfShojo and Rokari on upstream's template unchanged
+- [[keyoapp-template]] -- the Keyoapp template: whole-catalogue search, generic home, which sites fit
 
 ## decisions
 
