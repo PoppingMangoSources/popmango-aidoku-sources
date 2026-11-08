@@ -6,17 +6,15 @@ updated: 2026-11-08
 sources:
   - code: templates/mangathemesia/src/imp.rs
   - code: templates/mangathemesia/src/helpers.rs
+  - code: templates/mangathemesia/src/child_theme.rs
   - code: sources/en.scythescans/src/lib.rs
   - code: sources/en.lagoonscans/src/lib.rs
   - code: sources/en.ravenscans/src/lib.rs
   - code: sources/en.ragescans/src/lib.rs
   - code: sources/en.violetscans/src/lib.rs
-  - code: sources/en.violetscans/src/home.rs
   - code: sources/en.violetscans/src/test.rs
   - code: sources/en.thunderscans/src/lib.rs
-  - code: sources/en.thunderscans/src/home.rs
   - code: sources/en.madarascans/src/lib.rs
-  - code: sources/en.madarascans/src/home.rs
 verified_at: 40480d5
 ---
 
@@ -71,11 +69,14 @@ Scans showed a maintenance page on 2026-11-08 and have no crate yet.
 > ⚠️ The template already turns a standard `div.big-slider` (Scythe, Raven, Rage) into its featured
 > `BigScroller`. Violet, Madara and Thunder run a child theme with `.slidernew` image banners (one
 > `<img class="slider-content">` link per series, 1983×793 on Violet and Madara, 2048×768 on
-> Thunder). The template builds those (`helpers::slider_banners`, sized by `Params::banner_width`
-> and `banner_height`) at the top of its home, the owner's call; this fork's template copy differs
-> from upstream's by that and the novel text below. The rest of the child theme's home, `.bixbox`
-> rows of `.bsx` cards, the template's home doesn't read, so each source builds it in `home.rs` and
-> calls the helper for its banners. No upstream consumer used `slidernew` on 2026-11-08.
+> Thunder). The template's `get_home` reads neither those nor the child theme's `.bixbox` rows of
+> `.bsx` cards, so the whole home lives in the template's `child_theme::get_home` (banners sized by
+> `Params::banner_width` and `banner_height`), which those three call from their own `get_home`.
+> One shared module rather than three copies follows the template-first rule and the owner's call
+> to leave no duplicates; the
+> template's `get_home` stays upstream's. This fork's template copy differs from upstream's by that
+> module, the base64 reader and the novel text below. No upstream consumer used `slidernew` on
+> 2026-11-08.
 
 > ⚠️ Violet's and Madara's Popular Today box holds only its heading: its cards are in a rail beside
 > it, inside the `.hotslid` wrapper. Their Editor Picks is a `<section class="bixbox">` of
