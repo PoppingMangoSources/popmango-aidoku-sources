@@ -49,6 +49,8 @@ rest of this file still applies, so read each section before the work it covers.
 - Branches are `main`, `feat/<id>`, `fix/<id>`, `feat/<template>-template`, `chore/<topic>` or
   `docs/<topic>`, never `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`.
 - Don't open or post on a PR, and don't resolve review threads; draft the text for the person.
+- Refer to kkantan, and anyone whose pronouns aren't stated, as they/them: in chat replies,
+  summaries and drafts as well as files.
 - A mechanical rule that slipped goes into `check-sources.py` with a test, in the same commit
   as its fix (section 9).
 
