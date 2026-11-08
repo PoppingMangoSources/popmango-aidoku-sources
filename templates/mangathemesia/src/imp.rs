@@ -282,6 +282,18 @@ pub trait Impl {
 		let response = Request::get(&url)?.string()?;
 		let html = Html::parse_fragment_with_url(&response, &url)?;
 
+		// The theme's reader flags a novel chapter, whose text is in #readerarea.
+		if response.contains("\"is_novel\":true") {
+			let text = helpers::novel_text(&html);
+			if text.is_empty() {
+				bail!("No text found");
+			}
+			return Ok(vec![Page {
+				content: PageContent::text(text),
+				..Default::default()
+			}]);
+		}
+
 		let pages: Vec<Page> = html
 			.select("div#readerarea img")
 			.map(|els| {
@@ -326,7 +338,8 @@ pub trait Impl {
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		let html = Request::get(&params.base_url)?.html()?;
 
-		let mut components = Vec::new();
+		let mut components: Vec<HomeComponent> =
+			helpers::slider_banners(&html, params).into_iter().collect();
 
 		if let Some(hero) = html.select_first("div.big-slider, div.slidtop") {
 			let entries: Vec<Manga> = hero
