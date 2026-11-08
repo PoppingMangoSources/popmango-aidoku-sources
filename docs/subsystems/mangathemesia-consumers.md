@@ -59,12 +59,18 @@ and `genre[]` with the site's own ids (numeric on KingOfShojo, slugs on Rokari).
 > KingOfShojo and black for Rokari (the inside of its disc). `media/sources/*.png` repeats it for
 > the README.
 
-## The November batch (Scythe, Lagoon, Raven, Rage, Violet, Thunder, Madara)
+## The November batch (Scythe, Lagoon, Raven, Rage, Violet, Thunder, Madara, Eva)
 
-Seven consumers built from the KingOfShojo crate, each `filters.json` generated from the site's own
+Consumers built from the KingOfShojo crate, each `filters.json` generated from the site's own
 search form (the sort's six options map by position to the template's `order` values). Raven is
-rated 2: it carries many adult titles and no way to filter them (owner's call). Hades Scans and Eva
-Scans showed a maintenance page on 2026-11-08 and have no crate yet.
+rated 2: it carries many adult titles and no way to filter them (owner's call). Eva Scans came
+back from maintenance later the same day and is a copy of Madara's crate: the same child theme and
+`/series` path. It lists Adult, Smut and Mature genres, so it is rated 1 although keiyoushi marks it
+safe. Hades Scans still showed a maintenance page and has no crate.
+
+> ⚠️ Eva's images go through WordPress.com's proxy (`i1.wp.com/evascans.net/…`), which answers 404
+> to Python's and curl's default clients but 200 to a browser user agent, as the app sends. Fetch
+> its assets with a browser user agent, or from evascans.net directly.
 
 > ⚠️ The template already turns a standard `div.big-slider` (Scythe, Raven, Rage) into its featured
 > `BigScroller`. Violet, Madara and Thunder run a child theme with `.slidernew` image banners (one
