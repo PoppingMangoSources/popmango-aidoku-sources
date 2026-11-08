@@ -3,7 +3,7 @@
 use super::*;
 use aidoku::{
 	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue, Manga,
-	MangaPageResult,
+	MangaPageResult, MangaStatus,
 	alloc::{String, Vec, vec},
 };
 use aidoku_test::aidoku_test;
@@ -231,9 +231,43 @@ fn home_follows_the_site() {
 	let HomeComponentValue::BigScroller { entries, .. } = &picks.value else {
 		panic!("editor picks are a big scroller");
 	};
+	assert!(entries.iter().all(|manga| manga.cover.is_some()
+		&& manga.description.is_some()
+		&& manga.status != MangaStatus::Unknown));
+}
+
+// Latest Comics names each series' newest chapter a reader can open, keyed as its chapter list is.
+#[aidoku_test]
+fn latest_comics_name_readable_chapters() {
+	let home = source().get_home().unwrap();
+	let latest = home
+		.components
+		.iter()
+		.find(|component| component.title.as_deref() == Some("Latest Comics"))
+		.unwrap();
+	let HomeComponentValue::MangaChapterList { entries, .. } = &latest.value else {
+		panic!("latest comics is a chapter list");
+	};
+	assert!(!entries.is_empty());
 	assert!(
 		entries
 			.iter()
-			.all(|manga| manga.cover.is_some() && manga.description.is_some())
+			.all(|entry| entry.chapter.chapter_number.is_some())
 	);
+	let entry = &entries[0];
+	let manga = source()
+		.get_manga_update(entry.manga.clone(), false, true)
+		.unwrap();
+	assert!(
+		manga
+			.chapters
+			.clone()
+			.unwrap()
+			.iter()
+			.any(|chapter| chapter.key == entry.chapter.key)
+	);
+	let pages = source()
+		.get_page_list(manga, entry.chapter.clone())
+		.unwrap();
+	assert!(!pages.is_empty());
 }

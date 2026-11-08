@@ -1,5 +1,6 @@
 use aidoku::{
-	HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, Result,
+	Chapter, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, MangaStatus,
+	MangaWithChapter, Result,
 	alloc::{String, Vec},
 	helpers::string::StripPrefixOrSelf,
 	imports::{html::Element, net::Request},
@@ -7,7 +8,7 @@ use aidoku::{
 };
 use mangathemesia::{
 	Params,
-	helpers::{ElementImageAttr, slider_banners},
+	helpers::{ElementImageAttr, find_first_f32, slider_banners},
 };
 
 // The site's home is its own child theme, which the template's home doesn't read beyond its banners:
@@ -45,6 +46,27 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 			.parent()
 			.filter(|parent| parent.has_class("hotslid"))
 			.unwrap_or(section);
+		// Latest Comics and Latest Novels list each series' newest chapters.
+		if cards.select_first(".chapter-list > a").is_some() {
+			let entries: Vec<MangaWithChapter> = cards
+				.select(".bsx")
+				.into_iter()
+				.flatten()
+				.filter_map(|card| newest_chapter(&card, base_url))
+				.collect();
+			if !entries.is_empty() {
+				components.push(HomeComponent {
+					title: Some(title),
+					subtitle: None,
+					value: HomeComponentValue::MangaChapterList {
+						page_size: None,
+						entries,
+						listing: None,
+					},
+				});
+			}
+			continue;
+		}
 		let entries: Vec<Link> = cards
 			.select(".bsx")
 			.into_iter()
@@ -77,6 +99,25 @@ fn series(card: &Element, base_url: &str) -> Option<Manga> {
 	})
 }
 
+// The newest chapter a reader can open: coin-locked ones need a login, and the template drops them
+// from chapter lists too.
+fn newest_chapter(card: &Element, base_url: &str) -> Option<MangaWithChapter> {
+	let link = card
+		.select(".chapter-list > a")?
+		.find(|link| link.select_first(".fa-coins").is_none())?;
+	let title = link.select_first(".epxs")?.text()?;
+	let chapter_number = find_first_f32(&title);
+	Some(MangaWithChapter {
+		manga: series(card, base_url)?,
+		chapter: Chapter {
+			key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
+			title: chapter_number.is_none().then_some(title),
+			chapter_number,
+			..Default::default()
+		},
+	})
+}
+
 fn editor_picks(section: &Element, base_url: &str) -> Vec<Manga> {
 	section
 		.select(".violet-ep-panel")
@@ -94,6 +135,17 @@ fn editor_picks(section: &Element, base_url: &str) -> Vec<Manga> {
 				description: panel
 					.select_first(".violet-ep-tagline")
 					.and_then(|tagline| tagline.text()),
+				status: match panel
+					.select_first(".violet-ep-badge--status")
+					.and_then(|badge| badge.text())
+					.map(|status| status.to_lowercase())
+					.as_deref()
+				{
+					Some("ongoing") => MangaStatus::Ongoing,
+					Some("completed") => MangaStatus::Completed,
+					Some("hiatus") => MangaStatus::Hiatus,
+					_ => MangaStatus::Unknown,
+				},
 				tags: panel.select(".violet-ep-genres li").map(|genres| {
 					genres
 						.filter_map(|genre| genre.text())
