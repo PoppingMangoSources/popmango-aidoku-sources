@@ -171,6 +171,7 @@ name = "mangathemesia"
 version = "0.1.0"
 dependencies = [
  "aidoku",
+ "base64",
  "serde_json",
 ]
 

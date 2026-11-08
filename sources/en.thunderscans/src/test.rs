@@ -5,6 +5,7 @@ use aidoku::{
 	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue, Manga,
 	MangaPageResult, PageContent,
 	alloc::{String, Vec, vec},
+	imports::html::Html,
 };
 use aidoku_test::aidoku_test;
 
@@ -76,6 +77,20 @@ fn novels_read_as_text() {
 		assert!(text.len() > 1000);
 		assert!(!text.contains("<p") && !text.contains("<div"));
 	}
+}
+
+// The site puts two lines of dialogue in one paragraph, split by a line break.
+#[aidoku_test]
+fn review_novel_lines_split_at_line_breaks() {
+	let html = Html::parse(
+		"<div id=\"readerarea\"><p>“Good work.”<br/>\n“Yes. I have <i>taken</i> care of it.”</p>\
+		<p>1. Then &amp; now</p><div><p>*Nested*</p></div></div>",
+	)
+	.unwrap();
+	assert_eq!(
+		mangathemesia::helpers::novel_text(&html),
+		"“Good work.”\n\n“Yes. I have taken care of it.”\n\n1\\. Then \\& now\n\n\\*Nested\\*"
+	);
 }
 
 #[aidoku_test]
