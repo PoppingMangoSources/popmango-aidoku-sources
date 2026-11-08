@@ -15,6 +15,7 @@ use aidoku::{
 	},
 	prelude::*,
 };
+use base64::{Engine, engine::general_purpose::STANDARD};
 
 pub trait Impl {
 	fn new() -> Self;
@@ -250,14 +251,27 @@ pub trait Impl {
 			let Some(title) = heading.text() else {
 				continue;
 			};
-			// The site repeats some rows for its mobile layout.
-			if titles.contains(&title) {
+			// The site repeats some rows for its mobile layout; the bulk discount row only sells
+			// coin chapters.
+			if titles.contains(&title) || title == "Bulk Discounted Series" {
 				continue;
 			}
 			let Some(section) = section(&heading) else {
 				continue;
 			};
-			let value = if section.select_first(".latest-poster").is_some() {
+			let value = if section.select_first(".editor-pick-button").is_some() {
+				let entries: Vec<Manga> = section
+					.select(".editor-pick-button")
+					.map(|picks| picks.filter_map(|pick| editor_pick(&pick)).collect())
+					.unwrap_or_default();
+				if entries.is_empty() {
+					continue;
+				}
+				HomeComponentValue::BigScroller {
+					entries,
+					auto_scroll_interval: None,
+				}
+			} else if title == "Latest Updates" {
 				let entries: Vec<MangaWithChapter> = section
 					.select(".latest-poster")
 					.map(|posters| {
@@ -271,19 +285,20 @@ pub trait Impl {
 					continue;
 				}
 				HomeComponentValue::MangaChapterList {
-					page_size: None,
+					page_size: Some(5),
 					entries,
 					listing: None,
 				}
 			} else {
+				// Pinned Series shares the latest row's posters.
 				let entries: Vec<Link> = section
-					.select("button[title]")
+					.select("button[title], .latest-poster")
 					.map(|cards| {
 						cards
 							.filter(|card| !is_novel(card))
 							.filter_map(|card| {
 								manga(
-									&card.select_first("a[href]")?,
+									&card.select_first("a[href*='/series/']")?,
 									card.select_first("[style*=background-image]"),
 									&params.base_url,
 								)
@@ -348,7 +363,7 @@ fn section(heading: &Element) -> Option<Element> {
 	for _ in 0..3 {
 		let element = node?;
 		if element
-			.select_first(".latest-poster, button[title] a[href*='/series/']")
+			.select_first(".latest-poster, .editor-pick-button, button[title] a[href*='/series/']")
 			.is_some()
 		{
 			return Some(element);
@@ -356,6 +371,26 @@ fn section(heading: &Element) -> Option<Element> {
 		node = element.parent();
 	}
 	None
+}
+
+// A pick has no link; the site's script opens `/series/<data-id>`, shows the cover from the
+// upload host and decodes the description from base64.
+fn editor_pick(pick: &Element) -> Option<Manga> {
+	let description = pick
+		.attr("data-description")
+		.and_then(|encoded| STANDARD.decode(encoded).ok())
+		.and_then(|bytes| String::from_utf8(bytes).ok())
+		.map(|text| text.trim().into())
+		.filter(|text: &String| !text.is_empty());
+	Some(Manga {
+		key: format!("/series/{}/", pick.attr("data-id")?),
+		title: pick.attr("title")?.trim().into(),
+		cover: pick
+			.attr("data-img")
+			.map(|image| format!("https://wsrv.nl/?w=600&url=cdn.meowing.org/uploads/{image}")),
+		description,
+		..Default::default()
+	})
 }
 
 fn chapter(link: &Element, base_url: &str) -> Option<Chapter> {

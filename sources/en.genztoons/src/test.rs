@@ -137,10 +137,36 @@ fn home_follows_the_site() {
 	let mut unique = titles.clone();
 	unique.dedup();
 	assert_eq!(unique.len(), titles.len(), "rows repeat");
-	let latest = &home.components[position("Latest Updates") + 1];
-	let HomeComponentValue::MangaChapterList { entries, .. } = &latest.value else {
+	assert!(!titles.contains(&"Bulk Discounted Series"));
+	let row = |title: &str| &home.components[position(title) + 1].value;
+	assert!(
+		matches!(row("Pinned Series"), HomeComponentValue::Scroller { entries, .. } if !entries.is_empty()),
+		"pinned series is a card row"
+	);
+	let HomeComponentValue::BigScroller { entries: picks, .. } = row("Editor's Choice") else {
+		panic!("editor's choice is a big scroller");
+	};
+	let pick = &picks[0];
+	assert!(
+		pick.cover.is_some()
+			&& pick
+				.description
+				.as_deref()
+				.is_some_and(|text| !text.is_empty())
+	);
+	assert!(
+		search(None, vec![])
+			.entries
+			.iter()
+			.any(|manga| manga.key == pick.key)
+	);
+	let HomeComponentValue::MangaChapterList {
+		page_size, entries, ..
+	} = row("Latest Updates")
+	else {
 		panic!("latest updates is a chapter list");
 	};
+	assert_eq!(*page_size, Some(5));
 	let entry = &entries[0];
 	let chapters = source()
 		.get_manga_update(entry.manga.clone(), false, true)

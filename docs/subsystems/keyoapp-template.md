@@ -56,10 +56,17 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > ⚠️ Pages are `#pages > img[uid]`, and the reader builds each url from a `realUrl` template in a
 > script (`https://cdn.meowing.org/uploads/${uid}` on every site checked), which needs no referer.
 
-> ⚠️ The home is generic: every `h2` over cards becomes a row in the site's order, `.latest-poster`
-> rows (Latest Updates, Pinned Series) as chapter lists and the rest as card rows, with the
-> untitled featured slider first. Some rows repeat for the mobile layout ("Editor's Choice"), so
-> titles are kept once; headings with no cards ("Sync Local Library") are skipped.
+> ⚠️ The home is generic: every `h2` over cards becomes a row in the site's order, with the
+> untitled featured slider first. Latest Updates is a chapter list of five per page; Pinned
+> Series uses the same `.latest-poster` markup, so the heading tells them apart and Pinned is a
+> card row like the rest. Some rows repeat for the mobile layout ("Editor's Choice"), so titles
+> are kept once; headings with no cards ("Sync Local Library") and Bulk Discounted Series (coin
+> chapters for sale) are skipped (the owner's call).
+
+> ⚠️ Editor's Choice is a big scroller. Its picks are `.editor-pick-button` divs with no link:
+> the site's script opens `/series/<data-id>`, loads the cover from `data-img` on the upload
+> host and decodes `data-description` from base64. The key keeps the trailing slash so it
+> matches the search cards, or the same series would be added to the library twice.
 
 > ⚠️ A chapter path holds the series id, not its slug, so a chapter deep link fetches the chapter
 > page for its series link, skipping the menu's bare `/series/` link (Kewn's chapter pages put it
