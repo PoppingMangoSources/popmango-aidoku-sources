@@ -32,7 +32,10 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         "$tooling/scripts/verify-source.sh" "$root/sources/$source"
     else
         base=$remote_sha
-        if [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base" 2>/dev/null; then
+        if [ -n "$template" ]; then
+            # A template branch is built on upstream, so its crates are the ones it changes there.
+            base=$(git merge-base HEAD refs/remotes/upstream/main)
+        elif [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base" 2>/dev/null; then
             base=$(git merge-base HEAD origin/main)
         fi
         crates=$(python3 "$tooling/scripts/changed-crates.py" --base "$base")
