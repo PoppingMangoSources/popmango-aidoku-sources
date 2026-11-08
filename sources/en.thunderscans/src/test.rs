@@ -301,3 +301,18 @@ fn latest_comics_name_readable_chapters() {
 		.unwrap();
 	assert!(!pages.is_empty());
 }
+
+// Latest Novels stays a row of cards: its newest chapters are mostly coin-locked.
+#[aidoku_test]
+fn latest_novels_are_cards() {
+	let home = source().get_home().unwrap();
+	let novels = home
+		.components
+		.iter()
+		.find(|component| component.title.as_deref() == Some("Latest Novels"))
+		.unwrap();
+	let HomeComponentValue::Scroller { entries, .. } = &novels.value else {
+		panic!("latest novels is a scroller");
+	};
+	assert!(!entries.is_empty());
+}
