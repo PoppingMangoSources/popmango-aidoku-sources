@@ -1,0 +1,239 @@
+#![expect(clippy::unwrap_used)]
+
+use super::*;
+use aidoku::{
+	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue, Manga,
+	MangaPageResult,
+	alloc::{String, Vec, vec},
+};
+use aidoku_test::aidoku_test;
+
+// The site's genre id for Romance, from res/filters.json.
+const GENRE: &str = "8";
+
+fn source() -> MangaThemesia<VioletScans> {
+	MangaThemesia::new()
+}
+
+fn search(query: Option<&str>, page: i32, filters: Vec<FilterValue>) -> MangaPageResult {
+	source()
+		.get_search_manga_list(query.map(String::from), page, filters)
+		.unwrap()
+}
+
+fn keys(result: &MangaPageResult) -> Vec<&str> {
+	result
+		.entries
+		.iter()
+		.map(|manga| manga.key.as_str())
+		.collect()
+}
+
+fn first_series() -> Manga {
+	search(None, 1, vec![]).entries.remove(0)
+}
+
+#[aidoku_test]
+fn browse_pages_through_the_library() {
+	let first = search(None, 1, vec![]);
+	let second = search(None, 2, vec![]);
+	assert!(first.has_next_page);
+	assert!(!first.entries.is_empty() && !second.entries.is_empty());
+	assert_ne!(keys(&first), keys(&second));
+	// Cards carry only what search lists.
+	assert!(
+		first
+			.entries
+			.iter()
+			.all(|manga| manga.description.is_none())
+	);
+}
+
+#[aidoku_test]
+fn novels_stay_out_of_results() {
+	// The site's first pages list novels among comics.
+	for page in 1..=3 {
+		assert!(
+			search(None, page, vec![])
+				.entries
+				.iter()
+				.all(|manga| !manga.title.ends_with("[Novel]"))
+		);
+	}
+	assert!(
+		search(Some("Novel"), 1, vec![])
+			.entries
+			.iter()
+			.all(|manga| !manga.title.ends_with("[Novel]"))
+	);
+}
+
+#[aidoku_test]
+fn search_finds_a_title() {
+	let series = first_series();
+	// Letters and digits only: the site's search doesn't match curly quotes or ellipses.
+	let word = series
+		.title
+		.split(|c: char| !c.is_alphanumeric())
+		.max_by_key(|word| word.len())
+		.unwrap();
+	let found = search(Some(word), 1, vec![]);
+	assert!(keys(&found).contains(&series.key.as_str()), "{word}");
+	assert!(search(Some("zzqxwvnomatch"), 1, vec![]).entries.is_empty());
+}
+
+#[aidoku_test]
+fn sorts_follow_the_site() {
+	let titles = |index| {
+		search(
+			None,
+			1,
+			vec![FilterValue::Sort {
+				id: "order".into(),
+				index,
+				ascending: false,
+			}],
+		)
+		.entries
+		.into_iter()
+		.map(|manga| manga.title.to_lowercase())
+		.collect::<Vec<_>>()
+	};
+	let a_to_z = titles(1);
+	let z_to_a = titles(2);
+	assert!(a_to_z.windows(2).filter(|pair| pair[0] <= pair[1]).count() * 10 >= a_to_z.len() * 8);
+	assert_ne!(a_to_z, z_to_a);
+	assert_ne!(titles(5), titles(4));
+}
+
+#[aidoku_test]
+fn status_type_and_genre_filters_narrow_results() {
+	let select = |id: &str, value: &str| FilterValue::Select {
+		id: id.into(),
+		value: value.into(),
+	};
+	// The runner can't parse the template's `:contains` selectors, so details have no status or
+	// tags here; each filter is checked by what it changes in the results instead.
+	let all = keys(&search(None, 1, vec![]))
+		.into_iter()
+		.map(String::from)
+		.collect::<Vec<_>>();
+	let narrowed = |filter| {
+		keys(&search(None, 1, vec![filter]))
+			.into_iter()
+			.map(String::from)
+			.collect::<Vec<_>>()
+	};
+	let ongoing = narrowed(select("status", "ongoing"));
+	assert!(!ongoing.is_empty());
+	assert_ne!(ongoing, narrowed(select("status", "completed")));
+	assert_ne!(
+		narrowed(select("type", "manhwa")),
+		narrowed(select("type", "manga"))
+	);
+	let genre = narrowed(FilterValue::MultiSelect {
+		id: "genre[]".into(),
+		included: vec![GENRE.into()],
+		excluded: vec![],
+	});
+	assert!(!genre.is_empty());
+	assert_ne!(genre, all);
+}
+
+#[aidoku_test]
+fn details_chapters_and_pages_load() {
+	let manga = source()
+		.get_manga_update(first_series(), true, true)
+		.unwrap();
+	assert!(!manga.title.is_empty() && manga.cover.is_some());
+	assert!(
+		manga
+			.url
+			.as_deref()
+			.is_some_and(|url| url.starts_with(BASE_URL))
+	);
+	let chapters = manga.chapters.clone().unwrap();
+	assert!(!chapters.is_empty());
+	assert!(chapters.iter().all(|chapter| chapter.url.is_some()));
+	let pages = source()
+		.get_page_list(manga, chapters.last().unwrap().clone())
+		.unwrap();
+	assert!(!pages.is_empty());
+}
+
+#[aidoku_test]
+fn deep_links_open_series() {
+	let manga = source()
+		.get_manga_update(first_series(), true, false)
+		.unwrap();
+	assert_eq!(
+		source().handle_deep_link(manga.url.unwrap()).unwrap(),
+		Some(DeepLinkResult::Manga { key: manga.key })
+	);
+	// The template opens series links only.
+	assert_eq!(
+		source()
+			.handle_deep_link(format!("{BASE_URL}/zzqxwv-no-such-page/"))
+			.unwrap(),
+		None
+	);
+}
+
+#[aidoku_test]
+fn an_unknown_series_fails() {
+	let missing = Manga {
+		key: "/comics/zzqxwv-no-such-series/".into(),
+		..Default::default()
+	};
+	// The site's 404 page either fails to parse or lists no chapters.
+	let result = source().get_manga_update(missing, true, true);
+	assert!(result.map_or(true, |manga| manga.chapters.unwrap_or_default().is_empty()));
+}
+
+#[aidoku_test]
+fn home_follows_the_site() {
+	let home = source().get_home().unwrap();
+	let HomeComponentValue::ImageScroller { links, .. } = &home.components[0].value else {
+		panic!("the banner rail comes first");
+	};
+	assert!(links.len() >= 3);
+	let mut keys = links
+		.iter()
+		.filter_map(|link| match &link.value {
+			Some(LinkValue::Manga(manga)) => Some(manga.key.as_str()),
+			_ => None,
+		})
+		.collect::<Vec<_>>();
+	assert_eq!(keys.len(), links.len());
+	keys.dedup();
+	assert_eq!(keys.len(), links.len(), "banners repeat");
+	// The site's rows in its order; genre tiles and novels hold no comic series.
+	let titles = home.components[1..]
+		.iter()
+		.filter_map(|component| component.title.as_deref())
+		.collect::<Vec<_>>();
+	assert_eq!(
+		titles,
+		[
+			"Popular Today",
+			"New Series",
+			"Latest Manga",
+			"Latest Comics",
+			"Editor Picks",
+			"Completed Series"
+		]
+	);
+	let picks = home
+		.components
+		.iter()
+		.find(|component| component.title.as_deref() == Some("Editor Picks"))
+		.unwrap();
+	let HomeComponentValue::BigScroller { entries, .. } = &picks.value else {
+		panic!("editor picks are a big scroller");
+	};
+	assert!(
+		entries
+			.iter()
+			.all(|manga| manga.cover.is_some() && manga.description.is_some())
+	);
+}
