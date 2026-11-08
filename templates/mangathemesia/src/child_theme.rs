@@ -48,7 +48,12 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 			.filter(|parent| parent.has_class("hotslid"))
 			.unwrap_or(section);
 		let cards = rail.select(".bsx").into_iter().flatten();
-		let value = if rail.select_first(".chapter-list > a").is_some() {
+		// Latest Comics names each series' newest chapters; Latest Novels stays cards, since its
+		// newest chapters are mostly coin-locked.
+		let value = if rail
+			.select_first("#manga-posts .chapter-list > a")
+			.is_some()
+		{
 			let entries: Vec<MangaWithChapter> = cards
 				.filter_map(|card| newest_chapter(&card, base_url))
 				.collect();
@@ -127,12 +132,16 @@ fn series(card: &Element, base_url: &str) -> Option<Manga> {
 	})
 }
 
-// Coin-locked chapters need a login, and the chapter list drops them too.
+// Coin-locked chapters need a login, and the chapter list drops them too; the "all chapters" link
+// has no `.epxs`.
 fn newest_chapter(card: &Element, base_url: &str) -> Option<MangaWithChapter> {
-	let link = card
+	let (link, title) = card
 		.select(".chapter-list > a")?
-		.find(|link| link.select_first(".fa-coins").is_none())?;
-	let title = link.select_first(".epxs")?.text()?;
+		.filter(|link| link.select_first(".fa-coins").is_none())
+		.find_map(|link| {
+			let title = link.select_first(".epxs")?.text()?;
+			Some((link, title))
+		})?;
 	let chapter_number = find_first_f32(&title);
 	Some(MangaWithChapter {
 		manga: series(card, base_url)?,
