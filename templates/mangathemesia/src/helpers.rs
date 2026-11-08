@@ -3,7 +3,7 @@ use aidoku::{
 	HomeComponent, HomeComponentValue, Link, LinkValue, Manga,
 	alloc::{format, string::String, vec::Vec},
 	helpers::string::StripPrefixOrSelf,
-	imports::html::{Document, Element},
+	imports::html::{Document, Element, Html},
 };
 
 /// The image banners some child themes put at the top of the home page, one series each.
@@ -51,13 +51,32 @@ pub fn novel_text(html: &Document) -> String {
 						.children()
 						.any(|child| matches!(child.tag_name().as_deref(), Some("p" | "div")))
 				})
-				.filter_map(|block| block.text())
-				.filter(|text| !text.trim().is_empty())
-				.map(|text| escape_markdown_syntax(text.trim()))
+				.flat_map(lines)
+				.map(|line| escape_markdown_syntax(&line))
 				.collect::<Vec<_>>()
 				.join("\n\n")
 		})
 		.unwrap_or_default()
+}
+
+// A `<br>` separates two lines of dialogue in one paragraph, which `text()` would run together.
+fn lines(block: Element) -> Vec<String> {
+	let texts = match block.html() {
+		Some(inner) if block.select_first("br").is_some() => inner
+			.split("<br")
+			.enumerate()
+			.filter_map(|(index, part)| {
+				let part = if index == 0 { part } else { part.split_once('>')?.1 };
+				Html::parse(part).ok()?.select_first("body")?.text()
+			})
+			.collect(),
+		_ => block.text().into_iter().collect::<Vec<_>>(),
+	};
+	texts
+		.into_iter()
+		.map(|text| text.trim().into())
+		.filter(|text: &String| !text.is_empty())
+		.collect()
 }
 
 // Only syntax is escaped: the reader's Markdown renderer overflows its stack past a few hundred
