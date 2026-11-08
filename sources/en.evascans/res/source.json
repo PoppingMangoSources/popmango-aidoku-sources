@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.evascans",
 		"name": "Eva Scans",
-		"version": 1,
+		"version": 2,
 		"url": "https://evascans.net",
-		"contentRating": 1,
+		"contentRating": 0,
 		"languages": [
 			"en"
 		],
