@@ -16,7 +16,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     branch=${remote_ref#refs/heads/}
     case "$branch" in chore/*-before-rebuild-*) echo "Preserving snapshot $local_sha as $branch"; continue ;; esac
     source=$(python3 -c 'import runpy,sys; print(runpy.run_path(sys.argv[1])["source_for_branch"](sys.argv[2]) or "")' "$tooling/scripts/check-upstream-scope.py" "$branch")
-    if [ -n "$source" ]; then
+    template=$(python3 -c 'import runpy,sys; print(runpy.run_path(sys.argv[1])["template_for_branch"](sys.argv[2]) or "")' "$tooling/scripts/check-upstream-scope.py" "$branch")
+    # A template branch is scoped like a source branch, then every crate it changes is verified below.
+    if [ -n "$source" ] || [ -n "$template" ]; then
         git fetch -q https://github.com/Aidoku-Community/sources.git main:refs/remotes/upstream/main
         python3 "$tooling/scripts/check-upstream-scope.py" --repo "$root" --head "$local_sha" --branch "$branch"
     fi

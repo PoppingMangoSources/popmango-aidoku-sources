@@ -118,6 +118,22 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(scope.source_for_branch('feat/en.example'), 'en.example')
         self.assertEqual(scope.source_for_branch('fix/kagane-chapter-fetch'), 'multi.kagane')
         self.assertIsNone(scope.source_for_branch('chore/en.example-before-rebuild-12345678'))
+        self.assertIsNone(scope.source_for_branch('feat/keyoapp-template'))
+        self.assertEqual(scope.template_for_branch('feat/keyoapp-template'), 'keyoapp')
+        self.assertIsNone(scope.template_for_branch('feat/en.example'))
+        self.assertIsNone(scope.template_for_branch('chore/keyoapp-template'))
+
+    def test_template_branch_is_scoped_through_its_consumer(self):
+        self.new_template_consumer(1)
+        source = scope.template_source(self.repo, self.base, 'HEAD', 'theme')
+        self.assertEqual(source, 'en.example')
+        self.assertEqual(scope.inspect(self.repo, self.base, 'HEAD', source)['errors'], [])
+
+    def test_template_branch_without_a_consumer_has_no_source(self):
+        (self.repo / 'templates/theme/src').mkdir(parents=True)
+        (self.repo / 'templates/theme/src/lib.rs').write_text('template\n')
+        self.commit('template alone')
+        self.assertIsNone(scope.template_source(self.repo, self.base, 'HEAD', 'theme'))
 
     def test_other_source(self):
         other = self.repo / 'sources/en.other'

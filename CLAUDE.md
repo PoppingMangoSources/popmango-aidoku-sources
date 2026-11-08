@@ -46,8 +46,8 @@ rest of this file still applies, so read each section before the work it covers.
   names, before writing a feature.
 - Cards everywhere but `BigScroller` carry key, title and cover, optionally status and rating,
   and never a subtitle (sections 3 and 6).
-- Branches are `main`, `feat/<id>`, `fix/<id>`, `chore/<topic>` or `docs/<topic>`, never
-  `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`.
+- Branches are `main`, `feat/<id>`, `fix/<id>`, `feat/<template>-template`, `chore/<topic>` or
+  `docs/<topic>`, never `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`.
 - Don't open or post on a PR, and don't resolve review threads; draft the text for the person.
 - A mechanical rule that slipped goes into `check-sources.py` with a test, in the same commit
   as its fix (section 9).
@@ -958,7 +958,10 @@ went in one of these ways, and new ones go in the same way:
   built in a worktree from the PR branch: copy the template and the source from `main`, drop
   `src/test.rs` and its module line, keep version 1, and edit the other consumers there.
 - Submission branches are `feat/<id>` or `fix/<id>`; the existing
-  `fix/kagane-chapter-fetch` maps to `multi.kagane`. Use `chore/<topic>` for tooling and
+  `fix/kagane-chapter-fetch` maps to `multi.kagane`. A new template goes up as
+  `feat/<template>-template` with the sources that show it working, as upstream's own template
+  PRs do (branches `madara`, `mangathemesia`); the scope check validates it through one of its
+  consumers and the pre-push hook verifies every crate it changes. Use `chore/<topic>` for tooling and
   preserved snapshots. Do not put custom fork checks or docs onto an upstream source branch.
 - `upstream-scope.yaml` runs from `main` on main pushes, on demand, and every half hour.
   It reads all submission refs without executing their code and attaches an

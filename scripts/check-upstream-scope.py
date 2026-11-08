@@ -10,6 +10,7 @@ from pathlib import Path
 SOURCE_ID = re.compile(r"(?:[a-z]{2,3}|multi)\.[a-z0-9][a-z0-9.-]*\Z")
 TEMPLATE_DEPENDENCY = re.compile(r'path\s*=\s*"\.\./\.\./templates/([A-Za-z0-9_-]+)"')
 LEGACY_BRANCHES = {"fix/kagane-chapter-fetch": "multi.kagane"}
+TEMPLATE_BRANCH = re.compile(r"feat/([a-z0-9_]+)-template\Z")
 
 
 def source_for_branch(branch):
@@ -17,6 +18,22 @@ def source_for_branch(branch):
         return LEGACY_BRANCHES[branch]
     prefix, _, source = branch.partition("/")
     return source if prefix in {"feat", "fix"} and SOURCE_ID.fullmatch(source) else None
+
+
+def template_for_branch(branch):
+    """feat/<name>-template submits a template with the sources that show it working (#824)."""
+    match = TEMPLATE_BRANCH.fullmatch(branch)
+    return match.group(1) if match else None
+
+
+def template_source(repo, base, head, template):
+    """A source the branch adds or changes that uses the template; the scope rules then admit the
+    template and its other consumers."""
+    changed = git(repo, "diff", "--no-renames", "--name-only", "-z", base + "..." + head).decode().split("\0")
+    for source in sorted({path.split("/")[1] for path in changed if path.startswith("sources/") and path.count("/") > 1}):
+        if SOURCE_ID.fullmatch(source) and template in templates_used(repo, head, source):
+            return source
+    return None
 
 
 def git(repo, *args):
@@ -127,13 +144,24 @@ def main():
     parser.add_argument("--all", action="store_true", help="Inspect every origin submission branch")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
+    def branch_source(branch, head):
+        source = source_for_branch(branch)
+        if source is None and template_for_branch(branch):
+            # A template branch with no consumer fails in inspect, rather than going unchecked.
+            source = template_source(args.repo, args.base, head, template_for_branch(branch)) or "missing.consumer"
+        return source
+
     targets = []
     if args.all:
         refs = git(args.repo, "for-each-ref", "--format=%(refname:strip=3)", "refs/remotes/origin").decode().splitlines()
-        targets = [(branch, "refs/remotes/origin/" + branch, source_for_branch(branch)) for branch in refs if source_for_branch(branch)]
+        for branch in refs:
+            head = "refs/remotes/origin/" + branch
+            source = branch_source(branch, head)
+            if source:
+                targets.append((branch, head, source))
     else:
         branch = args.branch or git(args.repo, "branch", "--show-current").decode().strip()
-        source = args.source or source_for_branch(branch)
+        source = args.source or branch_source(branch, args.head)
         if not source:
             parser.error("provide --source <id> or a recognized --branch")
         targets = [(branch, args.head, source)]
