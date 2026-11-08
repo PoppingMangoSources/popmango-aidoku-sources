@@ -346,8 +346,7 @@ pub trait Impl {
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		let html = Request::get(&params.base_url)?.html()?;
 
-		let mut components: Vec<HomeComponent> =
-			helpers::slider_banners(&html, params).into_iter().collect();
+		let mut components = Vec::new();
 
 		if let Some(hero) = html.select_first("div.big-slider, div.slidtop") {
 			let entries: Vec<Manga> = hero

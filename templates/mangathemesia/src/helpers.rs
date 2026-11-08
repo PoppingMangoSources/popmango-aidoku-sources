@@ -1,45 +1,7 @@
-use crate::Params;
 use aidoku::{
-	HomeComponent, HomeComponentValue, Link, LinkValue, Manga,
 	alloc::{format, string::String, vec::Vec},
-	helpers::string::StripPrefixOrSelf,
 	imports::html::{Document, Element, Html},
 };
-
-/// The image banners some child themes put at the top of the home page, one series each.
-pub fn slider_banners(html: &Document, params: &Params) -> Option<HomeComponent> {
-	let links: Vec<Link> = html
-		.select(".slidernew .swiper-slide a")?
-		.filter_map(|link| {
-			let image = link.select_first("img")?;
-			Some(Link {
-				title: image.attr("alt")?,
-				image_url: image.img_attr(),
-				value: Some(LinkValue::Manga(Manga {
-					key: link
-						.attr("href")?
-						.strip_prefix_or_self(&params.base_url)
-						.into(),
-					..Default::default()
-				})),
-				..Default::default()
-			})
-		})
-		.collect();
-	if links.is_empty() {
-		return None;
-	}
-	Some(HomeComponent {
-		title: None,
-		subtitle: None,
-		value: HomeComponentValue::ImageScroller {
-			links,
-			auto_scroll_interval: Some(5.0),
-			width: params.banner_width,
-			height: params.banner_height,
-		},
-	})
-}
 
 /// A novel chapter's text as Markdown: each innermost block of `#readerarea` is a paragraph.
 pub fn novel_text(html: &Document) -> String {
@@ -61,7 +23,7 @@ pub fn novel_text(html: &Document) -> String {
 
 // A `<br>` separates two lines of dialogue in one paragraph, which `text()` would run together.
 fn lines(block: Element) -> Vec<String> {
-	let texts = match block.html() {
+	let texts: Vec<String> = match block.html() {
 		Some(inner) if block.select_first("br").is_some() => inner
 			.split("<br")
 			.enumerate()
@@ -74,7 +36,7 @@ fn lines(block: Element) -> Vec<String> {
 				Html::parse(part).ok()?.select_first("body")?.text()
 			})
 			.collect(),
-		_ => block.text().into_iter().collect::<Vec<_>>(),
+		_ => block.text().into_iter().collect(),
 	};
 	texts
 		.into_iter()

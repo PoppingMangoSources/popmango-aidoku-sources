@@ -6,6 +6,7 @@ use aidoku::{
 	imports::net::Request,
 };
 
+pub mod child_theme;
 pub mod helpers;
 mod imp;
 
@@ -26,7 +27,7 @@ pub struct Params {
 	pub series_type_selector: Cow<'static, str>,
 	pub series_status_selector: Cow<'static, str>,
 	pub chapter_list_selector: Cow<'static, str>,
-	/// The size of the home page's `.slidernew` image banners, when the site's banners share one.
+	/// The size of a child theme's home banners, when they share one.
 	pub banner_width: Option<i32>,
 	pub banner_height: Option<i32>,
 }
