@@ -83,9 +83,12 @@ Scans showed a maintenance page on 2026-11-08 and have no crate yet.
 > `.violet-ep-panel`s whose covers sit apart, matched by `data-index`; it becomes a `BigScroller`.
 > Thunder keeps its cards inside each box and has no Editor Picks panel.
 
-> ⚠️ Latest Comics and Latest Novels cards carry a `.chapter-list` of the series' newest chapters,
-> so those rows are `MangaChapterList`s naming the newest chapter without a `.fa-coins` lock, as
-> the owner's Paperback Violet source does. A series whose listed chapters are all locked drops
+> ⚠️ Latest Comics (`#manga-posts`) cards carry a `.chapter-list` of the series' newest chapters,
+> so that row is a `MangaChapterList` naming the newest chapter without a `.fa-coins` lock, as the
+> owner's Paperback Violet source does. Latest Novels (`#novel-posts`) has the same markup but
+> stays a `Scroller` (the owner's call): its newest chapters are mostly locked and the remaining
+> link is often the "all chapters" one with no `.epxs`, so a chapter row came out empty and
+> vanished from Violet's home in the app. A series whose listed chapters are all locked drops
 > out (23 of 48 on Thunder's Latest Comics on 2026-11-08): a locked chapter has no `href` in the
 > series' list, so it couldn't be opened. Dates are left out, as in the template's own chapter
 > rows: the site gives only "NEW" or "1 week". Editor Picks' status comes from its badge.
