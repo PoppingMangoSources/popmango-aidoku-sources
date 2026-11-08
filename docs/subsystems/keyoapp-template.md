@@ -21,9 +21,11 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 
 > ⚠️ Keiyoushi has a second generation, `KeyoappV2` (`?_ajax=search` with offset paging,
 > `?_ajax=recent-chapters`, `?_chapters_html=1&series_slug=`, series at the site root). Asmodeus
-> and Siren run it (Luna Toons too, but it refuses the sandbox), so they need their own
-> implementation. Art Lapsa, Kitsune Dawn and Rithar are custom in keiyoushi (`/series/` is a
-> 404). Kaizen, Luna Toons and MeiToon answered 403 here.
+> and Siren run it, and so do Kaizen and Luna Toons (both refuse headless Chromium with a
+> Cloudflare challenge; Firecrawl reads them, and Kaizen's `?_ajax=search` answers
+> `{html, has_more}`), though keiyoushi still files Kaizen under the first generation. They
+> need their own implementation. Art Lapsa, Kitsune Dawn and Rithar are custom in keiyoushi
+> (`/series/` is a 404). MeiToon answers "the website has been stopped".
 
 > ⚠️ The site ignores `q`, `genre`, `type` and `status` on `/series/` (every request returns all
 > 263 Genz cards), and filters in the browser from each card's `title`, `tags`, `data-type` and
