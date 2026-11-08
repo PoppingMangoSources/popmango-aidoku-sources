@@ -66,7 +66,11 @@ fn lines(block: Element) -> Vec<String> {
 			.split("<br")
 			.enumerate()
 			.filter_map(|(index, part)| {
-				let part = if index == 0 { part } else { part.split_once('>')?.1 };
+				let part = if index == 0 {
+					part
+				} else {
+					part.split_once('>')?.1
+				};
 				Html::parse(part).ok()?.select_first("body")?.text()
 			})
 			.collect(),
