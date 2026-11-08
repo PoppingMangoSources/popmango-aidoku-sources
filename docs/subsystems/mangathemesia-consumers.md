@@ -1,15 +1,21 @@
 ---
-title: MangaThemesia consumers (en.kingofshojo, en.rokaricomics)
+title: MangaThemesia consumers
 type: subsystem
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-08
 sources:
-  - code: sources/en.kingofshojo/src/lib.rs
-  - code: sources/en.kingofshojo/res/filters.json
-  - code: sources/en.kingofshojo/src/test.rs
-  - code: sources/en.rokaricomics/src/lib.rs
-  - code: sources/en.rokaricomics/res/filters.json
   - code: templates/mangathemesia/src/imp.rs
+  - code: sources/en.scythescans/src/lib.rs
+  - code: sources/en.lagoonscans/src/lib.rs
+  - code: sources/en.ravenscans/src/lib.rs
+  - code: sources/en.ragescans/src/lib.rs
+  - code: sources/en.violetscans/src/lib.rs
+  - code: sources/en.violetscans/src/home.rs
+  - code: sources/en.violetscans/src/test.rs
+  - code: sources/en.thunderscans/src/lib.rs
+  - code: sources/en.thunderscans/src/home.rs
+  - code: sources/en.madarascans/src/lib.rs
+  - code: sources/en.madarascans/src/home.rs
 verified_at: 40480d5
 ---
 
@@ -53,3 +59,45 @@ and `genre[]` with the site's own ids (numeric on KingOfShojo, slugs on Rokari).
 > `wp-content/uploads`), scaled to 116 px and centred on an opaque 128 px square, white for
 > KingOfShojo and black for Rokari (the inside of its disc). `media/sources/*.png` repeats it for
 > the README.
+
+## The November batch (Scythe, Lagoon, Raven, Rage, Violet, Thunder, Madara)
+
+Seven consumers built from the KingOfShojo crate, each `filters.json` generated from the site's own
+search form (the sort's six options map by position to the template's `order` values). Raven is
+rated 2: it carries many adult titles and no way to filter them (owner's call). Hades Scans and Eva
+Scans showed a maintenance page on 2026-11-08 and have no crate yet.
+
+> ⚠️ The template already turns a standard `div.big-slider` (Scythe, Raven, Rage) into its featured
+> `BigScroller`. Violet, Madara and Thunder run a child theme whose home the template's home reads
+> none of: `.slidernew` image banners (one `<img class="slider-content">` link per series, 1983×793
+> on Violet and Madara, 2048×768 on Thunder) and `.bixbox` rows of `.bsx` cards. Each source builds
+> that home in its own `home.rs` (a home that can't be built generically stays out of the template).
+> No upstream consumer used `slidernew` on 2026-11-08.
+
+> ⚠️ Violet's and Madara's Popular Today box holds only its heading: its cards are in a rail beside
+> it, inside the `.hotslid` wrapper. Their Editor Picks is a `<section class="bixbox">` of
+> `.violet-ep-panel`s whose covers sit apart, matched by `data-index`; it becomes a `BigScroller`.
+> Thunder keeps its cards inside each box and has no Editor Picks panel.
+
+> ⚠️ Scythe's cache plugin (Autoptimize) moves the reader's `ts_reader.run({..."images":[...]})`
+> script into a `src="data:text/javascript;base64,…"` URL, so the template's search for `"images":`
+> finds nothing. Scythe decodes those scripts itself; the other sites' chapters carry plain JSON.
+
+> ⚠️ Violet and Thunder list novels (chapters are text) among comics, every one titled
+> "… [Novel]"; two of Thunder's slugs don't say novel, so the title is the marker. Their search runs
+> the template's default through a no-override `TemplateSearch` impl and drops those entries, and
+> their home skips `.novelabel` cards. The Novel type option is gone from all three child-theme sites.
+
+> ⚠️ Coin-locked chapters are `<a data-bs-target="#lockedChapterModal" data-coin=…>` with no `href`,
+> and the template drops a chapter without one, so locked chapters stay hidden (no login).
+
+> ⚠️ Raven and Rage answer this sandbox with Cloudflare's challenge, curl and headless Chromium
+> alike, so their live tests fail on the network. Their markup was read from Firecrawl and pages
+> the owner saved; check both in the app. Rage's icon came from the inkdex Paperback source's
+> `static/icon.png`, Raven's through the `i0.wp.com` image CDN.
+
+> ⚠️ The search test takes the title's longest run of letters and digits: these sites' titles carry
+> curly quotes and ellipses ("‘Cause", "“Kukuku……") that their search doesn't match.
+
+> ⚠️ violetscans.org redirects to violetmanga.com (keiyoushi has moved too); the id stays
+> `en.violetscans`.
