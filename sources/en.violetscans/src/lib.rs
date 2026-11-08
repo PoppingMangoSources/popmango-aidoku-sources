@@ -1,8 +1,7 @@
 #![no_std]
 use aidoku::{HomeLayout, Result, Source, prelude::*};
-use mangathemesia::{Impl, MangaThemesia, Params};
+use mangathemesia::{Impl, MangaThemesia, Params, child_theme};
 
-mod home;
 #[cfg(test)]
 mod test;
 
@@ -27,7 +26,7 @@ impl Impl for VioletScans {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		home::get_home(params)
+		child_theme::get_home(params)
 	}
 }
 

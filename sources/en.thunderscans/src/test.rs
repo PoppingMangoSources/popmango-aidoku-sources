@@ -251,7 +251,6 @@ fn home_follows_the_site() {
 	assert_eq!(keys.len(), links.len());
 	keys.dedup();
 	assert_eq!(keys.len(), links.len(), "banners repeat");
-	// The site's rows in its order.
 	let titles = home.components[1..]
 		.iter()
 		.filter_map(|component| component.title.as_deref())
