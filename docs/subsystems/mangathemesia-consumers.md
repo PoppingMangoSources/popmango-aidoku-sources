@@ -68,11 +68,13 @@ rated 2: it carries many adult titles and no way to filter them (owner's call). 
 Scans showed a maintenance page on 2026-11-08 and have no crate yet.
 
 > ⚠️ The template already turns a standard `div.big-slider` (Scythe, Raven, Rage) into its featured
-> `BigScroller`. Violet, Madara and Thunder run a child theme whose home the template's home reads
-> none of: `.slidernew` image banners (one `<img class="slider-content">` link per series, 1983×793
-> on Violet and Madara, 2048×768 on Thunder) and `.bixbox` rows of `.bsx` cards. Each source builds
-> that home in its own `home.rs` (a home that can't be built generically stays out of the template).
-> No upstream consumer used `slidernew` on 2026-11-08.
+> `BigScroller`. Violet, Madara and Thunder run a child theme with `.slidernew` image banners (one
+> `<img class="slider-content">` link per series, 1983×793 on Violet and Madara, 2048×768 on
+> Thunder). The template builds those (`helpers::slider_banners`, sized by `Params::banner_width`
+> and `banner_height`) at the top of its home, the owner's call; this fork's template copy differs
+> from upstream's by that and the novel text below. The rest of the child theme's home, `.bixbox`
+> rows of `.bsx` cards, the template's home doesn't read, so each source builds it in `home.rs` and
+> calls the helper for its banners. No upstream consumer used `slidernew` on 2026-11-08.
 
 > ⚠️ Violet's and Madara's Popular Today box holds only its heading: its cards are in a rail beside
 > it, inside the `.hotslid` wrapper. Their Editor Picks is a `<section class="bixbox">` of
@@ -83,10 +85,21 @@ Scans showed a maintenance page on 2026-11-08 and have no crate yet.
 > script into a `src="data:text/javascript;base64,…"` URL, so the template's search for `"images":`
 > finds nothing. Scythe decodes those scripts itself; the other sites' chapters carry plain JSON.
 
-> ⚠️ Violet and Thunder list novels (chapters are text) among comics, every one titled
-> "… [Novel]"; two of Thunder's slugs don't say novel, so the title is the marker. Their search runs
-> the template's default through a no-override `TemplateSearch` impl and drops those entries, and
-> their home skips `.novelabel` cards. The Novel type option is gone from all three child-theme sites.
+> ⚠️ Violet and Thunder list novels among comics (the other five returned none for `type=novel`).
+> The theme's reader data flags a novel chapter with `"is_novel":true` and puts its text in
+> `#readerarea`, in `<p>`s on newer chapters and nested `<div>`s on older Violet ones, with
+> `"images":[]`. The template checks that flag first and returns one text page from the innermost
+> blocks (`helpers::novel_text`), escaping only Markdown syntax, so novels stay in search and home
+> with their Novel type option. Inline bold and italic are dropped: keeping them needs
+> `child_nodes`, which would raise every consumer's `minAppVersion` to 0.8.3.
+
+> ⚠️ Beyond the search form, keiyoushi's theme sends `author` and `yearx` text filters and genre
+> exclusion as `genre[]=-id`. All seven sites answer a nonsense author and the year 1901 with no
+> results (Raven and Rage probed through Firecrawl), and a real author or year finds its series, so
+> both filters are in every `filters.json`. Excluding a genre returned the unfiltered list on every
+> reachable site, so `canExclude` stays false.
+
+> ⚠️ Rage's and Violet's icons are dark discs, so they sit on black; the others on white.
 
 > ⚠️ Coin-locked chapters are `<a data-bs-target="#lockedChapterModal" data-coin=…>` with no `href`,
 > and the template drops a chapter without one, so locked chapters stay hidden (no login).
