@@ -2,14 +2,36 @@
 
 use super::*;
 use aidoku::{
-	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, Manga, MangaPageResult,
-	MangaStatus, PageContent, Viewer,
-	alloc::{String, Vec, vec},
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue,
+	Manga, MangaPageResult, MangaStatus, PageContent, Viewer,
+	alloc::{String, Vec, format, vec},
+	imports::html::Html,
 };
 use aidoku_test::aidoku_test;
 
 // The site's genre id for Action, from res/filters.json.
 const GENRE: &str = "action";
+
+// A home page cut down to one card per row, in the site's markup and order. `{aspect}` is the
+// featured slides' shape: covers on this site, banners on others.
+const HOME: &str = r#"
+<a href="/series/featured/" title="Featured" class="splide__slide"><div class="aspect-{aspect}" style="background-image: url(https://img.test/featured.avif);"></div></a>
+<div><div><h2>Pinned Series</h2></div><div><div class="latest-poster"><a href="/series/pinned/" title="Pinned"></a><a href="/chapter/p-1" title="Chapter 1" d="1 day ago"></a></div></div></div>
+<div><div><h2>Bulk Discounted Series</h2></div><div><button title="Bulk"><a href="/series/bulk/" title="Bulk"></a></button></div></div>
+<div><div><h2>Latest Updates</h2></div><div>
+<div class="latest-poster"><a href="/series/new/" title="New"></a><a href="/chapter/n-2" title="Chapter 2" d="1 hour ago"><img alt="Coin"></a><a href="/chapter/n-1" title="Chapter 1" d="2 hours ago"></a></div>
+</div></div>
+<div><div><h2>Trending</h2></div><div><button title="Hot"><a href="/series/hot/" title="Hot"><div style="background-image: url(https://img.test/hot.avif);"></div></a></button></div></div>
+<div><div><h2>Editor's Choice</h2></div><div><div class="editor-pick-button" title="Pick" data-id="pick" data-img="pick.avif" data-description="QSBwbGFpbiBkZXNjcmlwdGlvbi4="></div></div></div>
+<div><div><h2>Editor's Choice</h2></div><div><div class="editor-pick-button" title="Pick" data-id="pick" data-img="pick.avif" data-description="QSBwbGFpbiBkZXNjcmlwdGlvbi4="></div></div></div>
+<div><h2>Sync Local Library</h2></div>
+"#;
+
+fn home(aspect: &str) -> aidoku::HomeLayout {
+	let html = Html::parse(HOME.replace("{aspect}", aspect)).unwrap();
+	let source = GenzToons::new();
+	source.parse_home(&source.params(), &html)
+}
 
 fn source() -> Keyoapp<GenzToons> {
 	Keyoapp::new()
@@ -31,6 +53,81 @@ fn multi(id: &str, included: &[&str], excluded: &[&str]) -> FilterValue {
 
 fn details(manga: Manga) -> Manga {
 	source().get_manga_update(manga, true, false).unwrap()
+}
+
+#[aidoku_test]
+fn review_home_keeps_the_site_rows() {
+	let layout = home("[0.74/1]");
+	let rows: Vec<Option<&str>> = layout
+		.components
+		.iter()
+		.map(|component| component.title.as_deref())
+		.collect();
+	// Pinned repeats Latest Updates here, bulk discounts sell coin chapters, Editor's Choice
+	// repeats for the mobile layout, and Sync Local Library has no cards.
+	assert_eq!(
+		rows,
+		[
+			None,
+			Some("Latest Updates"),
+			Some("Trending"),
+			Some("Editor's Choice")
+		]
+	);
+	let values: Vec<&HomeComponentValue> = layout.components.iter().map(|c| &c.value).collect();
+	assert!(
+		matches!(values[0], HomeComponentValue::Scroller { entries, .. } if entries[0].title == "Featured")
+	);
+	let HomeComponentValue::MangaChapterList {
+		page_size, entries, ..
+	} = values[1]
+	else {
+		panic!("latest updates is a chapter list");
+	};
+	assert_eq!(*page_size, Some(5));
+	// The coin chapter needs a login, so the row shows the newest free one.
+	assert_eq!(entries[0].chapter.key, "/chapter/n-1");
+	assert!(
+		matches!(values[2], HomeComponentValue::Scroller { entries, .. } if entries[0].subtitle.is_none())
+	);
+	let HomeComponentValue::BigScroller { entries, .. } = values[3] else {
+		panic!("editor's choice is a big scroller");
+	};
+	assert_eq!(entries[0].key, "/series/pick/");
+	assert_eq!(
+		entries[0].description.as_deref(),
+		Some("A plain description.")
+	);
+}
+
+#[aidoku_test]
+fn review_banners_open_their_series() {
+	let layout = home("[2/1]");
+	let HomeComponentValue::ImageScroller {
+		links,
+		width,
+		height,
+		..
+	} = &layout.components[0].value
+	else {
+		panic!("a banner slider is an image scroller");
+	};
+	assert_eq!((*width, *height), (Some(400), Some(200)));
+	assert_eq!(
+		links[0].image_url.as_deref(),
+		Some("https://img.test/featured.avif")
+	);
+	assert!(
+		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.key == "/series/featured/")
+	);
+}
+
+#[aidoku_test]
+fn review_filters_are_include_only() {
+	// As on the site, no filter can exclude.
+	let filters = include_str!("../res/filters.json");
+	assert_eq!(filters.matches("\"canExclude\": false").count(), 3);
+	assert!(!filters.contains("\"canExclude\": true"));
 }
 
 #[aidoku_test]
@@ -57,6 +154,9 @@ fn search_finds_a_title() {
 	let found = search(Some(&word), vec![]);
 	assert!(found.entries.iter().any(|manga| manga.key == first.key));
 	assert!(search(Some("zzqxwv"), vec![]).entries.is_empty());
+	// A pasted link finds that series alone.
+	let pasted = search(Some(&format!("{BASE_URL}{}", first.key)), vec![]);
+	assert_eq!(pasted.entries, [first]);
 }
 
 #[aidoku_test]
@@ -110,9 +210,19 @@ fn details_chapters_and_pages_load() {
 			.iter()
 			.all(|chapter| chapter.date_uploaded.is_some())
 	);
+	// Newest and oldest chapters, read with only their keys as the app may pass them.
 	for chapter in [chapters.first(), chapters.last()].into_iter().flatten() {
 		let pages = source()
-			.get_page_list(manga.clone(), chapter.clone())
+			.get_page_list(
+				Manga {
+					key: manga.key.clone(),
+					..Default::default()
+				},
+				Chapter {
+					key: chapter.key.clone(),
+					..Default::default()
+				},
+			)
 			.unwrap();
 		assert!(!pages.is_empty());
 		assert!(pages.iter().all(
@@ -220,6 +330,11 @@ fn an_unknown_series_fails() {
 		key: "/series/zzqxwv-no-such-series/".into(),
 		..Default::default()
 	};
-	let result = source().get_manga_update(manga, true, true);
-	assert!(result.map_or(true, |manga| manga.chapters.unwrap_or_default().is_empty()));
+	// The site redirects it to a not-found page.
+	assert!(
+		source()
+			.get_manga_update(manga.clone(), true, true)
+			.is_err()
+	);
+	assert!(source().get_manga_update(manga, false, true).is_err());
 }

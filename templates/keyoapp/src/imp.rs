@@ -1,7 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		background_image, chapter_date, chapter_parts, has_badge, is_novel, labelled, manga, status,
+		background_image, chapter, editor_pick, has_badge, is_novel, labelled, manga,
+		newest_chapter, section, status,
 	},
 };
 use aidoku::{
@@ -11,12 +12,11 @@ use aidoku::{
 	alloc::{String, Vec, vec},
 	helpers::string::{PlainText, StripPrefixOrSelf},
 	imports::{
-		html::{Element, Html},
+		html::{Document, Html},
 		net::Request,
 	},
 	prelude::*,
 };
-use base64::{Engine, engine::general_purpose::STANDARD};
 
 pub trait Impl {
 	fn new() -> Self;
@@ -46,6 +46,12 @@ pub trait Impl {
 			}
 		}
 		let query = query.map(|query| query.to_lowercase());
+		// A pasted series link finds that series.
+		let pasted = query
+			.as_deref()
+			.and_then(|query| query.strip_prefix(params.base_url.as_ref()))
+			.filter(|path| path.starts_with("/series/"))
+			.map(|path| path.trim_end_matches('/'));
 
 		let html = Request::get(format!("{}/series/", params.base_url))?.html()?;
 		let entries = html
@@ -62,7 +68,8 @@ pub trait Impl {
 							.unwrap_or_default()
 							.trim_matches(['[', ']', '"'])
 							.split("\",\"")
-							.map(|tag| tag.replace("___", "'").to_lowercase())
+							// Some names carry stray spaces and tabs.
+							.map(|tag| tag.trim().replace("___", "'").to_lowercase())
 							.collect();
 						let has = |values: &[String], attr: &str| {
 							values.is_empty()
@@ -73,8 +80,13 @@ pub trait Impl {
 								})
 						};
 						!is_novel(card)
-							&& query.as_ref().is_none_or(|query| title.contains(query))
-							&& genres.iter().all(|genre| tags.contains(genre))
+							&& match pasted {
+								Some(path) => card
+									.select_first("a[href]")
+									.and_then(|link| link.attr("href"))
+									.is_some_and(|href| href.trim_end_matches('/') == path),
+								None => query.as_ref().is_none_or(|query| title.contains(query)),
+							} && genres.iter().all(|genre| tags.contains(genre))
 							&& has(&types, "data-type")
 							&& has(&statuses, "data-status")
 					})
@@ -103,11 +115,13 @@ pub trait Impl {
 	) -> Result<Manga> {
 		let url = format!("{}{}", params.base_url, manga.key);
 		let html = Request::get(&url)?.html()?;
+		// An unknown series redirects to a page without one.
+		let Some(title) = html.select_first("div.grid > h1").and_then(|h1| h1.text()) else {
+			bail!("Series not found");
+		};
 
 		if needs_details {
-			if let Some(title) = html.select_first("div.grid > h1").and_then(|h1| h1.text()) {
-				manga.title = title;
-			}
+			manga.title = title;
 			manga.cover = html
 				.select_first("[style*=photoURL]")
 				.and_then(|cover| background_image(&cover))
@@ -212,9 +226,14 @@ pub trait Impl {
 		Ok(pages)
 	}
 
-	// Each row is an `h2` over its cards; the featured slider above them has no heading.
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		let html = Request::get(params.base_url.as_ref())?.html()?;
+		Ok(self.parse_home(params, &html))
+	}
+
+	// Each row is an `h2` over its cards; the featured slider above them has no heading. Apart
+	// from the request, so a layout can be checked against a saved page.
+	fn parse_home(&self, params: &Params, html: &Document) -> HomeLayout {
 		let mut components = Vec::new();
 
 		let featured: Vec<Manga> = html
@@ -352,7 +371,7 @@ pub trait Impl {
 			});
 		}
 
-		Ok(HomeLayout { components })
+		HomeLayout { components }
 	}
 
 	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
@@ -384,69 +403,4 @@ pub trait Impl {
 		}
 		Ok(None)
 	}
-}
-
-// A heading sits a level or two inside the grid that holds its cards.
-fn section(heading: &Element) -> Option<Element> {
-	let mut node = heading.parent();
-	for _ in 0..3 {
-		let element = node?;
-		if element
-			.select_first(".latest-poster, .editor-pick-button, button[title] a[href*='/series/']")
-			.is_some()
-		{
-			return Some(element);
-		}
-		node = element.parent();
-	}
-	None
-}
-
-// A pick has no link; the site's script opens `/series/<data-id>`, shows the cover from the
-// upload host and decodes the description from base64.
-fn editor_pick(pick: &Element) -> Option<Manga> {
-	let description = pick
-		.attr("data-description")
-		.and_then(|encoded| STANDARD.decode(encoded).ok())
-		.and_then(|bytes| String::from_utf8(bytes).ok())
-		.map(|text| text.trim().into())
-		.filter(|text: &String| !text.is_empty());
-	Some(Manga {
-		key: format!("/series/{}/", pick.attr("data-id")?),
-		title: pick.attr("title")?.trim().into(),
-		cover: pick
-			.attr("data-img")
-			.map(|image| format!("https://wsrv.nl/?w=600&url=cdn.meowing.org/uploads/{image}")),
-		description,
-		..Default::default()
-	})
-}
-
-fn chapter(link: &Element, base_url: &str) -> Option<Chapter> {
-	let key: String = link.attr("href")?.strip_prefix_or_self(base_url).into();
-	let (chapter_number, title) = chapter_parts(&link.attr("title")?);
-	Some(Chapter {
-		url: Some(format!("{base_url}{key}")),
-		key,
-		title,
-		chapter_number,
-		date_uploaded: link.attr("d").and_then(|date| chapter_date(&date)),
-		..Default::default()
-	})
-}
-
-// A latest row lists each series' newest chapters; coin chapters need a login.
-fn newest_chapter(poster: &Element, base_url: &str) -> Option<MangaWithChapter> {
-	let chapter = poster
-		.select("a[href*='/chapter/']")?
-		.filter(|link| link.select_first("img[alt=Coin]").is_none())
-		.find_map(|link| chapter(&link, base_url))?;
-	Some(MangaWithChapter {
-		manga: manga(
-			&poster.select_first("a[href*='/series/']")?,
-			poster.select_first("[style*=background-image]"),
-			base_url,
-		)?,
-		chapter,
-	})
 }

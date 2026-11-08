@@ -9,6 +9,8 @@ sources:
   - code: templates/keyoapp/src/helpers.rs
   - code: sources/en.genztoons/src/lib.rs
   - code: sources/en.genztoons/src/test.rs
+  - code: sources/en.genztoons/res/filters.json
+  - code: templates/keyoapp/README.md
   - code: scripts/check-upstream-scope.py
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/keyoapp
 verified_at: 7510d93
@@ -42,6 +44,14 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 
 > ⚠️ A card's `tags` is a JSON list (`["Drama","Sports"]`, apostrophes written `___`), and a
 > name can hold a comma ("Host Club, Unrequited Love" on Kaizen), so it splits between quotes.
+> Some Genz names carry stray spaces and tabs (`" \taction"`, `"shounen  "`), which the site's
+> own filter then misses; the template trims them.
+
+> ⚠️ A pasted series link (`<base>/series/<slug>/`) as the query finds that card by its path,
+> with or without the trailing slash, from the same catalogue page.
+
+> ⚠️ An unknown series redirects (302) to `/not-found/`, which has no `div.grid > h1`, so the
+> details and chapter paths fail with "Series not found" rather than return an empty series.
 
 > ⚠️ A series page links only its first genres above the title (Mechanic: Slayer shows Action and
 > Adventure of six), so details tags are those, as the site shows and keiyoushi reads. Its
@@ -77,6 +87,12 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > chapters for sale) are skipped (the owner's call). Genz's Pinned Series lists the same series
 > as its Latest Updates, so Genz hides it with `Params::hidden_rows`; Mist, Timelesstoons and Eris
 > keep theirs.
+
+> ⚠️ A row's cards are found by climbing at most three parents from its heading, and the climb
+> stops at a block holding another row's heading: otherwise a heading with no cards near the
+> top of the page reaches `<body>` and takes every card on it (caught by the offline fixture).
+> `parse_home` is apart from the request so `review_` tests can check the layout against a
+> cut-down page with no network.
 
 > ⚠️ The featured slider is covers on Genz (`aspect-[0.74/1]`) and 2:1 banners on Mist, Kewn
 > and Timelesstoons (`aspect-[2/1]`, 1000px wide), so a banner slider is an image scroller sized

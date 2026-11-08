@@ -1,12 +1,14 @@
 use aidoku::{
-	Manga, MangaStatus,
+	Chapter, Manga, MangaStatus, MangaWithChapter,
 	alloc::{String, string::ToString},
 	helpers::string::StripPrefixOrSelf,
 	imports::{
 		html::{Document, Element},
 		std::{current_date, parse_date_with_options},
 	},
+	prelude::*,
 };
+use base64::{Engine, engine::general_purpose::STANDARD};
 
 /// A card's series: the link holds the path and title, the cover is a background image.
 pub fn manga(link: &Element, cover: Option<Element>, base_url: &str) -> Option<Manga> {
@@ -117,4 +119,77 @@ pub fn chapter_date(text: &str) -> Option<i64> {
 		return None;
 	};
 	Some(current_date() - amount * unit)
+}
+
+// A heading sits a level or two inside the grid that holds its cards. A heading with no cards of
+// its own stops at the first block that holds another row's heading.
+pub fn section(heading: &Element) -> Option<Element> {
+	let title = heading.text();
+	let mut node = heading.parent();
+	for _ in 0..3 {
+		let element = node?;
+		if element
+			.select("h2")
+			.is_some_and(|mut headings| headings.any(|other| other.text() != title))
+		{
+			return None;
+		}
+		if element
+			.select_first(".latest-poster, .editor-pick-button, button[title] a[href*='/series/']")
+			.is_some()
+		{
+			return Some(element);
+		}
+		node = element.parent();
+	}
+	None
+}
+
+// A pick has no link; the site's script opens `/series/<data-id>`, shows the cover from the
+// upload host and decodes the description from base64.
+pub fn editor_pick(pick: &Element) -> Option<Manga> {
+	let description = pick
+		.attr("data-description")
+		.and_then(|encoded| STANDARD.decode(encoded).ok())
+		.and_then(|bytes| String::from_utf8(bytes).ok())
+		.map(|text| text.trim().into())
+		.filter(|text: &String| !text.is_empty());
+	Some(Manga {
+		key: format!("/series/{}/", pick.attr("data-id")?),
+		title: pick.attr("title")?.trim().into(),
+		cover: pick
+			.attr("data-img")
+			.map(|image| format!("https://wsrv.nl/?w=600&url=cdn.meowing.org/uploads/{image}")),
+		description,
+		..Default::default()
+	})
+}
+
+pub fn chapter(link: &Element, base_url: &str) -> Option<Chapter> {
+	let key: String = link.attr("href")?.strip_prefix_or_self(base_url).into();
+	let (chapter_number, title) = chapter_parts(&link.attr("title")?);
+	Some(Chapter {
+		url: Some(format!("{base_url}{key}")),
+		key,
+		title,
+		chapter_number,
+		date_uploaded: link.attr("d").and_then(|date| chapter_date(&date)),
+		..Default::default()
+	})
+}
+
+// A latest row lists each series' newest chapters; coin chapters need a login.
+pub fn newest_chapter(poster: &Element, base_url: &str) -> Option<MangaWithChapter> {
+	let chapter = poster
+		.select("a[href*='/chapter/']")?
+		.filter(|link| link.select_first("img[alt=Coin]").is_none())
+		.find_map(|link| chapter(&link, base_url))?;
+	Some(MangaWithChapter {
+		manga: manga(
+			&poster.select_first("a[href*='/series/']")?,
+			poster.select_first("[style*=background-image]"),
+			base_url,
+		)?,
+		chapter,
+	})
 }
