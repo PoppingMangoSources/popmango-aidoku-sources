@@ -66,7 +66,7 @@ search form (the sort's six options map by position to the template's `order` va
 rated 2: it carries many adult titles and no way to filter them (owner's call). Eva Scans came
 back from maintenance later the same day and is a copy of Madara's crate: the same child theme and
 `/series` path. It lists Adult, Smut and Mature genres, so it is rated 1 although keiyoushi marks it
-safe. Hades Scans still showed a maintenance page and has no crate.
+safe. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 
 > ⚠️ Eva's images go through WordPress.com's proxy (`i1.wp.com/evascans.net/…`), which answers 404
 > to Python's and curl's default clients but 200 to a browser user agent, as the app sends. Fetch
