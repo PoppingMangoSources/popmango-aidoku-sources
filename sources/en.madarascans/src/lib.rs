@@ -19,12 +19,15 @@ impl Impl for MadaraScans {
 		Params {
 			base_url: BASE_URL.into(),
 			manga_url_directory: "/series".into(),
+			// The banners are 1983×793.
+			banner_width: Some(400),
+			banner_height: Some(160),
 			..Default::default()
 		}
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		home::get_home(&params.base_url)
+		home::get_home(params)
 	}
 }
 

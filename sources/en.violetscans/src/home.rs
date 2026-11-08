@@ -1,35 +1,23 @@
 use aidoku::{
-	HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Manga, Result,
+	HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, Result,
 	alloc::{String, Vec},
 	helpers::string::StripPrefixOrSelf,
-	imports::{
-		html::{Document, Element},
-		net::Request,
-	},
+	imports::{html::Element, net::Request},
 	prelude::*,
 };
-use mangathemesia::helpers::ElementImageAttr;
+use mangathemesia::{
+	Params,
+	helpers::{ElementImageAttr, slider_banners},
+};
 
-// The site's home is its own child theme, which the template's home doesn't read: a banner rail,
+// The site's home is its own child theme, which the template's home doesn't read beyond its banners:
 // rows of series cards and an editor's panel, in the site's order.
-pub fn get_home(base_url: &str) -> Result<HomeLayout> {
-	let html = Request::get(base_url)?.html()?;
+pub fn get_home(params: &Params) -> Result<HomeLayout> {
+	let base_url = &params.base_url;
+	let html = Request::get(base_url.as_ref())?.html()?;
 	let mut components = Vec::new();
 
-	let banners = banners(&html, base_url);
-	if !banners.is_empty() {
-		components.push(HomeComponent {
-			title: None,
-			subtitle: None,
-			// The banners are 1983×793.
-			value: HomeComponentValue::ImageScroller {
-				links: banners,
-				auto_scroll_interval: Some(5.0),
-				width: Some(400),
-				height: Some(160),
-			},
-		});
-	}
+	components.extend(slider_banners(&html, params));
 
 	// Editor Picks is a <section>; the others are <div>s.
 	for section in html.select(".bixbox").into_iter().flatten() {
@@ -79,30 +67,7 @@ pub fn get_home(base_url: &str) -> Result<HomeLayout> {
 	Ok(HomeLayout { components })
 }
 
-fn banners(html: &Document, base_url: &str) -> Vec<Link> {
-	html.select(".slidernew .swiper-slide a")
-		.into_iter()
-		.flatten()
-		.filter_map(|link| {
-			let image = link.select_first("img")?;
-			Some(Link {
-				title: image.attr("alt")?,
-				image_url: image.img_attr(),
-				value: Some(LinkValue::Manga(Manga {
-					key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
-					..Default::default()
-				})),
-				..Default::default()
-			})
-		})
-		.collect()
-}
-
-// A card, unless it's a novel: novel chapters are text, which this source doesn't read.
 fn series(card: &Element, base_url: &str) -> Option<Manga> {
-	if card.select_first(".novelabel").is_some() {
-		return None;
-	}
 	let link = card.select_first("a")?;
 	Some(Manga {
 		key: link.attr("href")?.strip_prefix_or_self(base_url).into(),

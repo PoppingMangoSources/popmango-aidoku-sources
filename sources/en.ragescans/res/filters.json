@@ -126,5 +126,18 @@
 			"webtoons",
 			"zombie"
 		]
+	},
+	{
+		"type": "text",
+		"id": "author",
+		"title": "Author",
+		"hideFromHeader": true
+	},
+	{
+		"type": "text",
+		"id": "yearx",
+		"title": "Year",
+		"placeholder": "2024",
+		"hideFromHeader": true
 	}
 ]

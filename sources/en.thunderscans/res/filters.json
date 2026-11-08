@@ -38,14 +38,16 @@
 			"Manga",
 			"Manhwa",
 			"Manhua",
-			"Comic"
+			"Comic",
+			"Novel"
 		],
 		"ids": [
 			"",
 			"manga",
 			"manhwa",
 			"manhua",
-			"comic"
+			"comic",
+			"novel"
 		]
 	},
 	{
@@ -352,5 +354,18 @@
 			"1160",
 			"75"
 		]
+	},
+	{
+		"type": "text",
+		"id": "author",
+		"title": "Author",
+		"hideFromHeader": true
+	},
+	{
+		"type": "text",
+		"id": "yearx",
+		"title": "Year",
+		"placeholder": "2024",
+		"hideFromHeader": true
 	}
 ]

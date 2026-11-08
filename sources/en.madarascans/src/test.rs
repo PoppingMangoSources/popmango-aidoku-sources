@@ -122,6 +122,25 @@ fn status_type_and_genre_filters_narrow_results() {
 }
 
 #[aidoku_test]
+fn author_and_year_filters_narrow_results() {
+	let text = |id: &str, value: &str| FilterValue::Text {
+		id: id.into(),
+		value: value.into(),
+	};
+	assert!(!search(None, 1, vec![]).entries.is_empty());
+	assert!(
+		search(None, 1, vec![text("author", "zzqxwvnobody")])
+			.entries
+			.is_empty()
+	);
+	assert!(
+		search(None, 1, vec![text("yearx", "1901")])
+			.entries
+			.is_empty()
+	);
+}
+
+#[aidoku_test]
 fn details_chapters_and_pages_load() {
 	let manga = source()
 		.get_manga_update(first_series(), true, true)

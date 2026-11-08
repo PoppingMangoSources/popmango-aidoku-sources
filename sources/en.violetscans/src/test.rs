@@ -3,7 +3,7 @@
 use super::*;
 use aidoku::{
 	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue, Manga,
-	MangaPageResult,
+	MangaPageResult, PageContent,
 	alloc::{String, Vec, vec},
 };
 use aidoku_test::aidoku_test;
@@ -50,22 +50,32 @@ fn browse_pages_through_the_library() {
 }
 
 #[aidoku_test]
-fn novels_stay_out_of_results() {
-	// The site's first pages list novels among comics.
-	for page in 1..=3 {
-		assert!(
-			search(None, page, vec![])
-				.entries
-				.iter()
-				.all(|manga| !manga.title.ends_with("[Novel]"))
-		);
+fn novels_read_as_text() {
+	let novel = search(
+		None,
+		1,
+		vec![FilterValue::Select {
+			id: "type".into(),
+			value: "novel".into(),
+		}],
+	)
+	.entries
+	.remove(0);
+	let manga = source().get_manga_update(novel, false, true).unwrap();
+	let chapters = manga.chapters.clone().unwrap();
+	for chapter in [chapters.first(), chapters.last()].into_iter().flatten() {
+		let pages = source()
+			.get_page_list(manga.clone(), chapter.clone())
+			.unwrap();
+		let [page] = pages.as_slice() else {
+			panic!("one text page, got {}", pages.len());
+		};
+		let PageContent::Text(text) = &page.content else {
+			panic!("a novel chapter is text");
+		};
+		assert!(text.len() > 1000);
+		assert!(!text.contains("<p") && !text.contains("<div"));
 	}
-	assert!(
-		search(Some("Novel"), 1, vec![])
-			.entries
-			.iter()
-			.all(|manga| !manga.title.ends_with("[Novel]"))
-	);
 }
 
 #[aidoku_test]
@@ -141,6 +151,25 @@ fn status_type_and_genre_filters_narrow_results() {
 }
 
 #[aidoku_test]
+fn author_and_year_filters_narrow_results() {
+	let text = |id: &str, value: &str| FilterValue::Text {
+		id: id.into(),
+		value: value.into(),
+	};
+	assert!(!search(None, 1, vec![]).entries.is_empty());
+	assert!(
+		search(None, 1, vec![text("author", "zzqxwvnobody")])
+			.entries
+			.is_empty()
+	);
+	assert!(
+		search(None, 1, vec![text("yearx", "1901")])
+			.entries
+			.is_empty()
+	);
+}
+
+#[aidoku_test]
 fn details_chapters_and_pages_load() {
 	let manga = source()
 		.get_manga_update(first_series(), true, true)
@@ -207,7 +236,7 @@ fn home_follows_the_site() {
 	assert_eq!(keys.len(), links.len());
 	keys.dedup();
 	assert_eq!(keys.len(), links.len(), "banners repeat");
-	// The site's rows in its order; genre tiles and novels hold no comic series.
+	// The site's rows in its order; genre tiles hold no series.
 	let titles = home.components[1..]
 		.iter()
 		.filter_map(|component| component.title.as_deref())
@@ -219,6 +248,7 @@ fn home_follows_the_site() {
 			"New Series",
 			"Latest Manga",
 			"Latest Comics",
+			"Latest Novels",
 			"Editor Picks",
 			"Completed Series"
 		]
