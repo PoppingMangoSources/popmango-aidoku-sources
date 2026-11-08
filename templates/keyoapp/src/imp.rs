@@ -6,7 +6,8 @@ use crate::{
 };
 use aidoku::{
 	Chapter, ContentRating, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue,
-	HomeLayout, Link, Manga, MangaPageResult, MangaWithChapter, Page, PageContent, Result, Viewer,
+	HomeLayout, Link, LinkValue, Manga, MangaPageResult, MangaWithChapter, Page, PageContent,
+	Result, Viewer,
 	alloc::{String, Vec, vec},
 	helpers::string::{PlainText, StripPrefixOrSelf},
 	imports::{
@@ -32,21 +33,12 @@ pub trait Impl {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let mut genres = Vec::new();
-		let mut excluded_genres = Vec::new();
 		let mut types = Vec::new();
 		let mut statuses = Vec::new();
 		for filter in filters {
-			if let FilterValue::MultiSelect {
-				id,
-				included,
-				excluded,
-			} = filter
-			{
+			if let FilterValue::MultiSelect { id, included, .. } = filter {
 				match id.as_str() {
-					"genre" => {
-						genres = included;
-						excluded_genres = excluded;
-					}
+					"genre" => genres = included.iter().map(|genre| genre.to_lowercase()).collect(),
 					"type" => types = included,
 					"status" => statuses = included,
 					_ => {}
@@ -63,17 +55,14 @@ pub trait Impl {
 					.filter(|card| {
 						// The card's title also carries the series' alternative titles.
 						let title = card.attr("title").unwrap_or_default().to_lowercase();
+						// A JSON list such as `["Drama","Sports"]`, with apostrophes as `___`; a name
+						// can hold a comma, so it splits between quotes.
 						let tags: Vec<String> = card
 							.attr("tags")
 							.unwrap_or_default()
-							.trim_matches(['[', ']'])
-							.split(',')
-							.map(|tag| {
-								tag.trim()
-									.trim_matches('"')
-									.replace("___", "'")
-									.to_lowercase()
-							})
+							.trim_matches(['[', ']', '"'])
+							.split("\",\"")
+							.map(|tag| tag.replace("___", "'").to_lowercase())
 							.collect();
 						let has = |values: &[String], attr: &str| {
 							values.is_empty()
@@ -85,12 +74,7 @@ pub trait Impl {
 						};
 						!is_novel(card)
 							&& query.as_ref().is_none_or(|query| title.contains(query))
-							&& genres
-								.iter()
-								.all(|genre| tags.contains(&genre.to_lowercase()))
-							&& !excluded_genres
-								.iter()
-								.any(|genre| tags.contains(&genre.to_lowercase()))
+							&& genres.iter().all(|genre| tags.contains(genre))
 							&& has(&types, "data-type")
 							&& has(&statuses, "data-status")
 					})
@@ -148,20 +132,29 @@ pub trait Impl {
 						.collect()
 				})
 				.unwrap_or_default();
-			manga.content_rating = if tags
-				.iter()
-				.any(|tag| matches!(tag.as_str(), "Adult" | "Smut" | "Hentai"))
-			{
+			// The page links only a series' first genres, while its keywords start with all of
+			// them, so the rating reads both.
+			let keywords = html
+				.select_first("meta[name=keywords]")
+				.and_then(|meta| meta.attr("content"))
+				.unwrap_or_default();
+			let has_any = |names: &[&str]| {
+				tags.iter()
+					.map(String::as_str)
+					.chain(keywords.split(',').map(str::trim))
+					.any(|tag| names.iter().any(|name| tag.eq_ignore_ascii_case(name)))
+			};
+			manga.content_rating = if has_any(&["Adult", "Smut", "Hentai"]) {
 				ContentRating::NSFW
-			} else if tags
-				.iter()
-				.any(|tag| matches!(tag.as_str(), "Ecchi" | "Mature"))
-			{
+			} else if has_any(&["Ecchi", "Mature"]) {
 				ContentRating::Suggestive
 			} else {
 				ContentRating::Safe
 			};
-			manga.viewer = match labelled(&html, "Type").as_deref() {
+			manga.viewer = match labelled(&html, "Type")
+				.map(|kind| kind.to_lowercase())
+				.as_deref()
+			{
 				Some("manga") => Viewer::RightToLeft,
 				Some("comic") => Viewer::LeftToRight,
 				Some("manhwa" | "manhua" | "mangatoon") => Viewer::Webtoon,
@@ -195,18 +188,23 @@ pub trait Impl {
 			.and_then(|(_, rest)| rest.split_once('`'))
 			.map(|(template, _)| template)
 			.ok_or_else(|| error!("No image host found"))?;
-		let pages: Vec<Page> = Html::parse(&response)?
+		let pages = Html::parse(&response)?
 			.select("#pages > img")
 			.map(|images| {
 				images
-					.filter_map(|image| image.attr("uid"))
-					.filter(|uid| !uid.is_empty())
-					.map(|uid| Page {
-						content: PageContent::url(template.replace("${uid}", &uid)),
-						..Default::default()
+					.map(|image| {
+						let uid = image
+							.attr("uid")
+							.filter(|uid| !uid.is_empty())
+							.ok_or_else(|| error!("A page has no image id"))?;
+						Ok(Page {
+							content: PageContent::url(template.replace("${uid}", &uid)),
+							..Default::default()
+						})
 					})
-					.collect()
+					.collect::<Result<Vec<Page>>>()
 			})
+			.transpose()?
 			.unwrap_or_default();
 		if pages.is_empty() {
 			bail!("No pages found");
@@ -219,7 +217,7 @@ pub trait Impl {
 		let html = Request::get(params.base_url.as_ref())?.html()?;
 		let mut components = Vec::new();
 
-		let featured: Vec<Link> = html
+		let featured: Vec<Manga> = html
 			.select("a.splide__slide[href*='/series/']")
 			.map(|slides| {
 				slides
@@ -231,18 +229,46 @@ pub trait Impl {
 							&params.base_url,
 						)
 					})
-					.map(Link::from)
 					.collect()
 			})
 			.unwrap_or_default();
 		if !featured.is_empty() {
+			// Some sites feature 2:1 banners rather than covers.
+			let value = if html
+				.select_first("a.splide__slide [class*='aspect-[2/1]']")
+				.is_some()
+			{
+				HomeComponentValue::ImageScroller {
+					links: featured
+						.into_iter()
+						.map(
+							|Manga {
+							     key, title, cover, ..
+							 }| Link {
+								title,
+								image_url: cover,
+								value: Some(LinkValue::Manga(Manga {
+									key,
+									..Default::default()
+								})),
+								..Default::default()
+							},
+						)
+						.collect(),
+					auto_scroll_interval: Some(5.0),
+					width: Some(400),
+					height: Some(200),
+				}
+			} else {
+				HomeComponentValue::Scroller {
+					entries: featured.into_iter().map(Link::from).collect(),
+					listing: None,
+				}
+			};
 			components.push(HomeComponent {
 				title: None,
 				subtitle: None,
-				value: HomeComponentValue::Scroller {
-					entries: featured,
-					listing: None,
-				},
+				value,
 			});
 		}
 
@@ -253,7 +279,10 @@ pub trait Impl {
 			};
 			// The site repeats some rows for its mobile layout; the bulk discount row only sells
 			// coin chapters.
-			if titles.contains(&title) || title == "Bulk Discounted Series" {
+			if titles.contains(&title)
+				|| title == "Bulk Discounted Series"
+				|| params.hidden_rows.contains(&title.as_str())
+			{
 				continue;
 			}
 			let Some(section) = section(&heading) else {

@@ -35,8 +35,20 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 
 > ⚠️ Genres, types and statuses are each site's own lists from the `initializeDropdownMenu`
 > script, written to the consumer's static `filters.json` (the template's README has the
-> console snippet), so tags are tappable without `supportsTagSearch`. Genre exclusion works,
-> since the filtering is local; type and status are include-only, as on the site.
+> console snippet), so tags are tappable without `supportsTagSearch`. Every filter is
+> include-only, as on the site and in keiyoushi: a series needs every chosen genre and any one
+> chosen type or status, and none can be excluded (the owner's call; the local filtering could
+> exclude, but the site offers no such control).
+
+> ⚠️ A card's `tags` is a JSON list (`["Drama","Sports"]`, apostrophes written `___`), and a
+> name can hold a comma ("Host Club, Unrequited Love" on Kaizen), so it splits between quotes.
+
+> ⚠️ A series page links only its first genres above the title (Mechanic: Slayer shows Action and
+> Adventure of six), so details tags are those, as the site shows and keiyoushi reads. Its
+> `meta[name=keywords]` starts with every genre, then a per-site tail of brand and type words
+> (Timelesstoons' tail even lists Action and Shounen), so it can't give the tags, but the
+> content rating reads it too: an Eris series linking Romance and Drama lists Mature and Smut
+> there, and rated Safe before.
 
 > ⚠️ Novels appear among comics (`data-type="novel"`, or a `novel` badge on home cards). The
 > template has no novel reader, so it leaves them out of search and home, as keiyoushi does.
@@ -55,13 +67,23 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 
 > ⚠️ Pages are `#pages > img[uid]`, and the reader builds each url from a `realUrl` template in a
 > script (`https://cdn.meowing.org/uploads/${uid}` on every site checked), which needs no referer.
+> An image without a `uid` fails the page list rather than dropping that page.
 
 > ⚠️ The home is generic: every `h2` over cards becomes a row in the site's order, with the
 > untitled featured slider first. Latest Updates is a chapter list of five per page; Pinned
 > Series uses the same `.latest-poster` markup, so the heading tells them apart and Pinned is a
 > card row like the rest. Some rows repeat for the mobile layout ("Editor's Choice"), so titles
 > are kept once; headings with no cards ("Sync Local Library") and Bulk Discounted Series (coin
-> chapters for sale) are skipped (the owner's call).
+> chapters for sale) are skipped (the owner's call). Genz's Pinned Series lists the same series
+> as its Latest Updates, so Genz hides it with `Params::hidden_rows`; Mist, Timelesstoons and Eris
+> keep theirs.
+
+> ⚠️ The featured slider is covers on Genz (`aspect-[0.74/1]`) and 2:1 banners on Mist, Kewn
+> and Timelesstoons (`aspect-[2/1]`, 1000px wide), so a banner slider is an image scroller sized
+> 400 by 200 and the rest a card row. The banner slides carry only a title and the image: Mist's
+> descriptions and genres belong to its Collections carousel (themed groups, not series), so a
+> big scroller there would cost a details request per slide. Chromium shows `--clone` slides
+> that the script adds; the served page has none.
 
 > ⚠️ Editor's Choice is a big scroller. Its picks are `.editor-pick-button` divs with no link:
 > the site's script opens `/series/<data-id>`, loads the cover from `data-img` on the upload

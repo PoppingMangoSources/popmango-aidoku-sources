@@ -24,7 +24,7 @@
 		"id": "genre",
 		"title": "Genres",
 		"isGenre": true,
-		"canExclude": true,
+		"canExclude": false,
 		"options": [
 			"Action",
 			"Adventure",

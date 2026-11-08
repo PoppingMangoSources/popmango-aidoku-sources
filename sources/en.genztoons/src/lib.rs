@@ -17,6 +17,8 @@ impl Impl for GenzToons {
 	fn params(&self) -> Params {
 		Params {
 			base_url: BASE_URL.into(),
+			// The site's Pinned Series lists the same series as Latest Updates.
+			hidden_rows: &["Pinned Series"],
 		}
 	}
 }

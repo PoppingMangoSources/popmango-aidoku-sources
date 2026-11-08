@@ -24,3 +24,9 @@ Each consumer's `res/filters.json` holds the site's own type, genre and status v
 ```
 
 Leave `novel` out of the types: the template has no novel reader and hides novels everywhere.
+Every filter is include-only, as on the site, so each states `"canExclude": false`.
+
+## Home
+
+The home follows the site's headings. A row that repeats another one on a particular site can be
+left out with `Params::hidden_rows`, as Genz Toons does with its Pinned Series.

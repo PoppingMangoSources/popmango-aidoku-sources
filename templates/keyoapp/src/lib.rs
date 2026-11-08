@@ -10,8 +10,11 @@ mod imp;
 
 pub use imp::Impl;
 
+#[derive(Default)]
 pub struct Params {
 	pub base_url: Cow<'static, str>,
+	/// Home rows to leave out by heading, such as one that repeats another row.
+	pub hidden_rows: &'static [&'static str],
 }
 
 pub struct Keyoapp<T: Impl> {

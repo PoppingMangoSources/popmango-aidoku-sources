@@ -60,14 +60,16 @@ fn search_finds_a_title() {
 }
 
 #[aidoku_test]
-fn genre_filter_includes_and_excludes() {
+fn genre_filter_needs_every_genre() {
 	let all = search(None, vec![]).entries.len();
 	let action = search(None, vec![multi("genre", &[GENRE], &[])]).entries;
-	let without = search(None, vec![multi("genre", &[], &[GENRE])]).entries;
 	assert!(!action.is_empty() && action.len() < all);
-	assert_eq!(action.len() + without.len(), all);
 	let tags = details(action[0].clone()).tags.unwrap();
 	assert!(tags.iter().any(|tag| tag.eq_ignore_ascii_case(GENRE)));
+	// As on the site, a series needs every chosen genre.
+	let both = search(None, vec![multi("genre", &[GENRE, "fantasy"], &[])]).entries;
+	assert!(!both.is_empty() && both.len() < action.len());
+	assert!(both.iter().all(|manga| action.contains(manga)));
 }
 
 #[aidoku_test]
@@ -139,10 +141,7 @@ fn home_follows_the_site() {
 	assert_eq!(unique.len(), titles.len(), "rows repeat");
 	assert!(!titles.contains(&"Bulk Discounted Series"));
 	let row = |title: &str| &home.components[position(title) + 1].value;
-	assert!(
-		matches!(row("Pinned Series"), HomeComponentValue::Scroller { entries, .. } if !entries.is_empty()),
-		"pinned series is a card row"
-	);
+	assert!(!titles.contains(&"Pinned Series"), "pinned repeats latest");
 	let HomeComponentValue::BigScroller { entries: picks, .. } = row("Editor's Choice") else {
 		panic!("editor's choice is a big scroller");
 	};
