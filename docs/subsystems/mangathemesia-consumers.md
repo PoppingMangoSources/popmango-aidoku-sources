@@ -82,6 +82,19 @@ Scans showed a maintenance page on 2026-11-08 and have no crate yet.
 > `.violet-ep-panel`s whose covers sit apart, matched by `data-index`; it becomes a `BigScroller`.
 > Thunder keeps its cards inside each box and has no Editor Picks panel.
 
+> ⚠️ Latest Comics and Latest Novels cards carry a `.chapter-list` of the series' newest chapters,
+> so those rows are `MangaChapterList`s naming the newest chapter without a `.fa-coins` lock, as
+> the owner's Paperback Violet source does. A series whose listed chapters are all locked drops
+> out (23 of 48 on Thunder's Latest Comics on 2026-11-08): a locked chapter has no `href` in the
+> series' list, so it couldn't be opened. Dates are left out, as in the template's own chapter
+> rows: the site gives only "NEW" or "1 week". Editor Picks' status comes from its badge.
+
+> ⚠️ Some covers are GIFs. WordPress keeps only the first frame when it resizes one, so a card's
+> `…-225x300.gif` is a one-frame GIF while the series page shows the animated original (36 MB on
+> Thunder's Full-Time Awakening). The app hands every GIF to Gifu (`SourceImageView.swift`), which
+> draws nothing for a GIF that doesn't animate, so those cards show blank. That is the app's bug;
+> the source leaves the site's URLs alone.
+
 > ⚠️ Scythe's cache plugin (Autoptimize) moves the reader's `ts_reader.run({..."images":[...]})`
 > script into a `src="data:text/javascript;base64,…"` URL, so the template's search for `"images":`
 > finds nothing. The template decodes the one script whose base64 starts `dHNfcmVhZGVyLnJ1bih7`
