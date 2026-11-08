@@ -5,6 +5,7 @@ created: 2026-11-07
 updated: 2026-11-08
 sources:
   - code: templates/mangathemesia/src/imp.rs
+  - code: templates/mangathemesia/src/helpers.rs
   - code: sources/en.scythescans/src/lib.rs
   - code: sources/en.lagoonscans/src/lib.rs
   - code: sources/en.ravenscans/src/lib.rs
@@ -83,7 +84,10 @@ Scans showed a maintenance page on 2026-11-08 and have no crate yet.
 
 > ⚠️ Scythe's cache plugin (Autoptimize) moves the reader's `ts_reader.run({..."images":[...]})`
 > script into a `src="data:text/javascript;base64,…"` URL, so the template's search for `"images":`
-> finds nothing. Scythe decodes those scripts itself; the other sites' chapters carry plain JSON.
+> finds nothing. The template decodes the one script whose base64 starts `dHNfcmVhZGVyLnJ1bih7`
+> (`ts_reader.run({`), the selector keiyoushi's base uses for every consumer, and reads the images
+> and the novel flag from it; the other sites' chapters carry plain JSON. Scythe keeps only
+> keiyoushi's rate limit of three requests a second.
 
 > ⚠️ Violet and Thunder list novels among comics (the other five returned none for `type=novel`).
 > The theme's reader data flags a novel chapter with `"is_novel":true` and puts its text in
@@ -93,13 +97,21 @@ Scans showed a maintenance page on 2026-11-08 and have no crate yet.
 > with their Novel type option. Inline bold and italic are dropped: keeping them needs
 > `child_nodes`, which would raise every consumer's `minAppVersion` to 0.8.3.
 
+> ⚠️ A `<p>` can hold two lines of dialogue split by `<br>` (20 of 99 paragraphs on one Thunder
+> chapter), which `text()` runs together, so such a block is split at each `<br>` and each line
+> parsed on its own. The runner returns no text from `Element::from(document)`, so each line is
+> read from a full parse's `body` (`review_novel_lines_split_at_line_breaks` in Thunder's tests).
+> No `#readerarea` held headings on 2026-11-08, although the corruptbytes Paperback fixture has one.
+
 > ⚠️ Beyond the search form, keiyoushi's theme sends `author` and `yearx` text filters and genre
 > exclusion as `genre[]=-id`. All seven sites answer a nonsense author and the year 1901 with no
 > results (Raven and Rage probed through Firecrawl), and a real author or year finds its series, so
 > both filters are in every `filters.json`. Excluding a genre returned the unfiltered list on every
 > reachable site, so `canExclude` stays false.
 
-> ⚠️ Rage's and Violet's icons are dark discs, so they sit on black; the others on white.
+> ⚠️ Rage's, Violet's and Thunder's icons are dark discs, so they sit on black; the others on
+> white. Thunder's comes from the inkdex Paperback source's 458 px `static/icon.png`, sharper than
+> the site's favicon.
 
 > ⚠️ Coin-locked chapters are `<a data-bs-target="#lockedChapterModal" data-coin=…>` with no `href`,
 > and the template drops a chapter without one, so locked chapters stay hidden (no login).
