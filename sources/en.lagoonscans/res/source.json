@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.lagoonscans",
 		"name": "Lagoon Scans",
-		"version": 5,
+		"version": 6,
 		"url": "https://lagoonscans.com",
-		"contentRating": 1,
+		"contentRating": 0,
 		"languages": [
 			"en"
 		],

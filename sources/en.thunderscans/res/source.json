@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.thunderscans",
 		"name": "Thunder Scans",
-		"version": 6,
+		"version": 7,
 		"url": "https://en-thunderscans.com",
-		"contentRating": 1,
+		"contentRating": 0,
 		"languages": [
 			"en"
 		],

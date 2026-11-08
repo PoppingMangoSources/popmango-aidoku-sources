@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.ragescans",
 		"name": "Rage Scans",
-		"version": 5,
+		"version": 6,
 		"url": "https://ragescans.com",
-		"contentRating": 1,
+		"contentRating": 0,
 		"languages": [
 			"en"
 		],

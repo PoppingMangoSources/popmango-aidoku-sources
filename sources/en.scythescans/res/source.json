@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.scythescans",
 		"name": "Scythe Scans",
-		"version": 5,
+		"version": 6,
 		"url": "https://scythescans.com",
-		"contentRating": 1,
+		"contentRating": 0,
 		"languages": [
 			"en"
 		],

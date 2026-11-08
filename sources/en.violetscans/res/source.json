@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.violetscans",
 		"name": "Violet Scans",
-		"version": 6,
+		"version": 7,
 		"url": "https://violetmanga.com",
-		"contentRating": 1,
+		"contentRating": 0,
 		"languages": [
 			"en"
 		],
