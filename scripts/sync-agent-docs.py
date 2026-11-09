@@ -6,6 +6,13 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+INSTRUCTION_PAIRS = (("AGENTS.md", "CLAUDE.md"), ("docs/AGENTS.md", "docs/CLAUDE.md"))
+DOC_WORKFLOWS = ("docs-sync", "docs-lint", "docs-query", "docs-status")
+
+
+def command_wrapper(name):
+    return (f"# /{name}\n\nFollow `.claude/skills/{name}/SKILL.md`.\n"
+            "Pass the user question and command arguments to that workflow.\n\nArguments: $ARGUMENTS\n")
 
 
 def main():
@@ -16,8 +23,17 @@ def main():
     mirror = ROOT / ".agents/skills"
     errors = []
     if args.check:
-        if (ROOT / "AGENTS.md").read_bytes() != (ROOT / "CLAUDE.md").read_bytes():
-            errors.append("AGENTS.md and CLAUDE.md differ")
+        for source, target in INSTRUCTION_PAIRS:
+            if not (ROOT / source).is_file() or not (ROOT / target).is_file():
+                errors.append(f"{source} or {target} is missing")
+            elif (ROOT / source).read_bytes() != (ROOT / target).read_bytes():
+                errors.append(f"{source} and {target} differ")
+        for name in DOC_WORKFLOWS:
+            command = ROOT / f".claude/commands/{name}.md"
+            if not (primary / name / "SKILL.md").is_file():
+                errors.append(f"{name} skill is missing")
+            if not command.is_file() or command.read_text() != command_wrapper(name):
+                errors.append(f"{name} command does not match its skill wrapper")
         if mirror.is_symlink():
             errors.append(".agents/skills must be a physical copy, not a symlink")
         source_files = {p.relative_to(primary): p.read_bytes() for p in primary.rglob("*") if p.is_file()}
@@ -41,13 +57,18 @@ def main():
         if not errors:
             print("PASS instruction files and skill trees match")
         return int(bool(errors))
-    shutil.copyfile(ROOT / "AGENTS.md", ROOT / "CLAUDE.md")
+    for source, target in INSTRUCTION_PAIRS:
+        shutil.copyfile(ROOT / source, ROOT / target)
+    for name in DOC_WORKFLOWS:
+        command = ROOT / f".claude/commands/{name}.md"
+        command.parent.mkdir(parents=True, exist_ok=True)
+        command.write_text(command_wrapper(name))
     if mirror.is_symlink():
         mirror.unlink()
     elif mirror.exists():
         shutil.rmtree(mirror)
     shutil.copytree(primary, mirror)
-    print("Synchronized CLAUDE.md and .agents/skills")
+    print("Synchronized AGENTS.md / CLAUDE.md pairs, skill trees and docs command wrappers")
     return 0
 
 

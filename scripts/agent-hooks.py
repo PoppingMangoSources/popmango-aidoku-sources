@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code hooks and review stamps that keep source work on the AGENTS.md / CLAUDE.md workflow.
+"""Claude Code/Codex hooks and review stamps for the AGENTS.md / CLAUDE.md workflow.
 
 Usage:
     scripts/agent-hooks.py pre-edit     PreToolUse hook: point at the workflow before a source edit,
@@ -71,28 +71,39 @@ def read_stamp(crate: str) -> dict:
         return {}
 
 
-def pre_edit(event: dict) -> None:
-    try:
-        relative = Path(event.get("tool_input", {}).get("file_path", "")).resolve().relative_to(ROOT)
-    except ValueError:
-        return
-    crate = crate_of(str(relative))
-    if not crate:
-        return
-    messages = []
-    if remind_once(event, crate):
-        name = crate.split("/", 1)[1]
-        review = f"`scripts/review-source.sh {name}`" if crate.startswith("sources/") else \
-            "`scripts/review-source.sh` on each source that uses it"
-        messages.append(
-            f"You are editing {crate}. Follow the aidoku-source skill (.claude/skills/aidoku-source/SKILL.md; "
-            "load it if it isn't loaded), compare with merged sources built the same way (AGENTS.md / CLAUDE.md section 6), "
-            f"and before calling the work done run {review} and read AGENTS.md / CLAUDE.md section 3 against the diff row by row."
-        )
+def edited_files(event: dict) -> list[tuple[str, str]]:
     tool_input = event.get("tool_input", {})
-    written = tool_input.get("new_string", "") + tool_input.get("content", "")
-    if ("HomeComponent" in written or relative.name == "home.rs") and remind_once(event, f"{crate}#home"):
-        messages.append(section("### Home components", "### Global mutable state"))
+    if event.get("tool_name") == "apply_patch":
+        patch = tool_input.get("command", "")
+        headers = list(re.finditer(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$", patch, re.M))
+        return [(match[1], patch[match.end():headers[i + 1].start() if i + 1 < len(headers) else len(patch)])
+                for i, match in enumerate(headers)]
+    path = tool_input.get("file_path")
+    return [(path, tool_input.get("new_string", "") + tool_input.get("content", ""))] if path else []
+
+
+def pre_edit(event: dict) -> None:
+    messages = []
+    for path, written in edited_files(event):
+        try:
+            relative = (Path(event.get("cwd") or ROOT) / path).resolve().relative_to(ROOT)
+        except ValueError:
+            continue
+        crate = crate_of(str(relative))
+        if not crate:
+            continue
+        if remind_once(event, crate):
+            name = crate.split("/", 1)[1]
+            review = f"`scripts/review-source.sh {name}`" if crate.startswith("sources/") else \
+                "`scripts/review-source.sh` on each source that uses it"
+            messages.append(
+                f"You are editing {crate}. Follow the aidoku-source skill "
+                "(.agents/skills/aidoku-source/SKILL.md in Codex, .claude/skills/aidoku-source/SKILL.md in Claude; "
+                "load it if it isn't loaded), compare with merged sources built the same way (AGENTS.md / CLAUDE.md section 6), "
+                f"and before calling the work done run {review} and read AGENTS.md / CLAUDE.md section 3 against the diff row by row."
+            )
+        if ("HomeComponent" in written or relative.name == "home.rs") and remind_once(event, f"{crate}#home"):
+            messages.append(section("### Home components", "### Global mutable state"))
     if messages:
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                                  "additionalContext": "\n\n".join(messages)}}))

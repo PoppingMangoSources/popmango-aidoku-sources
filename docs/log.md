@@ -39,3 +39,10 @@ Append-only. Newest entries at the bottom.
 
 - New page [[novelarchive]] after reworking the source for the moved site and its library
   script: adult exclusions sent like the site, dynamic genres, the site's three home rows.
+
+## [2026-11-09] update | shared agent docs workflows
+
+- Added matching docs instruction files and four docs skills for both clients.
+- Shared the docs linter under `scripts/`, retained Claude command wrappers, and extended sync drift checks.
+- Added Codex hook configuration using the existing handlers, including patch input support.
+- Updated [[source-checks]] with setup boundaries and regression coverage.

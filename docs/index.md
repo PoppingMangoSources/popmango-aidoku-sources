@@ -3,7 +3,7 @@
 Aidoku sources published from this fork, and the work behind their upstream submissions.
 
 This directory is a wiki maintained by an LLM: linked markdown pages, nothing outside the
-repository. The rules are in [`CLAUDE.md`](CLAUDE.md). The rules for writing sources live in
+repository. The rules are in [`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md). The rules for writing sources live in
 the root `CLAUDE.md` / `AGENTS.md`; this wiki records how particular areas work and the
 traps found in them. It grows as work touches new areas.
 
@@ -61,6 +61,9 @@ _(none yet)_
 /docs-query    ask the docs. If it is not there, the answer says so
 /docs-status   commits not yet reflected, stale pages, recent work
 ```
+
+Codex can invoke the same workflows as `$docs-sync`, `$docs-lint`, `$docs-query` and
+`$docs-status`. The shared linter is `python3 scripts/docs-lint.py --root .`.
 
 Every page carries `verified_at`, the commit it was checked against. Change code, run
 `/docs-sync`.

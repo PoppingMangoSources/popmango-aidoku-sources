@@ -1,0 +1,58 @@
+{
+	"hooks": {
+		"PreToolUse": [
+			{
+				"matcher": "^(apply_patch|Edit|MultiEdit|Write)$",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "python3 \"$(git rev-parse --show-toplevel)/scripts/agent-hooks.py\" pre-edit",
+						"timeout": 10
+					}
+				]
+			},
+			{
+				"matcher": "^Bash$",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "python3 \"$(git rev-parse --show-toplevel)/scripts/agent-hooks.py\" pre-bash",
+						"timeout": 10
+					}
+				]
+			}
+		],
+		"Stop": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "python3 \"$(git rev-parse --show-toplevel)/scripts/agent-hooks.py\" stop",
+						"timeout": 120
+					}
+				]
+			}
+		],
+		"SessionStart": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"$(git rev-parse --show-toplevel)/scripts/install-hooks.sh\"",
+						"timeout": 10
+					}
+				]
+			},
+			{
+				"matcher": "compact",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "python3 \"$(git rev-parse --show-toplevel)/scripts/agent-hooks.py\" digest",
+						"timeout": 10
+					}
+				]
+			}
+		]
+	}
+}

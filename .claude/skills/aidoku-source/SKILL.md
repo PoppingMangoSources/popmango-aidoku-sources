@@ -123,9 +123,10 @@ it the code, test or output that shows it (AGENTS.md / CLAUDE.md section 0). An 
 beside it isn't done; an order or layout they specified gets a `review_` test.
 
 Run `scripts/review-source.sh <id>` before calling any source work done. It runs every step
-below, prints the section 3 checklist to answer row by row, and stamps the result. In Claude Code
-the Stop hook refuses to finish until a passing stamp matches the source's current files; Codex
-has no such hook, so run it yourself. The individual commands follow.
+below, prints the section 3 checklist to answer row by row, and stamps the result. The configured
+Claude Code and Codex Stop hooks refuse to finish until a passing stamp matches the source's current files.
+Codex local hooks require a trusted project and supported runtime; run the gates yourself
+where command hooks are unavailable, including cloud orchestration. The individual commands follow.
 
 From the source directory:
 

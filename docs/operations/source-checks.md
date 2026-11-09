@@ -2,7 +2,7 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-06
+updated: 2026-11-09
 sources:
   - code: scripts/check-sources.py
   - code: scripts/tests/test_check_sources.py
@@ -12,6 +12,10 @@ sources:
   - code: scripts/pr-branch.sh
   - code: scripts/review-source.sh
   - code: scripts/agent-hooks.py
+  - code: .codex/hooks.json
+  - code: scripts/docs-lint.py
+  - code: scripts/sync-agent-docs.py
+  - code: scripts/tests/test_agent_docs.py
   - code: scripts/tests/test_agent_hooks.py
   - code: .claude/settings.json
   - code: scripts/check-commits.py
@@ -109,16 +113,16 @@ without a width.
 
 `scripts/review-source.sh <id>` runs the gates with live tests, this checker, `upstream-usage.py`,
 the upstream scope of the source's branch, and prints the section 3 rules as a checklist, then
-stamps the result with a hash of the source's files (`scripts/agent-hooks.py:201`). The shared
-Claude Code hooks in `.claude/settings.json` call `agent-hooks.py`: `pre-edit` points the first
+stamps the result with a hash of the source's files (`scripts/agent-hooks.py:212`). Both
+`.claude/settings.json` and `.codex/hooks.json` call `agent-hooks.py`: `pre-edit` points the first
 edit of each source or template per session at the workflow, and `stop` blocks the end of a turn
 while a changed source fails this checker or has no passing stamp for its current files
-(`scripts/agent-hooks.py:175`). The pre-push hook runs each changed source's `review_` tests.`pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
+(`scripts/agent-hooks.py:186`). The pre-push hook runs each changed source's `review_` tests. `pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
 or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 
 > ⚠️ A commit inside a helper script is invisible to a check on the command line alone: a
 > scratchpad script's `git commit` once skipped the documented form. `pre-bash` reads every
-> `.sh` a command runs outside `scripts/` and `.githooks/` (`scripts/agent-hooks.py:112`), so
+> `.sh` a command runs outside `scripts/` and `.githooks/` (`scripts/agent-hooks.py:121`), so
 > keep tooling that commits on purpose (`pr-branch.sh`) inside those folders.
 
 > ⚠️ A rebuilt submission branch sits on a newer `upstream/main`, so a push's `before..after`
@@ -142,6 +146,33 @@ or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 > can drop these hooks. The repository regression suite now checks the required hook entries
 > and attribution settings, so settings changes also need a passing gate run.
 
+## Shared documentation workflows
+
+The `docs-sync`, `docs-lint`, `docs-query` and `docs-status` workflows live in
+`.claude/skills/` and are physically mirrored into `.agents/skills/`.
+`scripts/sync-agent-docs.py:10` lists them and regenerates the Claude command wrappers;
+Codex discovers their named `SKILL.md` files directly. The sync also copies root and
+`docs/` instruction pairs (`scripts/sync-agent-docs.py:9`), and `--check` detects drift
+without writing. Edit the primary `AGENTS.md` / `CLAUDE.md` pair through `AGENTS.md`,
+and the docs pair through `docs/AGENTS.md` / `docs/CLAUDE.md`'s first file.
+
+The shared linter is `python3 scripts/docs-lint.py --root .`. It excludes both docs
+instruction files from wiki page validation (`scripts/docs-lint.py:28`), while still
+checking ordinary pages for frontmatter, source paths and links. The wiki itself,
+`scripts/tests/` and `.githooks/` remain shared. The old `.claude/scripts/docs-lint.py`
+entry point forwards to the shared implementation for existing callers.
+
+> ⚠️ Codex's patch hook receives the patch in `tool_input.command`, not a `file_path`.
+> `scripts/agent-hooks.py:74` extracts added, updated, moved and deleted paths, resolves
+> them against the event's working directory, and reminds for each affected crate.
+> `scripts/tests/test_agent_docs.py` executes the configured hook commands with Codex
+> payloads; `scripts/tests/test_agent_hooks.py` covers multi-crate and nested-directory patches.
+
+> ⚠️ Local Codex command hooks require a trusted project and a runtime that loads them.
+> Cloud orchestration does not run local command hooks. In those environments, install
+> the Git hooks explicitly and run the documented review gates yourself. Merely copying
+> Claude settings into `.agents/` does not configure Codex hooks.
+
 ## Repository and commit gates
 
 `python3 scripts/ci-gates.py --base origin/main` runs commit metadata checks, agent-doc sync,
@@ -152,7 +183,7 @@ verification, review tests and upstream submission scope checks. Packaging check
 Rust crates before building. Live-site and device checks remain separate.
 
 `scripts/install-hooks.sh` installs executable commit-message and pre-push hooks, configures
-the owner's identity and disables signing. Claude's SessionStart hook runs it automatically;
+the owner's identity and disables signing. Both clients' configured SessionStart hooks run it automatically;
 the shared settings disable commit and PR attribution and session URLs. Pending messages and
 raw author, committer, signature and message metadata are checked, including merge parents
 and already-pushed commits in the update range. See the root guide for the canonical policy.

@@ -4,7 +4,7 @@
 > flat documents and not a separate site.
 > This file defines the rules. **Change the structure only with the user's approval.**
 
-The repository root `CLAUDE.md` tells the agent *how to work*. This file says *how to
+The repository root `AGENTS.md` / `CLAUDE.md` tells the agent *how to work*. This file says *how to
 keep the documentation*. Where they overlap, link -- do not copy the text across.
 
 ## Why this shape
@@ -42,7 +42,8 @@ kept short. Decide which kind a new page is before writing it.
 
 ```
 docs/
-├── CLAUDE.md      this file
+├── AGENTS.md      documentation rules (identical to CLAUDE.md)
+├── CLAUDE.md      mirrored documentation rules
 ├── index.md       table of contents + reading order
 ├── log.md         work log (append-only)
 ├── raw/           source material that exists neither in code nor in pages
@@ -86,7 +87,8 @@ Rules:
 - `updated` is the day the body changed. If you only confirmed the sha and the prose
   still holds, move `verified_at` alone
   - Note that `/docs-lint` reports such a page as **unverified**
-    ("sha moved past N code commits with no body change"). That is not a prohibition --
+    ("sha moved past N code commits with no body change"). A sha missing from this checkout
+    is also unverified, including after a squash merge, rebase or shallow clone. That is not a prohibition --
     it marks a *weak* verification. `verified_at` is a declaration, not proof, and this
     is the one place where "did you actually read it?" becomes visible
 - **One fact lives on one page.** Link from anywhere else that needs it.
@@ -106,7 +108,7 @@ code = the whole repository - { docs , .claude , CLAUDE.md , AGENTS.md , .agents
 It is an **exclude list**, not an include list. When a new code directory appears an
 include list silently misses it; an exclude list picks it up automatically. If you
 change this definition, fix the pathspec in
-`.claude/commands/{docs-sync,docs-status}.md` as well.
+the `docs-sync` and `docs-status` skills in `.claude/skills/`, then synchronize `.agents/skills/`.
 
 > Because the docs live in the same repository as the code, **editing only docs still
 > moves HEAD.** Without this filter `/docs-status` keeps reporting "N commits behind"
@@ -117,6 +119,11 @@ change this definition, fix the pathspec in
 > with the repository for whoever clones it to keep it up.
 
 ## Workflow
+
+Claude exposes these as `/docs-*` commands; Codex can invoke the corresponding
+`$docs-*` skills in `.agents/skills/`. Both read the same workflow and run
+`python3 scripts/docs-lint.py --root .` for mechanical checks. Edit `docs/AGENTS.md`
+and run `python3 scripts/sync-agent-docs.py` to update `docs/CLAUDE.md`.
 
 - `/docs-sync` -- read only what changed and update affected pages. **Stop immediately if
   no code changed**

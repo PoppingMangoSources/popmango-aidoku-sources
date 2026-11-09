@@ -241,6 +241,12 @@ class VerificationTests(unittest.TestCase):
             shutil.copy(SCRIPTS / 'sync-agent-docs.py', root / 'scripts')
             (root / '.claude/skills/aidoku-source').mkdir(parents=True)
             (root / '.claude/skills/aidoku-source/SKILL.md').write_text('skill\n')
+            (root / 'docs').mkdir()
+            (root / 'docs/AGENTS.md').write_text('wiki rules\n')
+            for name in ('docs-sync', 'docs-lint', 'docs-query', 'docs-status'):
+                folder = root / '.claude/skills' / name
+                folder.mkdir()
+                (folder / 'SKILL.md').write_text('workflow\n')
             (root / 'AGENTS.md').write_text('.claude/skills/aidoku-source/SKILL.md\n.agents/skills/aidoku-source/SKILL.md\n')
             command = ['python3', str(root / 'scripts/sync-agent-docs.py')]
             subprocess.run(command, check=True, capture_output=True)

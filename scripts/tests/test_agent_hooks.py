@@ -49,6 +49,32 @@ class AgentHookTests(unittest.TestCase):
         for path in (self.root / 'README.md', Path('/etc/hosts')):
             self.assertEqual(run(hooks.pre_edit, {'session_id': 's2', 'tool_input': {'file_path': str(path)}}), '')
 
+    def test_codex_patch_covers_multiple_crates_and_home_rules(self):
+        self.write_rules()
+        patch = ('*** Begin Patch\n*** Update File: sources/en.example/src/lib.rs\n@@\n+fn b() {}\n'
+                 '*** Add File: templates/example/src/home.rs\n+HomeComponentValue::Scroller {}\n*** End Patch\n')
+        event = {'session_id': 'patch', 'tool_name': 'apply_patch', 'cwd': str(self.root),
+                 'tool_input': {'command': patch}}
+        context = json.loads(run(hooks.pre_edit, event))['hookSpecificOutput']['additionalContext']
+        self.assertIn('sources/en.example', context)
+        self.assertIn('templates/example', context)
+        self.assertIn('.agents/skills/aidoku-source/SKILL.md', context)
+        self.assertEqual(context.count('Rows are cards.'), 1)
+        self.assertEqual(run(hooks.pre_edit, event), '')
+
+    def test_codex_patch_paths_follow_cwd_and_include_moves_and_deletes(self):
+        self.write_rules()
+        event = {'session_id': 'move', 'tool_name': 'apply_patch', 'cwd': str(self.root / 'sources'),
+                 'tool_input': {'command': '*** Begin Patch\n*** Update File: en.example/src/lib.rs\n'
+                                '*** Move to: en.other/src/home.rs\n@@\n+HomeComponent {}\n'
+                                '*** Delete File: en.third/src/lib.rs\n'
+                                '*** Update File: ../../outside/src/lib.rs\n@@\n+fn x() {}\n*** End Patch\n'}}
+        context = json.loads(run(hooks.pre_edit, event))['hookSpecificOutput']['additionalContext']
+        for crate in ('sources/en.example', 'sources/en.other', 'sources/en.third'):
+            self.assertIn(crate, context)
+        self.assertNotIn('outside', context)
+        self.assertIn('Rows are cards.', context)
+
     def checked(self, returncode=0):
         result = subprocess.CompletedProcess([], returncode, stdout='FAIL rule\n' if returncode else '', stderr='')
         return mock.patch.object(hooks.subprocess, 'run', return_value=result)

@@ -12,12 +12,14 @@ must read the source workflow before creating or submitting a source:
 
 The two skill trees are physical copies, including their references. After editing either
 instruction set, synchronize the copies with `python3 scripts/sync-agent-docs.py` (edit
-`AGENTS.md` and `.claude/skills` first). CI and the pre-push hook fail on drift. This is
-intentional duplication so each client can read the full instructions directly.
+`AGENTS.md`, `docs/AGENTS.md` and `.claude/skills` first). CI and the pre-push hook fail on drift. This is
+intentional duplication so each client can read the full instructions directly. The same
+sync covers the docs instruction pair and Claude command wrappers for the `docs-*` skills.
+Shared executables, tests and Git hooks stay in `scripts/`, `scripts/tests/` and `.githooks/`.
 
 `docs/` is a wiki of how particular areas work and the traps found there, kept by an LLM as
 work touches them. Its format and the `/docs-sync` workflow are in
-[`docs/CLAUDE.md`](docs/CLAUDE.md); start at [`docs/index.md`](docs/index.md). The rules for
+[`docs/AGENTS.md`](docs/AGENTS.md) / [`docs/CLAUDE.md`](docs/CLAUDE.md); start at [`docs/index.md`](docs/index.md). The rules for
 writing sources stay here.
 
 Items marked **(verified)** were checked against aidoku-rs, the community sources or
@@ -28,10 +30,10 @@ reference implementation and could be wrong.
 
 ## 0. Hard rules
 
-The rules missed most often. A Claude hook prints this section again after every compaction; the
+The rules missed most often. A configured Claude or Codex hook prints this section again after every compaction; the
 rest of this file still applies, so read each section before the work it covers.
 
-- **Commit with `scripts/commit.sh -m "<subject>" -m "<body>"`** (section 9). The Claude hook
+- **Commit with `scripts/commit.sh -m "<subject>" -m "<body>"`** (section 9). The configured tool hook
   refuses any other `git commit`, including one inside a script it runs. Conventional subject;
   a one- or two-sentence body, or `- ` bullets for a first `feat: add <id>`. No `#123`, links or
   AI attribution.
@@ -796,7 +798,7 @@ and imports, even `pub` ones in private modules. What it doesn't fail, and what 
   `Popmango Extensions <297959108+PoppingMangoSources@users.noreply.github.com>`,
   **unsigned**, with a conventional subject and a one- or two-sentence body (a first
   `feat: add <id>` submission may list its features as `- ` bullets, as our merged ones do).
-  Commit with `scripts/commit.sh`, which runs exactly the form below; the Claude Bash hook
+  Commit with `scripts/commit.sh`, which runs exactly the form below; the configured Bash hook
   refuses any other `git commit`, in a command or in a script it runs, and `scripts/` and
   `.githooks/` are trusted to set the identity themselves. `--reset-author` only works with
   `--amend`; for a new commit the author is set through the environment:
@@ -866,8 +868,8 @@ went in one of these ways, and new ones go in the same way:
   tests (`verify-source.sh --test`), `check-sources.py --base origin/main`, `upstream-usage.py`, the
   upstream scope of its `feat/`/`fix/` branch, and the section 3 rules printed as a checklist to
   read against the diff. It records a stamp of the source's files under `.git/aidoku-review/`.
-- `.claude/settings.json` holds the shared Claude Code hooks (`scripts/agent-hooks.py`). Before
-  the first edit to a source or template in a session, Claude is pointed at the skill, section 6
+- `.claude/settings.json` and `.codex/hooks.json` call the same shared handlers
+  (`scripts/agent-hooks.py`). Before the first edit to a source or template in a session, the agent is pointed at the skill, section 6
   and `review-source.sh`. When it tries to finish, the Stop hook blocks while a changed source
   fails `check-sources.py` or has no passing review of its current files, so any edit after a
   review needs another one. A second stop in the same turn only reports, so a live-site failure
@@ -878,8 +880,12 @@ went in one of these ways, and new ones go in the same way:
   or template (the full rows overflow a hook's inline output). An edit that writes a home component
   gets the section 6 home rules once per source, and after a compaction the SessionStart hook
   prints section 0, since a summary keeps only a pointer to this file. Personal settings, such as a plugin's permission lists,
-  go in `.claude/settings.local.json`, which is ignored. Codex has no hooks, so for Codex this
-  file and the pre-push hook are the enforcement. Tests are in `scripts/tests/test_agent_hooks.py`.
+  go in `.claude/settings.local.json`, which is ignored. Codex hooks require a trusted project
+  and a runtime that loads local command hooks; cloud orchestration does not run them. Codex
+  patch edits use `tool_input.command`, which the shared handler reads for every affected file.
+  Run `scripts/install-hooks.sh` once and the documented review gates explicitly wherever
+  session/tool hooks are unavailable. Git hooks and CI remain shared enforcement. Tests are
+  in `scripts/tests/test_agent_hooks.py` and `scripts/tests/test_agent_docs.py`.
 - The pre-push hook also runs each changed source's `review_` tests (`cargo test review_`), which
   make no requests, and fails when `aidoku-test-runner` isn't installed. The live suite stays out
   of the hook, since a site outage would block every push.
