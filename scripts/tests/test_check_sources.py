@@ -125,6 +125,14 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cards(self.path, unsized.replace('width: None', 'width: Some(300)'))
         self.assertEqual(checks.notes, [])
 
+    def test_bracket_in_attribute_selector_is_noted(self):
+        checks.notes.clear()
+        checks.check_cards(self.path, 'html.select_first("a.slide [class*=\'aspect-[2/1]\']")\n')
+        self.assertEqual(len(checks.notes), 1)
+        checks.notes.clear()
+        checks.check_cards(self.path, 'html.select("a[href*=\'/series/\'], img[alt$=coins]")\n')
+        self.assertEqual(checks.notes, [])
+
     def api_use(self, text):
         checks.failures.clear()
         checks.notes.clear()

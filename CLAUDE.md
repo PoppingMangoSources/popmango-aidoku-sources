@@ -164,7 +164,9 @@ Running them:
 - The runner's `parse_date` converts the format to chrono's and drops quoted literals and
   fractional seconds, so an ISO format such as `"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"` (the app parses
   it, `en.novelbuddy` ships it) returns `None` there (verified on `en.novelarchive`). Check such
-  dates in the app, not with an assertion.
+  dates in the app, not with an assertion. It also needs a time in the format: a date-only one
+  such as `"MMM d, yyyy"` returns `None` there for every input, while `"MMM d, yyyy HH:mm"`
+  parses (verified on `en.grimscans`), so assert only relative dates ("6 hours ago").
 - The runner stores an `Element` made with `Element::try_from(node)` as a plain node, so its
   `tag_name()`, `html()` and other element calls return `None` there (`store.rs`,
   `as_html_element`), and a `child_nodes` walk sees only text. Take text from `child_nodes` and
@@ -418,6 +420,12 @@ below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in rev
 | What was flagged | The rule | |
 |---|---|---|
 | A home row and listing titled "New in the Archive" for the library's default sort ("does this title come from somewhere?") | Name a row after what its feed orders by, checked against the data: compare `created_at` and `updated_at` down the first page. "New" reads as brand-new series, so a sort by date added is "Recently Added" (`en.atsumaru` names it that too), and one by new chapters is "Recently Updated". A title the site doesn't use needs that evidence ready for review. (inferred) | R |
+
+### From the owner's checks of the keyoapp template
+
+| What was flagged | The rule | |
+|---|---|---|
+| Genz Toon's cover slider showed as cropped banners in the app, while the runner and its `review_` test read it as covers (owner's screenshots) | Don't quote brackets inside an attribute selector (`[class*='aspect-[2/1]']`): the app's selector engine read it differently from the runner's. Select the elements, then compare the attribute in Rust. (inferred, one case) | N |
 
 ### From #843 (`en.atsumaru`)
 

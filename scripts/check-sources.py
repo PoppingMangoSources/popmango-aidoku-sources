@@ -196,6 +196,13 @@ def check_cards(path: Path, text: str) -> None:
     for scroller in IMAGE_SCROLLER.finditer(text):
         line = text.count("\n", 0, scroller.start()) + 1
         note(path, f"line {line} leaves an image scroller unsized; set width and height when the banners have one size")
+    for selector in BRACKET_SELECTOR.finditer(text):
+        line = text.count("\n", 0, selector.start()) + 1
+        note(path, f"line {line} quotes a bracket in an attribute selector, which the app may read differently from the runner; compare the attribute in Rust")
+
+
+# `[class*='aspect-[2/1]']` matched cover slides in the app but not in the runner (section 3)
+BRACKET_SELECTOR = re.compile(r"\[[\w-]+[*^$~|]?='[^']*[\[\]][^']*'\]")
 
 
 SILENCED = re.compile(r"#!?\[\s*(?:allow|expect)\s*\([^)]*\b(?:dead_code|unused\w*)")
