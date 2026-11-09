@@ -1,24 +1,21 @@
 use crate::{
 	Params,
 	helpers::{
-		card_manga, chapter_date, chapter_parts, content_rating, labelled_block, names, novel_text,
-		recent_chapter, series_card, status, viewer,
+		chapter_date, chapter_parts, content_rating, labelled_block, manga_from_card,
+		manga_from_page, names, novel_text, status, viewer,
 	},
+	home::parse_home_v2,
 	models::{ChaptersResponse, SearchResponse},
 };
 use aidoku::{
-	Chapter, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue, HomeLayout, Link,
-	Manga, MangaPageResult, MangaWithChapter, Page, PageContent, Result,
+	Chapter, DeepLinkResult, FilterValue, HomeLayout, Manga, MangaPageResult, Page, PageContent,
+	Result,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{
 		string::{PlainText, StripPrefixOrSelf},
 		uri::QueryParameters,
 	},
-	imports::{
-		html::{Document, Html},
-		net::Request,
-		std::send_partial_result,
-	},
+	imports::{html::Html, net::Request, std::send_partial_result},
 	prelude::*,
 };
 
@@ -38,13 +35,13 @@ pub trait ImplV2 {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		// A pasted series link finds that series
 		if let Some(path) = query
 			.as_deref()
 			.and_then(|query| query.strip_prefix(params.base_url.as_ref()))
+			.filter(|path| path.starts_with('/'))
 		{
 			let html = Request::get(format!("{}{path}", params.base_url))?.html()?;
-			if let Some(manga) = series_card(&html) {
+			if let Some(manga) = manga_from_page(&html) {
 				return Ok(MangaPageResult {
 					entries: vec![manga],
 					has_next_page: false,
@@ -60,7 +57,6 @@ pub trait ImplV2 {
 		for filter in filters {
 			match filter {
 				FilterValue::Sort { index, .. } => {
-					// The site's default sort sends nothing
 					if let Some(sort) = SORTS.get(index as usize).filter(|_| index > 0) {
 						qs.push("sort", Some(sort));
 					}
@@ -87,12 +83,10 @@ pub trait ImplV2 {
 		Ok(MangaPageResult {
 			entries: html
 				.select("a.group[href]")
-				.map(|cards| {
-					cards
-						.filter_map(|card| card_manga(&card, &params.base_url))
-						.collect()
-				})
-				.unwrap_or_default(),
+				.into_iter()
+				.flatten()
+				.filter_map(|card| manga_from_card(&card, &params.base_url))
+				.collect(),
 			has_next_page: response.has_more,
 		})
 	}
@@ -109,7 +103,7 @@ pub trait ImplV2 {
 			let url = format!("{}{}", params.base_url, manga.key);
 			let html = Request::get(&url)?.html()?;
 			// An unknown slug still answers with a page, one without a series
-			let Some(card) = series_card(&html) else {
+			let Some(card) = manga_from_page(&html) else {
 				bail!("Series not found");
 			};
 			manga.title = card.title;
@@ -144,13 +138,11 @@ pub trait ImplV2 {
 				.select(".l2-tagline a")
 				.filter(|links| !links.is_empty())
 				.or_else(|| html.select("a[href*='tag%5B%5D']"))
-				.map(|links| {
-					links
-						.filter_map(|link| link.text())
-						.map(|tag| tag.trim().into())
-						.collect()
-				})
-				.unwrap_or_default();
+				.into_iter()
+				.flatten()
+				.filter_map(|link| link.text())
+				.map(|tag| tag.trim().into())
+				.collect();
 			manga.content_rating = content_rating(tags.iter().map(String::as_str));
 			manga.tags = (!tags.is_empty()).then_some(tags);
 			manga.url = Some(url);
@@ -197,27 +189,24 @@ pub trait ImplV2 {
 		// Novel chapters hold text pages among the images, or in place of them
 		let pages = html
 			.select("#strip-reader .reader-page")
-			.map(|pages| {
-				pages
-					.map(|page| {
-						let content = match page.select_first(".prose-note") {
-							Some(note) => PageContent::text(
-								novel_text(&note).ok_or_else(|| error!("A page has no text"))?,
-							),
-							None => PageContent::url(
-								page.attr("src")
-									.ok_or_else(|| error!("A page has no image"))?,
-							),
-						};
-						Ok(Page {
-							content,
-							..Default::default()
-						})
-					})
-					.collect::<Result<Vec<Page>>>()
+			.into_iter()
+			.flatten()
+			.map(|page| {
+				let content = match page.select_first(".prose-note") {
+					Some(note) => PageContent::text(
+						novel_text(&note).ok_or_else(|| error!("A page has no text"))?,
+					),
+					None => PageContent::url(
+						page.attr("src")
+							.ok_or_else(|| error!("A page has no image"))?,
+					),
+				};
+				Ok(Page {
+					content,
+					..Default::default()
+				})
 			})
-			.transpose()?
-			.unwrap_or_default();
+			.collect::<Result<Vec<Page>>>()?;
 		if pages.is_empty() {
 			bail!("No pages found");
 		}
@@ -226,83 +215,22 @@ pub trait ImplV2 {
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		let html = Request::get(&params.base_url)?.html()?;
-		Ok(self.parse_home(params, &html))
-	}
-
-	// Apart from the request, so tests can check a saved page
-	fn parse_home(&self, params: &Params, html: &Document) -> HomeLayout {
-		let mut components: Vec<HomeComponent> = Vec::new();
-		for section in html.select("section").into_iter().flatten() {
-			let Some(title) = section
-				.select_first("h2")
-				.and_then(|heading| heading.text())
-				.map(|title| title.trim().to_string())
-			else {
-				continue;
-			};
-			// Editor's Choice repeats for the mobile layout
-			if components
-				.iter()
-				.any(|component| component.title.as_ref() == Some(&title))
-				|| params.hidden_rows.contains(&title.as_str())
-			{
-				continue;
-			}
-			let value = if section.select_first("article").is_some() {
-				let entries: Vec<MangaWithChapter> = section
-					.select("article")
-					.map(|cards| {
-						cards
-							.filter_map(|card| recent_chapter(&card, &params.base_url))
-							.collect()
-					})
-					.unwrap_or_default();
-				if entries.is_empty() {
-					continue;
-				}
-				HomeComponentValue::MangaChapterList {
-					page_size: Some(5),
-					entries,
-					listing: None,
-				}
-			} else {
-				let entries: Vec<Link> = section
-					.select("a[data-slide-card], a[data-ec-card], a.group[href]")
-					.map(|cards| {
-						cards
-							.filter_map(|card| card_manga(&card, &params.base_url))
-							.map(Link::from)
-							.collect()
-					})
-					.unwrap_or_default();
-				if entries.is_empty() {
-					continue;
-				}
-				HomeComponentValue::Scroller {
-					entries,
-					listing: None,
-				}
-			};
-			components.push(HomeComponent {
-				title: Some(title),
-				subtitle: None,
-				value,
-			});
-		}
-		HomeLayout { components }
+		Ok(parse_home_v2(params, &html))
 	}
 
 	// Series and chapter pages share one path shape, so the page says which it is
 	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
-		let Some(path) = url.strip_prefix(params.base_url.as_ref()) else {
-			return Ok(None);
-		};
-		if path.trim_matches('/').is_empty() || path.contains('?') {
+		let path = url.strip_prefix_or_self(&params.base_url);
+		let path = path
+			.split_once(['?', '#'])
+			.map_or(path, |(path, _)| path)
+			.trim_end_matches('/');
+		if path.is_empty() {
 			return Ok(None);
 		}
 		let html = Request::get(&url)?.html()?;
-		if html.select_first("[data-series-uid]").is_some() {
-			return Ok(Some(DeepLinkResult::Manga { key: path.into() }));
+		if let Some(manga) = manga_from_page(&html) {
+			return Ok(Some(DeepLinkResult::Manga { key: manga.key }));
 		}
 		Ok(html
 			.select_first("#sidebar-ch-list")

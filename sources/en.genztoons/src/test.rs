@@ -8,6 +8,7 @@ use aidoku::{
 	imports::html::Html,
 };
 use aidoku_test::aidoku_test;
+use keyoapp::home::parse_home;
 
 // The site's genre id for Action, from res/filters.json.
 const GENRE: &str = "action";
@@ -30,7 +31,7 @@ const HOME: &str = r#"
 fn home(aspect: &str) -> HomeLayout {
 	let html = Html::parse(HOME.replace("{aspect}", aspect)).unwrap();
 	let source = GenzToon::new();
-	source.parse_home(&source.params(), &html)
+	parse_home(&source.params(), &html)
 }
 
 fn source() -> Keyoapp<GenzToon> {
@@ -127,13 +128,12 @@ fn review_banners_open_their_series() {
 		Some("https://img.test/featured.avif")
 	);
 	assert!(
-		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.key == "/series/featured/")
+		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.key == "/series/featured/" && manga.title == "Featured" && manga.cover.as_deref() == Some("https://img.test/featured.avif"))
 	);
 }
 
 #[aidoku_test]
 fn review_filters_are_include_only() {
-	// As on the site, no filter can exclude.
 	let filters = include_str!("../res/filters.json");
 	assert_eq!(filters.matches("\"canExclude\": false").count(), 3);
 	assert!(!filters.contains("\"canExclude\": true"));
@@ -144,7 +144,6 @@ fn search_lists_the_catalogue_on_one_page() {
 	let all = search(None, vec![]);
 	assert!(all.entries.len() > 50);
 	assert!(!all.has_next_page);
-	// Cards carry only what the list shows.
 	assert!(all.entries.iter().all(|manga| {
 		manga.key.starts_with("/series/") && manga.cover.is_some() && manga.description.is_none()
 	}));
@@ -163,7 +162,6 @@ fn search_finds_a_title() {
 	let found = search(Some(&word), vec![]);
 	assert!(found.entries.iter().any(|manga| manga.key == first.key));
 	assert!(search(Some("zzqxwv"), vec![]).entries.is_empty());
-	// A pasted link finds that series alone.
 	let pasted = search(Some(&format!("{BASE_URL}{}", first.key)), vec![]);
 	assert_eq!(pasted.entries, [first]);
 }
@@ -175,7 +173,6 @@ fn genre_filter_needs_every_genre() {
 	assert!(!action.is_empty() && action.len() < all);
 	let tags = details(action[0].clone()).tags.unwrap();
 	assert!(tags.iter().any(|tag| tag.eq_ignore_ascii_case(GENRE)));
-	// As on the site, a series needs every chosen genre.
 	let both = search(None, vec![multi("genre", &[GENRE, "fantasy"], &[])]).entries;
 	assert!(!both.is_empty() && both.len() < action.len());
 	assert!(both.iter().all(|manga| action.contains(manga)));
@@ -318,7 +315,6 @@ fn deep_links_open_series_and_chapters() {
 			key: chapter.key
 		})
 	);
-	// The catalogue itself is no series.
 	for path in ["/series/", "/series/?genre=action"] {
 		assert_eq!(
 			source()
@@ -381,7 +377,6 @@ fn novel_chapters_read_as_text() {
 		panic!("a novel chapter is one text page");
 	};
 	assert!(text.len() > 1000);
-	// No markup is left, and the site's own angle brackets are escaped
 	assert!(
 		text.match_indices('<')
 			.all(|(index, _)| text[..index].ends_with('\\'))

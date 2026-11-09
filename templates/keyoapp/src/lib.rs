@@ -6,9 +6,13 @@ use aidoku::{
 };
 
 mod helpers;
+pub mod home;
 mod imp;
 mod models;
 mod v2;
+
+#[cfg(test)]
+mod test;
 
 pub use imp::Impl;
 pub use v2::ImplV2;
@@ -16,7 +20,6 @@ pub use v2::ImplV2;
 #[derive(Default)]
 pub struct Params {
 	pub base_url: Cow<'static, str>,
-	// Home rows left out by heading, such as one repeating another row
 	pub hidden_rows: &'static [&'static str],
 }
 

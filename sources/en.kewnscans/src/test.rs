@@ -38,7 +38,6 @@ fn details(manga: Manga) -> Manga {
 
 #[aidoku_test]
 fn review_filters_are_include_only() {
-	// As on the site, no filter can exclude
 	let filters = include_str!("../res/filters.json");
 	assert_eq!(filters.matches("\"canExclude\": false").count(), 3);
 	assert!(!filters.contains("\"canExclude\": true"));
@@ -49,7 +48,6 @@ fn search_lists_the_catalogue_on_one_page() {
 	let all = search(None, vec![]);
 	assert!(all.entries.len() > 10);
 	assert!(!all.has_next_page);
-	// Cards carry only what the list shows
 	assert!(all.entries.iter().all(|manga| {
 		manga.key.starts_with("/series/") && manga.cover.is_some() && manga.description.is_none()
 	}));
@@ -68,7 +66,6 @@ fn search_finds_a_title() {
 	let found = search(Some(&word), vec![]);
 	assert!(found.entries.iter().any(|manga| manga.key == first.key));
 	assert!(search(Some("zzqxwv"), vec![]).entries.is_empty());
-	// A pasted link finds that series alone
 	let pasted = search(Some(&format!("{BASE_URL}{}", first.key)), vec![]);
 	assert_eq!(pasted.entries, [first]);
 }
@@ -78,7 +75,6 @@ fn genre_filter_needs_every_genre() {
 	let all = search(None, vec![]).entries.len();
 	let one = search(None, vec![multi("genre", &[GENRE])]).entries;
 	assert!(!one.is_empty() && one.len() < all);
-	// As on the site, a series needs every chosen genre
 	let both = search(None, vec![multi("genre", &[GENRE, SECOND_GENRE])]).entries;
 	assert!(both.len() < one.len());
 	assert!(both.iter().all(|manga| one.contains(manga)));
@@ -201,7 +197,6 @@ fn deep_links_open_series_and_chapters() {
 			key: chapter.key
 		})
 	);
-	// The catalogue itself is no series
 	assert_eq!(
 		source()
 			.handle_deep_link(format!("{BASE_URL}/series/"))

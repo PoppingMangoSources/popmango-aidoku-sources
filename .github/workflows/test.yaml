@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       sources:
-        description: "Source ids to test, space-separated (empty: every source with tests)"
+        description: "Source ids or templates/name, space-separated (empty: every crate with tests)"
         required: false
         default: ""
 
@@ -63,21 +63,23 @@ jobs:
           set -euo pipefail
           if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
             if [[ -n "$REQUESTED" ]]; then
-              for id in $REQUESTED; do echo "sources/$id"; done > "$RUNNER_TEMP/candidates"
+              for id in $REQUESTED; do
+                case "$id" in sources/*|templates/*) echo "$id" ;; *) echo "sources/$id" ;; esac
+              done > "$RUNNER_TEMP/candidates"
             else
-              find sources -mindepth 1 -maxdepth 1 -type d | sort > "$RUNNER_TEMP/candidates"
+              find sources templates -mindepth 1 -maxdepth 1 -type d | sort > "$RUNNER_TEMP/candidates"
             fi
           else
             base="$BASE_SHA"
             if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git rev-parse HEAD~1); fi
-            python3 scripts/changed-crates.py --base "$base" --sources-only > "$RUNNER_TEMP/candidates"
+            python3 scripts/changed-crates.py --base "$base" > "$RUNNER_TEMP/candidates"
           fi
           while IFS= read -r source; do
             if [[ ! -f "$source/Cargo.toml" ]]; then
-              echo "::error title=Unknown source::$source does not exist"
+              echo "::error title=Unknown crate::$source does not exist"
               exit 1
             fi
-            if grep -qs 'aidoku_test' "$source"/src/*.rs; then echo "$source"; fi
+            if grep -Rqs --include='*.rs' 'aidoku_test' "$source/src"; then echo "$source"; fi
           done < "$RUNNER_TEMP/candidates" > "$RUNNER_TEMP/tested"
           {
             echo "### Sources with tests"

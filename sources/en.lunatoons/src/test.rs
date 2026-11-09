@@ -8,6 +8,7 @@ use aidoku::{
 	imports::html::Html,
 };
 use aidoku_test::aidoku_test;
+use keyoapp::home::parse_home_v2;
 
 // A genre, a type and a status from res/filters.json that each narrow the catalogue
 const GENRE: &str = "romance";
@@ -118,12 +119,11 @@ fn keys(result: &MangaPageResult) -> Vec<&str> {
 
 fn home_fixture() -> HomeLayout {
 	let html = Html::parse(HOME.replace("{base}", BASE_URL)).unwrap();
-	LunaToons.parse_home(&LunaToons.params(), &html)
+	parse_home_v2(&LunaToons.params(), &html)
 }
 
 #[aidoku_test]
 fn review_filters_are_include_only() {
-	// As on the site, genres can't be excluded
 	let filters = include_str!("../res/filters.json");
 	assert_eq!(filters.matches("\"canExclude\": false").count(), 1);
 	assert!(!filters.contains("\"canExclude\": true"));
@@ -180,7 +180,6 @@ fn search_pages_through_the_catalogue() {
 	let first = search(None, vec![]);
 	assert!(first.has_next_page);
 	assert!(first.entries.len() > 10);
-	// Cards carry only what the list shows
 	assert!(first.entries.iter().all(|manga| {
 		manga.key.starts_with('/') && manga.cover.is_some() && manga.description.is_none()
 	}));
@@ -202,7 +201,6 @@ fn search_finds_a_title() {
 	assert!(found.entries.iter().any(|manga| manga.key == first.key));
 	let nothing = search(Some("zzqxwv"), vec![]);
 	assert!(nothing.entries.is_empty() && !nothing.has_next_page);
-	// A pasted link finds that series alone
 	let pasted = search(Some(&format!("{BASE_URL}{}", first.key)), vec![]);
 	assert_eq!(keys(&pasted), [first.key.as_str()]);
 	assert!(!pasted.has_next_page);
@@ -337,7 +335,6 @@ fn deep_links_open_series_and_chapters() {
 			key: chapter.key
 		})
 	);
-	// The home page and the catalogue are no series
 	assert_eq!(
 		source().handle_deep_link(format!("{BASE_URL}/")).unwrap(),
 		None

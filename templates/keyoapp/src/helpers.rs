@@ -1,21 +1,23 @@
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Viewer,
+	Chapter, ContentRating, Manga, MangaStatus, Viewer,
 	alloc::{String, Vec, string::ToString},
-	helpers::string::{PlainText, StripPrefixOrSelf},
+	helpers::string::StripPrefixOrSelf,
 	imports::{
 		html::{Document, Element, Kind},
 		std::{current_date, parse_date_with_options},
 	},
 	prelude::*,
 };
-use base64::{Engine, engine::general_purpose::STANDARD};
 
-// The cover inside the series link comes first: a latest poster also carries a blurred 5px copy as
-// its backdrop
-pub fn manga(link: &Element, card: &Element, base_url: &str) -> Option<Manga> {
+// Latest posters include a blurred backdrop outside the cover link.
+pub fn manga_from_link(link: &Element, card: &Element, base_url: &str) -> Option<Manga> {
 	Some(Manga {
-		key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
-		title: link.attr("title")?.trim().into(),
+		key: series_key(link.attr("href")?.strip_prefix_or_self(base_url))?,
+		title: link
+			.attr("title")
+			.filter(|title| !title.trim().is_empty())?
+			.trim()
+			.into(),
 		cover: link
 			.select_first("[style*=background-image]")
 			.or_else(|| card.select_first("[style*=background-image]"))
@@ -24,15 +26,13 @@ pub fn manga(link: &Element, card: &Element, base_url: &str) -> Option<Manga> {
 	})
 }
 
-// Covers sit in a `background-image: url(...)` or `--photoURL: url(...)` style
 pub fn background_image(element: &Element) -> Option<String> {
 	let style = element.attr("style")?;
 	let url = style.split_once("url(")?.1.split_once(')')?.0;
 	Some(url.trim_matches(['\'', '"', ' ']).into())
 }
 
-// A details label such as "Status" is a block's first child and its value the second; read through
-// the block's children, since the test runner can't walk to a sibling
+// The runner cannot walk siblings, so read labels through the block's children.
 pub fn labelled(html: &Document, label: &str) -> Option<String> {
 	html.select("div.grid")?.find_map(|block| {
 		let mut children = block.children();
@@ -52,6 +52,15 @@ pub fn names(text: &str) -> Vec<String> {
 	text.split(", ").map(|name| name.trim().into()).collect()
 }
 
+pub fn series_key(path: &str) -> Option<String> {
+	let slug = path
+		.split(['?', '#'])
+		.next()?
+		.strip_prefix("/series/")?
+		.trim_end_matches('/');
+	(!slug.is_empty()).then(|| format!("/series/{slug}/"))
+}
+
 pub fn status(text: &str) -> MangaStatus {
 	match text.to_lowercase().as_str() {
 		"ongoing" => MangaStatus::Ongoing,
@@ -62,7 +71,6 @@ pub fn status(text: &str) -> MangaStatus {
 	}
 }
 
-// "Chapter 16 - A Mighty Enemy!" as its number and the name after it
 pub fn chapter_parts(label: &str) -> (Option<f32>, Option<String>) {
 	let label = label.trim();
 	let Some(rest) = label.strip_prefix("Chapter") else {
@@ -79,8 +87,7 @@ pub fn chapter_parts(label: &str) -> (Option<f32>, Option<String>) {
 	)
 }
 
-// "6 hours ago" (or "6h ago" on the second generation) for the last week's uploads, "Aug 3, 2026"
-// for older ones
+// V2 abbreviates relative dates; older chapters use absolute dates.
 pub fn chapter_date(text: &str) -> Option<i64> {
 	let text = text.trim();
 	let Some(ago) = text.strip_suffix("ago") else {
@@ -125,21 +132,19 @@ pub fn viewer(kind: &str) -> Viewer {
 	}
 }
 
-// A novel chapter as one Markdown paragraph per `p`: the reader's Markdown overflows its stack on a
-// paragraph of hundreds of inline nodes
+// Separate paragraphs avoid the reader's inline-node stack limit.
 pub fn novel_text(reader: &Element) -> Option<String> {
-	let paragraphs: Vec<String> = reader
-		.select("p")?
-		.flat_map(|paragraph| {
-			let mut text = String::new();
-			inline_markdown(&paragraph, &mut text);
-			// A `br` splits a paragraph in two
+	let mut paragraphs = Vec::new();
+	for paragraph in reader.select("p")? {
+		let mut text = String::new();
+		inline_markdown(&paragraph, &mut text);
+		paragraphs.extend(
 			text.split("\n\n")
-				.map(|part| part.trim().to_string())
+				.map(str::trim)
 				.filter(|part| !part.is_empty())
-				.collect::<Vec<_>>()
-		})
-		.collect();
+				.map(String::from),
+		);
+	}
 	(!paragraphs.is_empty()).then(|| paragraphs.join("\n\n"))
 }
 
@@ -150,7 +155,30 @@ fn inline_markdown(element: &Element, output: &mut String) {
 		match node.kind() {
 			Kind::TextNode => {
 				if let Some(text) = node.text() {
-					output.push_str(&text.escape_markdown());
+					// Ordinary punctuation would add needless inline nodes in the reader.
+					for c in text.chars() {
+						let block = match c {
+							'#' | '-' | '+' | '=' | '.' | ')' => {
+								let line =
+									output.rsplit('\n').next().unwrap_or_default().trim_start();
+								if matches!(c, '.' | ')') {
+									!line.is_empty()
+										&& line.bytes().all(|byte| byte.is_ascii_digit())
+								} else {
+									line.is_empty()
+								}
+							}
+							_ => false,
+						};
+						if block
+							|| matches!(
+								c,
+								'\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '&' | '~' | '|'
+							) {
+							output.push('\\');
+						}
+						output.push(c);
+					}
 				}
 			}
 			Kind::Element => {
@@ -168,69 +196,44 @@ fn inline_markdown(element: &Element, output: &mut String) {
 				};
 				let mut inner = String::new();
 				inline_markdown(&child, &mut inner);
-				// "** word**" isn't bold, so spaces stay outside the markers
-				let trimmed = inner.trim();
-				if marker.is_empty() || trimmed.is_empty() {
+				if marker.is_empty() {
 					output.push_str(&inner);
 					continue;
 				}
-				let start = inner.len() - inner.trim_start().len();
-				output.push_str(&inner[..start]);
-				output.push_str(marker);
-				output.push_str(trimmed);
-				output.push_str(marker);
-				output.push_str(&inner[start + trimmed.len()..]);
+				for (index, part) in inner.split("\n\n").enumerate() {
+					if index > 0 {
+						output.push_str("\n\n");
+					}
+					let trimmed = part.trim();
+					if trimmed.is_empty() {
+						output.push_str(part);
+						continue;
+					}
+					// Whitespace outside the markers keeps Markdown emphasis valid.
+					let start = part.len() - part.trim_start().len();
+					output.push_str(&part[..start]);
+					output.push_str(marker);
+					output.push_str(trimmed);
+					output.push_str(marker);
+					output.push_str(&part[start + trimmed.len()..]);
+				}
 			}
 			_ => {}
 		}
 	}
 }
 
-// A heading sits a level or two inside the grid that holds its cards; one with no cards of its own
-// stops at the first block holding another row's heading
-pub fn section(heading: &Element) -> Option<Element> {
-	let title = heading.text();
-	let mut node = heading.parent();
-	for _ in 0..3 {
-		let element = node?;
-		if element
-			.select("h2")
-			.is_some_and(|mut headings| headings.any(|other| other.text() != title))
-		{
-			return None;
-		}
-		if element
-			.select_first(".latest-poster, .editor-pick-button, button[title] a[href*='/series/']")
-			.is_some()
-		{
-			return Some(element);
-		}
-		node = element.parent();
+pub fn chapter_from_link(link: &Element, base_url: &str) -> Option<Chapter> {
+	// Coin chapters require login; upcoming chapters cannot be read yet.
+	if link.select_first("img[alt=Coin]").is_some()
+		|| link.select("span").is_some_and(|mut spans| {
+			spans.any(|span| {
+				span.own_text()
+					.is_some_and(|text| text.trim() == "Upcoming")
+			})
+		}) {
+		return None;
 	}
-	None
-}
-
-// A pick has no link: the site's script opens `/series/<data-id>`, shows the cover from the
-// upload host and decodes the description from base64
-pub fn editor_pick(pick: &Element) -> Option<Manga> {
-	let description = pick
-		.attr("data-description")
-		.and_then(|encoded| STANDARD.decode(encoded).ok())
-		.and_then(|bytes| String::from_utf8(bytes).ok())
-		.map(|text| text.trim().into())
-		.filter(|text: &String| !text.is_empty());
-	Some(Manga {
-		key: format!("/series/{}/", pick.attr("data-id")?),
-		title: pick.attr("title")?.trim().into(),
-		cover: pick
-			.attr("data-img")
-			.map(|image| format!("https://wsrv.nl/?w=600&url=cdn.meowing.org/uploads/{image}")),
-		description,
-		..Default::default()
-	})
-}
-
-pub fn chapter(link: &Element, base_url: &str) -> Option<Chapter> {
 	let key: String = link.attr("href")?.strip_prefix_or_self(base_url).into();
 	let (chapter_number, title) = chapter_parts(&link.attr("title")?);
 	Some(Chapter {
@@ -243,25 +246,8 @@ pub fn chapter(link: &Element, base_url: &str) -> Option<Chapter> {
 	})
 }
 
-// A latest row lists each series' newest chapters, and coin chapters need a login
-pub fn newest_chapter(poster: &Element, base_url: &str) -> Option<MangaWithChapter> {
-	let chapter = poster
-		.select("a[href*='/chapter/']")?
-		.filter(|link| link.select_first("img[alt=Coin]").is_none())
-		.find_map(|link| chapter(&link, base_url))?;
-	Some(MangaWithChapter {
-		manga: manga(
-			&poster.select_first("a[href*='/series/']")?,
-			poster,
-			base_url,
-		)?,
-		chapter,
-	})
-}
-
-// Sites use one of two series layouts: `l2-` classes, or labelled_block blocks with the cover only in
-// the page's metadata
-pub fn series_card(html: &Document) -> Option<Manga> {
+// The alternate series layout stores its cover only in metadata.
+pub fn manga_from_page(html: &Document) -> Option<Manga> {
 	html.select_first("[data-series-uid]")?;
 	let slug = html
 		.select_first("[data-series-slug]")?
@@ -285,7 +271,6 @@ pub fn series_card(html: &Document) -> Option<Manga> {
 	})
 }
 
-// A labelled_block block's value: "Status" over "Ongoing", or "Author" beside the names
 pub fn labelled_block(html: &Document, label: &str) -> Option<String> {
 	html.select("div.bg-surface.rounded-lg")?.find_map(|block| {
 		let name = block.select_first(".text-xs")?.text()?;
@@ -300,49 +285,19 @@ pub fn labelled_block(html: &Document, label: &str) -> Option<String> {
 	})
 }
 
-// Posters carry their title in `title`, search and image slider cards in a heading
-pub fn card_manga(card: &Element, base_url: &str) -> Option<Manga> {
+pub fn manga_from_card(card: &Element, base_url: &str) -> Option<Manga> {
 	Some(Manga {
 		key: card.attr("href")?.strip_prefix_or_self(base_url).into(),
 		title: card
 			.attr("title")
-			.or_else(|| card.select_first("h2, h3")?.text())?
+			.filter(|title| !title.trim().is_empty())
+			.or_else(|| card.select_first("h2, h3")?.text())
+			.filter(|title| !title.trim().is_empty())?
 			.trim()
 			.into(),
 		cover: card
 			.select_first("img")
 			.and_then(|image| image.attr("data-src")),
 		..Default::default()
-	})
-}
-
-// A recently updated card lists its newest chapters, and coin ones need a login
-pub fn recent_chapter(card: &Element, base_url: &str) -> Option<MangaWithChapter> {
-	let series = card.select_first("h2 a")?;
-	let link = card.select("a")?.find(|link| {
-		link.select_first("time").is_some() && link.select_first("img[alt$=coins]").is_none()
-	})?;
-	let key: String = link.attr("href")?.strip_prefix_or_self(base_url).into();
-	let (chapter_number, title) = chapter_parts(&link.select_first("span")?.text()?);
-	Some(MangaWithChapter {
-		manga: Manga {
-			key: series.attr("href")?.strip_prefix_or_self(base_url).into(),
-			title: series.text()?.trim().into(),
-			cover: card
-				.select_first("img")
-				.and_then(|image| image.attr("data-src")),
-			..Default::default()
-		},
-		chapter: Chapter {
-			url: Some(format!("{base_url}{key}")),
-			key,
-			title,
-			chapter_number,
-			date_uploaded: link
-				.select_first("time")
-				.and_then(|time| time.text())
-				.and_then(|date| chapter_date(&date)),
-			..Default::default()
-		},
 	})
 }

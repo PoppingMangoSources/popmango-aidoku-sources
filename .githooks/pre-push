@@ -44,14 +44,19 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             case "$crate" in
                 sources/*)
                     "$tooling/scripts/verify-source.sh" "$root/$crate"
-                    # The review_ tests make no requests, so unlike the live suite they can gate a push.
+                    ;;
+                templates/*)
+                    (cd "$root/$crate"; cargo fmt --check; cargo clippy --target wasm32-unknown-unknown -- -D warnings)
                     if [ -f "$root/$crate/src/test.rs" ]; then
-                        command -v aidoku-test-runner >/dev/null || { echo "Install aidoku-test-runner to run $crate's review_ tests (AGENTS.md / CLAUDE.md section 1)." >&2; exit 1; }
-                        (cd "$root/$crate"; cargo test -q review_)
+                        (cd "$root/$crate"; cargo clippy --tests --target wasm32-unknown-unknown -- -D warnings)
                     fi
                     ;;
-                templates/*) (cd "$root/$crate"; cargo fmt --check; cargo clippy --target wasm32-unknown-unknown -- -D warnings) ;;
             esac
+            # The review_ tests make no requests, so unlike the live suite they can gate a push.
+            if [ -f "$root/$crate/src/test.rs" ]; then
+                command -v aidoku-test-runner >/dev/null || { echo "Install aidoku-test-runner to run $crate's review_ tests (AGENTS.md / CLAUDE.md section 1)." >&2; exit 1; }
+                (cd "$root/$crate"; cargo test -q review_)
+            fi
         done <<< "$crates"
         python3 "$tooling/scripts/check-sources.py" --base "$base"
         if git diff --name-only "$base" "$local_sha" -- .github | grep -q .; then
