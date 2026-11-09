@@ -135,6 +135,33 @@ fn details_chapters_and_pages_load() {
 }
 
 #[aidoku_test]
+fn review_home_does_not_attach_cards_beyond_three_parents() {
+	let html = aidoku::imports::html::Html::parse(
+		r#"<div class="grid">
+			<div><h2>Trending</h2></div>
+			<div><button title="Expected"><a href="/series/expected/" title="Expected">
+				<div style="background-image:url(https://cdn.example/cover.webp)"></div>
+			</a></button></div>
+		</div>
+		<div>
+			<div><div><div><h2>Unrelated Row</h2></div></div></div>
+			<button title="Unrelated"><a href="/series/unrelated/" title="Unrelated">
+				<div style="background-image:url(https://cdn.example/unrelated.webp)"></div>
+			</a></button>
+		</div>"#,
+	)
+	.unwrap();
+	let home = keyoapp::home::parse_home(&MistScans.params(), &html);
+	assert_eq!(home.components.len(), 1);
+	assert_eq!(home.components[0].title.as_deref(), Some("Trending"));
+	let HomeComponentValue::Scroller { entries, .. } = &home.components[0].value else {
+		panic!("trending should show covers");
+	};
+	assert_eq!(entries.len(), 1);
+	assert_eq!(entries[0].title, "Expected");
+}
+
+#[aidoku_test]
 fn home_follows_the_site() {
 	let home = source().get_home().unwrap();
 	let titles: Vec<&str> = home

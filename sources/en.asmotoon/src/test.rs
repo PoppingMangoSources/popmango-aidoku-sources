@@ -176,6 +176,33 @@ fn review_home_keeps_the_site_rows() {
 }
 
 #[aidoku_test]
+fn review_trending_keeps_today_and_empty_reviews_can_load_month() {
+	let html = Html::parse(
+		r#"<section><h2>Trending Now</h2><div id="trending-today">
+			<a data-slide-card href="/today-series" title="Today Series">
+				<img data-src="https://cdn.example/today.avif">
+			</a>
+		</div></section>
+		<section><h2>Most Reviewed Series</h2></section>"#,
+	)
+	.unwrap();
+	let home = parse_home_v2(&AsmodeusScans.params(), &html);
+	assert_eq!(home.components.len(), 2);
+	assert_eq!(home.components[0].title.as_deref(), Some("Trending Now"));
+	let HomeComponentValue::Scroller { entries, .. } = &home.components[0].value else {
+		panic!("trending should show covers");
+	};
+	assert_eq!(entries.len(), 1);
+	assert_eq!(entries[0].title, "Today Series");
+	assert!(matches!(
+		&home.components[1].value,
+		HomeComponentValue::Scroller { entries, .. } if entries.is_empty()
+	));
+	let empty = Html::parse("<section><h2>Trending Now</h2></section>").unwrap();
+	assert!(parse_home_v2(&AsmodeusScans.params(), &empty).components.is_empty());
+}
+
+#[aidoku_test]
 fn search_pages_through_the_catalogue() {
 	let first = search(None, vec![]);
 	assert!(first.has_next_page);

@@ -216,20 +216,14 @@ pub trait ImplV2 {
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		let html = Request::get(&params.base_url)?.html()?;
 		let mut home = parse_home_v2(params, &html);
-		for (title, feed) in [
-			("Trending Now", "_trending"),
-			("Most Reviewed Series", "_most_reviewed"),
-		] {
-			let Some(component) = home
-				.components
-				.iter_mut()
-				.find(|component| component.title.as_deref() == Some(title))
-			else {
-				continue;
-			};
-			// The site's default range can be empty; use its monthly ranking.
+		if let Some(component) = home
+			.components
+			.iter_mut()
+			.find(|component| component.title.as_deref() == Some("Most Reviewed Series"))
+		{
+			// The default week can be empty even when the month has results.
 			if let Ok(fragment) =
-				Request::get(format!("{}/?{feed}=1&range=monthly", params.base_url))?.html()
+				Request::get(format!("{}/?_most_reviewed=1&range=monthly", params.base_url))?.html()
 			{
 				let entries: Vec<Link> = fragment
 					.select("a[data-slide-card]")

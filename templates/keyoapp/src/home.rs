@@ -189,9 +189,7 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 				.filter_map(|card| manga_from_card(&card, &params.base_url))
 				.map(Link::from)
 				.collect();
-			if entries.is_empty()
-				&& !matches!(title.as_str(), "Trending Now" | "Most Reviewed Series")
-			{
+			if entries.is_empty() && title != "Most Reviewed Series" {
 				continue;
 			}
 			HomeComponentValue::Scroller {
@@ -212,7 +210,7 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 fn section(heading: &Element) -> Option<Element> {
 	let title = heading.text();
 	let mut node = heading.parent();
-	for _ in 0..5 {
+	for _ in 0..3 {
 		let element = node?;
 		if element
 			.select("h2")
