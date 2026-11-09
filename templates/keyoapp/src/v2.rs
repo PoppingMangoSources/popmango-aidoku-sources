@@ -1,7 +1,7 @@
 use crate::{
 	Params,
 	helpers::{
-		card_manga, chapter_date, chapter_parts, content_rating, labelled_block, names,
+		card_manga, chapter_date, chapter_parts, content_rating, labelled_block, names, novel_text,
 		recent_chapter, series_card, status, viewer,
 	},
 	models::{ChaptersResponse, SearchResponse},
@@ -194,16 +194,23 @@ pub trait ImplV2 {
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let html = Request::get(format!("{}{}", params.base_url, chapter.key))?.html()?;
+		// Novel chapters hold text pages among the images, or in place of them
 		let pages = html
-			.select("#strip-reader img.reader-page")
-			.map(|images| {
-				images
-					.map(|image| {
-						let url = image
-							.attr("src")
-							.ok_or_else(|| error!("A page has no image"))?;
+			.select("#strip-reader .reader-page")
+			.map(|pages| {
+				pages
+					.map(|page| {
+						let content = match page.select_first(".prose-note") {
+							Some(note) => PageContent::text(
+								novel_text(&note).ok_or_else(|| error!("A page has no text"))?,
+							),
+							None => PageContent::url(
+								page.attr("src")
+									.ok_or_else(|| error!("A page has no image"))?,
+							),
+						};
 						Ok(Page {
-							content: PageContent::url(url),
+							content,
 							..Default::default()
 						})
 					})

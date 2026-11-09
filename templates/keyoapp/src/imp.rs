@@ -93,11 +93,7 @@ pub trait Impl {
 							&& has(&statuses, "data-status")
 					})
 					.filter_map(|card| {
-						manga(
-							&card.select_first("a[href]")?,
-							card.select_first("[style*=background-image]"),
-							&params.base_url,
-						)
+						manga(&card.select_first("a[href]")?, &card, &params.base_url)
 					})
 					.collect()
 			})
@@ -243,13 +239,7 @@ pub trait Impl {
 			.select("a.splide__slide[href*='/series/']")
 			.map(|slides| {
 				slides
-					.filter_map(|slide| {
-						manga(
-							&slide,
-							slide.select_first("[style*=background-image]"),
-							&params.base_url,
-						)
-					})
+					.filter_map(|slide| manga(&slide, &slide, &params.base_url))
 					.collect()
 			})
 			.unwrap_or_default();
@@ -354,7 +344,7 @@ pub trait Impl {
 							.filter_map(|card| {
 								manga(
 									&card.select_first("a[href*='/series/']")?,
-									card.select_first("[style*=background-image]"),
+									&card,
 									&params.base_url,
 								)
 							})

@@ -92,9 +92,17 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > generation novel chapters are text in `div.tiptap.novel-reader` (`p` with `em`, `strong`,
 > `span`, `br` on Genz, Mist and Timelesstoons), read as one Markdown paragraph per `p`, since the
 > reader's Markdown overflows its stack on one long paragraph; text is escaped, so a `<Status>`
-> window reads as `\<Status\>`. Second generation novel chapters (Asmodeus, Siren) are image
-> strips in the comic reader, so `novel` maps to the Webtoon viewer. Walking text nodes needs
-> `child_nodes`, which raises every consumer's `minAppVersion` to 0.8.3.
+> window reads as `\<Status\>`. Second generation novel chapters (Asmodeus, Siren) mix image pages
+> (`img.reader-page`) and written ones (`div.reader-page` holding `.prose-note` paragraphs), so
+> each reader page is read as one or the other. The chapter page itself says which, so reading
+> needs only the keys; merged sources put a novel flag in the key only because their APIs read
+> novels from another endpoint. Novels get `Viewer::Unknown`, as in the merged novel sources.
+> Walking text nodes needs `child_nodes`, which raises every consumer's `minAppVersion` to 0.8.3.
+
+> ⚠️ A latest poster carries a 5px blurred copy of its cover as a backdrop before the series link
+> (Kewn), so a card's cover is looked up inside the link first. Detail labels are read through a
+> block's children rather than the `+` sibling selector, which the app may read differently from
+> the test runner (unconfirmed: Grim and Mist showed the wrong reader in the app).
 
 > ⚠️ Details labels ("Status", "Author", "Artist", "Type") are read with selectors only: a
 > `div.grid` whose `div.font-medium > span` names the label, and its `div.font-medium + div`

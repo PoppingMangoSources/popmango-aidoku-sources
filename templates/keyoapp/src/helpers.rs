@@ -10,11 +10,16 @@ use aidoku::{
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 
-pub fn manga(link: &Element, cover: Option<Element>, base_url: &str) -> Option<Manga> {
+// The cover inside the series link comes first: a latest poster also carries a blurred 5px copy as
+// its backdrop
+pub fn manga(link: &Element, card: &Element, base_url: &str) -> Option<Manga> {
 	Some(Manga {
 		key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
 		title: link.attr("title")?.trim().into(),
-		cover: cover.and_then(|cover| background_image(&cover)),
+		cover: link
+			.select_first("[style*=background-image]")
+			.or_else(|| card.select_first("[style*=background-image]"))
+			.and_then(|cover| background_image(&cover)),
 		..Default::default()
 	})
 }
@@ -26,16 +31,17 @@ pub fn background_image(element: &Element) -> Option<String> {
 	Some(url.trim_matches(['\'', '"', ' ']).into())
 }
 
-// A details label such as "Status" sits in a block with its value right after it; selectors only,
-// since the test runner can't walk to a sibling
+// A details label such as "Status" is a block's first child and its value the second; read through
+// the block's children, since the test runner can't walk to a sibling
 pub fn labelled(html: &Document, label: &str) -> Option<String> {
 	html.select("div.grid")?.find_map(|block| {
-		let name = block.select_first("div.font-medium > span")?.text()?;
+		let mut children = block.children();
+		let name = children.next()?.select_first("span")?.text()?;
 		if name.trim() != label {
 			return None;
 		}
-		block
-			.select_first("div.font-medium + div")?
+		children
+			.next()?
 			.text()
 			.map(|text| text.trim().to_string())
 			.filter(|text| !text.is_empty())
@@ -114,8 +120,7 @@ pub fn viewer(kind: &str) -> Viewer {
 	match kind.to_lowercase().as_str() {
 		"manga" => Viewer::RightToLeft,
 		"comic" => Viewer::LeftToRight,
-		// Second generation novels are image strips too
-		"manhwa" | "manhua" | "mangatoon" | "novel" => Viewer::Webtoon,
+		"manhwa" | "manhua" | "mangatoon" => Viewer::Webtoon,
 		_ => Viewer::Unknown,
 	}
 }
@@ -247,7 +252,7 @@ pub fn newest_chapter(poster: &Element, base_url: &str) -> Option<MangaWithChapt
 	Some(MangaWithChapter {
 		manga: manga(
 			&poster.select_first("a[href*='/series/']")?,
-			poster.select_first("[style*=background-image]"),
+			poster,
 			base_url,
 		)?,
 		chapter,
