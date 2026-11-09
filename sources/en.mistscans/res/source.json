@@ -1,0 +1,13 @@
+{
+	"info": {
+		"id": "en.mistscans",
+		"name": "Mist Scans",
+		"version": 1,
+		"url": "https://mistscans.com",
+		"contentRating": 0,
+		"languages": [
+			"en"
+		],
+		"minAppVersion": "0.7.1"
+	}
+}
