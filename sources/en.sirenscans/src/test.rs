@@ -360,7 +360,7 @@ fn an_unknown_series_fails() {
 }
 
 #[aidoku_test]
-fn novel_chapters_are_image_strips() {
+fn novel_chapters_load() {
 	let (manga, chapter) = search(None, vec![select("type", "novel")])
 		.entries
 		.into_iter()
@@ -373,7 +373,8 @@ fn novel_chapters_are_image_strips() {
 			Some((manga, chapter))
 		})
 		.unwrap();
-	assert_eq!(details(manga.clone()).viewer, Viewer::Webtoon);
+	// The app picks the reader for novels
+	assert_eq!(details(manga.clone()).viewer, Viewer::Unknown);
 	let pages = source()
 		.get_page_list(
 			Manga {
@@ -387,7 +388,10 @@ fn novel_chapters_are_image_strips() {
 		)
 		.unwrap();
 	assert!(!pages.is_empty());
-	assert!(pages.iter().all(
-		|page| matches!(&page.content, PageContent::Url(url, _) if url.starts_with("https://"))
-	));
+	// Images, or text pages for the chapters the site writes out
+	assert!(pages.iter().all(|page| match &page.content {
+		PageContent::Url(url, _) => url.starts_with("https://"),
+		PageContent::Text(text) => !text.is_empty() && !text.contains("</"),
+		_ => false,
+	}));
 }
