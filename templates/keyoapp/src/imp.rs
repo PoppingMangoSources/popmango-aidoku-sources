@@ -1,14 +1,13 @@
 use crate::{
 	Params,
 	helpers::{
-		background_image, chapter, editor_pick, has_badge, is_novel, labelled, manga,
-		newest_chapter, section, status,
+		background_image, chapter, content_rating, editor_pick, has_badge, is_novel, labelled,
+		manga, newest_chapter, section, status, viewer,
 	},
 };
 use aidoku::{
-	Chapter, ContentRating, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue,
-	HomeLayout, Link, LinkValue, Manga, MangaPageResult, MangaWithChapter, Page, PageContent,
-	Result, Viewer,
+	Chapter, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue, HomeLayout, Link,
+	LinkValue, Manga, MangaPageResult, MangaWithChapter, Page, PageContent, Result,
 	alloc::{String, Vec, vec},
 	helpers::string::{PlainText, StripPrefixOrSelf},
 	imports::{
@@ -155,32 +154,16 @@ pub trait Impl {
 			let keywords = html
 				.select_first("meta[name=keywords]")
 				.and_then(|meta| meta.attr("content"));
-			let has_any = |names: &[&str]| {
-				tags.iter()
-					.map(String::as_str)
-					.chain(
-						keywords
-							.iter()
-							.flat_map(|words| words.split(',').map(str::trim)),
-					)
-					.any(|tag| names.iter().any(|name| tag.eq_ignore_ascii_case(name)))
-			};
-			manga.content_rating = if has_any(&["Adult", "Smut", "Hentai"]) {
-				ContentRating::NSFW
-			} else if has_any(&["Ecchi", "Mature"]) {
-				ContentRating::Suggestive
-			} else {
-				ContentRating::Safe
-			};
-			manga.viewer = match labelled(&html, "Type")
-				.map(|kind| kind.to_lowercase())
-				.as_deref()
-			{
-				Some("manga") => Viewer::RightToLeft,
-				Some("comic") => Viewer::LeftToRight,
-				Some("manhwa" | "manhua" | "mangatoon") => Viewer::Webtoon,
-				_ => Viewer::Unknown,
-			};
+			manga.content_rating = content_rating(
+				tags.iter().map(String::as_str).chain(
+					keywords
+						.iter()
+						.flat_map(|words| words.split(',').map(str::trim)),
+				),
+			);
+			manga.viewer = labelled(&html, "Type")
+				.map(|kind| viewer(&kind))
+				.unwrap_or_default();
 			manga.tags = (!tags.is_empty()).then_some(tags);
 			manga.url = Some(url);
 		}
@@ -258,11 +241,17 @@ pub trait Impl {
 			})
 			.unwrap_or_default();
 		if !featured.is_empty() {
-			// Some sites feature 2:1 banners rather than covers
+			// Some sites feature 2:1 banners rather than covers. The class is compared here, since the
+			// app's selector engine misreads the brackets inside a quoted attribute value
 			let value = if html
-				.select_first("a.splide__slide [class*='aspect-[2/1]']")
-				.is_some()
-			{
+				.select("a.splide__slide > div")
+				.is_some_and(|mut slides| {
+					slides.any(|slide| {
+						slide
+							.attr("class")
+							.is_some_and(|class| class.contains("aspect-[2/1]"))
+					})
+				}) {
 				HomeComponentValue::ImageScroller {
 					links: featured
 						.into_iter()

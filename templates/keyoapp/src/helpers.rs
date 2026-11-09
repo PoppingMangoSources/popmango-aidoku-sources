@@ -1,5 +1,5 @@
 use aidoku::{
-	Chapter, Manga, MangaStatus, MangaWithChapter,
+	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Viewer,
 	alloc::{String, string::ToString},
 	helpers::string::StripPrefixOrSelf,
 	imports::{
@@ -85,23 +85,50 @@ pub fn chapter_parts(label: &str) -> (Option<f32>, Option<String>) {
 	)
 }
 
-// "6 hours ago" for the last week's uploads, "Aug 3, 2026" for older ones
+// "6 hours ago" (or "6h ago" on the second generation) for the last week's uploads, "Aug 3, 2026"
+// for older ones
 pub fn chapter_date(text: &str) -> Option<i64> {
 	let text = text.trim();
-	if !text.ends_with("ago") {
+	let Some(ago) = text.strip_suffix("ago") else {
 		return parse_date_with_options(text, "MMM d, yyyy", "en_US_POSIX", "current");
-	}
-	let amount: i64 = text.split_whitespace().next()?.parse().ok()?;
-	let unit = if text.contains("min") {
+	};
+	let ago = ago.trim();
+	let digits = ago.find(|c: char| !c.is_ascii_digit()).unwrap_or(ago.len());
+	let amount: i64 = ago[..digits].parse().ok()?;
+	let unit = ago[digits..].trim();
+	let seconds = if unit == "m" || unit.starts_with("min") {
 		60
-	} else if text.contains("hour") {
+	} else if unit.starts_with('h') {
 		60 * 60
-	} else if text.contains("day") {
+	} else if unit.starts_with('d') {
 		24 * 60 * 60
 	} else {
 		return None;
 	};
-	Some(current_date() - amount * unit)
+	Some(current_date() - amount * seconds)
+}
+
+pub fn content_rating<'a>(tags: impl Iterator<Item = &'a str> + Clone) -> ContentRating {
+	let has_any = |names: &[&str]| {
+		tags.clone()
+			.any(|tag| names.iter().any(|name| tag.eq_ignore_ascii_case(name)))
+	};
+	if has_any(&["Adult", "Smut", "Hentai"]) {
+		ContentRating::NSFW
+	} else if has_any(&["Ecchi", "Mature"]) {
+		ContentRating::Suggestive
+	} else {
+		ContentRating::Safe
+	}
+}
+
+pub fn viewer(kind: &str) -> Viewer {
+	match kind.to_lowercase().as_str() {
+		"manga" => Viewer::RightToLeft,
+		"comic" => Viewer::LeftToRight,
+		"manhwa" | "manhua" | "mangatoon" => Viewer::Webtoon,
+		_ => Viewer::Unknown,
+	}
 }
 
 // A heading sits a level or two inside the grid that holds its cards; one with no cards of its own

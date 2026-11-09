@@ -7,8 +7,11 @@ use aidoku::{
 
 mod helpers;
 mod imp;
+mod models;
+mod v2;
 
 pub use imp::Impl;
+pub use v2::{ImplV2, KeyoappV2};
 
 #[derive(Default)]
 pub struct Params {

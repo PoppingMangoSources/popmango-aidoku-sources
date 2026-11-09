@@ -2,11 +2,14 @@
 title: Keyoapp template
 type: subsystem
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 sources:
   - code: templates/keyoapp/src/lib.rs
   - code: templates/keyoapp/src/imp.rs
   - code: templates/keyoapp/src/helpers.rs
+  - code: templates/keyoapp/src/v2.rs
+  - code: templates/keyoapp/src/models.rs
+  - code: sources/en.asmotoon/src/test.rs
   - code: sources/en.genztoons/src/lib.rs
   - code: sources/en.genztoons/src/test.rs
   - code: sources/en.genztoons/res/filters.json
@@ -21,13 +24,38 @@ catalogue on `/series/`, a series page carries its chapters, and a chapter page 
 Toons is the first consumer; the same live checks (catalogue, details, chapters, pages, home,
 chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2026-11-08.
 
-> ⚠️ Keiyoushi has a second generation, `KeyoappV2` (`?_ajax=search` with offset paging,
-> `?_ajax=recent-chapters`, `?_chapters_html=1&series_slug=`, series at the site root). Asmodeus
-> and Siren run it, and so do Kaizen and Luna Toons (both refuse headless Chromium with a
-> Cloudflare challenge; Firecrawl reads them, and Kaizen's `?_ajax=search` answers
-> `{html, has_more}`), though keiyoushi still files Kaizen under the first generation. They
-> need their own implementation. Art Lapsa, Kitsune Dawn and Rithar are custom in keiyoushi
-> (`/series/` is a 404). MeiToon answers "the website has been stopped".
+> ⚠️ The second generation is `KeyoappV2` in `templates/keyoapp/src/v2.rs`, with Asmodeus,
+> Siren, Kaizen and Luna Toons as consumers (keiyoushi still files Kaizen under the first).
+> Kaizen and Luna answer the sandbox with a Cloudflare 403, so their live tests can't run here;
+> their filters and markup were read through Firecrawl. Art Lapsa, Kitsune Dawn and Rithar are
+> custom in keiyoushi (`/series/` is a 404). MeiToon answers "the website has been stopped".
+
+> ⚠️ V2 search is `/?_ajax=search` with `q`, `sort`, `type`, `status`, `tag[]` and
+> `offset` (20 a page), answering `{html, has_more}`; the site filters, so `has_more` is the next
+> page. A–Z sorts the raw titles, so ones with a leading space come first; that is the site's
+> order. A tapped tag sends its name lowercased as `tag[]`, which is how the browse ids read.
+
+> ⚠️ V2 sites pick one of two series layouts: Asmodeus's banner one (`h1.l2-title`,
+> `.l2-meta span` "Mangatoon · Action · Ongoing", `p.l2-by`, `.l2-tagline a`) and Siren's,
+> Kaizen's and Luna's labelled blocks (`div.bg-surface.rounded-lg` holding a `.text-xs` label
+> and a `span.text-sm` value, tags as `a[href*='tag%5B%5D']`, cover from `og:image`). Details
+> read the first and fall back to the second. An unknown slug answers 200 with no
+> `[data-series-uid]`, so details fail with "Series not found".
+
+> ⚠️ V2 chapters come from `/?_chapters_html=1&series_slug=` as `{rows_html}`; coin rows carry
+> `data-ch-locked="1"` and are skipped. A new series can have no chapters at all, so the live
+> tests pick the first series that has one. Dates are short ("4h ago", "6d ago").
+
+> ⚠️ The V2 home is one row per `section` under its first `h2`. Featured cards put the title in
+> `title` (Asmodeus) or an `h3` (Kaizen's image slider); Recently Updated `article`s become a
+> chapter list of the newest free chapter. The Novels row (`#novel-slider`) is skipped whole:
+> Asmodeus prefixes only some novels "[ Novel ]" and Siren none. Editor's Choice repeats for
+> mobile and its `data-ec-clone` copies have no title, so both drop out. Its cards are covers
+> and titles only, so it is a card row, not a big scroller.
+
+> ⚠️ A V2 series and chapter share the path shape (`/slug`, `/slug-chapter-4`), so a deep link
+> fetches the page: `[data-series-uid]` makes it a series, and `#sidebar-ch-list` names a
+> chapter's series in `data-series-slug`.
 
 > ⚠️ The site ignores `q`, `genre`, `type` and `status` on `/series/` (every request returns all
 > 263 Genz cards), and filters in the browser from each card's `title`, `tags`, `data-type` and
@@ -96,7 +124,9 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 
 > ⚠️ The featured slider is covers on Genz (`aspect-[0.74/1]`) and 2:1 banners on Mist, Kewn
 > and Timelesstoons (`aspect-[2/1]`, 1000px wide), so a banner slider is an image scroller sized
-> 400 by 200 and the rest a card row. The banner slides carry only a title and the image: Mist's
+> 400 by 200 and the rest a card row. The class of each `a.splide__slide > div` is compared in
+> Rust: the selector `[class*='aspect-[2/1]']` matched Genz's covers in the app (showing them as
+> cropped banners) though the runner read it correctly. The banner slides carry only a title and the image: Mist's
 > descriptions and genres belong to its Collections carousel (themed groups, not series), so a
 > big scroller there would cost a details request per slide. Chromium shows `--clone` slides
 > that the script adds; the served page has none.
