@@ -29,11 +29,11 @@ const HOME: &str = r#"
 
 fn home(aspect: &str) -> HomeLayout {
 	let html = Html::parse(HOME.replace("{aspect}", aspect)).unwrap();
-	let source = GenzToons::new();
+	let source = GenzToon::new();
 	source.parse_home(&source.params(), &html)
 }
 
-fn source() -> Keyoapp<GenzToons> {
+fn source() -> Keyoapp<GenzToon> {
 	Keyoapp::new()
 }
 

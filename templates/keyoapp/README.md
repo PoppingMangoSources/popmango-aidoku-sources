@@ -29,4 +29,4 @@ Every filter is include-only, as on the site, so each states `"canExclude": fals
 ## Home
 
 The home follows the site's headings. A row that repeats another one on a particular site can be
-left out with `Params::hidden_rows`, as Genz Toons does with its Pinned Series.
+left out with `Params::hidden_rows`, as Genz Toon does with its Pinned Series.

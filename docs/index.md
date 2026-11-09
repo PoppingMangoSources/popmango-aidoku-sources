@@ -14,7 +14,7 @@ traps found in them. It grows as work touches new areas.
 - Working on Flame Comics: [[flamecomics]]
 - Working on Novel Archive: [[novelarchive]]
 - Working on KingOfShojo or RokariComics: [[mangathemesia-consumers]]
-- Working on Genz Toons or another Keyoapp site: [[keyoapp-template]]
+- Working on Genz Toon or another Keyoapp site: [[keyoapp-template]]
 
 ---
 
