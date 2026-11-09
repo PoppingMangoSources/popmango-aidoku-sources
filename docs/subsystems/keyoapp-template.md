@@ -7,16 +7,35 @@ sources:
   - code: templates/keyoapp/src/lib.rs
   - code: templates/keyoapp/src/imp.rs
   - code: templates/keyoapp/src/helpers.rs
+  - code: templates/keyoapp/src/home.rs
+  - code: templates/keyoapp/src/test.rs
+  - code: .github/workflows/test.yaml
+  - code: scripts/tests/test_template_tests.py
   - code: templates/keyoapp/src/v2.rs
   - code: templates/keyoapp/src/models.rs
   - code: sources/en.asmotoon/src/test.rs
   - code: sources/en.genztoons/src/lib.rs
   - code: sources/en.genztoons/src/test.rs
   - code: sources/en.genztoons/res/filters.json
+  - code: sources/en.lunatoons/res/filters.json
+  - code: sources/en.kaizenscan/res/filters.json
+  - code: sources/en.sirenscans/res/filters.json
+  - code: sources/en.asmotoon/res/filters.json
+  - code: sources/en.timelesstoons/res/filters.json
+  - code: sources/en.kewnscans/res/filters.json
+  - code: sources/en.erisscans/res/filters.json
+  - code: sources/en.mistscans/res/filters.json
+  - code: sources/en.grimscans/res/filters.json
   - code: templates/keyoapp/README.md
   - code: scripts/check-upstream-scope.py
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/keyoapp
-verified_at: 7510d93
+  - ext: https://github.com/Aidoku-Community/sources/tree/a6ec13ae4127331c8edee6bad469144245b1db8a/templates
+  - ext: https://github.com/Aidoku-Community/sources/pull/872
+  - ext: https://github.com/Aidoku-Community/sources/pull/869
+  - ext: https://github.com/Aidoku-Community/sources/pull/865
+  - ext: https://github.com/Aidoku-Community/sources/pull/824
+  - ext: https://github.com/Aidoku-Community/sources/pull/666
+verified_at: 1891576
 ---
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
@@ -26,8 +45,8 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 
 > ⚠️ The second generation is `KeyoappV2` in `templates/keyoapp/src/v2.rs`, with Asmodeus,
 > Siren, Kaizen and Luna Toons as consumers (keiyoushi still files Kaizen under the first).
-> Kaizen and Luna answer the sandbox with a Cloudflare 403, so their live tests can't run here;
-> their filters and markup were read through Firecrawl. Art Lapsa, Kitsune Dawn and Rithar are
+> A plain sandbox HTTP client can receive 403 while Firecrawl or the Aidoku runner succeeds;
+> report runner results separately from browser observations. Art Lapsa, Kitsune Dawn and Rithar are
 > custom in keiyoushi (`/series/` is a 404). MeiToon answers "the website has been stopped".
 
 > ⚠️ V2 search is `/?_ajax=search` with `q`, `sort`, `type`, `status`, `tag[]` and
@@ -76,7 +95,9 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > own filter then misses; the template trims them.
 
 > ⚠️ A pasted series link (`<base>/series/<slug>/`) as the query finds that card by its path,
-> with or without the trailing slash, from the same catalogue page.
+> with or without the trailing slash, query or fragment, from the same catalogue page. Normalize
+> absolute card hrefs before comparing: Genz serves absolute links. Missing catalogue markup
+> is an error, while a present but empty catalogue is a valid empty result.
 
 > ⚠️ An unknown series redirects (302) to `/not-found/`, which has no `div.grid > h1`, so the
 > details and chapter paths fail with "Series not found" rather than return an empty series.
@@ -92,7 +113,9 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > generation novel chapters are text in `div.tiptap.novel-reader` (`p` with `em`, `strong`,
 > `span`, `br` on Genz, Mist and Timelesstoons), read as one Markdown paragraph per `p`, since the
 > reader's Markdown overflows its stack on one long paragraph; text is escaped, so a `<Status>`
-> window reads as `\<Status\>`. Second generation novel chapters (Asmodeus, Siren) mix image pages
+> window reads as `\<Status\>`. Escape only Markdown syntax, since escaping ordinary punctuation
+> adds inline nodes too. Emphasis closes before each paragraph break, including a `<br>` inside
+> `strong` or `em`, and reopens in the next paragraph. Second generation novel chapters (Asmodeus, Siren) mix image pages
 > (`img.reader-page`) and written ones (`div.reader-page` holding `.prose-note` paragraphs), so
 > each reader page is read as one or the other. The chapter page itself says which, so reading
 > needs only the keys; merged sources put a novel flag in the key only because their APIs read
@@ -100,14 +123,13 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > Walking text nodes needs `child_nodes`, which raises every consumer's `minAppVersion` to 0.8.3.
 
 > ⚠️ A latest poster carries a 5px blurred copy of its cover as a backdrop before the series link
-> (Kewn), so a card's cover is looked up inside the link first. Detail labels are read through a
-> block's children rather than the `+` sibling selector, which the app may read differently from
-> the test runner (unconfirmed: Grim and Mist showed the wrong reader in the app).
+> (Kewn), so a card's cover is looked up inside the link first.
 
-> ⚠️ Details labels ("Status", "Author", "Artist", "Type") are read with selectors only: a
-> `div.grid` whose `div.font-medium > span` names the label, and its `div.font-medium + div`
-> value. The test runner returns nothing from `parent()` and `next()`, and the page's search
-> menu uses the same words with no value beside them.
+> ⚠️ Details labels ("Status", "Author", "Artist", "Type") are read through the children of a
+> `div.grid` whose first child names the label in a `span` and whose second child holds the
+> value. The test runner cannot walk siblings, and the page's search menu uses the same words
+> with no value beside them. Avoid reintroducing `+` selectors for this layout (Grim and Mist
+> previously showed the wrong reader in the app).
 
 > ⚠️ About half the series on Grim, Mist and Timelesstoons have no synopsis anywhere (no
 > `#expand_content`, no meta description), so a missing description is `None`, not an error.
@@ -156,3 +178,67 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > ⚠️ The submission branch is `feat/keyoapp-template`. `check-upstream-scope.py` validates a
 > `feat/<template>-template` branch through one of its changed consumers, and the pre-push hook
 > verifies every crate it changes.
+
+## Review against merged sources
+
+The 2026-11-09 audit covered the eleven commits from `fc3d3cf` through `ae92053`, every
+Rust line in the template and ten consumers, their manifests, locks, resources and main-only
+tests. The main rules, skill references, workflows, hooks and checking scripts were read
+alongside the changes. Upstream comparisons used `a6ec13a`, including MangaK, MangaThemesia,
+MangaReader, Madara, VineTheme and Zaimanhua templates, and NovelArchive, NovelBuddy and
+Wenku8 for text chapters. The reviewer comments on #872, #869, #865, #824 and #666 were
+checked individually; reusable new lessons live in the root guide and source-review reference.
+
+| File | Responsibility and review decision |
+|---|---|
+| `templates/keyoapp/src/lib.rs:8` | Generic source/trait delegates, as in merged MangaK and VineTheme; keep this wiring explicit. |
+| `templates/keyoapp/src/imp.rs:21` | V1 requests and full-catalogue filtering; a separate parser permits offline error and pasted-link checks. |
+| `templates/keyoapp/src/v2.rs:26` | V2 search and chapter endpoints; preserve the site's pagination and separate protocol. |
+| `templates/keyoapp/src/home.rs:14` | Both home parsers and their private row helpers; keeps layout logic out of request methods. |
+| `templates/keyoapp/src/helpers.rs:13` | Shared conversions, dates and Markdown; `manga_from_link`, `manga_from_card`, `manga_from_page` and `chapter_from_link` name their inputs. |
+| `templates/keyoapp/src/models.rs:1` | Two response objects matching captured endpoint fields; no shared response abstraction needed. |
+
+> ⚠️ Search, home, pasted links and deep links must return the same series key. V1 keeps
+> `/series/<slug>/`; V2 takes the canonical slug from the page. Strip query/fragment variants
+> before classifying a deep link. The app already chooses the source by host, but arbitrary
+> pasted search URLs still need an exact base/path boundary. Keep chapter identity separate
+> from the displayed chapter number, including hyphens in the key.
+
+> ⚠️ `chapter_from_link` owns V1 paid/upcoming filtering, so latest rows and chapter lists
+> cannot disagree. Preserve both image and written V2 novel pages: Asmo currently serves
+> each format, and the previous README's image-only claim was wrong.
+
+The current filter IDs and order match every site's full definition, including all genre
+options: Genz 105, Grim 39, Mist 66, Eris 79, Kewn 36, Timeless 192, Asmo 99, Siren 163,
+Kaizen 245 and Luna 617. V1 has six type and four status values; V2 has seven sorts,
+six type choices and three status choices. Browser-visible lists can be shorter than the
+full DOM definition, so a visible-option count alone does not prove missing filters.
+
+| Review | Checked against Keyoapp |
+|---|---|
+| #872 | V1 catalogue is one page, V2 uses `has_more`; chapters have no observed extra-page mechanism. Preserve complete keys, fail missing catalogue markup, keep absent values optional, avoid repeated allocations, keep helpers out of wiring and retain title/cover links. Icons retain each site's branding and pass 128px/opacity verification. No page-limit truncation exists. |
+| #869 | No redundant included-values or higher-page guard; host dispatch is left to the app; listing conversions omit detail fields. |
+| #865 | Untitled cards are skipped; no redundant chapter language or login-state logic. Search covers comics and novels through the same catalogue/API. Pasted URLs use a base/path boundary. Viewer/description belong to details; author and artist labels are read independently. Response fields match captured schemas. |
+| #824 | Chapter requests need only keys; compact cards, SDK date parsing, ten consumers, sort-first V2 filters, static tappable genres, empty descriptions as `None`, observed coin/upcoming rules and explicit disabled exclusions. No speculative next-update timestamp is added. |
+| #666 | No unused-variable suppression workaround; browse and query share one endpoint per generation. V1's local filtering remains necessary because the server ignores filter/query parameters. |
+
+Normal request counts remain: V1 search/home/pages/details plus chapters each use one
+request, direct series deep links use none and chapter deep links use one. V2 search,
+home, pages, details, chapter lists and deep links each use one; details plus chapters use
+two with a partial details result. A valid pasted V2 series uses one, while an unrecognized
+pasted page can fall through to search for a second. Neither generation fetches each card's
+details to build rows.
+
+> ⚠️ Main owns eight template `review_` regressions for canonical links, absolute hrefs,
+> malformed catalogues, missing titles, unavailable chapters and novel paragraphs, including literal block syntax after breaks. The
+> ten consumers add sixteen offline layout/filter regressions. CI and pre-push now include
+> changed templates as well as dependent sources; the workflow selection regression executes
+> the actual shell step. Strip the template test module and test file on submission, as for
+> source tests.
+
+> ⚠️ On 2026-11-09 the Aidoku runner's live suites passed for Genz, Grim, Mist, Eris, Kewn,
+> Timeless, Asmo and Siren. Kaizen and Luna's search requests returned HTTP 403 with a
+> Cloudflare "Just a moment..." page instead of JSON, confirmed using the runner's own request
+> implementation. Their offline fixtures, resource checks, compilation and package verification
+> passed; browser/Firecrawl observations do not replace their blocked runner or device checks.
+> The native relative/absolute date behavior and long novel rendering still need an app check.

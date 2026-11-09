@@ -58,7 +58,7 @@ aidoku-rs book, "Resource Files"). `aidoku verify` checks the same schemas on th
 Follow AGENTS.md / CLAUDE.md §2 and §6 for layout. Checklist, each item a real review comment or a bug
 that shipped:
 
-- [ ] Every card carries key, title, cover (and status/rating) only: search results,
+- [ ] Every card carries a nonempty key and title, cover (and status/rating) only: search results,
       listings, a pasted-link result, and the `Scroller`, `MangaList` and `MangaChapterList`
       rows, which are `Link::from(compact Manga)` with no subtitle. Only `BigScroller` shows
       details (AGENTS.md / CLAUDE.md §3)
@@ -72,7 +72,7 @@ that shipped:
 - [ ] `send_partial_result` only when chapters need a second request
 - [ ] `DeepLinkHandler` for series **and** chapter urls; series and chapter urls resolve
 - [ ] Reader routing works with only manga/chapter keys; encode required type flags in keys,
-      and ensure search, Discover, details, chapter-list and deep-link keys match; strip source
+      and ensure search, Discover, details, chapter-list and deep-link keys match, including URL slash/query variants; strip source
       prefixes before sending ids to the site
 - [ ] Every enabled multi-select exclusion handles `excluded`; state `canExclude: false` on
       every other multi-select (kkantan asked twice, though false is the default), including

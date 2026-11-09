@@ -158,8 +158,8 @@ Running them:
   warnings` lints the test module, which the plain clippy gate skips.
 - `verify-source.sh` also lints the test module when a source has one (`cargo clippy --tests`),
   with the same dead-code lints as the source (section 8).
-- `.github/workflows/test.yaml` (**Source tests**) runs them for every source a push to
-  `main` changes, and on demand from the Actions tab for named ids, or every source with
+- `.github/workflows/test.yaml` (**Source tests**) runs them for every source and template a push to
+  `main` changes, and on demand from the Actions tab for named ids, or every crate with
   tests when none are named. It is a report, not a gate: the tests call the live site, so a
   red run can be the site or the network. Read the failing assertion before blaming either.
 - The runner simulates most of the app, not all of it: WebView calls return `-1`, and the
@@ -410,6 +410,16 @@ below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in rev
 | A banner linking a series page with `LinkValue::Url` (#819) | Link a series as `LinkValue::Manga` with only the key; keep `Url` for pages that aren't series. | R |
 | The two newest chapters of a long series didn't load (#819) | Reviewers read in the app. Before submitting, open the newest chapters of a long series as well as the first. | R |
 | A chapter that failed to load returned "(empty chapter)" text (#819, fix commit) | Fail the chapter with `bail!` rather than return placeholder text, and don't skip a fragment that failed. | R |
+
+### From #865, #869 and #872 (November)
+
+| What was flagged | The rule | |
+|---|---|---|
+| Missing titles became empty strings (#865) | Drop a card without a nonempty title; keep missing values optional rather than manufacturing empty strings. | R |
+| Rechecking the host in a deep-link handler (#869) | The app dispatches only matching source URLs. Parse their paths without a redundant host guard. Pasted search URLs are user input and still need an exact base/path boundary; substring hostname checks are insufficient (#865). | R |
+| Chapter ids with suffixes were truncated (#872) | Preserve the site's complete chapter key, including hyphens or page suffixes. Chapter-number parsing must not rewrite identity. (inferred) | R |
+| Extra helpers and long explanations in `lib.rs` (#872) | Put free helpers in `helpers.rs` or inline a single-use operation. Comments explain a non-obvious constraint, not the function body. | R |
+| A contributor with both writing and drawing credits lost one role (#865) | Assign author and artist roles independently, so one person can appear in both lists. (inferred) | R |
 
 ### From #860 (`en.flamecomics`)
 
@@ -889,7 +899,7 @@ went in one of these ways, and new ones go in the same way:
   Run `scripts/install-hooks.sh` once and the documented review gates explicitly wherever
   session/tool hooks are unavailable. Git hooks and CI remain shared enforcement. Tests are
   in `scripts/tests/test_agent_hooks.py` and `scripts/tests/test_agent_docs.py`.
-- The pre-push hook also runs each changed source's `review_` tests (`cargo test review_`), which
+- The pre-push hook also runs each changed source or template's `review_` tests (`cargo test review_`), which
   make no requests, and fails when `aidoku-test-runner` isn't installed. The live suite stays out
   of the hook, since a site outage would block every push.
 - `scripts/check-sources.py [--base <ref>] [ids…]` checks the rules that need no network:

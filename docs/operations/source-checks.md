@@ -22,8 +22,10 @@ sources:
   - code: scripts/ci-gates.py
   - code: scripts/tests/test_commit_enforcement.py
   - code: .github/workflows/build.yaml
+  - code: .github/workflows/test.yaml
+  - code: scripts/tests/test_template_tests.py
   - code: scripts/commit.sh
-verified_at: 1279894
+verified_at: 1891576
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -117,7 +119,7 @@ stamps the result with a hash of the source's files (`scripts/agent-hooks.py:212
 `.claude/settings.json` and `.codex/hooks.json` call `agent-hooks.py`: `pre-edit` points the first
 edit of each source or template per session at the workflow, and `stop` blocks the end of a turn
 while a changed source fails this checker or has no passing stamp for its current files
-(`scripts/agent-hooks.py:186`). The pre-push hook runs each changed source's `review_` tests. `pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
+(`scripts/agent-hooks.py:186`). The pre-push hook runs each changed source or template's `review_` tests, including a template's test-module clippy gate. `pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
 or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 
 > ⚠️ A commit inside a helper script is invisible to a check on the command line alone: a
@@ -206,3 +208,8 @@ and review stamps; they do not replace live tests or manual review.
 > unrelated failures (2026-11-06), so `check_lock` instead fails each stale lock when its source is
 > next edited (`scripts/check-sources.py:365`).
 
+
+> ⚠️ The Source tests workflow selects changed templates and their consumers, and manual
+> runs accept `templates/<name>` alongside source IDs. Selecting only dependent sources
+> leaves a template's own parser regressions unexecuted. `scripts/tests/test_template_tests.py`
+> runs the workflow's actual selection step against a temporary repository to cover both modes.

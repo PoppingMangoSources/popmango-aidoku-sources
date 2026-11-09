@@ -46,3 +46,11 @@ Append-only. Newest entries at the bottom.
 - Shared the docs linter under `scripts/`, retained Claude command wrappers, and extended sync drift checks.
 - Added Codex hook configuration using the existing handlers, including patch input support.
 - Updated [[source-checks]] with setup boundaries and regression coverage.
+
+## [2026-11-09] review | Keyoapp template and consumers
+
+- Compared all eleven template/consumer commits with main's rules and merged upstream implementations.
+- Fixed series identity, pasted links, malformed catalogue handling, unavailable chapters and novel Markdown.
+- Moved home parsing, reused SDK links and shortened comments; added template regression selection to CI and pre-push.
+- Recorded the #872/#869/#865/#824/#666 review cross-checks and current live-site boundaries in [[keyoapp-template]].
+- Updated [[source-checks]] and synchronized both clients' review instructions and references.

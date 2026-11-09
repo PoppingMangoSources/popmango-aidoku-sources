@@ -79,3 +79,13 @@ Accepted reference implementations: [en.toonkotsu](https://github.com/Aidoku-Com
 [multi.xcomic](https://github.com/Aidoku-Community/sources/tree/main/sources/multi.xcomic),
 and [Kagane rework](https://github.com/Aidoku-Community/sources/commit/54d287d5af7697d4b053d5aeee24283a32b1945b).
 Use them for their demonstrated patterns while verifying each site's current contract.
+
+November review cross-checks:
+
+- [872: helpers and comments](https://github.com/Aidoku-Community/sources/pull/872#discussion_r4507630284): move free helpers out of trait wiring; retain only non-obvious explanations.
+- [872: chapter keys](https://github.com/Aidoku-Community/sources/pull/872#discussion_r4503603425): preserve suffixes rather than interpreting chapter identity as a number.
+- [869: deep-link dispatch](https://github.com/Aidoku-Community/sources/pull/869#discussion_r4503542558): matching hosts are already selected by the app; this does not cover arbitrary pasted search input.
+- [865: missing titles](https://github.com/Aidoku-Community/sources/pull/865#discussion_r4497272622): omit untitled cards rather than returning empty titles.
+- [865: host matching](https://github.com/Aidoku-Community/sources/pull/865#discussion_r4497295451): a hostname substring can also occur inside another hostname.
+- [865: shared credits](https://github.com/Aidoku-Community/sources/pull/865#discussion_r4503529194): writing and drawing are independent roles.
+- [666: unified search](https://github.com/Aidoku-Community/sources/pull/666#discussion_r3707511508): use the browse endpoint for queries too when it supports them. Keyoapp V1 instead filters the one catalogue locally because its site ignores those parameters; V2 uses its single search endpoint.
