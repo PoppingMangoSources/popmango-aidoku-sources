@@ -54,3 +54,9 @@ Append-only. Newest entries at the bottom.
 - Moved home parsing, reused SDK links and shortened comments; added template regression selection to CI and pre-push.
 - Recorded the #872/#869/#865/#824/#666 review cross-checks and current live-site boundaries in [[keyoapp-template]].
 - Updated [[source-checks]] and synchronized both clients' review instructions and references.
+
+## [2026-11-09] fix | MangaThemesia child-theme consumers
+
+- Added Madara's Novel filter, five-row Latest Comics paging and opt-in chapter deep links for all four consumers.
+- Rejected blank card/banner titles and reused SDK banner links, with offline fixtures and live key-only reader checks.
+- Updated [[mangathemesia-consumers]] and both clients' rules for the paging default and shared handlers, verified at `d49266c`.

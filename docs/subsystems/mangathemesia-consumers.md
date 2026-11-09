@@ -2,7 +2,7 @@
 title: MangaThemesia consumers
 type: subsystem
 created: 2026-11-07
-updated: 2026-11-08
+updated: 2026-11-09
 sources:
   - code: templates/mangathemesia/src/imp.rs
   - code: templates/mangathemesia/src/helpers.rs
@@ -15,7 +15,13 @@ sources:
   - code: sources/en.violetscans/src/test.rs
   - code: sources/en.thunderscans/src/lib.rs
   - code: sources/en.madarascans/src/lib.rs
-verified_at: 40480d5
+  - code: sources/en.madarascans/res/filters.json
+  - code: sources/en.evascans/src/lib.rs
+  - code: sources/en.thunderscans/src/test.rs
+  - code: sources/en.madarascans/src/test.rs
+  - code: sources/en.evascans/src/test.rs
+  - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
+verified_at: d49266c
 ---
 
 KingOfShojo and RokariComics are plain consumers of the mangathemesia template: a `BASE_URL` and
@@ -25,12 +31,10 @@ KingOfShojo and RokariComics are plain consumers of the mangathemesia template: 
 map to the template's `order` values by position), Status and Type with the site's lowercase ids,
 and `genre[]` with the site's own ids (numeric on KingOfShojo, slugs on Rokari).
 
-> ⚠️ They use upstream's template unchanged, and `templates/mangathemesia` on `main` is
-> upstream's copy, so Discover, details and search are the template's on `main` and in the
-> submissions alike. The fork's old copy added `DynamicFilters`, `ListingProvider` and its own
-> home rows, which none of upstream's 15 consumers uses; bringing them back would put a template
-> change into each submission. A genre the site adds needs adding to `filters.json` by hand, as
-> on the upstream consumers.
+> ⚠️ KingOfShojo and RokariComics originally submitted upstream's unchanged template.
+> Main now has the shared child-theme module and novel reader described below. Keep those
+> additions when synchronizing the template; the old dynamic-filter/listing implementation is
+> separate and should not return. Static genre lists still need updating from the site's form.
 
 > ⚠️ No base URL setting: no merged mangathemesia source has one. If a site moves, change
 > `BASE_URL`; keys are paths (`/manga/<slug>/`), so libraries carry over.
@@ -45,8 +49,12 @@ and `genre[]` with the site's own ids (numeric on KingOfShojo, slugs on Rokari).
 > status or tags. The app's SwiftSoup supports them, and both sites use the markup they target
 > (`.infotable tr:contains(status) td:last-child`, `.seriestugenre a`). Check those in the app.
 
-> ⚠️ The template's deep links open series only: it looks the path up as a series, and a chapter
-> link returns `None`.
+> ⚠️ The default template deep-link handler opens series only. Violet, Thunder, Madara and
+> Eva override it with `child_theme::handle_deep_link`. Chapter pages are identified by
+> `#readerarea`, and `.ts-breadcrumb a` supplies their series key under the configured
+> `/comics/` or `/series/` directory. Skip the bare catalogue link. Canonical URLs and trailing
+> slashes keep series/chapter keys consistent with lists when incoming URLs have tracking
+> queries or fragments. This is one page request and does not fetch series details again.
 
 > ⚠️ Both merged upstream on 2026-11-08 (KingOfShojo #875, RokariComics #874) and left `main`. Their
 > last copy with tests is `c667b2d` and the `merged-sources` branch; a later change starts from
@@ -76,12 +84,12 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 > its assets with a browser user agent, or from evascans.net directly.
 
 > ⚠️ The template already turns a standard `div.big-slider` (Scythe, Raven, Rage) into its featured
-> `BigScroller`. Violet, Madara and Thunder run a child theme with `.slidernew` image banners (one
-> `<img class="slider-content">` link per series, 1983×793 on Violet and Madara, 2048×768 on
+> `BigScroller`. Violet, Madara, Thunder and Eva run a child theme with `.slidernew` image banners (one
+> `<img class="slider-content">` link per series, 1983×793 on Violet, Madara and Eva, 2048×768 on
 > Thunder). The template's `get_home` reads neither those nor the child theme's `.bixbox` rows of
 > `.bsx` cards, so the whole home lives in the template's `child_theme::get_home` (banners sized by
-> `Params::banner_width` and `banner_height`), which those three call from their own `get_home`.
-> One shared module rather than three copies follows the template-first rule and the owner's call
+> `Params::banner_width` and `banner_height`), which those four call from their own `get_home`.
+> One shared module rather than four copies follows the template-first rule and the owner's call
 > to leave no duplicates; the
 > template's `get_home` stays upstream's. This fork's template copy differs from upstream's by that
 > module, the base64 reader and the novel text below. No upstream consumer used `slidernew` on
@@ -152,3 +160,12 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 
 > ⚠️ violetscans.org redirects to violetmanga.com (keiyoushi has moved too); the id stays
 > `en.violetscans`.
+
+> ⚠️ Latest Comics sets `page_size: Some(5)`. The app renders `None` as an unpaged vertical
+> list, so it does not apply a default five-row cap. Keep all entries and page them instead of
+> truncating the feed. The Violet `review_` fixtures cover this, blank card/banner titles,
+> compact banner payloads and canonical series/chapter keys; each of the four sources also
+> checks a captured free chapter URL and reads it with only its series/chapter keys.
+
+> ⚠️ Madara's catalogue exposes the Novel type even when that selection has no titles.
+> Keep both `Novel` and `novel` in its static type options/IDs, matching the form.

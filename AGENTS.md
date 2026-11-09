@@ -305,6 +305,7 @@ Each of these was a real comment. They generalise.
 | Temporary vectors before assigning to params | Assign straight into the params struct. |
 | Settings lookups outside `settings.rs` | If the source has a `settings.rs`, the `defaults_get` calls live there. |
 | `page_size: Some(10)` on home components | **5 max**, for all components — 10 means a lot of scrolling on a phone. |
+| Latest Comics used `page_size: None` when it was meant to show five rows (owner's correction) | Use `Some(5)` for a five-row paged list. `None` renders every row vertically; it is not a five-row default (`HomeChapterListView.swift`). |
 | Web view urls 404'd | Series and chapter urls need to resolve. Have a fallback if the API's path field can be absent. |
 
 Also from the wider repo: **excessive `clone` is the single most common review
@@ -1157,14 +1158,16 @@ engine or theme:
 `libgroup`, `mangabox`, `liliana`, `guya`, `mmrcms`, `tukutema`, `ezmanhwa`,
 `pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`.
 
-Our `templates/` is upstream's copy, except `madara` and `madtheme`, which carry additions our
-sources use (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and
-is upstream's copy again; its consumers live upstream only. `mangathemesia` is upstream's copy
-again too: its two consumers (`en.kingofshojo`, `en.rokaricomics`) took filters, Discover and
-details from it unchanged and are now upstream (section 17). The
-`madtheme` ones (a home page and a chapter-list fallback) were for Kaliscan, which now sits on
+Most templates track upstream. `madara` and `madtheme` carry additions our sources use
+(shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and
+is upstream's copy again; its consumers live upstream only. `mangathemesia` adds shared novel
+reading and an opt-in `child_theme` module for Violet, Thunder, Madara and Eva; their source
+overrides select its home and deep-link handlers. The default home and deep-link handlers remain
+upstream's for the other consumers. KingOfShojo and RokariComics merged with the original template
+unchanged (section 17). The `madtheme` additions (a home page and a chapter-list fallback)
+were for Kaliscan, which now sits on
 the `dead-sources` branch with Galaxy Manga, OManga and LikeManga (its site went offline). When syncing, take upstream's files for every other
-template and bring only upstream's own changes into those two.
+template and preserve the fork additions to `madara`, `madtheme` and `mangathemesia`.
 
 **Check for one before writing a source from scratch.** Two ways: see whether the
 matching keiyoushi extension declares a `themePkg`, or run the site through a
