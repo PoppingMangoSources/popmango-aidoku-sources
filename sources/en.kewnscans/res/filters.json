@@ -9,6 +9,7 @@
 			"Manhua",
 			"Manga",
 			"Mangatoon",
+			"Novel",
 			"Comic"
 		],
 		"ids": [
@@ -16,6 +17,7 @@
 			"manhua",
 			"manga",
 			"mangatoon",
+			"novel",
 			"comic"
 		]
 	},
