@@ -1,7 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
 use super::*;
-use aidoku::{alloc::format, imports::html::Html};
+use aidoku::{HomeComponentValue, alloc::format, imports::html::Html};
 use aidoku_test::aidoku_test;
 
 struct Site;
@@ -115,6 +115,34 @@ fn review_unavailable_chapters_are_skipped() {
 	for link in html.select("a").unwrap() {
 		assert!(helpers::chapter_from_link(&link, "https://example.com").is_none());
 	}
+}
+
+#[aidoku_test]
+fn review_newly_added_stays_with_its_cover_grid() {
+	for html in [
+		r#"<section id="home-newly-added"><h2>Newly Added Series</h2><a class="group" href="/new" title="New"><img data-src="https://example.com/new.webp"></a></section>"#,
+		r#"<section id="home-newly-added"><h2>Newly Added Series</h2></section><div id="series-grid"><a class="group" href="/new" title="New"><img data-src="https://example.com/new.webp"></a></div>"#,
+	] {
+		let html = Html::parse(html).unwrap();
+		let home = home::parse_home_v2(&Site.params(), &html);
+		assert_eq!(home.components.len(), 1);
+		assert_eq!(
+			home.components[0].title.as_deref(),
+			Some("Newly Added Series")
+		);
+		let HomeComponentValue::Scroller { entries, .. } = &home.components[0].value else {
+			panic!("expected covers");
+		};
+		assert_eq!(entries.len(), 1);
+		assert_eq!(entries[0].title, "New");
+		assert!(entries[0].subtitle.is_none());
+	}
+	let html = Html::parse(r#"<section id="home-newly-added"><h2>Newly Added Series</h2></section><section><h2>Other Section</h2></section><div id="series-grid"><a class="group" href="/unrelated" title="Unrelated"></a></div>"#).unwrap();
+	assert!(
+		home::parse_home_v2(&Site.params(), &html)
+			.components
+			.is_empty()
+	);
 }
 
 #[aidoku_test]

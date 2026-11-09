@@ -149,25 +149,18 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 		{
 			continue;
 		}
-		let value = if title == "Newly Added Series" {
-			// The series grid follows its heading section rather than sitting inside it.
-			let entries: Vec<Link> = section
-				.select("a.group[href]")
-				.filter(|cards| !cards.is_empty())
-				.or_else(|| html.select("#series-grid > a[href]"))
-				.into_iter()
-				.flatten()
-				.filter_map(|card| manga_from_card(&card, &params.base_url))
-				.map(Link::from)
-				.collect();
-			if entries.is_empty() {
+		// Some layouts put the cover grid immediately after its heading section.
+		let section = if section.id().as_deref() == Some("home-newly-added")
+			&& section.select_first("a.group[href]").is_none()
+		{
+			let Some(grid) = html.select_first("#home-newly-added + #series-grid") else {
 				continue;
-			}
-			HomeComponentValue::Scroller {
-				entries,
-				listing: None,
-			}
-		} else if section.select_first("article").is_some() {
+			};
+			grid
+		} else {
+			section
+		};
+		let value = if section.select_first("article").is_some() {
 			let entries: Vec<MangaWithChapter> = section
 				.select("article")
 				.into_iter()
