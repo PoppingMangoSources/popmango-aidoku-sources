@@ -23,14 +23,16 @@
 			"Manhwa",
 			"Manhua",
 			"Mangatoon",
-			"Manga"
+			"Manga",
+			"Novel"
 		],
 		"ids": [
 			"",
 			"manhwa",
 			"manhua",
 			"mangatoon",
-			"manga"
+			"manga",
+			"novel"
 		]
 	},
 	{
