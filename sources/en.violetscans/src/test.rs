@@ -5,11 +5,31 @@ use aidoku::{
 	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue, Manga,
 	MangaPageResult, MangaStatus, PageContent,
 	alloc::{String, Vec, vec},
+	imports::html::Html,
 };
 use aidoku_test::aidoku_test;
 
 // The site's genre id for Romance, from res/filters.json.
 const GENRE: &str = "8";
+
+// The home cut down to one card per row, in the site's markup and order.
+const HOME: &str = r#"
+<div class="slidernew"><div class="swiper-slide"><a href="https://violetmanga.com/comics/banner/"><img src="https://img.test/banner.jpg" alt="Banner"></a></div></div>
+<div class="hotslid"><div class="bixbox"><div class="releases"><h2>Popular Today</h2></div></div>
+<div class="rail"><div class="bsx"><a href="https://violetmanga.com/comics/hot/" title="Hot"><img src="https://img.test/hot.jpg"></a></div></div></div>
+<div class="bixbox"><div class="releases"><h2>Genres</h2></div><a href="/genres/romance/">Romance</a></div>
+<div class="bixbox"><div class="releases"><h2>Latest Comics</h2></div><div id="manga-posts">
+<div class="bsx"><a href="https://violetmanga.com/comics/new/" title="New"><img src="https://img.test/new.jpg"></a>
+<div class="chapter-list"><a href="https://violetmanga.com/new-chapter-2/"><span class="epxs">Chapter 2</span><i class="fa-coins"></i></a>
+<a href="https://violetmanga.com/new-chapter-1/"><span class="epxs">Chapter 1</span></a></div></div></div></div>
+<div class="bixbox"><div class="releases"><h2>Latest Novels</h2></div>
+<div class="bsx"><a href="https://violetmanga.com/comics/novel/" title="Novel"><img src="https://img.test/novel.jpg"></a>
+<div class="chapter-list"><a href="https://violetmanga.com/novel-chapter-9/"><span class="epxs">Chapter 9</span><i class="fa-coins"></i></a></div></div></div>
+<section class="bixbox"><div class="releases"><h2>Editor Picks</h2></div>
+<div class="violet-ep-cover" data-index="0"><img src="https://img.test/pick.jpg"></div>
+<div class="violet-ep-panel" data-index="0"><div class="violet-ep-series-title"><a href="https://violetmanga.com/comics/pick/">Pick</a></div>
+<span class="violet-ep-badge--status">Ongoing</span><p class="violet-ep-tagline">A plain tagline.</p><ul class="violet-ep-genres"><li>Romance</li></ul></div></section>
+"#;
 
 fn source() -> MangaThemesia<VioletScans> {
 	MangaThemesia::new()
@@ -31,6 +51,67 @@ fn keys(result: &MangaPageResult) -> Vec<&str> {
 
 fn first_series() -> Manga {
 	search(None, 1, vec![]).entries.remove(0)
+}
+
+#[aidoku_test]
+fn review_home_keeps_the_owner_layout() {
+	let source = VioletScans::new();
+	let layout = child_theme::parse_home(&source.params(), &Html::parse(HOME).unwrap());
+	let rows: Vec<Option<&str>> = layout
+		.components
+		.iter()
+		.map(|component| component.title.as_deref())
+		.collect();
+	// Genre tiles hold no series, so they make no row
+	assert_eq!(
+		rows,
+		[
+			None,
+			Some("Popular Today"),
+			Some("Latest Comics"),
+			Some("Latest Novels"),
+			Some("Editor Picks")
+		]
+	);
+	let values: Vec<&HomeComponentValue> = layout
+		.components
+		.iter()
+		.map(|component| &component.value)
+		.collect();
+	let HomeComponentValue::ImageScroller {
+		links,
+		width,
+		height,
+		..
+	} = values[0]
+	else {
+		panic!("the banner rail comes first");
+	};
+	assert_eq!((*width, *height), (Some(400), Some(160)));
+	assert!(
+		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.key == "/comics/banner/")
+	);
+	assert!(
+		matches!(values[1], HomeComponentValue::Scroller { entries, .. } if entries[0].title == "Hot" && entries[0].subtitle.is_none())
+	);
+	// Latest Comics names the newest chapter a reader can open, skipping the coin one
+	let HomeComponentValue::MangaChapterList { entries, .. } = values[2] else {
+		panic!("latest comics is a chapter list");
+	};
+	assert_eq!(entries[0].chapter.key, "/new-chapter-1/");
+	assert_eq!(entries[0].chapter.chapter_number, Some(1.0));
+	// Latest Novels stays cards, since its newest chapters are mostly coin-locked
+	assert!(
+		matches!(values[3], HomeComponentValue::Scroller { entries, .. } if entries[0].title == "Novel")
+	);
+	let HomeComponentValue::BigScroller { entries, .. } = values[4] else {
+		panic!("editor picks are a big scroller");
+	};
+	let pick = &entries[0];
+	assert_eq!(pick.key, "/comics/pick/");
+	assert_eq!(pick.cover.as_deref(), Some("https://img.test/pick.jpg"));
+	assert_eq!(pick.description.as_deref(), Some("A plain tagline."));
+	assert_eq!(pick.status, MangaStatus::Ongoing);
 }
 
 #[aidoku_test]

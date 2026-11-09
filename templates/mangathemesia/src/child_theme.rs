@@ -17,9 +17,14 @@ use aidoku::{
 };
 
 pub fn get_home(params: &Params) -> Result<HomeLayout> {
+	let html = Request::get(&params.base_url)?.html()?;
+	Ok(parse_home(params, &html))
+}
+
+// Kept apart from the request so a layout can be checked against a saved page
+pub fn parse_home(params: &Params, html: &Document) -> HomeLayout {
 	let base_url = &params.base_url;
-	let html = Request::get(base_url.as_ref())?.html()?;
-	let mut components: Vec<HomeComponent> = slider_banners(&html, params).into_iter().collect();
+	let mut components: Vec<HomeComponent> = slider_banners(html, params).into_iter().collect();
 
 	// `.bixbox` rather than `div.bixbox`: Editor Picks is a <section>.
 	for section in html.select(".bixbox").into_iter().flatten() {
@@ -85,7 +90,7 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 		});
 	}
 
-	Ok(HomeLayout { components })
+	HomeLayout { components }
 }
 
 fn slider_banners(html: &Document, params: &Params) -> Option<HomeComponent> {
