@@ -2,13 +2,13 @@
 	"info": {
 		"id": "en.kaizenscan",
 		"name": "Kaizen Scan",
-		"version": 1,
+		"version": 2,
 		"url": "https://kaizenscan.com",
 		"contentRating": 1,
 		"languages": [
 			"en"
 		],
-		"minAppVersion": "0.7.1"
+		"minAppVersion": "0.8.3"
 	},
 	"config": {
 		"supportsTagSearch": true
