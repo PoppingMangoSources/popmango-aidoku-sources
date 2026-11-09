@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.kaizenscan",
 		"name": "Kaizen Scan",
-		"version": 4,
+		"version": 5,
 		"url": "https://kaizenscan.com",
-		"contentRating": 1,
+		"contentRating": 2,
 		"languages": [
 			"en"
 		],

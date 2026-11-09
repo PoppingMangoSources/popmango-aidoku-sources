@@ -60,3 +60,8 @@ Append-only. Newest entries at the bottom.
 - Added Madara's Novel filter, five-row Latest Comics paging and opt-in chapter deep links for all four consumers.
 - Rejected blank card/banner titles and reused SDK banner links, with offline fixtures and live key-only reader checks.
 - Updated [[mangathemesia-consumers]] and both clients' rules for the paging default and shared handlers, verified at `d49266c`.
+
+## [2026-11-09] fix | Kaizen Scan content rating
+
+- Set Kaizen Scan's source rating to 2 at the owner's request and updated its publication badge.
+- Main publishes version 5; the upstream submission retains version 1 with the change folded into its source commit.
