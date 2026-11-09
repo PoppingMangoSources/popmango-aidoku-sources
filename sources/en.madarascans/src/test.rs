@@ -2,8 +2,8 @@
 
 use super::*;
 use aidoku::{
-	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue, Manga,
-	MangaPageResult, MangaStatus,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue,
+	Manga, MangaPageResult, MangaStatus,
 	alloc::{String, Vec, vec},
 };
 use aidoku_test::aidoku_test;
@@ -170,7 +170,6 @@ fn deep_links_open_series() {
 		source().handle_deep_link(manga.url.unwrap()).unwrap(),
 		Some(DeepLinkResult::Manga { key: manga.key })
 	);
-	// The template opens series links only.
 	assert_eq!(
 		source()
 			.handle_deep_link(format!("{BASE_URL}/zzqxwv-no-such-page/"))
@@ -268,6 +267,34 @@ fn latest_comics_name_readable_chapters() {
 	);
 	let pages = source()
 		.get_page_list(manga, entry.chapter.clone())
+		.unwrap();
+	assert!(!pages.is_empty());
+}
+
+#[aidoku_test]
+fn deep_links_open_chapters_with_only_keys() {
+	let manga_key = "/series/my-healing-skill-can-copy-anything-so-i-conquered-the-abyss/";
+	let chapter_key = "/my-healing-skill-can-copy-anything-so-i-conquered-the-abyss-chapter-25/";
+	assert_eq!(
+		source()
+			.handle_deep_link(format!("{BASE_URL}{chapter_key}?utm_source=share#reader"))
+			.unwrap(),
+		Some(DeepLinkResult::Chapter {
+			manga_key: manga_key.into(),
+			key: chapter_key.into()
+		})
+	);
+	let pages = source()
+		.get_page_list(
+			Manga {
+				key: manga_key.into(),
+				..Default::default()
+			},
+			Chapter {
+				key: chapter_key.into(),
+				..Default::default()
+			},
+		)
 		.unwrap();
 	assert!(!pages.is_empty());
 }

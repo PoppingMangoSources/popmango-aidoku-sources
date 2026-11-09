@@ -5,9 +5,9 @@ use crate::{
 	helpers::{ElementImageAttr, find_first_f32},
 };
 use aidoku::{
-	Chapter, HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Manga, MangaStatus,
-	MangaWithChapter, Result,
-	alloc::Vec,
+	Chapter, DeepLinkResult, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga,
+	MangaStatus, MangaWithChapter, Result,
+	alloc::{String, Vec},
 	helpers::string::StripPrefixOrSelf,
 	imports::{
 		html::{Document, Element},
@@ -19,6 +19,40 @@ use aidoku::{
 pub fn get_home(params: &Params) -> Result<HomeLayout> {
 	let html = Request::get(&params.base_url)?.html()?;
 	Ok(parse_home(params, &html))
+}
+
+pub fn handle_deep_link(params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
+	let html = Request::get(&url)?.html()?;
+	Ok(parse_deep_link(params, &html, &url))
+}
+
+pub fn parse_deep_link(params: &Params, html: &Document, url: &str) -> Option<DeepLinkResult> {
+	let canonical = html
+		.select_first("link[rel=canonical]")
+		.and_then(|link| link.attr("href"));
+	let path = canonical
+		.as_deref()
+		.unwrap_or(url)
+		.strip_prefix_or_self(&params.base_url);
+	let path = path.split_once(['?', '#']).map_or(path, |(path, _)| path);
+	let key = format!("{}/", path.trim_end_matches('/'));
+	if html.select_first("#readerarea").is_some() {
+		let directory = format!("{}/", params.manga_url_directory);
+		let manga_key = html.select(".ts-breadcrumb a")?.find_map(|link| {
+			let href = link.attr("href")?;
+			let path = href.strip_prefix_or_self(&params.base_url);
+			let path = path.split_once(['?', '#']).map_or(path, |(path, _)| path);
+			path.strip_prefix(&directory)
+				.filter(|slug| !slug.trim_matches('/').is_empty())?;
+			Some(format!("{}/", path.trim_end_matches('/')))
+		})?;
+		return Some(DeepLinkResult::Chapter { manga_key, key });
+	}
+	html.select_first("div.bigcontent, div.animefull, div.main-info, div.postbody")?
+		.select_first(&params.series_title_selector)?
+		.text()
+		.filter(|title| !title.trim().is_empty())?;
+	Some(DeepLinkResult::Manga { key })
 }
 
 // Kept apart from the request so a layout can be checked against a saved page
@@ -66,7 +100,7 @@ pub fn parse_home(params: &Params, html: &Document) -> HomeLayout {
 				continue;
 			}
 			HomeComponentValue::MangaChapterList {
-				page_size: None,
+				page_size: Some(5),
 				entries,
 				listing: None,
 			}
@@ -98,19 +132,21 @@ fn slider_banners(html: &Document, params: &Params) -> Option<HomeComponent> {
 		.select(".slidernew .swiper-slide a")?
 		.filter_map(|link| {
 			let image = link.select_first("img")?;
-			Some(Link {
-				title: image.attr("alt")?,
-				image_url: image.img_attr(),
-				value: Some(LinkValue::Manga(Manga {
-					key: link
-						.attr("href")?
-						.strip_prefix_or_self(&params.base_url)
-						.into(),
-					..Default::default()
-				})),
+			Some(Manga {
+				key: link
+					.attr("href")?
+					.strip_prefix_or_self(&params.base_url)
+					.into(),
+				title: image
+					.attr("alt")
+					.filter(|title| !title.trim().is_empty())?
+					.trim()
+					.into(),
+				cover: image.img_attr(),
 				..Default::default()
 			})
 		})
+		.map(Link::from)
 		.collect();
 	if links.is_empty() {
 		return None;
@@ -131,7 +167,11 @@ fn series(card: &Element, base_url: &str) -> Option<Manga> {
 	let link = card.select_first("a")?;
 	Some(Manga {
 		key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
-		title: link.attr("title")?,
+		title: link
+			.attr("title")
+			.filter(|title| !title.trim().is_empty())?
+			.trim()
+			.into(),
 		cover: card.select_first("img").and_then(|image| image.img_attr()),
 		..Default::default()
 	})

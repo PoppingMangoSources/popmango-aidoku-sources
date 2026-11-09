@@ -2,8 +2,8 @@
 
 use super::*;
 use aidoku::{
-	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue, Manga,
-	MangaPageResult, MangaStatus, PageContent,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, LinkValue,
+	Manga, MangaPageResult, MangaStatus, PageContent,
 	alloc::{String, Vec, vec},
 	imports::html::Html,
 };
@@ -280,7 +280,6 @@ fn deep_links_open_series() {
 		source().handle_deep_link(manga.url.unwrap()).unwrap(),
 		Some(DeepLinkResult::Manga { key: manga.key })
 	);
-	// The template opens series links only.
 	assert_eq!(
 		source()
 			.handle_deep_link(format!("{BASE_URL}/zzqxwv-no-such-page/"))
@@ -396,4 +395,120 @@ fn latest_novels_are_cards() {
 		panic!("latest novels is a scroller");
 	};
 	assert!(!entries.is_empty());
+}
+
+#[aidoku_test]
+fn review_latest_comics_pages_five_rows_at_a_time() {
+	let site = VioletScans::new();
+	let layout = child_theme::parse_home(&site.params(), &Html::parse(HOME).unwrap());
+	let latest = layout
+		.components
+		.iter()
+		.find(|component| component.title.as_deref() == Some("Latest Comics"))
+		.unwrap();
+	let HomeComponentValue::MangaChapterList { page_size, .. } = &latest.value else {
+		panic!("latest comics is a chapter list");
+	};
+	assert_eq!(*page_size, Some(5));
+}
+
+#[aidoku_test]
+fn review_banners_keep_compact_manga() {
+	let site = VioletScans::new();
+	let layout = child_theme::parse_home(&site.params(), &Html::parse(HOME).unwrap());
+	let HomeComponentValue::ImageScroller { links, .. } = &layout.components[0].value else {
+		panic!("the banner rail comes first");
+	};
+	assert!(
+		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.title == links[0].title && manga.cover == links[0].image_url && manga.description.is_none())
+	);
+}
+
+#[aidoku_test]
+fn review_home_skips_blank_titles() {
+	let site = VioletScans::new();
+	let html = Html::parse(r#"<div class="slidernew"><div class="swiper-slide"><a href="/comics/blank-banner/"><img src="https://img.test/blank-banner.jpg" alt=" "></a></div></div><div class="bixbox"><div class="releases"><h2>New Series</h2></div><div class="bsx"><a href="/comics/blank/" title=" "><img src="https://img.test/blank.jpg"></a></div><div class="bsx"><a href="/comics/missing/"><img src="https://img.test/missing.jpg"></a></div><div class="bsx"><a href="/comics/valid/" title=" Valid "><img src="https://img.test/valid.jpg"></a></div></div>"#).unwrap();
+	let layout = child_theme::parse_home(&site.params(), &html);
+	let HomeComponentValue::Scroller { entries, .. } = &layout.components[0].value else {
+		panic!("new series is a scroller");
+	};
+	assert_eq!(entries.len(), 1);
+	assert_eq!(entries[0].title, "Valid");
+}
+
+#[aidoku_test]
+fn review_chapter_links_use_the_series_breadcrumb() {
+	for directory in ["/comics", "/series"] {
+		let params = Params {
+			base_url: "https://example.com".into(),
+			manga_url_directory: directory.into(),
+			..Default::default()
+		};
+		let html = Html::parse(format!(r#"<link rel="canonical" href="https://example.com/title-chapter-3-2/"><a href="{directory}/other/">Other</a><div class="ts-breadcrumb"><a href="{directory}/">Catalogue</a><a itemprop="item" href="{directory}/title/"><span itemprop="name">Title</span></a></div><div class="chapterbody"><h1 class="entry-title">Title Chapter 3-2</h1><div id="readerarea"><p>Text</p></div></div>"#)).unwrap();
+		assert_eq!(
+			child_theme::parse_deep_link(
+				&params,
+				&html,
+				"https://example.com/title-chapter-3-2?utm_source=share#reader"
+			),
+			Some(DeepLinkResult::Chapter {
+				manga_key: format!("{directory}/title/"),
+				key: "/title-chapter-3-2/".into()
+			})
+		);
+	}
+}
+
+#[aidoku_test]
+fn review_series_links_use_the_canonical_key() {
+	let site = VioletScans::new();
+	let html = Html::parse(format!(r#"<link rel="canonical" href="{BASE_URL}/comics/title/"><div class="main-info"><h1 class="entry-title">Title</h1></div>"#)).unwrap();
+	assert_eq!(
+		child_theme::parse_deep_link(
+			&site.params(),
+			&html,
+			&format!("{BASE_URL}/comics/title?utm_source=share#chapters")
+		),
+		Some(DeepLinkResult::Manga {
+			key: "/comics/title/".into()
+		})
+	);
+	let missing = Html::parse("<h1>Not found</h1>").unwrap();
+	assert_eq!(
+		child_theme::parse_deep_link(&site.params(), &missing, &format!("{BASE_URL}/missing/")),
+		None
+	);
+	let orphan = Html::parse(r#"<div id="readerarea"><p>Text</p></div>"#).unwrap();
+	assert_eq!(
+		child_theme::parse_deep_link(&site.params(), &orphan, &format!("{BASE_URL}/chapter-1/")),
+		None
+	);
+}
+
+#[aidoku_test]
+fn deep_links_open_chapters_with_only_keys() {
+	let manga_key = "/comics/the-squirrel-will-raise-the-baby-tiger/";
+	let chapter_key = "/the-squirrel-will-raise-the-baby-tiger-chapter-19/";
+	assert_eq!(
+		source()
+			.handle_deep_link(format!("{BASE_URL}{chapter_key}?utm_source=share#reader"))
+			.unwrap(),
+		Some(DeepLinkResult::Chapter {
+			manga_key: manga_key.into(),
+			key: chapter_key.into()
+		})
+	);
+	let pages = source()
+		.get_page_list(
+			Manga {
+				key: manga_key.into(),
+				..Default::default()
+			},
+			Chapter {
+				key: chapter_key.into(),
+				..Default::default()
+			},
+		)
+		.unwrap();
+	assert!(!pages.is_empty());
 }

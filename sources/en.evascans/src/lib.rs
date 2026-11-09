@@ -1,5 +1,5 @@
 #![no_std]
-use aidoku::{HomeLayout, Result, Source, prelude::*};
+use aidoku::{DeepLinkResult, HomeLayout, Result, Source, alloc::String, prelude::*};
 use mangathemesia::{Impl, MangaThemesia, Params, child_theme};
 
 #[cfg(test)]
@@ -27,6 +27,10 @@ impl Impl for EvaScans {
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		child_theme::get_home(params)
+	}
+
+	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
+		child_theme::handle_deep_link(params, url)
 	}
 }
 
