@@ -19,7 +19,7 @@ const HOME: &str = r#"
 <div><div><h2>Pinned Series</h2></div><div><div class="latest-poster"><a href="/series/pinned/" title="Pinned"></a><a href="/chapter/p-1" title="Chapter 1" d="1 day ago"></a></div></div></div>
 <div><div><h2>Bulk Discounted Series</h2></div><div><button title="Bulk"><a href="/series/bulk/" title="Bulk"></a></button></div></div>
 <div><div><h2>Latest Updates</h2></div><div>
-<div class="latest-poster"><a href="/series/new/" title="New"></a><a href="/chapter/n-2" title="Chapter 2" d="1 hour ago"><img alt="Coin"></a><a href="/chapter/n-1" title="Chapter 1" d="2 hours ago"></a></div>
+<div class="latest-poster"><div style="background-image:url(https://img.test/new.avif&w=5)"></div><a href="/series/new/" title="New"><div style="background-image:url(https://img.test/new.avif&w=600)"></div></a><a href="/chapter/n-2" title="Chapter 2" d="1 hour ago"><img alt="Coin"></a><a href="/chapter/n-1" title="Chapter 1" d="2 hours ago"></a></div>
 </div></div>
 <div><div><h2>Trending</h2></div><div><button title="Hot"><a href="/series/hot/" title="Hot"><div style="background-image: url(https://img.test/hot.avif);"></div></a></button></div></div>
 <div><div><h2>Editor's Choice</h2></div><div><div class="editor-pick-button" title="Pick" data-id="pick" data-img="pick.avif" data-description="QSBwbGFpbiBkZXNjcmlwdGlvbi4="></div></div></div>
@@ -91,6 +91,11 @@ fn review_home_keeps_the_site_rows() {
 	assert_eq!(*page_size, Some(5));
 	// The coin chapter needs a login, so the row shows the newest free one.
 	assert_eq!(entries[0].chapter.key, "/chapter/n-1");
+	// The cover in the series link, not the blurred 5px backdrop beside it
+	assert_eq!(
+		entries[0].manga.cover.as_deref(),
+		Some("https://img.test/new.avif&w=600")
+	);
 	assert!(
 		matches!(values[2], HomeComponentValue::Scroller { entries, .. } if entries[0].subtitle.is_none())
 	);
