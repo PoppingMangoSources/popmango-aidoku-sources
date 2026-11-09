@@ -65,3 +65,10 @@ Append-only. Newest entries at the bottom.
 
 - Set Kaizen Scan's source rating to 2 at the owner's request and updated its publication badge.
 - Main publishes version 5; the upstream submission retains version 1 with the change folded into its source commit.
+
+## [2026-11-09] fix | Keyoapp newly added row scope
+
+- Reused the normal card conversion for internal and adjacent newly added grids, with a regression that rejects unrelated grids.
+- Recorded Today for Trending and Month for Most Reviewed as separate owner-selected defaults in [[keyoapp-template]] and both instruction copies.
+- Folded all submission template changes into its first commit while preserving the ten source commits and version 1 metadata.
+- Code verified at `c1e1cbf`; Mist remains on its existing domain and parser.

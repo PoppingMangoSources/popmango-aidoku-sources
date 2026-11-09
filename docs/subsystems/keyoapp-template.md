@@ -35,7 +35,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/865
   - ext: https://github.com/Aidoku-Community/sources/pull/824
   - ext: https://github.com/Aidoku-Community/sources/pull/666
-verified_at: 1891576
+verified_at: c1e1cbf
 ---
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
@@ -71,6 +71,13 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > on some Asmodeus cards). Editor's Choice repeats for mobile and its `data-ec-clone` copies have
 > no title, so both drop out. Its cards are covers and titles only, so it is a card row, not a big
 > scroller. Search cards reuse the same card conversion.
+
+> ⚠️ Newly Added cards can sit inside `#home-newly-added` or in its immediately adjacent
+> `#series-grid`. Scope the fallback with `#home-newly-added + #series-grid` and use the normal
+> card conversion; a document-wide lookup can attach an unrelated grid to an empty row.
+
+> ⚠️ Trending uses Today from the initial homepage. Most Reviewed uses Month by the owner's
+> explicit choice, with one extra request when that row exists. Keep these defaults separate.
 
 > ⚠️ A V2 series and chapter share the path shape (`/slug`, `/slug-chapter-4`), so a deep link
 > fetches the page: `[data-series-uid]` makes it a series, and `#sidebar-ch-list` names a
@@ -224,14 +231,16 @@ full DOM definition, so a visible-option count alone does not prove missing filt
 
 Normal request counts remain: V1 search/home/pages/details plus chapters each use one
 request, direct series deep links use none and chapter deep links use one. V2 search,
-home, pages, details, chapter lists and deep links each use one; details plus chapters use
+pages, details, chapter lists and deep links each use one; home uses one plus the monthly review
+request when that row exists. Details plus chapters use
 two with a partial details result. A valid pasted V2 series uses one, while an unrecognized
 pasted page can fall through to search for a second. Neither generation fetches each card's
 details to build rows.
 
-> ⚠️ Main owns eight template `review_` regressions for canonical links, absolute hrefs,
-> malformed catalogues, missing titles, unavailable chapters and novel paragraphs, including literal block syntax after breaks. The
-> ten consumers add sixteen offline layout/filter regressions. CI and pre-push now include
+> ⚠️ Main owns nine template `review_` regressions for canonical links, absolute hrefs,
+> malformed catalogues, missing titles, unavailable chapters, novel paragraphs (including literal
+> block syntax after breaks), and newly added row bounds. The ten consumers add offline
+> layout/filter regressions. CI and pre-push now include
 > changed templates as well as dependent sources; the workflow selection regression executes
 > the actual shell step. Strip the template test module and test file on submission, as for
 > source tests.

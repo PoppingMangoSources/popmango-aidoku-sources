@@ -440,7 +440,8 @@ below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in rev
 | What was flagged | The rule | |
 |---|---|---|
 | Genz Toon's cover slider showed as cropped banners in the app, while the runner and its `review_` test read it as covers (owner's screenshots) | Don't quote brackets inside an attribute selector (`[class*='aspect-[2/1]']`): the app's selector engine read it differently from the runner's. Select the elements, then compare the attribute in Rust. (inferred, one case) | N |
-| V2 Trending Now was overridden with Month despite the site's Today default (owner's correction) | All four V2 sites render Today cards in their initial homepage HTML. Use those cards directly; fetch Month only for Most Reviewed when requested separately. (verified on live V2 homepages, 2026-11-09) | R |
+| V2 Trending Now was overridden with Month despite the site's Today default (owner's correction) | Use Today cards directly for Trending. Fetch Month for Most Reviewed, the owner's explicit choice; do not apply that override to Trending. | R |
+| Newly Added fell back to a document-wide grid (owner's review) | Read its own cards or its immediately adjacent grid, then reuse the normal card conversion. An empty section must not borrow another row's cards. | R |
 | The Keyoapp V1 section ancestor bound was widened from three to five without evidence (owner's correction) | Keep the three-level walk supported by Mist's headings, and test that a heading cannot capture a card only present at a fourth ancestor. (verified on the live Mist homepage, 2026-11-09) | R |
 
 ### From #843 (`en.atsumaru`)
