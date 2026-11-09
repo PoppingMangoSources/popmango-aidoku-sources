@@ -151,8 +151,10 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 		}
 		let value = if title == "Newly Added Series" {
 			// The series grid follows its heading section rather than sitting inside it.
-			let entries: Vec<Link> = html
-				.select("#series-grid > a[href]")
+			let entries: Vec<Link> = section
+				.select("a.group[href]")
+				.filter(|cards| !cards.is_empty())
+				.or_else(|| html.select("#series-grid > a[href]"))
 				.into_iter()
 				.flatten()
 				.filter_map(|card| manga_from_card(&card, &params.base_url))
@@ -219,7 +221,7 @@ fn section(heading: &Element) -> Option<Element> {
 			return None;
 		}
 		if element
-			.select_first(".latest-poster, .editor-pick-button, button[title] a[href*='/series/']")
+			.select_first(".latest-poster, .editor-pick-button, button[title]")
 			.is_some()
 		{
 			return Some(element);

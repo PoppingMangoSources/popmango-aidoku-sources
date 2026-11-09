@@ -162,6 +162,33 @@ fn review_home_does_not_attach_cards_beyond_three_parents() {
 }
 
 #[aidoku_test]
+fn review_recently_added_uses_the_sibling_cover_grid() {
+	let html = aidoku::imports::html::Html::parse(
+		r#"<div class="grid">
+			<div class="flex"><h2>Recently Added</h2><a href="/series/">View all</a></div>
+			<div class="grid">
+				<button title="First"><a href="https://mistscans.com/series/first/" title="First">
+					<div style="background-image:url(https://img.example/first.webp)"></div>
+				</a></button>
+				<button title="Second"><a href="https://mistscans.com/series/second/" title="Second">
+					<div style="background-image:url(https://img.example/second.webp)"></div>
+				</a></button>
+			</div>
+		</div>"#,
+	)
+	.unwrap();
+	let home = keyoapp::home::parse_home(&MistScans.params(), &html);
+	assert_eq!(home.components.len(), 1);
+	assert_eq!(home.components[0].title.as_deref(), Some("Recently Added"));
+	let HomeComponentValue::Scroller { entries, .. } = &home.components[0].value else {
+		panic!("recently added should show covers");
+	};
+	assert_eq!(entries.len(), 2);
+	assert_eq!(entries[0].title, "First");
+	assert_eq!(entries[1].title, "Second");
+}
+
+#[aidoku_test]
 fn home_follows_the_site() {
 	let home = source().get_home().unwrap();
 	let titles: Vec<&str> = home
@@ -173,6 +200,15 @@ fn home_follows_the_site() {
 	unique.dedup();
 	assert_eq!(unique.len(), titles.len(), "rows repeat");
 	assert!(!titles.contains(&"Bulk Discounted Series"));
+	let recently_added = home
+		.components
+		.iter()
+		.find(|component| component.title.as_deref() == Some("Recently Added"))
+		.expect("recently added is on the site");
+	assert!(matches!(
+		&recently_added.value,
+		HomeComponentValue::Scroller { entries, .. } if !entries.is_empty()
+	));
 	let latest = home
 		.components
 		.iter()
