@@ -1,12 +1,8 @@
 # Keyoapp Template
 
-Two generations of Keyoapp sites:
-
-- `Keyoapp<T: Impl>` for the first, whose `/series/` page lists the whole catalogue as
-  `#searched_series_page > button` cards.
-- `KeyoappV2<T: ImplV2>` for the second, with series at the site root, `?browse=1` for the
-  catalogue and `?_ajax=search` behind it. Its consumers set `"supportsTagSearch": true`, since
-  a series page's tags are cased unlike the browse list.
+- `Keyoapp<T: Impl>`: catalogue at `/series/`.
+- `KeyoappV2<T: ImplV2>`: catalogue at `?browse=1`. Set `"supportsTagSearch": true` in
+  the consumer's `source.json`.
 
 ```rust
 register_source!(KeyoappV2<Site>, Home, DeepLinkHandler);
@@ -14,8 +10,9 @@ register_source!(KeyoappV2<Site>, Home, DeepLinkHandler);
 
 ## Updating Filters
 
-Each consumer's `res/filters.json` holds the site's own type, genre and status values. On the
-`/series/` page, paste into the console:
+Use the site's type, genre and status values in the consumer's `res/filters.json`.
+
+For `Keyoapp`, run this in the console on `/series/`:
 
 ```js
 (() => {
@@ -31,11 +28,7 @@ Each consumer's `res/filters.json` holds the site's own type, genre and status v
 })();
 ```
 
-Keep `novel` among the types: first generation novels read as text and second generation ones as
-images, text, or a mixture of both. Every filter is include-only, as on the site, so each states `"canExclude": false`.
-
-For the second generation, the sort, type and status selects and the genre list come from the
-`?browse=1` page:
+For `KeyoappV2`, run this on `?browse=1`:
 
 ```js
 (() => {
@@ -47,9 +40,8 @@ For the second generation, the sort, type and status selects and the genre list 
 })();
 ```
 
-Sorts are the template's fixed list; genre ids are the lowercase `tag[]` values.
+Keep V2 sorts in the `SORTS` order from `src/v2.rs`. Use the site's `tag[]` values as genre IDs.
 
 ## Home
 
-The home follows the site's headings. A row that repeats another one on a particular site can be
-left out with `Params::hidden_rows`, as Genz Toon does with its Pinned Series.
+Set `Params::hidden_rows` to omit home rows by heading.
