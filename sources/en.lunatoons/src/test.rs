@@ -137,11 +137,12 @@ fn review_home_keeps_the_site_rows() {
 		.iter()
 		.filter_map(|component| component.title.as_deref())
 		.collect();
-	// In the site's order, without the novels row or the repeated Editor's Choice
+	// In the site's order, novels included, without the repeated Editor's Choice
 	assert_eq!(
 		titles,
 		[
 			"Featured Series",
+			"Novels",
 			"Recently Updated",
 			"Editor's Choice",
 			"Newly Added Series"
@@ -151,9 +152,7 @@ fn review_home_keeps_the_site_rows() {
 		match &component.value {
 			HomeComponentValue::Scroller { entries, .. } => {
 				assert!(!entries.is_empty());
-				// Cards carry no subtitle, and novels are left out
 				assert!(entries.iter().all(|link| link.subtitle.is_none()));
-				assert!(entries.iter().all(|link| !link.title.contains("Novel")));
 			}
 			HomeComponentValue::MangaChapterList {
 				page_size, entries, ..
@@ -172,8 +171,8 @@ fn review_home_keeps_the_site_rows() {
 	let HomeComponentValue::Scroller { entries, .. } = &home.components[0].value else {
 		panic!("featured series is a scroller");
 	};
-	assert_eq!(entries.len(), 1);
-	assert_eq!(entries[0].title, "First Series");
+	let titles: Vec<&str> = entries.iter().map(|link| link.title.as_str()).collect();
+	assert_eq!(titles, ["First Series", "[ Novel ] Novel One"]);
 }
 
 #[aidoku_test]
@@ -292,7 +291,6 @@ fn home_follows_the_site() {
 		.filter_map(|component| component.title.as_deref())
 		.collect();
 	assert!(titles.contains(&"Featured Series"), "{titles:?}");
-	assert!(!titles.contains(&"Novels"));
 	let mut unique = titles.clone();
 	unique.sort_unstable();
 	unique.dedup();
