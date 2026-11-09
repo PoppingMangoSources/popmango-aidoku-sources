@@ -2,13 +2,13 @@
 	"info": {
 		"id": "en.sirenscans",
 		"name": "Siren Scans",
-		"version": 1,
+		"version": 2,
 		"url": "https://sirenscans.com",
 		"contentRating": 0,
 		"languages": [
 			"en"
 		],
-		"minAppVersion": "0.7.1"
+		"minAppVersion": "0.8.3"
 	},
 	"config": {
 		"supportsTagSearch": true
