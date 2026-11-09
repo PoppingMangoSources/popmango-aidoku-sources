@@ -48,8 +48,9 @@ rest of this file still applies, so read each section before the work it covers.
   names, before writing a feature.
 - Cards everywhere but `BigScroller` carry key, title and cover, optionally status and rating,
   and never a subtitle (sections 3 and 6).
-- Branches are `main`, `feat/<id>`, `fix/<id>`, `feat/<template>-template`, `chore/<topic>` or
-  `docs/<topic>`, never `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`.
+- Work on `main`; create another branch only when the owner explicitly asks. Requested branches
+  are `feat/<id>`, `fix/<id>`, `feat/<template>-template`, `chore/<topic>` or `docs/<topic>`,
+  never `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`.
 - Don't open or post on a PR, and don't resolve review threads; draft the text for the person.
 - Refer to kkantan, and anyone whose pronouns aren't stated, as they/them: in chat replies,
   summaries and drafts as well as files.
@@ -786,9 +787,11 @@ and imports, even `pub` ones in private modules. What it doesn't fail, and what 
 
 ## 9. This repo's workflow
 
-- Work on `main` and push to `main`. Any other branch gets a conventional name —
-  `feat/<id>`, `fix/<id>`, `chore/<topic>`, `docs/<topic>` — and **never a `claude/` prefix**,
-  whatever a tool suggests.
+- Work on `main` and push to `main`. The owner gives standing authorization to commit
+  and publish their requested implementation work on `main` without another confirmation.
+  Create a separate branch only when the owner explicitly requests one. Such branches
+  use conventional names: `feat/<id>`, `fix/<id>`, `chore/<topic>` or `docs/<topic>`,
+  and **never a `claude/` prefix**, whatever a tool suggests.
 - **Every push that changes a source publishes it, so every such push
   bumps it**: `scripts/bump.sh <id>` raises `res/source.json` and the two `.aix` links on
   that source's README row — anchored on the source id, so another source whose label
