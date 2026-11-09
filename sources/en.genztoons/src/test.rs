@@ -3,7 +3,7 @@
 use super::*;
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, HomeLayout,
-	LinkValue, Manga, MangaPageResult, MangaStatus, PageContent, Viewer,
+	LinkValue, Manga, MangaPageResult, MangaStatus, Page, PageContent, Viewer,
 	alloc::{String, Vec, format, vec},
 	imports::html::Html,
 };
@@ -337,4 +337,50 @@ fn an_unknown_series_fails() {
 			.is_err()
 	);
 	assert!(source().get_manga_update(manga, false, true).is_err());
+}
+
+#[aidoku_test]
+fn novel_chapters_read_as_text() {
+	let (manga, chapter) = search(None, vec![multi("type", &["novel"], &[])])
+		.entries
+		.into_iter()
+		.find_map(|manga| {
+			let chapter = source()
+				.get_manga_update(manga.clone(), false, true)
+				.unwrap()
+				.chapters?
+				.pop()?;
+			Some((manga, chapter))
+		})
+		.unwrap();
+	// Read with only the keys, as the app may pass them
+	let pages = source()
+		.get_page_list(
+			Manga {
+				key: manga.key,
+				..Default::default()
+			},
+			Chapter {
+				key: chapter.key,
+				..Default::default()
+			},
+		)
+		.unwrap();
+	let [
+		Page {
+			content: PageContent::Text(text),
+			..
+		},
+	] = pages.as_slice()
+	else {
+		panic!("a novel chapter is one text page");
+	};
+	assert!(text.len() > 1000);
+	// No markup is left, and the site's own angle brackets are escaped
+	assert!(
+		text.match_indices('<')
+			.all(|(index, _)| text[..index].ends_with('\\'))
+	);
+	// A paragraph per line, so no one paragraph holds the chapter
+	assert!(text.split("\n\n").count() > 20);
 }
