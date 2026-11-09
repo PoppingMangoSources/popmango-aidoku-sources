@@ -222,8 +222,11 @@ pub trait ImplV2 {
 			.find(|component| component.title.as_deref() == Some("Most Reviewed Series"))
 		{
 			// The default week can be empty even when the month has results.
-			if let Ok(fragment) =
-				Request::get(format!("{}/?_most_reviewed=1&range=monthly", params.base_url))?.html()
+			if let Ok(fragment) = Request::get(format!(
+				"{}/?_most_reviewed=1&range=monthly",
+				params.base_url
+			))?
+			.html()
 			{
 				let entries: Vec<Link> = fragment
 					.select("a[data-slide-card]")

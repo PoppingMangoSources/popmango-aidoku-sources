@@ -199,7 +199,11 @@ fn review_trending_keeps_today_and_empty_reviews_can_load_month() {
 		HomeComponentValue::Scroller { entries, .. } if entries.is_empty()
 	));
 	let empty = Html::parse("<section><h2>Trending Now</h2></section>").unwrap();
-	assert!(parse_home_v2(&AsmodeusScans.params(), &empty).components.is_empty());
+	assert!(
+		parse_home_v2(&AsmodeusScans.params(), &empty)
+			.components
+			.is_empty()
+	);
 }
 
 #[aidoku_test]

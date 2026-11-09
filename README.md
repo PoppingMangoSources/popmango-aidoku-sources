@@ -44,7 +44,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 
 <table>
 <tr>
-<td align="center" width="50%"><img src="sources/en.asmotoon/res/icon.png" width="64"/><br/><b>Asmodeus Scans</b><br/><sub><a href="https://asmotoon.com">asmotoon.com</a></sub><br/><img src="media/heat-0.svg" alt="Safe" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.asmotoon-v7.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.asmotoon-v7.aix">.aix (v7)</a></sub></td>
+<td align="center" width="50%"><img src="sources/en.asmotoon/res/icon.png" width="64"/><br/><b>Asmodeus Scans</b><br/><sub><a href="https://asmotoon.com">asmotoon.com</a></sub><br/><img src="media/heat-0.svg" alt="Safe" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.asmotoon-v8.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.asmotoon-v8.aix">.aix (v8)</a></sub></td>
 <td align="center" width="50%"><img src="media/sources/bunmanga.png" width="64"/><br/><b>BunManga</b><br/><sub><a href="https://bunmanga.com">bunmanga.com</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.bunmanga-v10.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.bunmanga-v10.aix">.aix (v10)</a></sub></td>
 </tr>
 <tr>
