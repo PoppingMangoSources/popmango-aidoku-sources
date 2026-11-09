@@ -3,7 +3,7 @@
 use super::*;
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, HomeLayout,
-	Manga, MangaPageResult, MangaStatus, PageContent, Viewer,
+	Manga, MangaPageResult, MangaStatus, Page, PageContent, Viewer,
 	alloc::{String, Vec, format, vec},
 	imports::html::Html,
 };
@@ -360,7 +360,7 @@ fn an_unknown_series_fails() {
 }
 
 #[aidoku_test]
-fn novel_chapters_are_image_strips() {
+fn novel_chapters_load() {
 	let (manga, chapter) = search(None, vec![select("type", "novel")])
 		.entries
 		.into_iter()
@@ -373,7 +373,8 @@ fn novel_chapters_are_image_strips() {
 			Some((manga, chapter))
 		})
 		.unwrap();
-	assert_eq!(details(manga.clone()).viewer, Viewer::Webtoon);
+	// The app picks the reader for novels
+	assert_eq!(details(manga.clone()).viewer, Viewer::Unknown);
 	let pages = source()
 		.get_page_list(
 			Manga {
@@ -387,7 +388,36 @@ fn novel_chapters_are_image_strips() {
 		)
 		.unwrap();
 	assert!(!pages.is_empty());
-	assert!(pages.iter().all(
-		|page| matches!(&page.content, PageContent::Url(url, _) if url.starts_with("https://"))
-	));
+	// Images, or text pages for the chapters the site writes out
+	assert!(pages.iter().all(|page| match &page.content {
+		PageContent::Url(url, _) => url.starts_with("https://"),
+		PageContent::Text(text) => !text.is_empty() && !text.contains("</"),
+		_ => false,
+	}));
+}
+
+#[aidoku_test]
+fn text_novel_chapters_read_as_text() {
+	let pages = source()
+		.get_page_list(
+			Manga {
+				key: "/i-m-just-the-fifth-son-of-an-earl-but-i-became-the-head-of-a-dukedom".into(),
+				..Default::default()
+			},
+			Chapter {
+				key: "/i-m-just-the-fifth-son-of-an-earl-but-i-became-the-head-of-a-dukedom-chapter-5".into(),
+				..Default::default()
+			},
+		)
+		.unwrap();
+	let [
+		Page {
+			content: PageContent::Text(text),
+			..
+		},
+	] = pages.as_slice()
+	else {
+		panic!("a written chapter is one text page");
+	};
+	assert!(text.split("\n\n").count() > 20);
 }
