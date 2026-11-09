@@ -395,7 +395,8 @@ below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in rev
 | `.unwrap_or("")` repeated down a chain (zh.suduguu, November: "keep this an optional result. it doesn't make sense for callers to check if the result is an empty string rather than `None`") | Keep a missing value as `None` through the chain and test it with `is_some_and`/`is_none_or`; never default it to `""` for a later check. (inferred) | R |
 | A page limit ending a loop with `break` (zh.suduguu, November: "it would be better to return an error here") | When a guard stops work the reader asked for, `bail!` with why, rather than return a shortened result. (inferred) | R |
 | Genre exclusion offered on Genz Toons, whose site and keiyoushi only include genres ("are genres even excludable in genz site?", owner's correction) | A filter offers what the site's own control does. Local filtering could exclude, but a control the site lacks is one more thing to review; state `"canExclude": false`. (inferred) | R |
-| Eva Scans rated 17+ because its genre list has Adult, Smut and Mature (our own miss, owner's correction) | A source's `contentRating` follows what most of the site carries, not every genre it lists; per-title ratings come from tags. Eva is safe, as keiyoushi has it, while Raven is 2 since adult titles fill every list. | R |
+| Eva Scans rated 17+ because its genre list has Adult, Smut and Mature (our own miss, owner's correction) | A source's `contentRating` follows what most of the site carries, not every genre it lists; per-title ratings come from tags. Eva is safe, as keiyoushi has it, while Raven is 2 since adult titles fill every list. A Hentai genre is the exception (the next row): Eva, Thunder and Violet list Adult or Smut and stay 0 (owner's call). | R |
+| Scans.GG rated 0 though its genres include Hentai (kkantan: "given that there is a 'Hentai' genre and such, this should be marked as containing nsfw content", 0 to 1) | A source offering a Hentai genre is rated at least 1, however little of the site it covers; Madara Scans is 1 for that reason. | F |
 | Comics and novels behind a source setting (#842, also dyphire) | When a setting would switch between two catalogues, make two sources over a template, or make it a search filter. A setting makes readers give one catalogue up. | R |
 | `page_url_hd` dropped in a rework (#842) | A rework keeps every field the old code preferred, such as a higher-quality image, unless a response shows it is gone; fall back to the plain one. | R |
 | `requiresFalse: "contentType == novel"` on a setting (#842) | A setting can depend on another one's value. Below app 0.9 the dependent toggle isn't disabled, so the code must still check both. (inferred, the author's test) | R |
@@ -888,7 +889,7 @@ went in one of these ways, and new ones go in the same way:
   sources each push changes. Run with no arguments it reports the backlog in older sources —
   fix those when you're in the source anyway. It also fails an endpoint constant used only with
   a query, a constant sent once as a query value, an adult-hiding switch that shows adult
-  titles by default on a source rated 1, and a `Cargo.lock` pinning an aidoku-rs from before
+  titles by default on a source rated 1, a Hentai genre on a source rated 0, and a `Cargo.lock` pinning an aidoku-rs from before
   `ae6485e`, whose `bail!` fails Rust 1.99 under `-Dwarnings` as a match arm. Upstream moved every
   lock in #807; ours move when a source is next edited (`cargo update -p aidoku -p aidoku-test`),
   since a sweep would first need each old source's backlog fixed. It notes the section 3 **N** rows (page-size names,

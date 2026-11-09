@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.madarascans",
 		"name": "Madara Scans",
-		"version": 7,
+		"version": 8,
 		"url": "https://madarascans.net",
-		"contentRating": 0,
+		"contentRating": 1,
 		"languages": [
 			"en"
 		],

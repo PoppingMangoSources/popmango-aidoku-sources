@@ -102,6 +102,20 @@ class CardRuleTests(unittest.TestCase):
         checks.check_settings_json(path, 2)
         self.assertEqual(checks.failures, [])
 
+    def test_hentai_genre_on_a_safe_source_fails(self):
+        path = self.source / 'res/filters.json'
+        path.write_text('[\n\t{"type": "multi-select", "id": "genre", "isGenre": true, "options": ["Action", "Hentai"]}\n]\n')
+        checks.check_filters_json(path, 0)
+        self.assertTrue(any('Hentai genre' in f for f in checks.failures))
+
+    def test_hentai_genre_on_a_rated_source_or_adult_genres_pass(self):
+        path = self.source / 'res/filters.json'
+        path.write_text('[\n\t{"type": "multi-select", "id": "genre", "isGenre": true, "options": ["Action", "Hentai"]}\n]\n')
+        checks.check_filters_json(path, 1)
+        path.write_text('[\n\t{"type": "multi-select", "id": "genre", "isGenre": true, "options": ["Adult", "Smut"]}\n]\n')
+        checks.check_filters_json(path, 0)
+        self.assertEqual(checks.failures, [])
+
     def test_unsized_image_scroller_is_noted(self):
         checks.notes.clear()
         unsized = 'HomeComponentValue::ImageScroller {\n\tlinks,\n\twidth: None,\n\theight: None,\n}\n'

@@ -88,7 +88,7 @@ def check_source_json(path: Path, source_id: str) -> dict:
     return info
 
 
-def check_filters_json(path: Path) -> None:
+def check_filters_json(path: Path, rating: object = None) -> None:
     filters = check_json(path)
     if not isinstance(filters, list):
         return
@@ -96,6 +96,10 @@ def check_filters_json(path: Path) -> None:
         if not isinstance(item, dict):
             continue
         name = item.get("id") or item.get("title")
+        # A Hentai genre means the source contains NSFW content, whatever most of it is.
+        options = [str(option).lower() for option in item.get("options", [])]
+        if rating == 0 and item.get("isGenre") and "hentai" in options:
+            fail(path, f"{name!r} offers a Hentai genre with contentRating 0; rate the source at least 1")
         if item.get("type") == "sort" and item.get("default") == {"index": 0, "ascending": False}:
             fail(path, f"sort {name!r} sets the default the framework already uses")
         if item.get("type") in ("multi-select", "select") and item.get("isGenre") and item.get("usesTagStyle") is True:
@@ -407,7 +411,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
     check_icon(source / "res" / "icon.png")
     for name in ("filters.json",):
         if (source / "res" / name).exists():
-            check_filters_json(source / "res" / name)
+            check_filters_json(source / "res" / name, info.get("info", {}).get("contentRating"))
     if (source / "res" / "settings.json").exists():
         check_settings_json(source / "res" / "settings.json", info.get("info", {}).get("contentRating"))
     languages = info.get("info", {}).get("languages", [])
