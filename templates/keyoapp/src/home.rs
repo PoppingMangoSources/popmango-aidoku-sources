@@ -18,6 +18,7 @@ pub fn parse_home(params: &Params, html: &Document) -> HomeLayout {
 		.select("a.splide__slide[href*='/series/']")
 		.into_iter()
 		.flatten()
+		.filter(|slide| !slide.has_class("splide__slide--clone"))
 		.filter_map(|slide| manga_from_link(&slide, &slide, &params.base_url))
 		.collect();
 	if !featured.is_empty() {
@@ -99,6 +100,10 @@ pub fn parse_home(params: &Params, html: &Document) -> HomeLayout {
 				.select("button[title], .latest-poster")
 				.into_iter()
 				.flatten()
+				.filter(|card| {
+					card.parent()
+						.is_none_or(|parent| !parent.has_class("splide__slide--clone"))
+				})
 				.filter_map(|card| {
 					manga_from_link(
 						&card.select_first("a[href*='/series/']")?,
@@ -144,7 +149,40 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 		{
 			continue;
 		}
-		let value = if section.select_first("article").is_some() {
+		let value = if title == "Newly Added Series" {
+			// The series grid follows its heading section rather than sitting inside it.
+			let entries: Vec<Link> = html
+				.select("#series-grid > a[href]")
+				.into_iter()
+				.flatten()
+				.filter_map(|card| manga_from_card(&card, &params.base_url))
+				.map(Link::from)
+				.collect();
+			if entries.is_empty() {
+				continue;
+			}
+			HomeComponentValue::Scroller {
+				entries,
+				listing: None,
+			}
+		} else if title == "Featured Series" {
+			let links: Vec<Link> = section
+				.select("a[data-slide-card]")
+				.into_iter()
+				.flatten()
+				.filter_map(|card| manga_from_card(&card, &params.base_url))
+				.map(Link::from)
+				.collect();
+			if links.is_empty() {
+				continue;
+			}
+			HomeComponentValue::ImageScroller {
+				links,
+				auto_scroll_interval: Some(5.0),
+				width: Some(400),
+				height: Some(200),
+			}
+		} else if section.select_first("article").is_some() {
 			let entries: Vec<MangaWithChapter> = section
 				.select("article")
 				.into_iter()
@@ -164,10 +202,13 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 				.select("a[data-slide-card], a[data-ec-card], a.group[href]")
 				.into_iter()
 				.flatten()
+				.filter(|card| card.attr("data-ec-clone").is_none())
 				.filter_map(|card| manga_from_card(&card, &params.base_url))
 				.map(Link::from)
 				.collect();
-			if entries.is_empty() {
+			if entries.is_empty()
+				&& !matches!(title.as_str(), "Trending Now" | "Most Reviewed Series")
+			{
 				continue;
 			}
 			HomeComponentValue::Scroller {
@@ -176,7 +217,7 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 			}
 		};
 		components.push(HomeComponent {
-			title: Some(title),
+			title: (title != "Featured Series").then_some(title),
 			subtitle: None,
 			value,
 		});
@@ -188,7 +229,7 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 fn section(heading: &Element) -> Option<Element> {
 	let title = heading.text();
 	let mut node = heading.parent();
-	for _ in 0..3 {
+	for _ in 0..5 {
 		let element = node?;
 		if element
 			.select("h2")
@@ -217,7 +258,11 @@ fn editor_pick(pick: &Element) -> Option<Manga> {
 		.filter(|text: &String| !text.is_empty());
 	Some(Manga {
 		key: format!("/series/{}/", pick.attr("data-id")?),
-		title: pick.attr("title")?.trim().into(),
+		title: pick
+			.attr("title")
+			.filter(|title| !title.trim().is_empty())?
+			.trim()
+			.into(),
 		cover: pick
 			.attr("data-img")
 			.map(|image| format!("https://wsrv.nl/?w=600&url=cdn.meowing.org/uploads/{image}")),

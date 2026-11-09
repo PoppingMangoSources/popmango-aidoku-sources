@@ -8,8 +8,8 @@ use crate::{
 	models::{ChaptersResponse, SearchResponse},
 };
 use aidoku::{
-	Chapter, DeepLinkResult, FilterValue, HomeLayout, Manga, MangaPageResult, Page, PageContent,
-	Result,
+	Chapter, DeepLinkResult, FilterValue, HomeComponentValue, HomeLayout, Link, Manga,
+	MangaPageResult, Page, PageContent, Result,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{
 		string::{PlainText, StripPrefixOrSelf},
@@ -215,7 +215,42 @@ pub trait ImplV2 {
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		let html = Request::get(&params.base_url)?.html()?;
-		Ok(parse_home_v2(params, &html))
+		let mut home = parse_home_v2(params, &html);
+		for (title, feed) in [
+			("Trending Now", "_trending"),
+			("Most Reviewed Series", "_most_reviewed"),
+		] {
+			let Some(component) = home
+				.components
+				.iter_mut()
+				.find(|component| component.title.as_deref() == Some(title))
+			else {
+				continue;
+			};
+			// The site's default range can be empty; use its monthly ranking.
+			if let Ok(fragment) =
+				Request::get(format!("{}/?{feed}=1&range=monthly", params.base_url))?.html()
+			{
+				let entries: Vec<Link> = fragment
+					.select("a[data-slide-card]")
+					.into_iter()
+					.flatten()
+					.filter_map(|card| manga_from_card(&card, &params.base_url))
+					.map(Link::from)
+					.collect();
+				if !entries.is_empty() {
+					component.value = HomeComponentValue::Scroller {
+						entries,
+						listing: None,
+					};
+				}
+			}
+		}
+		home.components.retain(|component| match &component.value {
+			HomeComponentValue::Scroller { entries, .. } => !entries.is_empty(),
+			_ => true,
+		});
+		Ok(home)
 	}
 
 	// Series and chapter pages share one path shape, so the page says which it is
