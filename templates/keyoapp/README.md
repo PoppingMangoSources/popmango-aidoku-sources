@@ -31,8 +31,8 @@ Each consumer's `res/filters.json` holds the site's own type, genre and status v
 })();
 ```
 
-Leave `novel` out of the types: the template has no novel reader and hides novels everywhere.
-Every filter is include-only, as on the site, so each states `"canExclude": false`.
+Keep `novel` among the types: first generation novels read as text and second generation ones as
+images. Every filter is include-only, as on the site, so each states `"canExclude": false`.
 
 For the second generation, the sort, type and status selects and the genre list come from the
 `?browse=1` page:

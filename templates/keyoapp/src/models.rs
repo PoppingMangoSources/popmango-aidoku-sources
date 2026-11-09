@@ -8,6 +8,6 @@ pub struct SearchResponse {
 }
 
 #[derive(Deserialize)]
-pub struct ChapterRows {
+pub struct ChaptersResponse {
 	pub rows_html: String,
 }

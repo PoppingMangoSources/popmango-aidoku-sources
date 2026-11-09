@@ -1,18 +1,21 @@
 use crate::{
 	Params,
-	helpers::{chapter_date, chapter_parts, content_rating, is_novel, status, viewer},
-	models::{ChapterRows, SearchResponse},
+	helpers::{
+		card_manga, chapter_date, chapter_parts, content_rating, labelled_block, names,
+		recent_chapter, series_card, status, viewer,
+	},
+	models::{ChaptersResponse, SearchResponse},
 };
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent, HomeComponentValue,
-	HomeLayout, Link, Manga, MangaPageResult, MangaWithChapter, Page, PageContent, Result, Source,
+	Chapter, DeepLinkResult, FilterValue, HomeComponent, HomeComponentValue, HomeLayout, Link,
+	Manga, MangaPageResult, MangaWithChapter, Page, PageContent, Result,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{
 		string::{PlainText, StripPrefixOrSelf},
 		uri::QueryParameters,
 	},
 	imports::{
-		html::{Document, Element, Html},
+		html::{Document, Html},
 		net::Request,
 		std::send_partial_result,
 	},
@@ -41,19 +44,7 @@ pub trait ImplV2 {
 			.and_then(|query| query.strip_prefix(params.base_url.as_ref()))
 		{
 			let html = Request::get(format!("{}{path}", params.base_url))?.html()?;
-			if let Some(manga) = html
-				.select_first("[data-series-slug]")
-				.and_then(|series| series.attr("data-series-slug"))
-				.and_then(|slug| {
-					Some(Manga {
-						key: format!("/{slug}"),
-						title: html.select_first("h1.l2-title")?.text()?,
-						cover: html
-							.select_first(".l2-poster img")
-							.and_then(|image| image.attr("data-src")),
-						..Default::default()
-					})
-				}) {
+			if let Some(manga) = series_card(&html) {
 				return Ok(MangaPageResult {
 					entries: vec![manga],
 					has_next_page: false,
@@ -98,20 +89,7 @@ pub trait ImplV2 {
 				.select("a.group[href]")
 				.map(|cards| {
 					cards
-						.filter(|card| !is_novel(card))
-						.filter_map(|card| {
-							Some(Manga {
-								key: card
-									.attr("href")?
-									.strip_prefix_or_self(&params.base_url)
-									.into(),
-								title: card.select_first("h2")?.text()?.trim().into(),
-								cover: card
-									.select_first("img")
-									.and_then(|image| image.attr("data-src")),
-								..Default::default()
-							})
-						})
+						.filter_map(|card| card_manga(&card, &params.base_url))
 						.collect()
 				})
 				.unwrap_or_default(),
@@ -131,57 +109,35 @@ pub trait ImplV2 {
 			let url = format!("{}{}", params.base_url, manga.key);
 			let html = Request::get(&url)?.html()?;
 			// An unknown slug still answers with a page, one without a series
-			if html.select_first("[data-series-uid]").is_none() {
+			let Some(card) = series_card(&html) else {
 				bail!("Series not found");
-			}
-			// Sites choose between two series layouts: a banner one with `l2-` classes, and one of
-			// labelled blocks
-			if let Some(title) = html
-				.select_first("h1.l2-title")
-				.or_else(|| html.select_first("h1"))
-				.and_then(|h1| h1.text())
-			{
-				manga.title = title.trim().into();
-			}
-			manga.cover = html
-				.select_first(".l2-poster img")
-				.and_then(|image| image.attr("data-src"))
-				.or_else(|| {
-					html.select_first("meta[property='og:image']")?
-						.attr("content")
-				})
-				.or(manga.cover);
+			};
+			manga.title = card.title;
+			manga.cover = card.cover.or(manga.cover);
 			manga.description = html
 				.select_first("#series-desc")
 				.and_then(|description| description.text())
 				.map(|description| description.trim().escape_markdown())
 				.filter(|description| !description.is_empty());
-			let names = |text: String| -> Vec<String> {
-				text.trim_start_matches("By ")
-					.split(", ")
-					.map(|name| name.trim().into())
-					.collect()
-			};
 			manga.authors = html
 				.select_first("p.l2-by")
 				.and_then(|by| by.text())
-				.or_else(|| block_value(&html, "Author"))
-				.map(names);
-			manga.artists = block_value(&html, "Artist").map(names);
+				.map(|by| names(by.trim().trim_start_matches("By ")))
+				.or_else(|| labelled_block(&html, "Author").map(|author| names(&author)));
+			manga.artists = labelled_block(&html, "Artist").map(|artist| names(&artist));
 			// "Mangatoon · Action · Ongoing": the type, a genre, then the status
 			let meta = html
 				.select_first(".l2-meta span")
-				.and_then(|meta| meta.text())
-				.unwrap_or_default();
-			let parts: Vec<&str> = meta.split(" · ").filter(|part| !part.is_empty()).collect();
+				.and_then(|meta| meta.text());
+			let mut parts = meta.iter().flat_map(|meta| meta.split(" · "));
 			let kind = parts
-				.first()
-				.map(|kind| kind.to_string())
-				.or_else(|| block_value(&html, "Type"));
-			let state = (parts.len() > 1)
-				.then(|| parts.last().map(|state| state.to_string()))
-				.flatten()
-				.or_else(|| block_value(&html, "Status"));
+				.next()
+				.map(String::from)
+				.or_else(|| labelled_block(&html, "Type"));
+			let state = parts
+				.last()
+				.map(String::from)
+				.or_else(|| labelled_block(&html, "Status"));
 			manga.viewer = kind.map(|kind| viewer(&kind)).unwrap_or_default();
 			manga.status = state.map(|state| status(&state)).unwrap_or_default();
 			let tags: Vec<String> = html
@@ -204,7 +160,7 @@ pub trait ImplV2 {
 		}
 
 		if needs_chapters {
-			let rows: ChapterRows = Request::get(format!(
+			let rows: ChaptersResponse = Request::get(format!(
 				"{}/?_chapters_html=1&series_slug={slug}",
 				params.base_url
 			))?
@@ -266,8 +222,7 @@ pub trait ImplV2 {
 		Ok(self.parse_home(params, &html))
 	}
 
-	// Each row is a section under its `h2`. Kept apart from the request so a layout can be checked
-	// against a saved page
+	// Apart from the request, so tests can check a saved page
 	fn parse_home(&self, params: &Params, html: &Document) -> HomeLayout {
 		let mut components: Vec<HomeComponent> = Vec::new();
 		for section in html.select("section").into_iter().flatten() {
@@ -278,13 +233,11 @@ pub trait ImplV2 {
 			else {
 				continue;
 			};
-			// Editor's Choice repeats for the mobile layout, and the novels row, which the template
-			// can't read, lists some novels untitled as such
+			// Editor's Choice repeats for the mobile layout
 			if components
 				.iter()
 				.any(|component| component.title.as_ref() == Some(&title))
 				|| params.hidden_rows.contains(&title.as_str())
-				|| section.select_first("#novel-slider").is_some()
 			{
 				continue;
 			}
@@ -293,7 +246,7 @@ pub trait ImplV2 {
 					.select("article")
 					.map(|cards| {
 						cards
-							.filter_map(|card| newest_chapter(&card, &params.base_url))
+							.filter_map(|card| recent_chapter(&card, &params.base_url))
 							.collect()
 					})
 					.unwrap_or_default();
@@ -351,121 +304,5 @@ pub trait ImplV2 {
 				manga_key: format!("/{slug}"),
 				key: path.into(),
 			}))
-	}
-}
-
-// A labelled block's value: "Status" over "Ongoing", or "Author" beside the names
-fn block_value(html: &Document, label: &str) -> Option<String> {
-	html.select("div.bg-surface.rounded-lg")?.find_map(|block| {
-		let name = block.select_first(".text-xs")?.text()?;
-		if name.trim() != label {
-			return None;
-		}
-		block
-			.select_first("span.text-sm")?
-			.text()
-			.map(|value| value.trim().to_string())
-			.filter(|value| !value.is_empty())
-	})
-}
-
-// A home card: posters carry their title in `title`, newly added and image slider cards in a
-// heading; novels, which the template can't read, are titled "[ Novel ] …"
-fn card_manga(card: &Element, base_url: &str) -> Option<Manga> {
-	let title = card
-		.attr("title")
-		.or_else(|| card.select_first("h2, h3")?.text())?
-		.trim()
-		.to_string();
-	if title.starts_with("[ Novel ]") || is_novel(card) {
-		return None;
-	}
-	Some(Manga {
-		key: card.attr("href")?.strip_prefix_or_self(base_url).into(),
-		title,
-		cover: card
-			.select_first("img")
-			.and_then(|image| image.attr("data-src")),
-		..Default::default()
-	})
-}
-
-// A recently updated card lists its newest chapters, and coin ones need a login
-fn newest_chapter(card: &Element, base_url: &str) -> Option<MangaWithChapter> {
-	let series = card.select_first("h2 a")?;
-	let link = card.select("a")?.find(|link| {
-		link.select_first("time").is_some() && link.select_first("img[alt$=coins]").is_none()
-	})?;
-	let key: String = link.attr("href")?.strip_prefix_or_self(base_url).into();
-	let (chapter_number, title) = chapter_parts(&link.select_first("span")?.text()?);
-	Some(MangaWithChapter {
-		manga: Manga {
-			key: series.attr("href")?.strip_prefix_or_self(base_url).into(),
-			title: series.text()?.trim().into(),
-			cover: card
-				.select_first("img")
-				.and_then(|image| image.attr("data-src")),
-			..Default::default()
-		},
-		chapter: Chapter {
-			url: Some(format!("{base_url}{key}")),
-			key,
-			title,
-			chapter_number,
-			date_uploaded: link
-				.select_first("time")
-				.and_then(|time| time.text())
-				.and_then(|date| chapter_date(&date)),
-			..Default::default()
-		},
-	})
-}
-
-pub struct KeyoappV2<T: ImplV2> {
-	inner: T,
-	params: Params,
-}
-
-impl<T: ImplV2> Source for KeyoappV2<T> {
-	fn new() -> Self {
-		let inner = T::new();
-		let params = inner.params();
-		Self { inner, params }
-	}
-
-	fn get_search_manga_list(
-		&self,
-		query: Option<String>,
-		page: i32,
-		filters: Vec<FilterValue>,
-	) -> Result<MangaPageResult> {
-		self.inner
-			.get_search_manga_list(&self.params, query, page, filters)
-	}
-
-	fn get_manga_update(
-		&self,
-		manga: Manga,
-		needs_details: bool,
-		needs_chapters: bool,
-	) -> Result<Manga> {
-		self.inner
-			.get_manga_update(&self.params, manga, needs_details, needs_chapters)
-	}
-
-	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		self.inner.get_page_list(&self.params, manga, chapter)
-	}
-}
-
-impl<T: ImplV2> Home for KeyoappV2<T> {
-	fn get_home(&self) -> Result<HomeLayout> {
-		self.inner.get_home(&self.params)
-	}
-}
-
-impl<T: ImplV2> DeepLinkHandler for KeyoappV2<T> {
-	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		self.inner.handle_deep_link(&self.params, url)
 	}
 }

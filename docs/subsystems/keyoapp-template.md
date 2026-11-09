@@ -48,10 +48,10 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 
 > ⚠️ The V2 home is one row per `section` under its first `h2`. Featured cards put the title in
 > `title` (Asmodeus) or an `h3` (Kaizen's image slider); Recently Updated `article`s become a
-> chapter list of the newest free chapter. The Novels row (`#novel-slider`) is skipped whole:
-> Asmodeus prefixes only some novels "[ Novel ]" and Siren none. Editor's Choice repeats for
-> mobile and its `data-ec-clone` copies have no title, so both drop out. Its cards are covers
-> and titles only, so it is a card row, not a big scroller.
+> chapter list of the newest free chapter. Novels stay, with the site's own titles ("[ Novel ] …"
+> on some Asmodeus cards). Editor's Choice repeats for mobile and its `data-ec-clone` copies have
+> no title, so both drop out. Its cards are covers and titles only, so it is a card row, not a big
+> scroller. Search cards reuse the same card conversion.
 
 > ⚠️ A V2 series and chapter share the path shape (`/slug`, `/slug-chapter-4`), so a deep link
 > fetches the page: `[data-series-uid]` makes it a series, and `#sidebar-ch-list` names a
@@ -88,8 +88,13 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > content rating reads it too: an Eris series linking Romance and Drama lists Mature and Smut
 > there, and rated Safe before.
 
-> ⚠️ Novels appear among comics (`data-type="novel"`, or a `novel` badge on home cards). The
-> template has no novel reader, so it leaves them out of search and home, as keiyoushi does.
+> ⚠️ Novels appear among comics everywhere, unlike in keiyoushi, which drops them. First
+> generation novel chapters are text in `div.tiptap.novel-reader` (`p` with `em`, `strong`,
+> `span`, `br` on Genz, Mist and Timelesstoons), read as one Markdown paragraph per `p`, since the
+> reader's Markdown overflows its stack on one long paragraph; text is escaped, so a `<Status>`
+> window reads as `\<Status\>`. Second generation novel chapters (Asmodeus, Siren) are image
+> strips in the comic reader, so `novel` maps to the Webtoon viewer. Walking text nodes needs
+> `child_nodes`, which raises every consumer's `minAppVersion` to 0.8.3.
 
 > ⚠️ Details labels ("Status", "Author", "Artist", "Type") are read with selectors only: a
 > `div.grid` whose `div.font-medium > span` names the label, and its `div.font-medium + div`

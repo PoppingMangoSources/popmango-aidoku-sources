@@ -1,8 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		background_image, chapter, content_rating, editor_pick, has_badge, is_novel, labelled,
-		manga, newest_chapter, section, status, viewer,
+		background_image, chapter, content_rating, editor_pick, labelled, manga, names,
+		newest_chapter, novel_text, section, status, viewer,
 	},
 };
 use aidoku::{
@@ -88,9 +88,8 @@ pub trait Impl {
 										.any(|wanted| wanted.eq_ignore_ascii_case(&value))
 								})
 						};
-						!is_novel(card)
-							&& matches_query && has_genres
-							&& has(&types, "data-type")
+						matches_query
+							&& has_genres && has(&types, "data-type")
 							&& has(&statuses, "data-status")
 					})
 					.filter_map(|card| {
@@ -134,8 +133,8 @@ pub trait Impl {
 				.and_then(|description| description.text())
 				.map(|description| description.trim().escape_markdown())
 				.filter(|description| !description.is_empty());
-			manga.authors = labelled(&html, "Author").map(|author| vec![author]);
-			manga.artists = labelled(&html, "Artist").map(|artist| vec![artist]);
+			manga.authors = labelled(&html, "Author").map(|author| names(&author));
+			manga.artists = labelled(&html, "Artist").map(|artist| names(&artist));
 			manga.status = labelled(&html, "Status")
 				.map(|text| status(&text))
 				.unwrap_or_default();
@@ -172,7 +171,13 @@ pub trait Impl {
 			manga.chapters = html.select("#chapters > a").map(|rows| {
 				rows.filter(|row| {
 					// Coin chapters need a login, and upcoming ones can't be read yet
-					row.select_first("img[alt=Coin]").is_none() && !has_badge(row, "Upcoming")
+					row.select_first("img[alt=Coin]").is_none()
+						&& !row.select("span").is_some_and(|mut spans| {
+							spans.any(|span| {
+								span.own_text()
+									.is_some_and(|text| text.trim() == "Upcoming")
+							})
+						})
 				})
 				.filter_map(|row| chapter(&row, &params.base_url))
 				.collect()
@@ -184,6 +189,16 @@ pub trait Impl {
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let response = Request::get(format!("{}{}", params.base_url, chapter.key))?.string()?;
+		let html = Html::parse(&response)?;
+		if let Some(reader) = html.select_first("div.tiptap.novel-reader") {
+			let Some(text) = novel_text(&reader) else {
+				bail!("No text found");
+			};
+			return Ok(vec![Page {
+				content: PageContent::text(text),
+				..Default::default()
+			}]);
+		}
 		// The reader builds each page's url from this template and the image's uid
 		let template = response
 			.split_once("realUrl")
@@ -191,7 +206,7 @@ pub trait Impl {
 			.and_then(|(_, rest)| rest.split_once('`'))
 			.map(|(template, _)| template)
 			.ok_or_else(|| error!("No image host found"))?;
-		let pages = Html::parse(&response)?
+		let pages = html
 			.select("#pages > img")
 			.map(|images| {
 				images
@@ -220,8 +235,7 @@ pub trait Impl {
 		Ok(self.parse_home(params, &html))
 	}
 
-	// Each row is an `h2` over its cards, and the featured slider above them has none. Kept apart
-	// from the request so a layout can be checked against a saved page
+	// Apart from the request, so tests can check a saved page
 	fn parse_home(&self, params: &Params, html: &Document) -> HomeLayout {
 		let mut components = Vec::new();
 
@@ -229,7 +243,6 @@ pub trait Impl {
 			.select("a.splide__slide[href*='/series/']")
 			.map(|slides| {
 				slides
-					.filter(|slide| !is_novel(slide))
 					.filter_map(|slide| {
 						manga(
 							&slide,
@@ -320,7 +333,6 @@ pub trait Impl {
 					.select(".latest-poster")
 					.map(|posters| {
 						posters
-							.filter(|poster| !is_novel(poster))
 							.filter_map(|poster| newest_chapter(&poster, &params.base_url))
 							.collect()
 					})
@@ -339,7 +351,6 @@ pub trait Impl {
 					.select("button[title], .latest-poster")
 					.map(|cards| {
 						cards
-							.filter(|card| !is_novel(card))
 							.filter_map(|card| {
 								manga(
 									&card.select_first("a[href*='/series/']")?,
