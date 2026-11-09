@@ -221,7 +221,7 @@ pub trait ImplV2 {
 			.iter_mut()
 			.find(|component| component.title.as_deref() == Some("Most Reviewed Series"))
 		{
-			// The default week can be empty even when the month has results.
+			// Today can be empty even when the month has results.
 			if let Ok(fragment) = Request::get(format!(
 				"{}/?_most_reviewed=1&range=monthly",
 				params.base_url
