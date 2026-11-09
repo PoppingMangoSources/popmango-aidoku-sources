@@ -165,23 +165,6 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 				entries,
 				listing: None,
 			}
-		} else if title == "Featured Series" {
-			let links: Vec<Link> = section
-				.select("a[data-slide-card]")
-				.into_iter()
-				.flatten()
-				.filter_map(|card| manga_from_card(&card, &params.base_url))
-				.map(Link::from)
-				.collect();
-			if links.is_empty() {
-				continue;
-			}
-			HomeComponentValue::ImageScroller {
-				links,
-				auto_scroll_interval: Some(5.0),
-				width: Some(400),
-				height: Some(200),
-			}
 		} else if section.select_first("article").is_some() {
 			let entries: Vec<MangaWithChapter> = section
 				.select("article")
@@ -217,7 +200,7 @@ pub fn parse_home_v2(params: &Params, html: &Document) -> HomeLayout {
 			}
 		};
 		components.push(HomeComponent {
-			title: (title != "Featured Series").then_some(title),
+			title: Some(title),
 			subtitle: None,
 			value,
 		});
