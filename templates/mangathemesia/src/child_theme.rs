@@ -2,14 +2,17 @@
 //! boxes of `.bsx` cards in the site's order.
 use crate::{
 	Params,
-	helpers::{ElementImageAttr, fetch, find_first_f32},
+	helpers::{ElementImageAttr, check_response, fetch, find_first_f32},
 };
 use aidoku::{
 	Chapter, DeepLinkResult, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga,
 	MangaStatus, MangaWithChapter, Result,
 	alloc::{String, Vec},
 	helpers::string::StripPrefixOrSelf,
-	imports::html::{Document, Element},
+	imports::{
+		html::{Document, Element},
+		net::Request,
+	},
 	prelude::*,
 };
 
@@ -19,7 +22,12 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 }
 
 pub fn handle_deep_link(params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
-	let html = fetch(&url)?.get_html()?;
+	let response = Request::get(&url)?.send()?;
+	// A missing page cannot identify a series or chapter.
+	if response.status_code() == 404 {
+		return Ok(None);
+	}
+	let html = check_response(response, &url)?.get_html()?;
 	Ok(parse_deep_link(params, &html, &url))
 }
 

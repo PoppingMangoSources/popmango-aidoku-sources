@@ -10,6 +10,10 @@ use aidoku::{
 
 pub fn fetch(url: &str) -> Result<Response> {
 	let response = Request::get(url)?.send()?;
+	check_response(response, url)
+}
+
+pub fn check_response(response: Response, url: &str) -> Result<Response> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
 		let content_type = response.get_header("Content-Type");

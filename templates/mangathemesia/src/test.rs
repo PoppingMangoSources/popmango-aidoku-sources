@@ -63,10 +63,12 @@ fn review_http_status_and_diagnostics() {
 		);
 		assert_http(site.get_home(&params), status);
 		assert_http(child_theme::get_home(&params), status);
-		assert_http(
-			child_theme::handle_deep_link(&params, format!("{}/title/", params.base_url)),
-			status,
-		);
+		let link = child_theme::handle_deep_link(&params, format!("{}/title/", params.base_url));
+		if status == 404 {
+			assert_eq!(link.unwrap(), None);
+		} else {
+			assert_http(link, status);
+		}
 	}
 	for status in [200, 201, 204, 299] {
 		assert_eq!(
