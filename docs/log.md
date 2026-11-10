@@ -86,3 +86,9 @@ Append-only. Newest entries at the bottom.
 - Shared the HTTP fixture runner between both live-tested templates and added a calibrated guard against unchecked response parsing.
 - Bumped the eight affected consumers once; PR branches remain unchanged.
 - Updated [[mangathemesia-consumers]] and [[keyoapp-template]], verified at `17c5faf`.
+
+## 2026-11-10: Rage Scans review
+
+Removed unavailable author search, scoped Rage author and artist parsing to metadata rows,
+and added an optional viewer override for its mislabeled webtoons. Recorded why impossible
+author queries did not justify the old filter and added loopback viewer regression coverage.

@@ -24,7 +24,7 @@ sources:
   - code: sources/en.madarascans/src/test.rs
   - code: sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
-verified_at: 17c5faf
+verified_at: 094fa7c
 ---
 
 KingOfShojo and RokariComics are plain consumers of the mangathemesia template: a `BASE_URL` and
@@ -140,11 +140,23 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 > read from a full parse's `body` (`review_novel_lines_split_at_line_breaks` in Thunder's tests).
 > No `#readerarea` held headings on 2026-11-08, although the corruptbytes Paperback fixture has one.
 
-> ⚠️ Beyond the search form, keiyoushi's theme sends `author` and `yearx` text filters and genre
-> exclusion as `genre[]=-id`. All seven sites answer a nonsense author and the year 1901 with no
-> results (Raven and Rage probed through Firecrawl), and a real author or year finds its series, so
-> both filters are in every `filters.json`. Excluding a genre returned the unfiltered list on every
-> reachable site, so `canExclude` stays false.
+> ⚠️ The theme supports `author` and `yearx` parameters, but an impossible author returning no
+> results does not prove useful author data exists. Rage has no author metadata or author control
+> on its search form, so its Author filter is removed. Other consumers need their own evidence;
+> the earlier claim that every site's author filter was justified was too broad. Year remains
+> separate. Excluding a genre returned the unfiltered list on every reachable site, so
+> `canExclude` stays false.
+
+> ⚠️ Rage's details container includes comments. The default template fallback
+> `span:contains(Author)` matched a comment discussing the author on the reported series.
+> Rage scopes both author and artist selectors to `.tsinfo .imptdt` metadata rows. The app
+> supports `:contains`; the runner does not, so a runner returning no author is not evidence
+> that an unrestricted selector is safe.
+
+> ⚠️ Rage labels webtoons as Manga. `Params::viewer_override` is `None` by default, preserving
+> the template's existing type mapping, and Rage sets it to `Some(Viewer::Webtoon)`.
+> The loopback HTTP regression checks that the override wins over a Manga label and that
+> default Manga, Manhwa and Comic mapping still works.
 
 > ⚠️ Rage's, Violet's and Thunder's icons are dark discs, so they sit on black; the others on
 > white. Thunder's comes from the inkdex Paperback source's 458 px `static/icon.png`, sharper than

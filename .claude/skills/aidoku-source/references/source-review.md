@@ -5,6 +5,13 @@ answering review comments. Read `AGENTS.md` / `CLAUDE.md` for the repository's r
 `SKILL.md` for the procedure. Record new observations instead of assuming these snapshots
 remain current.
 
+Rage Scans review: [author filter](https://github.com/Aidoku-Community/sources/pull/883#discussion_r4529796128),
+[comment mistaken for author and viewer override](https://github.com/Aidoku-Community/sources/pull/883#pullrequestreview-5848419962).
+The reported page has no author metadata; `span:contains(Author)` selects comment prose within
+the broad details container. Scope the source's author/artist selectors to its metadata box,
+omit author search, and use an optional viewer override when the site's type label is wrong.
+A nonsense-name query returning zero results establishes neither real author data nor a useful filter.
+
 ## Official references and boundaries
 
 Inspected 2026-10-26: aidoku-rs `ae6485e3c14ecd1fd5497d170eae884c68d04a87`,

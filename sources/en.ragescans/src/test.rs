@@ -8,7 +8,7 @@ use aidoku::{
 use aidoku_test::aidoku_test;
 
 // The site's genre id for Romance, from res/filters.json.
-const GENRE: &str = "genre";
+const GENRE: &str = "romance";
 
 fn source() -> MangaThemesia<RageScans> {
 	MangaThemesia::new()
@@ -121,17 +121,12 @@ fn status_type_and_genre_filters_narrow_results() {
 }
 
 #[aidoku_test]
-fn author_and_year_filters_narrow_results() {
+fn year_filter_narrows_results() {
 	let text = |id: &str, value: &str| FilterValue::Text {
 		id: id.into(),
 		value: value.into(),
 	};
 	assert!(!search(None, 1, vec![]).entries.is_empty());
-	assert!(
-		search(None, 1, vec![text("author", "zzqxwvnobody")])
-			.entries
-			.is_empty()
-	);
 	assert!(
 		search(None, 1, vec![text("yearx", "1901")])
 			.entries
@@ -193,4 +188,39 @@ fn an_unknown_series_fails() {
 fn home_has_sections() {
 	let home = source().get_home().unwrap();
 	assert!(!home.components.is_empty());
+}
+
+#[aidoku_test]
+fn review_metadata_selectors_stay_inside_series_metadata() {
+	let params = RageScans::new().params();
+	for selector in [
+		&params.series_author_selector,
+		&params.series_artist_selector,
+	] {
+		assert!(
+			selector
+				.split(',')
+				.all(|selector| selector.trim().starts_with(".tsinfo "))
+		);
+	}
+	assert_eq!(params.viewer_override, Some(Viewer::Webtoon));
+	let filters = include_str!("../res/filters.json");
+	assert!(!filters.contains("\"author\""));
+}
+
+#[aidoku_test]
+fn reported_series_has_no_staff_and_uses_webtoon_viewer() {
+	let manga = source()
+		.get_manga_update(
+			Manga {
+				key: "/manga/i-became-the-villain-the-hero-is-obsessed-with/".into(),
+				..Default::default()
+			},
+			true,
+			false,
+		)
+		.unwrap();
+	assert!(manga.authors.is_none());
+	assert!(manga.artists.is_none());
+	assert_eq!(manga.viewer, Viewer::Webtoon);
 }

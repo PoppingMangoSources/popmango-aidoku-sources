@@ -79,3 +79,37 @@ fn review_http_status_and_diagnostics() {
 		);
 	}
 }
+
+#[aidoku_test]
+#[ignore]
+fn review_http_viewer_override_preserves_default_type_mapping() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("run scripts/test-http.py");
+	};
+	for (kind, expected) in [
+		("Manga", Viewer::RightToLeft),
+		("Manhwa", Viewer::Webtoon),
+		("Comic", Viewer::LeftToRight),
+	] {
+		for override_viewer in [None, Some(Viewer::Webtoon)] {
+			let params = Params {
+				base_url: base.into(),
+				series_type_selector: ".type".into(),
+				viewer_override: override_viewer,
+				..Default::default()
+			};
+			let manga = Site
+				.get_manga_update(
+					&params,
+					Manga {
+						key: format!("/metadata/{kind}"),
+						..Default::default()
+					},
+					true,
+					false,
+				)
+				.unwrap();
+			assert_eq!(manga.viewer, override_viewer.unwrap_or(expected));
+		}
+	}
+}

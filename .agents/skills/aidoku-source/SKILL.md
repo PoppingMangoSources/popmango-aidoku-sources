@@ -69,6 +69,9 @@ that shipped:
 - [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it and its unused `serde_json`
       dev dependency out of the submission, including the root lockfile entry
 - [ ] `status`, `content_rating`, `viewer` set on details when the site has them
+- [ ] Author/artist selectors cannot match comments or descriptions; author search needs useful
+      author data, not only an empty result for an impossible name. A site with mislabeled types
+      may opt into an optional viewer override while other consumers retain their mapping.
 - [ ] `send_partial_result` only when chapters need a second request
 - [ ] `DeepLinkHandler` for series **and** chapter urls; series and chapter urls resolve
 - [ ] Reader routing works with only manga/chapter keys; encode required type flags in keys,

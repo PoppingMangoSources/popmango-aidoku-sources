@@ -20,6 +20,9 @@ class Responses(http.server.BaseHTTPRequestHandler):
         if self.path == "/json":
             content_type = "application/json"
             body = '{"html":"","has_more":false}'
+        if self.path.startswith("/metadata/"):
+            kind = parts[2]
+            body = f'<div class="postbody"><h1 class="entry-title">Title</h1><div class="tsinfo"><span class="type">{kind}</span></div><div class="comments"><span>Author discussed this story.</span><span>Artist discussed this story.</span></div></div>'
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.end_headers()
