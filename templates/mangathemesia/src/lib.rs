@@ -10,6 +10,9 @@ pub mod child_theme;
 pub mod helpers;
 mod imp;
 
+#[cfg(test)]
+mod test;
+
 pub use imp::Impl;
 
 pub struct Params {

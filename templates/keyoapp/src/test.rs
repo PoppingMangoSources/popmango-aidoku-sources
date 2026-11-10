@@ -157,12 +157,12 @@ fn review_novel_block_syntax_stays_literal_after_breaks() {
 	);
 }
 
-// The loopback server is started by scripts/test-keyoapp-http.py.
+// The loopback server is started by scripts/test-http.py.
 #[aidoku_test]
 #[ignore]
 fn review_http_status_and_diagnostics() {
-	let Some(base) = option_env!("KEYOAPP_HTTP_TEST_URL") else {
-		panic!("run scripts/test-keyoapp-http.py");
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("run scripts/test-http.py");
 	};
 	for status in [403, 404, 429, 503] {
 		let url = format!("{base}/status/{status}");

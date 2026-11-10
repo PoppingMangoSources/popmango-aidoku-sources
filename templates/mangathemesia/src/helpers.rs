@@ -1,7 +1,29 @@
 use aidoku::{
+	Result,
 	alloc::{format, string::String, vec::Vec},
-	imports::html::{Document, Element, Html},
+	imports::{
+		html::{Document, Element, Html},
+		net::{Request, Response},
+	},
+	prelude::*,
 };
+
+pub fn fetch(url: &str) -> Result<Response> {
+	let response = Request::get(url)?.send()?;
+	let status = response.status_code();
+	if !(200..300).contains(&status) {
+		let content_type = response.get_header("Content-Type");
+		let prefix = response
+			.get_string()
+			.ok()
+			.map(|body| body.chars().take(240).collect::<String>());
+		println!(
+			"URL: {url}; HTTP {status}; Content-Type: {content_type:?}; body prefix: {prefix:?}"
+		);
+		bail!("HTTP {status}");
+	}
+	Ok(response)
+}
 
 /// A novel chapter's text as Markdown: each innermost block of `#readerarea` is a paragraph.
 pub fn novel_text(html: &Document) -> String {

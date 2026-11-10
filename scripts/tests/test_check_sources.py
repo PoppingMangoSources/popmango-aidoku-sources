@@ -308,15 +308,42 @@ class KeyoappHttpTests(unittest.TestCase):
                         path = folder / name
                         path.write_text('let html = Request::get(url)?.html()?;\n')
                         checks.failures.clear()
-                        checks.check_keyoapp_http()
+                        checks.check_template_http("keyoapp")
                         self.assertEqual(len(checks.failures), 1)
-                        self.assertIn("bypasses Keyoapp HTTP status checks", checks.failures[0])
+                        self.assertIn("bypasses keyoapp HTTP status checks", checks.failures[0])
                         path.write_text('let html = fetch(url)?.get_html()?;\n')
                         checks.failures.clear()
-                        checks.check_keyoapp_http()
+                        checks.check_template_http("keyoapp")
                         self.assertEqual(checks.failures, [])
                 (folder / "helpers.rs").write_text('Request::get(url)?.send()?;\n')
-                checks.check_keyoapp_http()
+                checks.check_template_http("keyoapp")
+                self.assertEqual(checks.failures, [])
+            finally:
+                checks.ROOT = previous_root
+
+
+class MangaThemesiaHttpTests(unittest.TestCase):
+    def test_parsed_requests_are_checked_but_image_factories_remain_valid(self):
+        previous_root = checks.ROOT
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                checks.ROOT = Path(directory)
+                folder = checks.ROOT / "templates/mangathemesia/src"
+                folder.mkdir(parents=True)
+                for name in ("imp.rs", "child_theme.rs"):
+                    for method in ("html", "string", "json_owned"):
+                        with self.subTest(name=name, method=method):
+                            path = folder / name
+                            path.write_text(f'let body = Request::get(url)?.{method}()?;\n')
+                            checks.failures.clear()
+                            checks.check_template_http("mangathemesia")
+                            self.assertEqual(len(checks.failures), 1)
+                            path.write_text('let body = fetch(url)?.get_html()?;\n')
+                            checks.failures.clear()
+                            checks.check_template_http("mangathemesia")
+                            self.assertEqual(checks.failures, [])
+                (folder / "imp.rs").write_text('fn image_request() { Ok(Request::get(url)?.header("Accept", "image/*")) }\nfn text() { element.html() }\n')
+                checks.check_template_http("mangathemesia")
                 self.assertEqual(checks.failures, [])
             finally:
                 checks.ROOT = previous_root

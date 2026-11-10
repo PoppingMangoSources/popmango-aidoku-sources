@@ -2,27 +2,24 @@
 //! boxes of `.bsx` cards in the site's order.
 use crate::{
 	Params,
-	helpers::{ElementImageAttr, find_first_f32},
+	helpers::{ElementImageAttr, fetch, find_first_f32},
 };
 use aidoku::{
 	Chapter, DeepLinkResult, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga,
 	MangaStatus, MangaWithChapter, Result,
 	alloc::{String, Vec},
 	helpers::string::StripPrefixOrSelf,
-	imports::{
-		html::{Document, Element},
-		net::Request,
-	},
+	imports::html::{Document, Element},
 	prelude::*,
 };
 
 pub fn get_home(params: &Params) -> Result<HomeLayout> {
-	let html = Request::get(&params.base_url)?.html()?;
+	let html = fetch(&params.base_url)?.get_html()?;
 	Ok(parse_home(params, &html))
 }
 
 pub fn handle_deep_link(params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
-	let html = Request::get(&url)?.html()?;
+	let html = fetch(&url)?.get_html()?;
 	Ok(parse_deep_link(params, &html, &url))
 }
 

@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Run Keyoapp HTTP regressions against a loopback server, without contacting a site."""
+"""Run template HTTP regressions against a loopback server, without contacting a site."""
 
 import http.server
 import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import threading
+from urllib.parse import urlsplit
 
 
 class Responses(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        status = int(self.path.rsplit("/", 1)[1]) if self.path.startswith("/status/") else 200
+        parts = urlsplit(self.path).path.split("/")
+        status = int(parts[2]) if parts[1] == "status" else 200
         content_type = "text/html; charset=utf-8"
         body = "<h1>Unavailable</h1>" + "界" * 300 + "PREFIX_MUST_STOP_BEFORE_THIS"
         if self.path == "/json":
@@ -26,7 +29,7 @@ class Responses(http.server.BaseHTTPRequestHandler):
         pass
 
 
-def main():
+def run(crate):
     root = Path(__file__).resolve().parents[1]
     with http.server.ThreadingHTTPServer(("127.0.0.1", 0), Responses) as server:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -35,8 +38,8 @@ def main():
         try:
             result = subprocess.run(
                 ["cargo", "test", "review_http_", "--", "--ignored", "--nocapture"],
-                cwd=root / "templates/keyoapp",
-                env={**os.environ, "KEYOAPP_HTTP_TEST_URL": base, "NO_PROXY": "127.0.0.1"},
+                cwd=root / crate,
+                env={**os.environ, "AIDOKU_HTTP_TEST_URL": base, "NO_PROXY": "127.0.0.1"},
                 capture_output=True, text=True, timeout=180,
             )
         finally:
@@ -46,12 +49,16 @@ def main():
     print(result.stderr, end="")
     if result.returncode:
         return result.returncode
-    for path, status in [(f"/status/{status}", status) for status in (403, 404, 429, 503)] + [
-        ("/invalid-json", 200), ("/series/", 200)
-    ]:
-        expected = f"URL: {base}{path}; HTTP {status}; Content-Type: Some(\"text/html; charset=utf-8\"); body prefix: Some(\"<h1>Unavailable</h1>"
-        if expected not in result.stdout:
-            raise AssertionError(f"Missing failure diagnostics for {path}")
+    lines = result.stdout.splitlines()
+    for status in (403, 404, 429, 503):
+        if not any(line.startswith(f"URL: {base}/status/{status}") and
+                   f'; HTTP {status}; Content-Type: Some("text/html; charset=utf-8"); body prefix: Some("<h1>Unavailable</h1>' in line
+                   for line in lines):
+            raise AssertionError(f"Missing HTTP {status} diagnostics for {crate}")
+    if crate == "templates/keyoapp":
+        for path in ("/invalid-json", "/series/"):
+            if not any(line.startswith(f"URL: {base}{path}; HTTP 200;") for line in lines):
+                raise AssertionError(f"Missing parser diagnostics for {path}")
     if "PREFIX_MUST_STOP_BEFORE_THIS" in result.stdout:
         raise AssertionError("Response prefix was not bounded")
     for line in result.stdout.splitlines():
@@ -63,4 +70,8 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    crates = sys.argv[1:] or ["templates/keyoapp", "templates/mangathemesia"]
+    if any(crate not in {"templates/keyoapp", "templates/mangathemesia"} for crate in crates):
+        raise SystemExit("Expected templates/keyoapp or templates/mangathemesia")
+    results = [run(crate) for crate in crates]
+    raise SystemExit(int(any(results)))

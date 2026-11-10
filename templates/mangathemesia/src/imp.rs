@@ -72,7 +72,7 @@ pub trait Impl {
 		}
 
 		let url = format!("{}{}/?{qs}", params.base_url, params.manga_url_directory);
-		let html = Request::get(url)?.html()?;
+		let html = helpers::fetch(&url)?.get_html()?;
 
 		Ok(MangaPageResult {
 			entries: html
@@ -107,7 +107,7 @@ pub trait Impl {
 		needs_chapters: bool,
 	) -> Result<Manga> {
 		let manga_url = format!("{}{}", params.base_url, manga.key);
-		let html = Request::get(&manga_url)?.html()?;
+		let html = helpers::fetch(&manga_url)?.get_html()?;
 
 		if needs_details {
 			let details_element = html
@@ -280,7 +280,7 @@ pub trait Impl {
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let url = format!("{}{}", params.base_url, chapter.key);
-		let response = Request::get(&url)?.string()?;
+		let response = helpers::fetch(&url)?.get_string()?;
 		let html = Html::parse_fragment_with_url(&response, &url)?;
 		// A cache plugin can move the reader's script into a base64 `data:` url.
 		let decoded = html
@@ -344,7 +344,7 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let html = Request::get(&params.base_url)?.html()?;
+		let html = helpers::fetch(&params.base_url)?.get_html()?;
 
 		let mut components = Vec::new();
 
