@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Run Keyoapp HTTP regressions against a loopback server, without contacting a site."""
+
+import http.server
+import json
+import os
+from pathlib import Path
+import subprocess
+import threading
+
+
+class Responses(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        status = int(self.path.rsplit("/", 1)[1]) if self.path.startswith("/status/") else 200
+        content_type = "text/html; charset=utf-8"
+        body = "<h1>Unavailable</h1>" + "界" * 300 + "PREFIX_MUST_STOP_BEFORE_THIS"
+        if self.path == "/json":
+            content_type = "application/json"
+            body = '{"html":"","has_more":false}'
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.end_headers()
+        self.wfile.write(body.encode())
+
+    def log_message(self, *_args):
+        pass
+
+
+def main():
+    root = Path(__file__).resolve().parents[1]
+    with http.server.ThreadingHTTPServer(("127.0.0.1", 0), Responses) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = f"http://127.0.0.1:{server.server_port}"
+        try:
+            result = subprocess.run(
+                ["cargo", "test", "review_http_", "--", "--ignored", "--nocapture"],
+                cwd=root / "templates/keyoapp",
+                env={**os.environ, "KEYOAPP_HTTP_TEST_URL": base, "NO_PROXY": "127.0.0.1"},
+                capture_output=True, text=True, timeout=180,
+            )
+        finally:
+            server.shutdown()
+            thread.join()
+    print(result.stdout, end="")
+    print(result.stderr, end="")
+    if result.returncode:
+        return result.returncode
+    for path, status in [(f"/status/{status}", status) for status in (403, 404, 429, 503)] + [
+        ("/invalid-json", 200), ("/series/", 200)
+    ]:
+        expected = f"URL: {base}{path}; HTTP {status}; Content-Type: Some(\"text/html; charset=utf-8\"); body prefix: Some(\"<h1>Unavailable</h1>"
+        if expected not in result.stdout:
+            raise AssertionError(f"Missing failure diagnostics for {path}")
+    if "PREFIX_MUST_STOP_BEFORE_THIS" in result.stdout:
+        raise AssertionError("Response prefix was not bounded")
+    for line in result.stdout.splitlines():
+        if "; body prefix: Some(" in line:
+            prefix = json.loads(line.split("; body prefix: Some(", 1)[1][:-1])
+            if len(prefix) != 240:
+                raise AssertionError("Expected exactly 240 Unicode characters in the preview")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

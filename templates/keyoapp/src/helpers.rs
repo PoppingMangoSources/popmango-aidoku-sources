@@ -1,13 +1,44 @@
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, Viewer,
+	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, string::ToString},
 	helpers::string::StripPrefixOrSelf,
 	imports::{
 		html::{Document, Element, Kind},
+		net::{Request, Response},
 		std::{current_date, parse_date_with_options},
 	},
 	prelude::*,
 };
+use serde::de::DeserializeOwned;
+
+pub fn fetch(url: &str) -> Result<Response> {
+	let response = Request::get(url)?.send()?;
+	let status = response.status_code();
+	if !(200..300).contains(&status) {
+		log_response(&response, url);
+		bail!("HTTP {status}");
+	}
+	Ok(response)
+}
+
+pub fn fetch_json<T: DeserializeOwned>(url: &str) -> Result<T> {
+	let mut response = fetch(url)?;
+	let result = response.get_json();
+	if result.is_err() {
+		log_response(&response, url);
+	}
+	result
+}
+
+pub fn log_response(response: &Response, url: &str) {
+	let status = response.status_code();
+	let content_type = response.get_header("Content-Type");
+	let prefix = response
+		.get_string()
+		.ok()
+		.map(|body| body.chars().take(240).collect::<String>());
+	println!("URL: {url}; HTTP {status}; Content-Type: {content_type:?}; body prefix: {prefix:?}");
+}
 
 // Latest posters include a blurred backdrop outside the cover link.
 pub fn manga_from_link(link: &Element, card: &Element, base_url: &str) -> Option<Manga> {

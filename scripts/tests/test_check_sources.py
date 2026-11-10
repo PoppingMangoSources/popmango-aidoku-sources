@@ -293,5 +293,34 @@ class CardRuleTests(unittest.TestCase):
             self.assertTrue(any('silences' in failure for failure in checks.failures), attribute)
 
 
+
+
+class KeyoappHttpTests(unittest.TestCase):
+    def test_only_checked_fetches_are_allowed_in_keyoapp_parsers(self):
+        previous_root = checks.ROOT
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                checks.ROOT = Path(directory)
+                folder = checks.ROOT / "templates/keyoapp/src"
+                folder.mkdir(parents=True)
+                for name in ("imp.rs", "v2.rs"):
+                    with self.subTest(name=name):
+                        path = folder / name
+                        path.write_text('let html = Request::get(url)?.html()?;\n')
+                        checks.failures.clear()
+                        checks.check_keyoapp_http()
+                        self.assertEqual(len(checks.failures), 1)
+                        self.assertIn("bypasses Keyoapp HTTP status checks", checks.failures[0])
+                        path.write_text('let html = fetch(url)?.get_html()?;\n')
+                        checks.failures.clear()
+                        checks.check_keyoapp_http()
+                        self.assertEqual(checks.failures, [])
+                (folder / "helpers.rs").write_text('Request::get(url)?.send()?;\n')
+                checks.check_keyoapp_http()
+                self.assertEqual(checks.failures, [])
+            finally:
+                checks.ROOT = previous_root
+
+
 if __name__ == '__main__':
     unittest.main()

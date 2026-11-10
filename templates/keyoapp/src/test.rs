@@ -156,3 +156,47 @@ fn review_novel_block_syntax_stays_literal_after_breaks() {
 		Some("Intro\n\n\\# Literal\n\n1\\. Literal\n\n\\---\n\n\\# Literal")
 	);
 }
+
+// The loopback server is started by scripts/test-keyoapp-http.py.
+#[aidoku_test]
+#[ignore]
+fn review_http_status_and_diagnostics() {
+	let Some(base) = option_env!("KEYOAPP_HTTP_TEST_URL") else {
+		panic!("run scripts/test-keyoapp-http.py");
+	};
+	for status in [403, 404, 429, 503] {
+		let url = format!("{base}/status/{status}");
+		let error = helpers::fetch(&url).unwrap_err();
+		assert!(
+			matches!(error, aidoku::AidokuError::Message(message) if message == format!("HTTP {status}"))
+		);
+		let result = helpers::fetch_json::<models::SearchResponse>(&url);
+		assert!(
+			matches!(result, Err(aidoku::AidokuError::Message(message)) if message == format!("HTTP {status}"))
+		);
+	}
+	for status in [200, 201, 204, 299] {
+		assert_eq!(
+			helpers::fetch(&format!("{base}/status/{status}"))
+				.unwrap()
+				.status_code(),
+			status
+		);
+	}
+	let response: models::SearchResponse = helpers::fetch_json(&format!("{base}/json")).unwrap();
+	assert!(response.html.is_empty());
+	assert!(!response.has_more);
+	let result = helpers::fetch_json::<models::SearchResponse>(&format!("{base}/invalid-json"));
+	assert!(matches!(
+		result,
+		Err(aidoku::AidokuError::JsonParseError(_))
+	));
+	let params = Params {
+		base_url: base.into(),
+		..Default::default()
+	};
+	assert!(
+		Site.get_search_manga_list(&params, None, 1, Vec::new())
+			.is_err()
+	);
+}

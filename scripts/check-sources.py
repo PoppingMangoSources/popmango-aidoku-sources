@@ -401,6 +401,14 @@ def check_tests(source: Path) -> None:
                 fail(path, f"test {test.group(1)} asserts nothing")
 
 
+def check_keyoapp_http() -> None:
+    """Keyoapp parsers must use the helper that checks HTTP status before decoding."""
+    for name in ("imp.rs", "v2.rs"):
+        path = ROOT / "templates/keyoapp/src" / name
+        if path.exists() and re.search(r"\bRequest::", path.read_text()):
+            fail(path, "bypasses Keyoapp HTTP status checks; use fetch/fetch_json from helpers.rs")
+
+
 def check_source(source_id: str, base: str | None, upstream: bool = False) -> None:
     source = SOURCES / source_id
     if not (source / "Cargo.toml").exists():
@@ -456,6 +464,10 @@ def main() -> int:
             failures.append(result.stdout.strip() or result.stderr.strip())
     for name in names:
         check_source(name, args.base, args.upstream)
+
+    if not args.upstream and any("keyoapp" in (SOURCES / name / "Cargo.toml").read_text()
+           for name in names if (SOURCES / name / "Cargo.toml").exists()):
+        check_keyoapp_http()
 
     for item in notes:
         print(f"NOTE {item}")

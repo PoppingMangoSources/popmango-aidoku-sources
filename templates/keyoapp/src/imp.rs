@@ -1,8 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		background_image, chapter_from_link, content_rating, labelled, manga_from_link, names,
-		novel_text, series_key, status, viewer,
+		background_image, chapter_from_link, content_rating, fetch, labelled, log_response,
+		manga_from_link, names, novel_text, series_key, status, viewer,
 	},
 	home::parse_home,
 };
@@ -11,10 +11,7 @@ use aidoku::{
 	Result,
 	alloc::{String, Vec, vec},
 	helpers::string::{PlainText, StripPrefixOrSelf},
-	imports::{
-		html::{Document, Html},
-		net::Request,
-	},
+	imports::html::{Document, Html},
 	prelude::*,
 };
 
@@ -31,8 +28,14 @@ pub trait Impl {
 		_page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let html = Request::get(format!("{}/series/", params.base_url))?.html()?;
-		self.parse_search(params, &html, query, filters)
+		let url = format!("{}/series/", params.base_url);
+		let response = fetch(&url)?;
+		let html = response.get_html()?;
+		let result = self.parse_search(params, &html, query, filters);
+		if result.is_err() {
+			log_response(&response, &url);
+		}
+		result
 	}
 
 	fn parse_search(
@@ -123,9 +126,11 @@ pub trait Impl {
 		needs_chapters: bool,
 	) -> Result<Manga> {
 		let url = format!("{}{}", params.base_url, manga.key);
-		let html = Request::get(&url)?.html()?;
+		let response = fetch(&url)?;
+		let html = response.get_html()?;
 		// An unknown series redirects to a not-found page without one
 		let Some(title) = html.select_first("div.grid > h1").and_then(|h1| h1.text()) else {
+			log_response(&response, &url);
 			bail!("Series not found");
 		};
 
@@ -182,7 +187,7 @@ pub trait Impl {
 	}
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let response = Request::get(format!("{}{}", params.base_url, chapter.key))?.string()?;
+		let response = fetch(&format!("{}{}", params.base_url, chapter.key))?.get_string()?;
 		let html = Html::parse(&response)?;
 		if let Some(reader) = html.select_first("div.tiptap.novel-reader") {
 			let Some(text) = novel_text(&reader) else {
@@ -221,7 +226,7 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let html = Request::get(&params.base_url)?.html()?;
+		let html = fetch(&params.base_url)?.get_html()?;
 		Ok(parse_home(params, &html))
 	}
 
@@ -233,7 +238,8 @@ pub trait Impl {
 		}
 		if path.starts_with("/chapter/") {
 			// A chapter path holds the series id, not the path its page lives at
-			let html = Request::get(&url)?.html()?;
+			let response = fetch(&url)?;
+			let html = response.get_html()?;
 			let Some(series) = html.select("a[href*='/series/']").and_then(|mut links| {
 				links.find_map(|link| {
 					let href = link.attr("href")?;

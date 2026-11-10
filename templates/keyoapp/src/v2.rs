@@ -1,8 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		chapter_date, chapter_parts, content_rating, labelled_block, manga_from_card,
-		manga_from_page, names, novel_text, status, viewer,
+		chapter_date, chapter_parts, content_rating, fetch, fetch_json, labelled_block,
+		manga_from_card, manga_from_page, names, novel_text, status, viewer,
 	},
 	home::parse_home_v2,
 	models::{ChaptersResponse, SearchResponse},
@@ -15,7 +15,7 @@ use aidoku::{
 		string::{PlainText, StripPrefixOrSelf},
 		uri::QueryParameters,
 	},
-	imports::{html::Html, net::Request, std::send_partial_result},
+	imports::{html::Html, std::send_partial_result},
 	prelude::*,
 };
 
@@ -40,7 +40,7 @@ pub trait ImplV2 {
 			.and_then(|query| query.strip_prefix(params.base_url.as_ref()))
 			.filter(|path| path.starts_with('/'))
 		{
-			let html = Request::get(format!("{}{path}", params.base_url))?.html()?;
+			let html = fetch(&format!("{}{path}", params.base_url))?.get_html()?;
 			if let Some(manga) = manga_from_page(&html) {
 				return Ok(MangaPageResult {
 					entries: vec![manga],
@@ -77,8 +77,7 @@ pub trait ImplV2 {
 			}
 		}
 		qs.push("offset", Some(&((page - 1) * 20).to_string()));
-		let response: SearchResponse =
-			Request::get(format!("{}/?{qs}", params.base_url))?.json_owned()?;
+		let response: SearchResponse = fetch_json(&format!("{}/?{qs}", params.base_url))?;
 		let html = Html::parse_fragment_with_url(response.html, params.base_url.as_ref())?;
 		Ok(MangaPageResult {
 			entries: html
@@ -101,7 +100,7 @@ pub trait ImplV2 {
 		let slug = manga.key.trim_start_matches('/');
 		if needs_details {
 			let url = format!("{}{}", params.base_url, manga.key);
-			let html = Request::get(&url)?.html()?;
+			let html = fetch(&url)?.get_html()?;
 			// An unknown slug still answers with a page, one without a series
 			let Some(card) = manga_from_page(&html) else {
 				bail!("Series not found");
@@ -152,11 +151,10 @@ pub trait ImplV2 {
 		}
 
 		if needs_chapters {
-			let rows: ChaptersResponse = Request::get(format!(
+			let rows: ChaptersResponse = fetch_json(&format!(
 				"{}/?_chapters_html=1&series_slug={slug}",
 				params.base_url
-			))?
-			.json_owned()?;
+			))?;
 			let html = Html::parse_fragment_with_url(rows.rows_html, params.base_url.as_ref())?;
 			manga.chapters = html.select("a.chapter-row[href]").map(|rows| {
 				rows
@@ -185,7 +183,7 @@ pub trait ImplV2 {
 	}
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let html = Request::get(format!("{}{}", params.base_url, chapter.key))?.html()?;
+		let html = fetch(&format!("{}{}", params.base_url, chapter.key))?.get_html()?;
 		// Novel chapters hold text pages among the images, or in place of them
 		let pages = html
 			.select("#strip-reader .reader-page")
@@ -214,7 +212,7 @@ pub trait ImplV2 {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let html = Request::get(&params.base_url)?.html()?;
+		let html = fetch(&params.base_url)?.get_html()?;
 		let mut home = parse_home_v2(params, &html);
 		if let Some(component) = home
 			.components
@@ -222,11 +220,11 @@ pub trait ImplV2 {
 			.find(|component| component.title.as_deref() == Some("Most Reviewed Series"))
 		{
 			// Today can be empty even when the month has results.
-			if let Ok(fragment) = Request::get(format!(
+			if let Ok(fragment) = fetch(&format!(
 				"{}/?_most_reviewed=1&range=monthly",
 				params.base_url
-			))?
-			.html()
+			))
+			.and_then(|response| Ok(response.get_html()?))
 			{
 				let entries: Vec<Link> = fragment
 					.select("a[data-slide-card]")
@@ -260,7 +258,7 @@ pub trait ImplV2 {
 		if path.is_empty() {
 			return Ok(None);
 		}
-		let html = Request::get(&url)?.html()?;
+		let html = fetch(&url)?.get_html()?;
 		if let Some(manga) = manga_from_page(&html) {
 			return Ok(Some(DeepLinkResult::Manga { key: manga.key }));
 		}
