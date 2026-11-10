@@ -17,6 +17,8 @@ The owner chose shared emphasis support with a 0.8.3 minimum for all consumers, 
 feature. Flame demonstrates walking text nodes alongside element children; NovelArchive keeps
 emphasis balanced across line breaks and escapes only syntax. Atsumaru receives plain paragraph
 strings, so it is a paragraph-boundary reference rather than an HTML emphasis parser.
+The follow-up audit found that remembering only one closed marker corrupts adjacent spans
+containing both styles. Keep the closed markers in order and cover both nesting orders.
 
 ## Official references and boundaries
 

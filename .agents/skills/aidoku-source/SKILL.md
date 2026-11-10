@@ -72,7 +72,7 @@ that shipped:
 - [ ] Author/artist selectors cannot match comments or descriptions; author search needs useful
       author data, not only an empty result for an impossible name. A site with mislabeled types
       may opt into an optional viewer override while other consumers retain their mapping.
-- [ ] Novel emphasis stays balanced across `<br>` and paragraph boundaries; escape Markdown
+- [ ] Novel emphasis stays balanced across adjacent nested spans, `<br>` and paragraph boundaries; escape Markdown
       syntax rather than ordinary prose punctuation. Shared `child_nodes` imports require
       minimum app 0.8.3 for every dependent source, not only sites currently listing novels.
 - [ ] `send_partial_result` only when chapters need a second request

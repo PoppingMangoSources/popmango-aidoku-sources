@@ -45,7 +45,7 @@ struct Markdown {
 	line: String,
 	open: Vec<&'static str>,
 	written: usize,
-	just_closed: Option<&'static str>,
+	just_closed: Vec<&'static str>,
 }
 
 impl Markdown {
@@ -59,19 +59,21 @@ impl Markdown {
 				if c.is_whitespace() {
 					if !self.line.is_empty() && !self.line.ends_with(char::is_whitespace) {
 						self.line.push(c);
-						self.just_closed = None;
+						self.just_closed.clear();
 					}
 					continue;
 				}
 				while let Some(&marker) = self.open.get(self.written) {
-					if self.just_closed.take() == Some(marker) {
+					if self.just_closed.last() == Some(&marker) {
+						self.just_closed.pop();
 						self.line.truncate(self.line.len() - marker.len());
 					} else {
+						self.just_closed.clear();
 						self.line.push_str(marker);
 					}
 					self.written += 1;
 				}
-				self.just_closed = None;
+				self.just_closed.clear();
 				let block = (self.line.is_empty() && matches!(c, '#' | '-' | '+' | '='))
 					|| (matches!(c, '.' | ')')
 						&& !self.line.is_empty()
@@ -100,7 +102,11 @@ impl Markdown {
 			let trailing = self.line.split_off(self.line.trim_end().len());
 			self.line.push_str(marker);
 			self.line.push_str(&trailing);
-			self.just_closed = trailing.is_empty().then_some(marker);
+			if trailing.is_empty() {
+				self.just_closed.push(marker);
+			} else {
+				self.just_closed.clear();
+			}
 			self.written -= 1;
 		}
 		self.open.pop();
@@ -108,12 +114,12 @@ impl Markdown {
 
 	fn end_line(&mut self) {
 		self.line.truncate(self.line.trim_end().len());
-		// Close and reopen emphasis at paragraph boundaries.
+		// Emphasis cannot span Markdown paragraphs.
 		for marker in self.open[..self.written].iter().rev() {
 			self.line.push_str(marker);
 		}
 		self.written = 0;
-		self.just_closed = None;
+		self.just_closed.clear();
 		if !self.line.is_empty() {
 			self.paragraphs.push(core::mem::take(&mut self.line));
 		}

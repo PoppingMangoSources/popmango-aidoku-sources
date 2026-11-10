@@ -1,5 +1,3 @@
-//! The home of a child theme whose rows `get_home` can't read: image banners, then `.bixbox`
-//! boxes of `.bsx` cards in the site's order.
 use crate::{
 	Params,
 	helpers::{ElementImageAttr, check_response, fetch, find_first_f32},
@@ -60,7 +58,6 @@ pub fn parse_deep_link(params: &Params, html: &Document, url: &str) -> Option<De
 	Some(DeepLinkResult::Manga { key })
 }
 
-// Kept apart from the request so a layout can be checked against a saved page
 pub fn parse_home(params: &Params, html: &Document) -> HomeLayout {
 	let base_url = &params.base_url;
 	let mut components: Vec<HomeComponent> = slider_banners(html, params).into_iter().collect();
@@ -85,15 +82,13 @@ pub fn parse_home(params: &Params, html: &Document) -> HomeLayout {
 			});
 			continue;
 		}
-		// Popular Today's box holds only its heading; its cards are in a rail beside it, inside
-		// the `.hotslid` wrapper around both.
+		// Popular Today's cards sit beside its heading, inside `.hotslid`.
 		let rail = section
 			.parent()
 			.filter(|parent| parent.has_class("hotslid"))
 			.unwrap_or(section);
 		let cards = rail.select(".bsx").into_iter().flatten();
-		// Latest Comics names each series' newest chapters; Latest Novels stays cards, since its
-		// newest chapters are mostly coin-locked.
+		// Latest Novels stays cards because its newest chapters are mostly locked.
 		let value = if rail
 			.select_first("#manga-posts .chapter-list > a")
 			.is_some()
@@ -138,10 +133,7 @@ fn slider_banners(html: &Document, params: &Params) -> Option<HomeComponent> {
 		.filter_map(|link| {
 			let image = link.select_first("img")?;
 			Some(Manga {
-				key: link
-					.attr("href")?
-					.strip_prefix_or_self(&params.base_url)
-					.into(),
+				key: link_key(&link, &params.base_url)?,
 				title: image
 					.attr("alt")
 					.filter(|title| !title.trim().is_empty())?
@@ -171,7 +163,7 @@ fn slider_banners(html: &Document, params: &Params) -> Option<HomeComponent> {
 fn series(card: &Element, base_url: &str) -> Option<Manga> {
 	let link = card.select_first("a")?;
 	Some(Manga {
-		key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
+		key: link_key(&link, base_url)?,
 		title: link
 			.attr("title")
 			.filter(|title| !title.trim().is_empty())?
@@ -182,8 +174,7 @@ fn series(card: &Element, base_url: &str) -> Option<Manga> {
 	})
 }
 
-// Coin-locked chapters need a login, and the chapter list drops them too; the "all chapters" link
-// has no `.epxs`.
+// Skip locked chapters and the "all chapters" link, which has no `.epxs`.
 fn newest_chapter(card: &Element, base_url: &str) -> Option<MangaWithChapter> {
 	let (link, title) = card
 		.select(".chapter-list > a")?
@@ -196,7 +187,7 @@ fn newest_chapter(card: &Element, base_url: &str) -> Option<MangaWithChapter> {
 	Some(MangaWithChapter {
 		manga: series(card, base_url)?,
 		chapter: Chapter {
-			key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
+			key: link_key(&link, base_url)?,
 			title: chapter_number.is_none().then_some(title),
 			chapter_number,
 			..Default::default()
@@ -213,14 +204,20 @@ fn editor_picks(section: &Element, base_url: &str) -> Vec<Manga> {
 			let link = panel.select_first(".violet-ep-series-title a")?;
 			let index = panel.attr("data-index")?;
 			Some(Manga {
-				key: link.attr("href")?.strip_prefix_or_self(base_url).into(),
-				title: link.text()?,
+				key: link_key(&link, base_url)?,
+				title: link
+					.text()
+					.filter(|title| !title.trim().is_empty())?
+					.trim()
+					.into(),
 				cover: section
 					.select_first(format!(".violet-ep-cover[data-index=\"{index}\"] img"))
 					.and_then(|image| image.img_attr()),
 				description: panel
 					.select_first(".violet-ep-tagline")
-					.and_then(|tagline| tagline.text()),
+					.and_then(|tagline| tagline.text())
+					.map(|text| text.trim().into())
+					.filter(|text: &String| !text.is_empty()),
 				status: match panel
 					.select_first(".violet-ep-badge--status")
 					.and_then(|badge| badge.text())
@@ -239,4 +236,10 @@ fn editor_picks(section: &Element, base_url: &str) -> Vec<Manga> {
 			})
 		})
 		.collect()
+}
+
+fn link_key(link: &Element, base_url: &str) -> Option<String> {
+	let href = link.attr("href")?;
+	let key = href.trim().strip_prefix_or_self(base_url);
+	(!key.is_empty()).then(|| key.into())
 }

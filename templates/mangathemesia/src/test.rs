@@ -20,6 +20,8 @@ impl Impl for Site {
 #[aidoku_test]
 fn review_novel_emphasis_keeps_paragraphs_and_breaks() {
 	for (body, expected) in [
+		("<p><b><i>One</i></b><b><i>Two</i></b></p>", "***OneTwo***"),
+		("<p><i><b>One</b></i><i><b>Two</b></i></p>", "***OneTwo***"),
 		(
 			"<p><strong><b>Bold</b></strong> <em><i>Italic</i></em></p>",
 			"**Bold** *Italic*",

@@ -437,6 +437,37 @@ fn review_home_skips_blank_titles() {
 }
 
 #[aidoku_test]
+fn review_home_rejects_blank_series_keys() {
+	let site = VioletScans::new();
+	for href in ["", " ", BASE_URL] {
+		let html = Html::parse(format!(r#"<div class="slidernew"><div class="swiper-slide"><a href="{href}"><img alt="Banner"></a></div></div><div class="bixbox"><div class="releases"><h2>New Series</h2></div><div class="bsx"><a href="{href}" title="Card"></a></div></div><section class="bixbox"><div class="releases"><h2>Editor Picks</h2></div><div class="violet-ep-panel" data-index="0"><div class="violet-ep-series-title"><a href="{href}">Pick</a></div></div></section>"#)).unwrap();
+		assert!(
+			child_theme::parse_home(&site.params(), &html)
+				.components
+				.is_empty()
+		);
+	}
+}
+
+#[aidoku_test]
+fn review_editor_picks_reject_blank_titles_and_descriptions() {
+	let site = VioletScans::new();
+	for (title, expected) in [(" ", None), (" Pick ", Some("Pick"))] {
+		let html = Html::parse(format!(r#"<section class="bixbox"><div class="releases"><h2>Editor Picks</h2></div><div class="violet-ep-panel" data-index="0"><div class="violet-ep-series-title"><a href="/comics/pick/">{title}</a></div><p class="violet-ep-tagline"> </p></div></section>"#)).unwrap();
+		let home = child_theme::parse_home(&site.params(), &html);
+		let Some(expected) = expected else {
+			assert!(home.components.is_empty());
+			continue;
+		};
+		let HomeComponentValue::BigScroller { entries, .. } = &home.components[0].value else {
+			panic!("editor picks are a big scroller");
+		};
+		assert_eq!(entries[0].title, expected);
+		assert!(entries[0].description.is_none());
+	}
+}
+
+#[aidoku_test]
 fn review_chapter_links_use_the_series_breadcrumb() {
 	for directory in ["/comics", "/series"] {
 		let params = Params {

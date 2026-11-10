@@ -24,7 +24,7 @@ sources:
   - code: sources/en.madarascans/src/test.rs
   - code: sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
-verified_at: 20e8fef
+verified_at: c4c71c6
 ---
 
 KingOfShojo and RokariComics are plain consumers of the mangathemesia template: a `BASE_URL` and
@@ -146,7 +146,7 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 > current merged source files on 2026-11-10.
 
 > ⚠️ A `<p>` can hold dialogue split by `<br>`; each line remains its own Markdown paragraph.
-> Regression tests cover nested emphasis, adjacent matching spans, whitespace, empty text,
+> Regression tests cover nested emphasis, adjacent matching spans in both nesting orders, whitespace, empty text,
 > long punctuation-heavy prose, and reading a text page with only the chapter key. Tests stay
 > on fork main. App rendering still needs an in-app check.
 
@@ -212,3 +212,8 @@ live-site suites and needs no external site.
 
 Madara's original artwork is retained on an opaque `#0e0f13` background, matching the site
 header, with its existing 128×128 size and margin. The old white background is removed.
+
+> ⚠️ Adjacent bold-and-italic spans close two markers. Remembering only the last marker
+> corrupts their Markdown when the next span opens; the reader keeps the closed markers in
+> order. Child-theme banners, cards, chapters and Editor Picks share `link_key` to reject
+> blank paths. Editor Picks also trims titles and omits blank descriptions.

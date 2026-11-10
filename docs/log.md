@@ -98,3 +98,9 @@ author queries did not justify the old filter and added loopback viewer regressi
 Preserved bold and italic across novel paragraphs and line breaks using the merged reader
 references, without an opt-in feature. Raised the app minimum for every template consumer,
 updated dependent source versions, and changed Madara's icon background to its header color.
+
+## 2026-11-10: MangaThemesia follow-up audit
+
+Fixed adjacent nested emphasis markers and empty home keys, aligned Editor Picks title and
+description handling, and shortened comments. Added deterministic coverage without changing
+the shared default home or introducing dependencies.

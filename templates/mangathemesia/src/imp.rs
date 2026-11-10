@@ -292,7 +292,6 @@ pub trait Impl {
 			.and_then(|script| String::from_utf8(script).ok());
 		let reader = decoded.as_deref().unwrap_or(&response);
 
-		// The theme's reader flags a novel chapter, whose text is in #readerarea.
 		if reader.contains("\"is_novel\":true") {
 			let text = helpers::novel_text(&html);
 			if text.is_empty() {
