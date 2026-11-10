@@ -2,10 +2,13 @@
 title: MangaThemesia consumers
 type: subsystem
 created: 2026-11-07
-updated: 2026-11-09
+updated: 2026-11-10
 sources:
   - code: templates/mangathemesia/src/imp.rs
   - code: templates/mangathemesia/src/helpers.rs
+  - code: templates/mangathemesia/src/test.rs
+  - code: scripts/test-http.py
+  - code: .github/workflows/test.yaml
   - code: templates/mangathemesia/src/child_theme.rs
   - code: sources/en.scythescans/src/lib.rs
   - code: sources/en.lagoonscans/src/lib.rs
@@ -21,7 +24,7 @@ sources:
   - code: sources/en.madarascans/src/test.rs
   - code: sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
-verified_at: d49266c
+verified_at: 17c5faf
 ---
 
 KingOfShojo and RokariComics are plain consumers of the mangathemesia template: a `BASE_URL` and
@@ -169,3 +172,16 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 
 > ⚠️ Madara's catalogue exposes the Novel type even when that selection has no titles.
 > Keep both `Novel` and `novel` in its static type options/IDs, matching the form.
+
+> ⚠️ Main checks HTTP status before parsing search, details, reader, home and child-theme
+> deep-link responses (`templates/mangathemesia/src/helpers.rs:12`). Non-2xx responses report
+> their HTTP status and log URL, content type and at most 240 Unicode characters of the body.
+> A child-theme deep link returning 404 remains `None`, since the missing page cannot name a
+> series or chapter; its response is checked without parsing the error page.
+> Image request providers return an unsent request for the host to execute and keep their
+> existing image headers. A Cloudflare challenge must not look like an empty catalogue.
+
+`scripts/test-http.py` exercises both live-tested templates against a local fixture.
+The MangaThemesia regression checks every request path above for 403/404/429/503 before
+parsing, plus successful 2xx responses and bounded diagnostic output. It is separate from
+live-site suites and needs no external site.

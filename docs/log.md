@@ -79,3 +79,10 @@ Append-only. Newest entries at the bottom.
 - Added a separate loopback HTTP regression to Source tests and a calibrated parser guard.
 - Verified all ten packages; eight live suites passed and Kaizen/Luna returned Cloudflare HTTP 403.
 - Recorded the remaining device checks in [[keyoapp-template]]; inspected the open upstream submission without changing it.
+
+## [2026-11-10] fix | HTTP checks for all live-tested sources
+
+- Added MangaThemesia status checks for standard and child-theme request paths, preserving a missing deep link as no match.
+- Shared the HTTP fixture runner between both live-tested templates and added a calibrated guard against unchecked response parsing.
+- Bumped the eight affected consumers once; PR branches remain unchanged.
+- Updated [[mangathemesia-consumers]] and [[keyoapp-template]], verified at `17c5faf`.

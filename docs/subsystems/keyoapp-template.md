@@ -11,7 +11,7 @@ sources:
   - code: templates/keyoapp/src/test.rs
   - code: .github/workflows/test.yaml
   - code: scripts/tests/test_template_tests.py
-  - code: scripts/test-keyoapp-http.py
+  - code: scripts/test-http.py
   - code: templates/keyoapp/src/v2.rs
   - code: templates/keyoapp/src/models.rs
   - code: sources/en.asmotoon/src/test.rs
@@ -36,7 +36,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/865
   - ext: https://github.com/Aidoku-Community/sources/pull/824
   - ext: https://github.com/Aidoku-Community/sources/pull/666
-verified_at: 2dd1cdc
+verified_at: 17c5faf
 ---
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
@@ -259,7 +259,7 @@ details to build rows.
 > response without replacing the original parser error (`templates/keyoapp/src/helpers.rs:15`,
 > `templates/keyoapp/src/imp.rs:31`). The optional monthly home row keeps its existing fallback.
 
-`scripts/test-keyoapp-http.py:30` runs the ignored HTTP regression against a loopback fixture.
+`scripts/test-http.py:30` runs the ignored HTTP regression against a loopback fixture.
 It checks 403/404/429/503 before decoding, successful 2xx responses, malformed JSON,
 missing catalogue markup and bounded diagnostic output. Source tests runs it separately
 when the changed crates include the template. The fixture needs no external website.
