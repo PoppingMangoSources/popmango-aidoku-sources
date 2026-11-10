@@ -92,3 +92,9 @@ Append-only. Newest entries at the bottom.
 Removed unavailable author search, scoped Rage author and artist parsing to metadata rows,
 and added an optional viewer override for its mislabeled webtoons. Recorded why impossible
 author queries did not justify the old filter and added loopback viewer regression coverage.
+
+## 2026-11-10: Shared novel emphasis
+
+Preserved bold and italic across novel paragraphs and line breaks using the merged reader
+references, without an opt-in feature. Raised the app minimum for every template consumer,
+updated dependent source versions, and changed Madara's icon background to its header color.

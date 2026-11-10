@@ -12,6 +12,12 @@ the broad details container. Scope the source's author/artist selectors to its m
 omit author search, and use an optional viewer override when the site's type label is wrong.
 A nonsense-name query returning zero results establishes neither real author data nor a useful filter.
 
+Shared-template novel review: [minimum-version discussion](https://github.com/Aidoku-Community/sources/pull/884#issuecomment-6777916715).
+The owner chose shared emphasis support with a 0.8.3 minimum for all consumers, without a Cargo
+feature. Flame demonstrates walking text nodes alongside element children; NovelArchive keeps
+emphasis balanced across line breaks and escapes only syntax. Atsumaru receives plain paragraph
+strings, so it is a paragraph-boundary reference rather than an HTML emphasis parser.
+
 ## Official references and boundaries
 
 Inspected 2026-10-26: aidoku-rs `ae6485e3c14ecd1fd5497d170eae884c68d04a87`,

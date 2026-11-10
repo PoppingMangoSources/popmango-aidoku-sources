@@ -2,12 +2,12 @@
 	"info": {
 		"id": "en.thunderscans",
 		"name": "Thunder Scans",
-		"version": 9,
+		"version": 10,
 		"url": "https://en-thunderscans.com",
 		"contentRating": 0,
 		"languages": [
 			"en"
 		],
-		"minAppVersion": "0.7.1"
+		"minAppVersion": "0.8.3"
 	}
 }

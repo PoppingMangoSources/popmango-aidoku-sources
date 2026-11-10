@@ -24,7 +24,7 @@ sources:
   - code: sources/en.madarascans/src/test.rs
   - code: sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
-verified_at: 094fa7c
+verified_at: 20e8fef
 ---
 
 KingOfShojo and RokariComics are plain consumers of the mangathemesia template: a `BASE_URL` and
@@ -126,19 +126,29 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 > and the novel flag from it; the other sites' chapters carry plain JSON. Scythe keeps only
 > keiyoushi's rate limit of three requests a second.
 
-> ⚠️ Violet and Thunder list novels among comics (the other five returned none for `type=novel`).
-> The theme's reader data flags a novel chapter with `"is_novel":true` and puts its text in
-> `#readerarea`, in `<p>`s on newer chapters and nested `<div>`s on older Violet ones, with
-> `"images":[]`. The template checks that flag first and returns one text page from the innermost
-> blocks (`helpers::novel_text`), escaping only Markdown syntax, so novels stay in search and home
-> with their Novel type option. Inline bold and italic are dropped: keeping them needs
-> `child_nodes`, which would raise every consumer's `minAppVersion` to 0.8.3.
+> ⚠️ Violet and Thunder list novels among comics. The shared reader recognizes
+> `"is_novel":true` and walks `#readerarea` as Markdown paragraphs. `<strong>`/`<b>` and
+> `<em>`/`<i>` keep their emphasis, including nested spans. `<br>` and block boundaries close
+> and reopen active emphasis, preventing markers from leaking into later paragraphs. Only
+> Markdown syntax is escaped, avoiding excessive inline nodes in long prose.
 
-> ⚠️ A `<p>` can hold two lines of dialogue split by `<br>` (20 of 99 paragraphs on one Thunder
-> chapter), which `text()` runs together, so such a block is split at each `<br>` and each line
-> parsed on its own. The runner returns no text from `Element::from(document)`, so each line is
-> read from a full parse's `body` (`review_novel_lines_split_at_line_breaks` in Thunder's tests).
-> No `#readerarea` held headings on 2026-11-08, although the corruptbytes Paperback fixture has one.
+> ⚠️ The owner chose a shared reader without an opt-in feature. `child_nodes` raises the
+> minimum app version to 0.8.3 for every dependent package, even an image-only site.
+> The current upstream list has 19 existing consumers, including the newly merged Lagoon
+> and Raven sources, plus the four submissions in the child-theme review. Existing sources
+> receive upstream version + 1 in that submission; new sources keep version 1. Fork main
+> bumps each of its eight consumers once for publication.
+
+> ⚠️ Flame walks text nodes alongside `children`, whose elements the runner can name.
+> NovelArchive supplies the emphasis-boundary and syntax-escaping approach used here;
+> its mirror images and headings are separate needs and were not copied. Atsumaru receives
+> plain paragraph strings and has no HTML emphasis parser. References were checked against
+> current merged source files on 2026-11-10.
+
+> ⚠️ A `<p>` can hold dialogue split by `<br>`; each line remains its own Markdown paragraph.
+> Regression tests cover nested emphasis, adjacent matching spans, whitespace, empty text,
+> long punctuation-heavy prose, and reading a text page with only the chapter key. Tests stay
+> on fork main. App rendering still needs an in-app check.
 
 > ⚠️ The theme supports `author` and `yearx` parameters, but an impossible author returning no
 > results does not prove useful author data exists. Rage has no author metadata or author control
@@ -197,3 +207,8 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 The MangaThemesia regression checks every request path above for 403/404/429/503 before
 parsing, plus successful 2xx responses and bounded diagnostic output. It is separate from
 live-site suites and needs no external site.
+
+## Madara icon review
+
+Madara's original artwork is retained on an opaque `#0e0f13` background, matching the site
+header, with its existing 128×128 size and margin. The old white background is removed.

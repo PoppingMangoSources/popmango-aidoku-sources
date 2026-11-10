@@ -2,7 +2,7 @@ use aidoku::{
 	Result,
 	alloc::{format, string::String, vec::Vec},
 	imports::{
-		html::{Document, Element, Html},
+		html::{Document, Element, Kind},
 		net::{Request, Response},
 	},
 	prelude::*,
@@ -29,68 +29,122 @@ pub fn check_response(response: Response, url: &str) -> Result<Response> {
 	Ok(response)
 }
 
-/// A novel chapter's text as Markdown: each innermost block of `#readerarea` is a paragraph.
 pub fn novel_text(html: &Document) -> String {
-	html.select("div#readerarea p, div#readerarea div")
-		.map(|blocks| {
-			blocks
-				.filter(|block| {
-					!block
-						.children()
-						.any(|child| matches!(child.tag_name().as_deref(), Some("p" | "div")))
-				})
-				.flat_map(lines)
-				.map(|line| escape_markdown_syntax(&line))
-				.collect::<Vec<_>>()
-				.join("\n\n")
-		})
-		.unwrap_or_default()
-}
-
-// A `<br>` separates two lines of dialogue in one paragraph, which `text()` would run together.
-fn lines(block: Element) -> Vec<String> {
-	let texts: Vec<String> = match block.html() {
-		Some(inner) if block.select_first("br").is_some() => inner
-			.split("<br")
-			.enumerate()
-			.filter_map(|(index, part)| {
-				let part = if index == 0 {
-					part
-				} else {
-					part.split_once('>')?.1
-				};
-				Html::parse(part).ok()?.select_first("body")?.text()
-			})
-			.collect(),
-		_ => block.text().into_iter().collect(),
+	let Some(root) = html.select_first("#readerarea") else {
+		return String::new();
 	};
-	texts
-		.into_iter()
-		.map(|text| text.trim().into())
-		.filter(|text: &String| !text.is_empty())
-		.collect()
+	let mut markdown = Markdown::default();
+	markdown.element(&root);
+	markdown.end_line();
+	markdown.paragraphs.join("\n\n")
 }
 
-// Only syntax is escaped: the reader's Markdown renderer overflows its stack past a few hundred
-// inline nodes in one paragraph, and every escape is a node.
-fn escape_markdown_syntax(line: &str) -> String {
-	let mut escaped = String::with_capacity(line.len());
-	for c in line.chars() {
-		// "-", "#" or "1." at the start would begin a list or a heading.
-		let block = (escaped.is_empty() && matches!(c, '#' | '-' | '+' | '='))
-			|| (matches!(c, '.' | ')')
-				&& !escaped.is_empty()
-				&& escaped.bytes().all(|b| b.is_ascii_digit()));
-		if block
-			|| matches!(
-				c,
-				'\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '&' | '~' | '|'
-			) {
-			escaped.push('\\');
+#[derive(Default)]
+struct Markdown {
+	paragraphs: Vec<String>,
+	line: String,
+	open: Vec<&'static str>,
+	written: usize,
+	just_closed: Option<&'static str>,
+}
+
+impl Markdown {
+	fn text(&mut self, text: &str) {
+		for (index, part) in text.split('\n').enumerate() {
+			if index > 0 {
+				self.end_line();
+			}
+			for c in part.chars() {
+				// Whitespace stays outside emphasis markers.
+				if c.is_whitespace() {
+					if !self.line.is_empty() && !self.line.ends_with(char::is_whitespace) {
+						self.line.push(c);
+						self.just_closed = None;
+					}
+					continue;
+				}
+				while let Some(&marker) = self.open.get(self.written) {
+					if self.just_closed.take() == Some(marker) {
+						self.line.truncate(self.line.len() - marker.len());
+					} else {
+						self.line.push_str(marker);
+					}
+					self.written += 1;
+				}
+				self.just_closed = None;
+				let block = (self.line.is_empty() && matches!(c, '#' | '-' | '+' | '='))
+					|| (matches!(c, '.' | ')')
+						&& !self.line.is_empty()
+						&& self.line.bytes().all(|b| b.is_ascii_digit()));
+				// Escaping ordinary punctuation creates excessive inline nodes in long prose.
+				if block
+					|| matches!(
+						c,
+						'\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '&' | '~' | '|'
+					) {
+					self.line.push('\\');
+				}
+				self.line.push(c);
+			}
 		}
-		escaped.push(c);
 	}
-	escaped
+
+	fn emphasis(&mut self, marker: &'static str, element: &Element) {
+		if self.open.contains(&marker) {
+			self.element(element);
+			return;
+		}
+		self.open.push(marker);
+		self.element(element);
+		if self.written > 0 && self.written == self.open.len() {
+			let trailing = self.line.split_off(self.line.trim_end().len());
+			self.line.push_str(marker);
+			self.line.push_str(&trailing);
+			self.just_closed = trailing.is_empty().then_some(marker);
+			self.written -= 1;
+		}
+		self.open.pop();
+	}
+
+	fn end_line(&mut self) {
+		self.line.truncate(self.line.trim_end().len());
+		// Close and reopen emphasis at paragraph boundaries.
+		for marker in self.open[..self.written].iter().rev() {
+			self.line.push_str(marker);
+		}
+		self.written = 0;
+		self.just_closed = None;
+		if !self.line.is_empty() {
+			self.paragraphs.push(core::mem::take(&mut self.line));
+		}
+	}
+
+	fn element(&mut self, element: &Element) {
+		let mut children = element.children();
+		for node in element.child_nodes() {
+			match node.kind() {
+				Kind::TextNode => self.text(&node.text().unwrap_or_default()),
+				Kind::Element => {
+					let Some(child) = children.next() else {
+						continue;
+					};
+					match child.tag_name().as_deref() {
+						Some("br") => self.end_line(),
+						Some("strong" | "b") => self.emphasis("**", &child),
+						Some("em" | "i") => self.emphasis("*", &child),
+						Some("p" | "div" | "center") => {
+							self.end_line();
+							self.element(&child);
+							self.end_line();
+						}
+						Some("script" | "style") => {}
+						_ => self.element(&child),
+					}
+				}
+				_ => {}
+			}
+		}
+	}
 }
 
 pub trait ElementImageAttr {

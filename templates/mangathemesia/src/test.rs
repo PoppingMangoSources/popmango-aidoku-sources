@@ -1,6 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
 use super::*;
+use aidoku::imports::html::Html;
 use aidoku::{AidokuError, prelude::*};
 use aidoku_test::aidoku_test;
 
@@ -13,6 +14,57 @@ impl Impl for Site {
 
 	fn params(&self) -> Params {
 		Params::default()
+	}
+}
+
+#[aidoku_test]
+fn review_novel_emphasis_keeps_paragraphs_and_breaks() {
+	for (body, expected) in [
+		(
+			"<p><strong><b>Bold</b></strong> <em><i>Italic</i></em></p>",
+			"**Bold** *Italic*",
+		),
+		(
+			"<p>Plain <strong>bold</strong> and <em>italic</em>.</p>",
+			"Plain **bold** and *italic*.",
+		),
+		(
+			"<div><p><b>First<br>Second</b></p><div><i>Third<br/>Fourth</i></div></div>",
+			"**First**\n\n**Second**\n\n*Third*\n\n*Fourth*",
+		),
+		(
+			"<p><b><i>Both</i></b></p><p><strong>One</strong><strong>Two</strong></p>",
+			"***Both***\n\n**OneTwo**",
+		),
+		(
+			"<p>Before<strong> bold </strong>after <em> </em>end</p>",
+			"Before **bold** after end",
+		),
+		(
+			"<div>First<p>Second</p>Third</div>",
+			"First\n\nSecond\n\nThird",
+		),
+	] {
+		let html = Html::parse(format!("<div id=readerarea>{body}</div>")).unwrap();
+		assert_eq!(helpers::novel_text(&html), expected);
+	}
+}
+
+#[aidoku_test]
+fn review_novel_prose_escapes_syntax_without_expanding_punctuation() {
+	let prose = "Hello, world. Wait: yes! ".repeat(500);
+	let html = Html::parse(format!("<div id=readerarea><p>{prose}</p><p>1. *Literal* &amp; now</p><script>hidden</script><style>hidden</style></div>")).unwrap();
+	assert_eq!(
+		helpers::novel_text(&html),
+		format!("{}\n\n1\\. \\*Literal\\* \\& now", prose.trim())
+	);
+}
+
+#[aidoku_test]
+fn review_novel_empty_content_stays_empty() {
+	for body in ["", "<p> </p>", "<p><b></b><i> </i></p>"] {
+		let html = Html::parse(format!("<div id=readerarea>{body}</div>")).unwrap();
+		assert!(helpers::novel_text(&html).is_empty());
 	}
 }
 
@@ -112,4 +164,36 @@ fn review_http_viewer_override_preserves_default_type_mapping() {
 			assert_eq!(manga.viewer, override_viewer.unwrap_or(expected));
 		}
 	}
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_novel_reader_uses_only_chapter_key() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("run scripts/test-http.py");
+	};
+	let params = Params {
+		base_url: base.into(),
+		..Default::default()
+	};
+	let pages = Site
+		.get_page_list(
+			&params,
+			Manga::default(),
+			Chapter {
+				key: "/novel".into(),
+				..Default::default()
+			},
+		)
+		.unwrap();
+	let [
+		Page {
+			content: aidoku::PageContent::Text(text),
+			..
+		},
+	] = pages.as_slice()
+	else {
+		panic!("Expected one text page");
+	};
+	assert_eq!(text, "**First**\n\n**Second**\n\n*Third*");
 }

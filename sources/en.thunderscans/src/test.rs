@@ -89,7 +89,7 @@ fn review_novel_lines_split_at_line_breaks() {
 	.unwrap();
 	assert_eq!(
 		mangathemesia::helpers::novel_text(&html),
-		"“Good work.”\n\n“Yes. I have taken care of it.”\n\n1\\. Then \\& now\n\n\\*Nested\\*"
+		"“Good work.”\n\n“Yes. I have *taken* care of it.”\n\n1\\. Then \\& now\n\n\\*Nested\\*"
 	);
 }
 
