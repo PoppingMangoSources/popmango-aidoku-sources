@@ -2,7 +2,7 @@
 title: Keyoapp template
 type: subsystem
 created: 2026-11-08
-updated: 2026-11-09
+updated: 2026-11-10
 sources:
   - code: templates/keyoapp/src/lib.rs
   - code: templates/keyoapp/src/imp.rs
@@ -11,6 +11,7 @@ sources:
   - code: templates/keyoapp/src/test.rs
   - code: .github/workflows/test.yaml
   - code: scripts/tests/test_template_tests.py
+  - code: scripts/test-keyoapp-http.py
   - code: templates/keyoapp/src/v2.rs
   - code: templates/keyoapp/src/models.rs
   - code: sources/en.asmotoon/src/test.rs
@@ -35,7 +36,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/865
   - ext: https://github.com/Aidoku-Community/sources/pull/824
   - ext: https://github.com/Aidoku-Community/sources/pull/666
-verified_at: c1e1cbf
+verified_at: 2dd1cdc
 ---
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
@@ -251,3 +252,22 @@ details to build rows.
 > implementation. Their offline fixtures, resource checks, compilation and package verification
 > passed; browser/Firecrawl observations do not replace their blocked runner or device checks.
 > The native relative/absolute date behavior and long novel rendering still need an app check.
+
+> ⚠️ The fork checks HTTP status before parsing every template response. A non-2xx result
+> returns `HTTP <status>` and logs the request URL, content type and a Unicode-safe preview
+> capped at 240 characters. Malformed JSON and missing V1 catalogue markup also log the
+> response without replacing the original parser error (`templates/keyoapp/src/helpers.rs:15`,
+> `templates/keyoapp/src/imp.rs:31`). The optional monthly home row keeps its existing fallback.
+
+`scripts/test-keyoapp-http.py:30` runs the ignored HTTP regression against a loopback fixture.
+It checks 403/404/429/503 before decoding, successful 2xx responses, malformed JSON,
+missing catalogue markup and bounded diagnostic output. Source tests runs it separately
+when the changed crates include the template. The fixture needs no external website.
+
+Validation on 2026-11-10: all ten consumers passed formatting, warning-failing Clippy,
+packaging and `aidoku verify`; the template's nine ordinary regressions, the separate
+HTTP fixture regression and 97 repository script tests passed. Eight live source suites
+passed. Kaizen and Luna remained blocked by HTTP 403 Cloudflare challenge pages, now
+identified directly in failure logs. Asmodeus initially compared different slugs from two
+live responses; the filter case and full 13-test suite passed on retry. The existing upstream
+submission was inspected without modification: scope and upstream CI checks passed.

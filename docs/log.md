@@ -72,3 +72,10 @@ Append-only. Newest entries at the bottom.
 - Recorded Today for Trending and Month for Most Reviewed as separate owner-selected defaults in [[keyoapp-template]] and both instruction copies.
 - Folded all submission template changes into its first commit while preserving the ten source commits and version 1 metadata.
 - Code verified at `c1e1cbf`; Mist remains on its existing domain and parser.
+
+## [2026-11-10] fix | Keyoapp HTTP diagnostics
+
+- Added checked template requests and bounded failure diagnostics on main, verified at `2dd1cdc`.
+- Added a separate loopback HTTP regression to Source tests and a calibrated parser guard.
+- Verified all ten packages; eight live suites passed and Kaizen/Luna returned Cloudflare HTTP 403.
+- Recorded the remaining device checks in [[keyoapp-template]]; inspected the open upstream submission without changing it.
