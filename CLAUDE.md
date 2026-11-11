@@ -1436,7 +1436,7 @@ their live suites, then prepare the submission from canonical upstream with fork
 A source leaves `main` once it is upstream, or while its upstream branch waits on review. Its
 crate and live tests stay in `main`'s history; what it taught stays in this file and `docs/`.
 The `merged-sources` branch keeps the last copy of each merged one, tests included (Atsumaru,
-MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive and the six MangaThemesia
+MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive and the seven MangaThemesia
 sources merged in the November batch, plus both Keyoapp generations and their ten consumers),
 so they can be read and
 tested in one place.
@@ -1467,6 +1467,7 @@ and push gates reject incomplete preservation. Archive branches do not publish p
 | `en.evascans` | merged (#884) | `ce4c298` | `merged-sources`; maintenance from upstream | shared reader and minimum app version; MangaThemesia docs |
 | `en.ragescans` | merged (#883) | `ce4c298` | `merged-sources`; maintenance from upstream | metadata scope, author filter and viewer override; MangaThemesia docs |
 | `en.lagoonscans` | merged (#881) | `ce4c298` | `merged-sources`; maintenance from upstream | static filters and template reuse; MangaThemesia docs |
+| `en.ravenscans` | merged (#882) | `5882af8` | `merged-sources`; maintenance from upstream | catalogue rating and standard template wiring; MangaThemesia docs |
 | `en.asmotoon` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
 | `en.erisscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
 | `en.genztoons` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |

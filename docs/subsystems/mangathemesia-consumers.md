@@ -12,7 +12,7 @@ sources:
   - code: templates/mangathemesia/src/child_theme.rs
   - code: sources/en.scythescans/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.lagoonscans/src/lib.rs
-  - code: sources/en.ravenscans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/5882af8cedaea94150b49d4207c37ece5309a1fa/sources/en.ravenscans/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.ragescans/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.violetscans/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.violetscans/src/test.rs
@@ -24,7 +24,7 @@ sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.madarascans/src/test.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
-verified_at: c4c71c6
+verified_at: 5882af8
 ---
 
 Portable review gates and their coverage are recorded in [[source-checks]].
@@ -228,6 +228,8 @@ Rage in [883](https://github.com/Aidoku-Community/sources/pull/883), and Lagoon 
 [881](https://github.com/Aidoku-Community/sources/pull/881). Their last main snapshot is
 `ce4c298`; complete crates/tests and the shared template are kept on
 [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources).
+Raven merged in [882](https://github.com/Aidoku-Community/sources/pull/882); its complete
+`5882af8` main snapshot, including tests and icon, is archived there too.
 
 | Review evidence | Result and retained regression |
 |---|---|
@@ -239,6 +241,6 @@ Rage in [883](https://github.com/Aidoku-Community/sources/pull/883), and Lagoon 
 | Owner's layout/key checks | Archived child-theme fixtures cover home order, five-row paging, compact internal banners, blank titles/keys and canonical chapter links. |
 
 > ⚠️ The archive needs the template version these tests used, not just each consumer's
-> directory. Main retains the shared template for Scythe and Raven. The archive's older
+> directory. Main retains the shared template for Scythe. The archive's older
 > KingOfShojo/Rokari metadata minimums move to 0.8.3 for its shared reader imports; archive
 > package versions stay unchanged. Future source updates start from current canonical upstream.
