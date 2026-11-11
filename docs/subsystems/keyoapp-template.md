@@ -12,6 +12,7 @@ sources:
   - code: .github/workflows/test.yaml
   - code: scripts/tests/test_template_tests.py
   - code: scripts/test-http.py
+  - code: scripts/review-contracts.py
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/v2.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/models.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.asmotoon/src/test.rs
@@ -47,8 +48,9 @@ starts from the current upstream template/consumers and restores only the needed
 
 > ⚠️ No Keyoapp consumer remains on main, so its template and dedicated HTTP fixtures are
 > archived together. The main test workflow retains the active MangaThemesia/Iken HTTP
-> suites. The short-synopsis, credit splitting/deduplication, canonical-key and novel-formatting
-> lessons remain in this page and the root review guide.
+> suites. Portable public-API contracts remain on main and run against candidate worktrees;
+> CI calibrates contract edits against canonical upstream. See [[source-checks]] for the
+> enforced lessons and manual-evidence boundaries.
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
 catalogue on `/series/`, a series page carries its chapters, and a chapter page its images. Genz

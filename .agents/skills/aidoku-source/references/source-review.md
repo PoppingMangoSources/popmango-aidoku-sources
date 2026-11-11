@@ -5,6 +5,11 @@ answering review comments. Read `AGENTS.md` / `CLAUDE.md` for the repository's r
 `SKILL.md` for the procedure. Record new observations instead of assuming these snapshots
 remain current.
 
+Automatic enforcement: main's `scripts/review-contracts.py` runs portable public-API
+contracts for these templates, including clean PR worktrees. `check-sources.py` guards
+known rejected patterns and reviewed consumer configuration. The coverage matrix and
+manual-evidence boundaries live in `docs/operations/source-checks.md` on main.
+
 Keyoapp review: [short synopsis](https://github.com/Aidoku-Community/sources/pull/888#discussion_r4542766502),
 [combined credits](https://github.com/Aidoku-Community/sources/pull/888#pullrequestreview-5864800084).
 V1 short synopses have a preformatted paragraph inside `div.overflow-hidden` without

@@ -69,6 +69,8 @@ that shipped:
 - [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it and its unused `serde_json`
       dev dependency out of the submission, including the root lockfile entry
 - [ ] `status`, `content_rating`, `viewer` set on details when the site has them
+- [ ] Synopsis parsing covers short and expanded layouts plus missing/empty text. Credit lists
+      split verified separators, trim/omit blanks and deduplicate within each role in site order.
 - [ ] Author/artist selectors cannot match comments or descriptions; author search needs useful
       author data, not only an empty result for an impossible name. A site with mislabeled types
       may opt into an optional viewer override while other consumers retain their mapping.
@@ -157,6 +159,12 @@ from `check-sources.py`, or say in the summary why it stays. After a workflow ch
 Then read AGENTS.md / CLAUDE.md §3 top to bottom against the diff, one row at a time, and say which rows
 you checked. Passing the scripts isn't the same as following the rules: rows showing
 "Manhwa · ★ 8.3" went to `main` with every gate green.
+
+Run `python3 /path/to/main/scripts/review-contracts.py --repo . --crate sources/<id>`
+for Keyoapp/MangaThemesia consumers, or `--base <upstream-base>` for a template change.
+These public-API contracts run even when the submission excludes fork tests. Never skip a
+failure because the template was archived; the candidate is what must pass. Check the
+coverage and manual-evidence boundaries in `docs/operations/source-checks.md` on main.
 
 Run deterministic `review_` regressions separately (`cargo test review_`), including key-only
 reader inputs and filter capabilities, then the full suite.

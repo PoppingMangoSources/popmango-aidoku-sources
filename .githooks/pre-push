@@ -30,6 +30,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     if [ -n "$source" ]; then
         python3 "$tooling/scripts/check-sources.py" --repo "$root" --upstream "$source"
         "$tooling/scripts/verify-source.sh" "$root/sources/$source"
+        python3 "$tooling/scripts/review-contracts.py" --repo "$root" --crate "sources/$source"
     else
         base=$remote_sha
         if [ -n "$template" ]; then
@@ -59,6 +60,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
                 (cd "$root/$crate"; cargo test -q review_)
             fi
         done <<< "$crates"
+        python3 "$tooling/scripts/review-contracts.py" --repo "$root" --base "$base"
         source_checks=(--repo "$root" --base "$base")
         [ -z "$template" ] || source_checks+=(--upstream)
         python3 "$tooling/scripts/check-sources.py" "${source_checks[@]}"

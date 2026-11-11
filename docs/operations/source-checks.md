@@ -6,6 +6,12 @@ updated: 2026-11-11
 sources:
   - code: scripts/check-sources.py
   - code: scripts/test-http.py
+  - code: scripts/review-contracts.py
+  - code: scripts/review-contracts/keyoapp.rs
+  - code: scripts/review-contracts/mangathemesia.rs
+  - code: scripts/review-contracts/fixtures.py
+  - code: scripts/tests/test_review_rules.py
+  - code: scripts/tests/test_review_contracts.py
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/test.rs
   - code: templates/mangathemesia/src/test.rs
   - code: scripts/tests/test_check_sources.py
@@ -33,12 +39,48 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: 39012e1
+verified_at: 2184823
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
 that need no network and no toolchain. It is the third gate after `cargo fmt`/`clippy` and
 `aidoku package`/`verify`; the rules themselves live in the root file, not here.
+
+## Automatic review contracts
+
+`python3 scripts/review-contracts.py --repo <candidate> --crate sources/<id>` selects the
+candidate's template through Cargo path dependencies. `--template keyoapp`,
+`--template mangathemesia` and `--base <ref>` support explicit/template reviews. Without
+selection arguments, it tests every supported template present in the candidate checkout.
+It builds a temporary harness using the candidate's pinned SDK and public APIs, serves
+synthetic pages on loopback and preserves nonzero compiler/runner/assertion exits.
+`scripts/tests/test_review_contracts.py` verifies selection, error propagation and that
+candidate source files remain untouched. The installed push hook, review command and
+Source tests workflow invoke it. Contract edits also run against fresh merged upstream in
+CI, so Keyoapp coverage remains active after its fork sources were archived.
+
+| Lesson | Automatic enforcement |
+|---|---|
+| Short descriptions need no expand control | Runtime: short, expanded, empty and missing synopsis. Static: reject the known expanded-only assignment. |
+| Credits need separate names and independent roles | Runtime: comma/ampersand split, trim, omit blanks, preserve order, deduplicate per role, V2 byline/block fallback. Static: reject the old comma-space-only helper. |
+| Required title/key cannot be blank | Runtime: V1 title and V2 title/slug errors; home cards reject blank identity. Existing static conversion checks remain. |
+| Newly Added must use its own grid | Runtime: own/adjacent grid accepted, unrelated grid rejected, V1 three-ancestor boundary retained. |
+| Trending Today differs from Most Reviewed Month | Runtime: distinct default periods and monthly fallback request. |
+| Rage metadata must exclude comment prose | Source-specific static guard: both selectors stay in metadata rows, author search stays disabled. |
+| Mislabeled Rage webtoons need a local override | Static guard for its opt-in; runtime verifies optional override and unchanged template defaults. |
+| Reviewed filters only include values | Static guard rejects enabled exclusions for Keyoapp and the reviewed MangaThemesia consumers. Unrelated sites retain their own capabilities. |
+| Novel paragraphs/emphasis and key-only reading | Runtime: real page-list APIs with no cached manga data, balanced adjacent/nested emphasis and line breaks; V2 text/image order. |
+| Compact internal banners and real Latest chapters | Runtime: internal banner key, dimensions, compact data, locked-chapter omission and five-row pagination. |
+| Deep-link keys must be canonical | Runtime: tracking parameters/fragments removed and catalogue-only breadcrumbs skipped. |
+| Shared imports affect every package minimum | Changed templates select every consumer for existing package/SDK verification and fork version-bump checks. |
+| Madara artwork needs a suitable opaque background | Known rejected white asset fails by hash; reviewed asset passes; replacement artwork gets a visual-review note. Existing SDK package verification checks opacity. |
+| Hentai catalogue rating differs from individual title rating | Existing static Hentai-genre minimum and hidden-adult-default checks remain. No blanket rating increase for adult-related words. |
+
+> ⚠️ These contracts establish behavior on captured layout shapes, not current site support
+> or app rendering. New separators, exclusions, ratings, branding and changed markup need
+> fresh evidence and updated tests. Loopback tests do not establish WebView/cookie parity.
+> Minimum app versions are checked on built packages; do not infer linked imports solely
+> from Rust text when feature gating could remove them.
 
 ## Archive and live-test evidence
 
@@ -97,9 +139,10 @@ profile, tests that assert nothing, unused test dependencies, the source, filter
 JSON, the icon, the Rust rules, constant naming, then the README row and the version bump. Outside `--upstream` it also runs `sync-agent-docs.py --check`
 (`scripts/check-sources.py:440`), so a drifted `AGENTS.md` fails here too.
 
-> ⚠️ Only `sources/` is walked (`scripts/check-sources.py:438`). Templates under `templates/`
-> are never checked, so a template's filters or Rust passes whatever it holds. Read a
-> template change against the rules by hand.
+> ⚠️ The generic Rust checker still walks source crates. Template-only edits now select
+> their consumers, and known Keyoapp review patterns are checked through path dependencies.
+> Portable contracts cover the two reviewed templates; other template internals still need
+> their own tests and a manual review.
 
 > ⚠️ A directory without a Cargo manifest is skipped silently (`scripts/check-sources.py:392`),
 > so a misspelled id on the command line reports "checked 1 source(s): 0 failure(s)".
@@ -118,7 +161,7 @@ printed, never failing.
 > kkantan approved fails it, the rule is too broad, so narrow it, drop it, or make it a note.
 > The procedure is in the root `CLAUDE.md` section 9, "How a rule gets into this file".
 
-> ⚠️ Every rule needs two tests in `scripts/tests/test_check_sources.py`: one case it
+> ⚠️ Every rule needs failing and legitimate passing cases in `scripts/tests/`: one case it
 > catches and one legitimate case it lets through. The pass case is what stops the rule
 > from widening later. The tests share module-level `failures` and `notes` lists; a test
 > asserting on notes must clear them first, as `test_unstated_exclusion_is_noted` does.

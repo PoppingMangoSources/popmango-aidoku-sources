@@ -126,3 +126,5 @@ Completed the follow-up [[iken-template]] audit against every review-table row a
 The final Eternal default-catalogue probe contained explicitly adult content without an opt-in filter, so its catalogue rating is now 2. Per-title NSFW conversion already honored the response flag. All consumer suites passed; the existing unrelated NovelArchive documentation references remain a full-docs-lint limitation.
 
 Restored Eternal's catalogue rating to 1 at the owner's request and separated its site-specific migration from shared Iken commits. Per-title NSFW handling stays unchanged. Published a new Eternal package version for the rating correction.
+
+Promoted the Keyoapp and MangaThemesia review lessons into portable public-API contracts, static consumer guards and installed push/CI gates. Calibrated new guards against 169 merged sources, passed all 11 upstream contracts and confirmed five deliberately restored regressions fail. The automation matrix and remaining visual/live checks are in [[source-checks]].

@@ -11,6 +11,7 @@ Exits non-zero when any rule fails. Each failure names the file and the rule.
 """
 
 import argparse
+import hashlib
 import json
 import re
 import struct
@@ -42,8 +43,18 @@ def git(*args: str) -> str:
 
 
 def changed_sources(base: str) -> list[str]:
-    names = git("diff", "--name-only", f"{base}...HEAD", "--", "sources").split()
-    return sorted({Path(name).parts[1] for name in names if len(Path(name).parts) > 2})
+    names = git("diff", "--name-only", f"{base}...HEAD", "--", "sources", "templates").split()
+    sources = {Path(name).parts[1] for name in names if name.startswith("sources/") and len(Path(name).parts) > 2}
+    templates = {Path(name).parts[1] for name in names if name.startswith("templates/") and len(Path(name).parts) > 2}
+    sources.update(manifest.parent.name for manifest in (ROOT / "sources").glob("*/Cargo.toml")
+                   if template_dependencies(manifest.parent) & templates)
+    return sorted(sources)
+
+
+def template_dependencies(source: Path) -> set[str]:
+    manifest = tomllib.loads((source / "Cargo.toml").read_text())
+    return {Path(value["path"]).name for value in manifest.get("dependencies", {}).values()
+            if isinstance(value, dict) and "path" in value and "templates" in Path(value["path"]).parts}
 
 
 def check_text_file(path: Path) -> None:
@@ -424,6 +435,56 @@ def check_template_http(template: str) -> None:
             fail(path, f"bypasses {template} HTTP status checks; use checked fetch helpers")
 
 
+def check_template_review(template: str) -> None:
+    if template != "keyoapp":
+        return
+    for path in (ROOT / "templates" / template / "src").glob("*.rs"):
+        if path.name == "test.rs":
+            continue
+        text = re.sub(r"(?m)^\s*//.*$", "", path.read_text())
+        for assignment in re.findall(r"\bmanga\.description\s*=([^;]+);", text):
+            if re.search(r'\.select_first\(\s*"#expand_content"\s*\)', assignment) and not re.search(r"\.(?:or|or_else)\(", assignment):
+                fail(path, "Keyoapp synopsis depends only on the expansion control; support short descriptions too")
+        for function in re.findall(r"\bfn\s+(?:names|parse_names)\b.*?\n\}", text, re.S):
+            if re.search(r'\.split\(\s*", "\s*\)', function):
+                fail(path, "Keyoapp credits split only on comma-space; split verified commas/ampersands and run review contracts")
+
+
+def check_reviewed_consumer(source: Path, info: dict) -> None:
+    templates = template_dependencies(source)
+    source_id = source.name
+    include_only = "keyoapp" in templates or ("mangathemesia" in templates and source_id in {
+        "en.scythescans", "en.lagoonscans", "en.ravenscans", "en.ragescans",
+        "en.violetscans", "en.thunderscans", "en.madarascans", "en.evascans",
+    })
+    filters_path = source / "res/filters.json"
+    try:
+        filters = json.loads(filters_path.read_text()) if filters_path.exists() else []
+    except json.JSONDecodeError:
+        return
+    if include_only and isinstance(filters, list):
+        for item in filters:
+            if isinstance(item, dict) and item.get("type") == "multi-select" and item.get("canExclude") is True:
+                fail(filters_path, f"{item.get('id')!r} enables exclusions on a reviewed include-only site")
+    if source_id == "en.ragescans" and "mangathemesia" in templates:
+        if info.get("config", {}).get("supportsAuthorSearch") or any(isinstance(item, dict) and item.get("id") == "author" for item in filters):
+            fail(filters_path, "author search has no verified author metadata on this reviewed site")
+        text = "\n".join(re.sub(r"(?m)^\s*//.*$", "", path.read_text()) for path in (source / "src").glob("*.rs") if path.name != "test.rs")
+        for field in ("series_author_selector", "series_artist_selector"):
+            selector = re.search(rf'\b{field}:\s*(?:r\#*)?"([^"]+)"', text)
+            if not selector or any(".tsinfo" not in part or ".imptdt" not in part for part in selector.group(1).split(",")):
+                fail(source / "src/lib.rs", f"{field} must stay inside this site's reviewed .tsinfo .imptdt metadata rows")
+        if not re.search(r"viewer_override:\s*Some\(\s*(?:Viewer::)?Webtoon\s*\)", text):
+            fail(source / "src/lib.rs", "reviewed Manga labels require the Webtoon viewer override on this site")
+    if source_id == "en.madarascans" and (source / "res/icon.png").exists():
+        digest = hashlib.sha256((source / "res/icon.png").read_bytes()).hexdigest()
+        # Reject the reviewed white asset; replacement branding still needs a visual check.
+        if digest == "47ab6b5080e05b86b94d3f97350f5e113737fb0330c6a69485390364f655c9b3":
+            fail(source / "res/icon.png", "restores the rejected white-background icon; use the reviewed dark artwork")
+        elif digest != "74dc07a11f7bc50097208825f2c9aec07e16c8a91ed0eb6b4dd5e8b52851b011":
+            note(source / "res/icon.png", "differs from the reviewed icon; verify its opaque background fits the site's artwork/header")
+
+
 def check_source(source_id: str, base: str | None, upstream: bool = False) -> None:
     source = SOURCES / source_id
     if not (source / "Cargo.toml").exists():
@@ -438,6 +499,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
     check_tests(source)
     check_test_dependencies(source)
     info = check_source_json(source / "res" / "source.json", source_id)
+    check_reviewed_consumer(source, info)
     check_icon(source / "res" / "icon.png")
     for name in ("filters.json",):
         if (source / "res" / name).exists():
@@ -480,10 +542,11 @@ def main() -> int:
     for name in names:
         check_source(name, args.base, args.upstream)
 
-    if not args.upstream:
-        for template in ("keyoapp", "mangathemesia", "iken"):
-            if any(f"templates/{template}" in (SOURCES / name / "Cargo.toml").read_text()
-                   for name in names if (SOURCES / name / "Cargo.toml").exists()):
+    for template in ("keyoapp", "mangathemesia", "iken"):
+        if any(template in template_dependencies(SOURCES / name)
+               for name in names if (SOURCES / name / "Cargo.toml").exists()):
+            check_template_review(template)
+            if not args.upstream:
                 check_template_http(template)
 
     for item in notes:

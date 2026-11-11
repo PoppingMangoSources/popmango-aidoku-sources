@@ -278,7 +278,8 @@ from it, so setting the flag as well is redundant.
 ## 3. Review feedback
 
 Our own reviews first, then what kkantan asked of other contributors. `scripts/check-sources.py`
-catches the mechanical ones; the rest are for reading the diff.
+catches the mechanical ones; `scripts/review-contracts.py` tests template behavior through public APIs.
+The rest are for reading the diff.
 
 **Before every push of a source, read this whole section against the diff, row by row.** A
 rule here was broken again after it was written down: `en.atsumaru` went to `main` showing
@@ -939,6 +940,16 @@ went in one of these ways, and new ones go in the same way:
   `uses_tag_style: true`, a remapped `Request` error, a "Show Locked" switch on by default
   without a login, and a chapter escaped whole into one `PageContent::text`. It notes `!included.is_empty()` and slicing off a prefix by its length, both
   in recent merges (`multi.xcomic`, `multi.sumidoku`, `multi.mangadex`).
+- `scripts/review-contracts.py --repo <candidate> [--crate sources/<id> | --base <ref>]`
+  runs portable Keyoapp/MangaThemesia contracts against the candidate's actual template and
+  pinned SDK. The fixture server is loopback only; source files stay untouched. Installed
+  push hooks and `review-source.sh` invoke it, including clean submission worktrees without
+  fork tests. Source tests CI runs it for selected consumers/templates and calibrates edited
+  contracts against fresh canonical upstream, retaining Keyoapp coverage after archiving.
+  Missing toolchains, compilation errors and assertion failures fail the gate. No live-site
+  fallback or ignored cases. See `docs/operations/source-checks.md` for the coverage matrix.
+- Template-only edits select every current consumer for source checks and package verification;
+  a consumer does not need its own edited file to require a release bump on fork main.
 - `scripts/check-workflows.py [--offline]` reads every `uses:` action's runtime from its
   `action.yml` at the pinned ref and fails a deprecated Node, and fails a workflow that installs
   `aidoku-test-runner` without the font headers, or that lints (`lint-crates.sh`, `cargo clippy`,

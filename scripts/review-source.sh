@@ -18,6 +18,7 @@ tests=()
 [ -f "$dir/src/test.rs" ] && tests=(--test)
 step "Gates: fmt, clippy, dead-code lints, package, verify${tests:+, live tests}" \
     "$root/scripts/verify-source.sh" "$dir" "${tests[@]}"
+step "Portable template review contracts" python3 "$root/scripts/review-contracts.py" --repo "$root" --crate "sources/$id"
 step "Source rules" python3 "$root/scripts/check-sources.py" --base origin/main "$id"
 echo
 echo "== Names few merged sources share (swap each for its usual equivalent, or say why not)"

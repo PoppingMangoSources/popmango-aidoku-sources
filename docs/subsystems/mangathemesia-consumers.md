@@ -27,6 +27,8 @@ sources:
 verified_at: c4c71c6
 ---
 
+Portable review gates and their coverage are recorded in [[source-checks]].
+
 KingOfShojo and RokariComics are plain consumers of the mangathemesia template: a `BASE_URL` and
 `Params { base_url, ..Default::default() }`, registered with `Home`, `ImageRequestProvider` and
 `DeepLinkHandler`, the shape of upstream's `en.rizzfables`. Their filters are static

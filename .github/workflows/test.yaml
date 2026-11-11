@@ -10,6 +10,8 @@ on:
       - "templates/**"
       - ".github/workflows/test.yaml"
       - "scripts/test-sources.py"
+      - "scripts/review-contracts.py"
+      - "scripts/review-contracts/**"
   workflow_dispatch:
     inputs:
       sources:
@@ -74,6 +76,12 @@ jobs:
             base="$BASE_SHA"
             if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git rev-parse HEAD~1); fi
             python3 scripts/changed-crates.py --base "$base" > "$RUNNER_TEMP/candidates"
+            if git diff --name-only "$base" HEAD -- scripts/review-contracts.py scripts/review-contracts/ | grep -q .; then
+              for template in keyoapp mangathemesia; do
+                [[ ! -f "templates/$template/Cargo.toml" ]] || echo "templates/$template" >> "$RUNNER_TEMP/candidates"
+              done
+              sort -u -o "$RUNNER_TEMP/candidates" "$RUNNER_TEMP/candidates"
+            fi
           fi
           while IFS= read -r source; do
             if [[ ! -f "$source/Cargo.toml" ]]; then
@@ -90,11 +98,27 @@ jobs:
       - name: Install the test runner
         run: |
           set -euo pipefail
-          [[ -s "$RUNNER_TEMP/tested" ]] || exit 0
+          [[ -s "$RUNNER_TEMP/candidates" ]] || exit 0
           # The runner renders text with font-kit, which links the system fontconfig and freetype.
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends libfontconfig-dev libfreetype-dev
           cargo install --locked --git https://github.com/Aidoku/aidoku-rs aidoku-test-runner
+
+      - name: Calibrate changed contracts against merged upstream
+        env:
+          BASE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_EVENT_NAME" == push ]] || exit 0
+          base="$BASE_SHA"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git rev-parse HEAD~1); fi
+          if git diff --name-only "$base" HEAD -- scripts/review-contracts.py scripts/review-contracts/ | grep -q .; then
+            git clone --quiet --depth 1 https://github.com/Aidoku-Community/sources.git "$RUNNER_TEMP/review-upstream"
+            python3 scripts/review-contracts.py --repo "$RUNNER_TEMP/review-upstream"
+          fi
+
+      - name: Run portable template review contracts
+        run: python3 scripts/review-contracts.py --crates-file "$RUNNER_TEMP/candidates"
 
       - name: Run HTTP response regressions
         run: |
