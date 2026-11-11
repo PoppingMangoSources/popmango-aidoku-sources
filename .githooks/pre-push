@@ -58,7 +58,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
                 (cd "$root/$crate"; cargo test -q review_)
             fi
         done <<< "$crates"
-        python3 "$tooling/scripts/check-sources.py" --base "$base"
+        source_checks=(--repo "$root" --base "$base")
+        [ -z "$template" ] || source_checks+=(--upstream)
+        python3 "$tooling/scripts/check-sources.py" "${source_checks[@]}"
         if git diff --name-only "$base" "$local_sha" -- .github | grep -q .; then
             python3 "$tooling/scripts/check-workflows.py" --offline
         fi

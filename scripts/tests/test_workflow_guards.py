@@ -48,6 +48,23 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(scope.template_for_branch("fix-iken"), "iken")
         self.assertIsNone(scope.template_for_branch("fix-other"))
 
+    def test_template_hook_checks_the_submission_checkout(self):
+        hook = (SCRIPTS.parent / '.githooks/pre-push').read_text()
+        block = hook.split('        source_checks=', 1)[1].split('        if git diff', 1)[0]
+        block = 'source_checks=' + block
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            executable = folder / 'python3'
+            executable.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+            executable.chmod(0o755)
+            for template, expected in [('iken', True), ('', False)]:
+                output = subprocess.check_output(['bash', '-euo', 'pipefail', '-c', block],
+                    env={**os.environ, 'PATH': str(folder) + ':' + os.environ['PATH'],
+                         'root': '/submission', 'tooling': '/fork', 'base': 'canonical', 'template': template}, text=True)
+                args = output.splitlines()
+                self.assertEqual(args[:5], ['/fork/scripts/check-sources.py', '--repo', '/submission', '--base', 'canonical'])
+                self.assertEqual('--upstream' in args, expected)
+
     def test_clean_submission(self):
         self.assertEqual(self.inspect(), [])
 

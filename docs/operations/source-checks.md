@@ -217,3 +217,7 @@ and review stamps; they do not replace live tests or manual review.
 > ⚠️ After publication, review-source compares against the same origin/main snapshot. An
 > unchanged source and its path dependencies need no second bump. Changed source or template
 > files still require one; the version checker tests both cases.
+
+> ⚠️ Template submissions use the tooling checkout's hook but must pass `--repo` for the
+> submission worktree and `--upstream` to the source checker. Otherwise the hook checks the
+> fork's unrelated history and reports unrelated consumers as failures.
