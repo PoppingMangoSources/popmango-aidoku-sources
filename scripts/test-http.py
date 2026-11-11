@@ -30,15 +30,18 @@ class Responses(http.server.BaseHTTPRequestHandler):
             body = "<main><section><h2>Latest Releases</h2><a href='/series/old' title='Old'><img src='https://example.com/old.jpg'></a></section><section><h2>Most Popular</h2><a href='/series/popular' title='Popular'><img src='https://example.com/popular.jpg'></a></section></main>"
         if urlsplit(self.path).path == "/home-existing":
             body = body.replace("</main>", "<section><h2>Novels</h2><a href='/series/old-novel' title='Old novel'><img src='https://example.com/cover.jpg'></a></section></main>")
-        if urlsplit(self.path).path.endswith("/api/query"):
+        if urlsplit(self.path).path.endswith(("/api/query", "/api/posts")):
             content_type = "application/json"
             novel = query.get("seriesType") == ["NOVEL"]
-            expected_keys = {"page", "perPage", "view", "orderBy", "orderDirection"} | ({"seriesType"} if novel else set())
-            if set(query) != expected_keys or query.get("orderBy") != (["lastChapterAddedAt"] if novel else ["createdAt"]) or query.get("orderDirection") != ["desc"]:
+            latest = query.get("perPage") == ["100"]
+            expected_keys = {"page", "perPage"} if latest else {"page", "perPage", "view", "orderBy", "orderDirection"} | ({"seriesType"} if novel else set())
+            if set(query) != expected_keys or (not latest and (query.get("orderBy") != (["lastChapterAddedAt"] if novel else ["createdAt"]) or query.get("orderDirection") != ["desc"])):
                 status = 400
             if urlsplit(self.path).path.startswith("/fail") and (not urlsplit(self.path).path.startswith("/fail-new") or not novel):
                 status = 503
             posts = [{"id": 8 if novel else 7, "slug": "novel" if novel else "new", "postTitle": "Novel" if novel else "New", "featuredImage": "https://example.com/cover.jpg"}]
+            if latest:
+                posts = [{"id": 1, "slug": "old", "postTitle": "Old", "chapters": [{"id": 11, "slug": "chapter-1", "number": 1, "createdAt": "2026-11-11T12:00:00.000Z", "isAccessible": True}]}]
             if novel and urlsplit(self.path).path.startswith("/empty-novels"):
                 posts = []
             body = json.dumps({"posts": posts, "totalCount": len(posts)})

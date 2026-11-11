@@ -1,5 +1,5 @@
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
+	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Result, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{element::ElementHelpers, string::PlainText},
 	imports::{html::Html, std::parse_date_with_options},
@@ -35,6 +35,8 @@ pub struct ChapterResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Post {
+	#[serde(default)]
+	chapters: Vec<IkenChapter>,
 	pub id: i32,
 	pub slug: String,
 	post_title: String,
@@ -71,6 +73,8 @@ pub struct IkenChapter {
 	created_by: Option<Author>,
 	team: Option<Author>,
 	created_at: Option<String>,
+	updated_at: Option<String>,
+	became_free_at: Option<String>,
 	is_locked: Option<bool>,
 	is_time_locked: Option<bool>,
 	is_permanently_locked: Option<bool>,
@@ -103,6 +107,22 @@ fn number<'de, D: Deserializer<'de>>(deserializer: D) -> core::result::Result<f3
 }
 
 impl Post {
+	pub fn into_manga_with_chapter(self, base_url: &str) -> Result<Option<MangaWithChapter>> {
+		let manga = Manga::try_from(&self)?;
+		let Some(mut chapter) = self.chapters.into_iter().find(|chapter| !chapter.locked()) else {
+			return Ok(None);
+		};
+		chapter.created_at = chapter
+			.became_free_at
+			.take()
+			.or(chapter.updated_at.take())
+			.or(chapter.created_at.take());
+		Ok(Some(MangaWithChapter {
+			manga,
+			chapter: chapter.into_chapter(base_url, Some(&self.slug))?,
+		}))
+	}
+
 	pub fn key(&self) -> Result<String> {
 		if self.id <= 0 || self.slug.trim().is_empty() || self.post_title.trim().is_empty() {
 			bail!("Invalid series identity");

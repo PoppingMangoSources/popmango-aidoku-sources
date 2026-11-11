@@ -369,3 +369,50 @@ fn review_home_latest_and_popular_page_sizes_keep_every_entry() {
 		}
 	}
 }
+
+#[aidoku_test]
+fn review_latest_chapters_preserve_site_order_and_skip_locked() {
+	let html = Html::parse(r#"<main><section><h2>Latest Releases</h2><a href='/series/pinned' title='pinned'><img src='cover.jpg'></a><a href='/series/recent' title='Recent'><img src='cover.jpg'></a></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let mut layout = home::parse(&html, &params).unwrap();
+	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":2,"slug":"recent","postTitle":"Recent","chapters":[{"id":21,"slug":"chapter-3","number":3,"createdAt":"2026-11-11T12:00:00.000Z","isAccessible":true}]},{"id":1,"slug":"pinned","postTitle":"pinned","chapters":[{"id":12,"slug":"chapter-2","number":2,"isLocked":true},{"id":11,"slug":"chapter-1","number":1,"createdAt":"2026-11-10T12:00:00.000Z","isAccessible":true}]}],"totalCount":2}"#).unwrap();
+	home::latest(&mut layout, data.posts, &params).unwrap();
+	let HomeComponentValue::MangaChapterList {
+		page_size, entries, ..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected real chapter rows");
+	};
+	assert_eq!(*page_size, Some(5));
+	assert_eq!(
+		entries
+			.iter()
+			.map(|e| (
+				e.manga.key.as_str(),
+				e.chapter.key.as_str(),
+				e.chapter.chapter_number
+			))
+			.collect::<Vec<_>>(),
+		[("1", "11", Some(1.)), ("2", "21", Some(3.))]
+	);
+	assert_eq!(entries[0].manga.title, "pinned");
+	assert_eq!(
+		entries[0].chapter.url.as_deref(),
+		Some("https://example.com/series/pinned/chapter-1")
+	);
+	assert!(
+		entries
+			.iter()
+			.all(|e| !e.chapter.locked && e.manga.description.is_none())
+	);
+	let original = layout.clone();
+	assert!(home::latest(&mut layout, Vec::new(), &params).is_ok());
+	assert_eq!(layout, original);
+	let mut missing = home::parse(&html, &params).unwrap();
+	let original = missing.clone();
+	assert!(home::latest(&mut missing, Vec::new(), &params).is_err());
+	assert_eq!(missing, original);
+}

@@ -1,4 +1,7 @@
-use crate::{Impl, Params, helpers, models::SearchResponse};
+use crate::{
+	Impl, Params, helpers,
+	models::{Post, SearchResponse},
+};
 use aidoku::{
 	HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Manga, Result,
 	alloc::{String, Vec, string::ToString, vec},
@@ -24,6 +27,8 @@ pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> 
 		}
 		urls.push(format!("{}/api/query?{query}", params.api_url()));
 	}
+	// Pinned titles can fall below the first API page.
+	urls.push(format!("{}/api/posts?page=1&perPage=100", params.api_url()));
 	let requests = urls
 		.iter()
 		.map(|url| {
@@ -49,6 +54,10 @@ pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> 
 				layout = source.parse_home(params, &response.get_html()?)?;
 			} else {
 				let data: SearchResponse = response.get_json()?;
+				if index + 1 == urls.len() {
+					latest(&mut layout, data.posts, params)?;
+					return Ok(());
+				}
 				let entries: Vec<Link> = data
 					.posts
 					.iter()
@@ -100,6 +109,44 @@ pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> 
 		return Err(failure.unwrap_or_else(|| error!("Home sections not found")));
 	}
 	Ok(layout)
+}
+
+pub(crate) fn latest(layout: &mut HomeLayout, mut posts: Vec<Post>, params: &Params) -> Result<()> {
+	let Some(component) = layout.components.iter_mut().find(|component| {
+		matches!(
+			component.title.as_deref(),
+			Some("Latest Releases" | "Latest Updates" | "Últimas Actualizaciones")
+		)
+	}) else {
+		return Ok(());
+	};
+	let HomeComponentValue::MangaList { entries, .. } = &component.value else {
+		return Ok(());
+	};
+	let mut chapters = Vec::new();
+	for link in entries {
+		let Some(LinkValue::Manga(manga)) = &link.value else {
+			continue;
+		};
+		let slug = manga.key.strip_prefix("/series/").unwrap_or(&manga.key);
+		let index = posts
+			.iter()
+			.position(|post| post.slug == slug)
+			.ok_or_else(|| error!("Latest series missing from API: {slug}"))?;
+		let post = posts.remove(index);
+		if let Some(entry) = post.into_manga_with_chapter(&params.base_url)? {
+			chapters.push(entry);
+		}
+	}
+	if chapters.is_empty() {
+		bail!("No accessible latest chapters");
+	}
+	component.value = HomeComponentValue::MangaChapterList {
+		page_size: Some(5),
+		entries: chapters,
+		listing: None,
+	};
+	Ok(())
 }
 
 fn manga(element: &Element, params: &Params) -> Option<Manga> {

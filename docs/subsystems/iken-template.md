@@ -15,7 +15,7 @@ sources:
   - code: sources/en.hivescans/src/helpers.rs
   - ext: https://github.com/Aidoku-Community/sources/commit/a5b9802a25780ba5db5dbe2590793e88bfd3d355
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
-verified_at: 4806c6d
+verified_at: 913edae
 ---
 
 The template serves Hive Scans, Nyx Scans, Vortex Scans, Magus Manga and EternalMangas.
@@ -50,14 +50,14 @@ home pages were available through Firecrawl. Direct home requests returned 403.
 
 ## Home and novels
 
-Home requests the HTML, New Releases and Novels API feeds concurrently. Newly added series use
+Home requests the HTML, New Releases, Novels and one chapter-metadata API feed concurrently. Newly added series use
 createdAt descending, and their compact row sits before Most Popular/Tendencias. The
 consumer can localize both headings. Novels uses seriesType=NOVEL and the consumer's verified default sort. isNovel is ignored by these APIs and is never sent. Empty novel
 feeds are omitted; an existing novel component keeps its original position. Failed rows are omitted; all failures return an error.
 Home reads real HTML cards, recognizes verified headings in DOM order and bounds the ancestor
 walk before a neighboring section. It does not construct artificial chapters or fetch each
-card. Latest Releases/Latest Updates/Últimas Actualizaciones is a compact paged list with five rows per page.
-The HTML links carry chapter slugs rather than stable chapter ids, so cards remain series links.
+card. Latest Releases/Latest Updates/Últimas Actualizaciones uses chapter rows with five rows per page.
+One `/api/posts?page=1&perPage=100` batch resolves real series/chapter IDs while preserving the HTML row order, including pinned titles. It selects the first accessible chapter and uses becameFreeAt, updatedAt, then createdAt for its timestamp. If metadata cannot resolve the complete row, the original series list remains intact.
 Most Popular/Tendencias is a ranked list with three rows per page.
 Looped featured slides are ordered by their slide indexes and deduplicated. Vortex's original
 cover fallback is preferred over a wide banner. Eternal uses its own Spanish headings and
@@ -79,6 +79,8 @@ AIDOKU_IKEN_EVIDENCE_DIR to a local directory of captured home HTML to additiona
 current layouts without sending captures elsewhere. Source tests share a fork-only fixture
 in `templates/iken/src/source_test.rs` and run static contracts separately from live suites.
 Do not include these test files or their unused dev dependencies in the submission.
+
+Hive stores the title `crocodile` in lowercase in both the HTML and public API; preserve its stored spelling rather than changing every catalogue title.
 
 Reference clients reviewed: Keiyoushi Iken, InkDex HiveToons, LucifersCircle Mana and Pirate
 Vodka VortexScans, Seyden VortexScans/Iken, CorruptBytes VortexScans and Kitty NyxScans/vcomics.

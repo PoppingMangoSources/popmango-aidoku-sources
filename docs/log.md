@@ -116,3 +116,5 @@ Synchronized checked-request helpers into the KeyoApp and Rage submission trees.
 Set [[iken-template]] latest-release lists to five rows per page and popular ranked lists to three, with English/Spanish layout regressions preserving all cards.
 
 Moved Mist Scans to its working `.org` V2 site and replaced V1 filters/tests in [[keyoapp-template]].
+
+Restored real chapter numbers and release dates to the Iken latest row with one metadata batch, preserving pinned HTML order and existing page sizes. Checked Hive against the linked reference client and current API; the lowercase title comes from the site. See [[iken-template]].
