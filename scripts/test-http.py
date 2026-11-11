@@ -20,6 +20,22 @@ class Responses(http.server.BaseHTTPRequestHandler):
         if self.path == "/json":
             content_type = "application/json"
             body = '{"html":"","has_more":false}'
+        if self.path.startswith("/keyoapp/"):
+            kind = parts[2]
+            title = " " if kind == "blank-title" else "Title"
+            body = f'<div class="grid" data-series-uid="1" data-series-slug="title"><h1>{title}</h1></div>'
+            if kind in {"by", "blocks", "empty-by"}:
+                if kind != "blocks":
+                    body += '<p class="l2-by">By ' + ("First &amp; Second,First" if kind == "by" else "") + '</p>'
+                for label, value in [("Author", "First ,Second &amp;First"), ("Artist", "Third &amp;Third")]:
+                    body += f'<div class="bg-surface rounded-lg"><div class="text-xs">{label}</div><span class="text-sm">{value}</span></div>'
+            else:
+                for label, value in [("Author", "First ,Second &amp;First"), ("Artist", "Third &amp;Third")]:
+                    body += f'<div class="grid"><div><span>{label}</span></div><div>{value}</div></div>'
+                if kind != "missing":
+                    container = 'id="expand_content"' if kind == "expanded" else 'class="overflow-hidden"'
+                    text = "First sentence. Last sentence." if kind == "expanded" else (" " if kind == "empty" else "Short synopsis")
+                    body += f'<div class="grid gap-2"><div>Synopsis</div><div class="grid"><div {container}><p style="white-space: pre-wrap">{text}</p></div></div></div>'
         if self.path.startswith("/metadata/"):
             kind = parts[2]
             body = f'<div class="postbody"><h1 class="entry-title">Title</h1><div class="tsinfo"><span class="type">{kind}</span></div><div class="comments"><span>Author discussed this story.</span><span>Artist discussed this story.</span></div></div>'

@@ -107,6 +107,107 @@ fn review_cards_require_a_nonempty_title() {
 	let html = Html::parse(r#"<div data-series-uid="1" data-series-slug="title"><h1> </h1></div>"#)
 		.unwrap();
 	assert!(helpers::manga_from_page(&html).is_none());
+	let html = Html::parse(r#"<div data-series-uid="1" data-series-slug=" "><h1>Title</h1></div>"#)
+		.unwrap();
+	assert!(helpers::manga_from_page(&html).is_none());
+}
+
+#[aidoku_test]
+fn review_credit_names_are_separate_and_unique() {
+	assert_eq!(
+		helpers::names(" First ,Second & First, Third &Second , & "),
+		Some(["First", "Second", "Third"].map(String::from).to_vec())
+	);
+	assert_eq!(
+		helpers::names(" Single Name "),
+		Some(["Single Name"].map(String::from).to_vec())
+	);
+	assert!(helpers::names(" , & ").is_none());
+}
+
+#[aidoku_test]
+fn review_content_rating_keeps_the_highest_tag_rating() {
+	use aidoku::ContentRating;
+	for (tags, expected) in [
+		(["Action", "Comedy"], ContentRating::Safe),
+		(["MATURE", "Action"], ContentRating::Suggestive),
+		(["Ecchi", "Hentai"], ContentRating::NSFW),
+		(["aDuLt", "Mature"], ContentRating::NSFW),
+	] {
+		assert_eq!(helpers::content_rating(tags.into_iter()), expected);
+	}
+}
+
+struct SiteV2;
+
+impl ImplV2 for SiteV2 {
+	fn new() -> Self {
+		Self
+	}
+
+	fn params(&self) -> Params {
+		Site.params()
+	}
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_descriptions_and_credits() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("run scripts/test-http.py");
+	};
+	let params = Params {
+		base_url: base.into(),
+		..Default::default()
+	};
+	for (kind, description) in [
+		("short", Some("Short synopsis")),
+		("expanded", Some(r"First sentence\. Last sentence\.")),
+		("empty", None),
+		("missing", None),
+	] {
+		let manga = Site
+			.get_manga_update(
+				&params,
+				Manga {
+					key: format!("/keyoapp/{kind}"),
+					..Default::default()
+				},
+				true,
+				false,
+			)
+			.unwrap();
+		assert_eq!(manga.description.as_deref(), description);
+		assert_eq!(manga.authors, helpers::names("First, Second"));
+		assert_eq!(manga.artists, helpers::names("Third"));
+	}
+	for kind in ["by", "blocks", "empty-by"] {
+		let manga = SiteV2
+			.get_manga_update(
+				&params,
+				Manga {
+					key: format!("/keyoapp/{kind}"),
+					..Default::default()
+				},
+				true,
+				false,
+			)
+			.unwrap();
+		assert_eq!(manga.authors, helpers::names("First, Second"));
+		assert_eq!(manga.artists, helpers::names("Third"));
+	}
+	assert!(
+		Site.get_manga_update(
+			&params,
+			Manga {
+				key: "/keyoapp/blank-title".into(),
+				..Default::default()
+			},
+			true,
+			false
+		)
+		.is_err()
+	);
 }
 
 #[aidoku_test]

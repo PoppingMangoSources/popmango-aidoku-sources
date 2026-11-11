@@ -5,6 +5,14 @@ answering review comments. Read `AGENTS.md` / `CLAUDE.md` for the repository's r
 `SKILL.md` for the procedure. Record new observations instead of assuming these snapshots
 remain current.
 
+Keyoapp review: [short synopsis](https://github.com/Aidoku-Community/sources/pull/888#discussion_r4542766502),
+[combined credits](https://github.com/Aidoku-Community/sources/pull/888#pullrequestreview-5864800084).
+V1 short synopses have a preformatted paragraph inside `div.overflow-hidden` without
+`#expand_content`; keep the expanded layout too. Split verified comma/ampersand credits,
+trim, omit blanks and deduplicate in order, independently for authors and artists. FreeWebNovel
+and MangaPlus demonstrate delimiter splitting; ReManga demonstrates order-preserving name
+deduplication. Loopback fixtures cover the V1 and both V2 metadata layouts and empty byline fallback.
+
 Rage Scans review: [author filter](https://github.com/Aidoku-Community/sources/pull/883#discussion_r4529796128),
 [comment mistaken for author and viewer override](https://github.com/Aidoku-Community/sources/pull/883#pullrequestreview-5848419962).
 The reported page has no author metadata; `span:contains(Author)` selects comment prose within

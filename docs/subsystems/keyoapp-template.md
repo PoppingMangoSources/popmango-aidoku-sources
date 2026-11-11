@@ -36,7 +36,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/865
   - ext: https://github.com/Aidoku-Community/sources/pull/824
   - ext: https://github.com/Aidoku-Community/sources/pull/666
-verified_at: f82ad0a
+verified_at: 76098d2
 ---
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
@@ -188,6 +188,32 @@ chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2
 > verifies every crate it changes.
 
 ## Review against merged sources
+
+The 2026-11-11 review used canonical upstream `9d24296`. Every production Rust line in
+the six template modules and ten consumer entry points was reread, with manifests and
+filter mappings checked as well. MangaK and VineTheme retain the same generic trait
+delegates; Madara, MangaThemesia and MangaReader scope synopsis/metadata extraction;
+FreeWebNovel and MangaPlus split credits; ReManga preserves order when deduplicating names.
+Flame and NovelBuddy justify the separate text-node/element walk. The home parsers and
+generation-specific requests remain separate: their layouts, pagination and reader formats
+differ. No extra wrapper, renamed helper, dependency or abstraction was needed.
+The rating parser now consumes tags once, following NovelArchive and RawDevart, instead
+of cloning its iterator for repeated scans; rating precedence stays unchanged.
+
+Validation for this review: all ten consumers passed formatting, warning-failing Clippy,
+packaging and `aidoku verify`; their 18 offline regressions passed. The template passed
+11 ordinary regressions and both loopback HTTP tests. The live suites passed for Asmodeus
+(13), Siren (11) and Timeless (10); other live suites were not rerun. Repository gates passed
+103 script tests, source rules, instruction synchronization and workflow checks. The separate
+wiki link checker still reports eight existing missing NovelArchive paths. Device rendering
+was not checked.
+
+> ⚠️ Short V1 descriptions lack `#expand_content`. Accept the short synopsis paragraph as
+> well as the expanded container. Both generations split credits on commas and ampersands,
+> trim and deduplicate names without changing credit order. Empty bylines must allow the
+> labelled author fallback; author and artist lists remain independent. The loopback regression
+> exercises actual detail requests for short/expanded/empty/missing descriptions and both
+> V2 credit layouts. Blank detail titles and slugs are rejected.
 
 The 2026-11-09 audit covered the eleven commits from `fc3d3cf` through `ae92053`, every
 Rust line in the template and ten consumers, their manifests, locks, resources and main-only
