@@ -4,30 +4,30 @@ type: subsystem
 created: 2026-11-08
 updated: 2026-11-11
 sources:
-  - code: templates/keyoapp/src/lib.rs
-  - code: templates/keyoapp/src/imp.rs
-  - code: templates/keyoapp/src/helpers.rs
-  - code: templates/keyoapp/src/home.rs
-  - code: templates/keyoapp/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/imp.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/test.rs
   - code: .github/workflows/test.yaml
   - code: scripts/tests/test_template_tests.py
   - code: scripts/test-http.py
-  - code: templates/keyoapp/src/v2.rs
-  - code: templates/keyoapp/src/models.rs
-  - code: sources/en.asmotoon/src/test.rs
-  - code: sources/en.genztoons/src/lib.rs
-  - code: sources/en.genztoons/src/test.rs
-  - code: sources/en.genztoons/res/filters.json
-  - code: sources/en.lunatoons/res/filters.json
-  - code: sources/en.kaizenscan/res/filters.json
-  - code: sources/en.sirenscans/res/filters.json
-  - code: sources/en.asmotoon/res/filters.json
-  - code: sources/en.timelesstoons/res/filters.json
-  - code: sources/en.kewnscans/res/filters.json
-  - code: sources/en.erisscans/res/filters.json
-  - code: sources/en.mistscans/res/filters.json
-  - code: sources/en.grimscans/res/filters.json
-  - code: templates/keyoapp/README.md
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/v2.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.asmotoon/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.genztoons/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.genztoons/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.genztoons/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.lunatoons/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.kaizenscan/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.sirenscans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.asmotoon/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.timelesstoons/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.kewnscans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.erisscans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.mistscans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/sources/en.grimscans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/README.md
   - code: scripts/check-upstream-scope.py
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/keyoapp
   - ext: https://github.com/Aidoku-Community/sources/tree/a6ec13ae4127331c8edee6bad469144245b1db8a/templates
@@ -38,6 +38,17 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/666
 verified_at: 76098d2
 ---
+
+Keyoapp and all ten consumers merged in [888](https://github.com/Aidoku-Community/sources/pull/888)
+and left main after snapshot `81e42e5`. The complete template, consumers, tests and loopback
+fixtures remain on [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources).
+The implementation details below describe that preserved snapshot; subsequent maintenance
+starts from the current upstream template/consumers and restores only the needed fork tests.
+
+> ⚠️ No Keyoapp consumer remains on main, so its template and dedicated HTTP fixtures are
+> archived together. The main test workflow retains the active MangaThemesia/Iken HTTP
+> suites. The short-synopsis, credit splitting/deduplication, canonical-key and novel-formatting
+> lessons remain in this page and the root review guide.
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
 catalogue on `/series/`, a series page carries its chapters, and a chapter page its images. Genz

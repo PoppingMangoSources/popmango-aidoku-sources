@@ -1426,14 +1426,16 @@ A source leaves `main` once it is upstream, or while its upstream branch waits o
 crate and live tests stay in `main`'s history; what it taught stays in this file and `docs/`.
 The `merged-sources` branch keeps the last copy of each merged one, tests included (Atsumaru,
 MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive and the six MangaThemesia
-sources merged in the November batch), so they can be read and
+sources merged in the November batch, plus both Keyoapp generations and their ten consumers),
+so they can be read and
 tested in one place.
 
 Confirm the canonical PR is merged before archiving. Copy the complete tracked crate, tests,
 icons and its current path dependencies to `merged-sources`, verify the snapshot and publish
 that branch first. Remove the crate, README entry and unused source icon from main afterwards;
 removal does not publish a new source version. Keep shared templates and their regressions on
-main while other sources use them. `scripts/check-archives.py --base <before>` compares every
+main while other sources use them. Move an unused template and its source-specific fixtures
+with its last consumers; preserve review guidance and working history links on main. `scripts/check-archives.py --base <before>` compares every
 removed crate and dependency against `origin/merged-sources` or `origin/dead-sources`; repository
 and push gates reject incomplete preservation. Archive branches do not publish packages.
 
@@ -1454,6 +1456,16 @@ and push gates reject incomplete preservation. Archive branches do not publish p
 | `en.evascans` | merged (#884) | `ce4c298` | `merged-sources`; maintenance from upstream | shared reader and minimum app version; MangaThemesia docs |
 | `en.ragescans` | merged (#883) | `ce4c298` | `merged-sources`; maintenance from upstream | metadata scope, author filter and viewer override; MangaThemesia docs |
 | `en.lagoonscans` | merged (#881) | `ce4c298` | `merged-sources`; maintenance from upstream | static filters and template reuse; MangaThemesia docs |
+| `en.asmotoon` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.erisscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.genztoons` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.grimscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.kaizenscan` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.kewnscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.lunatoons` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.mistscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.sirenscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.timelesstoons` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a

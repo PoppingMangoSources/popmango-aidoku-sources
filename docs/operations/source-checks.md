@@ -6,7 +6,7 @@ updated: 2026-11-11
 sources:
   - code: scripts/check-sources.py
   - code: scripts/test-http.py
-  - code: templates/keyoapp/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/test.rs
   - code: templates/mangathemesia/src/test.rs
   - code: scripts/tests/test_check_sources.py
   - code: scripts/calibrate-rules.sh
