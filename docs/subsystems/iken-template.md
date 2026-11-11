@@ -16,14 +16,14 @@ sources:
   - code: sources/es.eternalmangas/res/source.json
   - ext: https://github.com/Aidoku-Community/sources/commit/a5b9802a25780ba5db5dbe2590793e88bfd3d355
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
-verified_at: a276190
+verified_at: 882ee09
 ---
 
 The template serves Hive Scans, Nyx Scans, Vortex Scans, Magus Manga and EternalMangas.
 Shared behavior follows the Params/Impl arrangement used by [[mangak-template]]. The fork
 restores these upstream sources temporarily for publication and testing. The submission
 branch is `fix-iken`, based on canonical `4ac8414`, with production files only.
-Review fixes append to the existing submission history.
+The submission history separates Eternal's site migration from shared Iken behavior.
 
 ## API and keys
 
@@ -114,7 +114,7 @@ The recent reviewer threads checked were 890, 889, 884, 883, 881, 882, 872 and 8
 | Pagination and errors | Reject duplicate ids within or between pages, including overlaps after the first entry. Loopback regressions retain incomplete-page, HTTP, missing-page and key-only reader checks. |
 | Cards and filters | Compact cards, blank required identity rejection, sort first, static tag taps, explicit unsupported exclusions and source-local sort/type overrides remain. No settings or dynamic-genre machinery is needed. |
 | Home and reader | Preserve pinned HTML order, real chapter ids, latest five/popular three, source-local banners, partial success and separate novel support. Both emphasis nesting orders have deterministic coverage. |
-| Submission | Preserve the existing two commits and append the review cleanup; retain upstream+1 submission versions and exclude fork tests, docs and unused test dependencies. |
+| Submission | Keep shared fixes, Eternal's site-specific migration, shared novel support and audit cleanup as separate commits; retain upstream+1 submission versions and exclude fork tests, docs and unused test dependencies. |
 
 The follow-up checked all 97 section-three table rows for applicability and fetched the
 listed historical review threads plus the latest 100 repository inline comments. Reused
@@ -129,10 +129,10 @@ CLAUDE.md pointer. Current main correctly permits disabled exclusions and checks
 instruction copies. The attached pr-branch.sh also predates test/dependency stripping and
 template submissions; preparation uses current normalization and scope checks instead.
 
-Eternal is rated 2 because its default updatedAt catalogue includes an is18Plus=true,
-BL_SIN_CENSURA title without an opt-in filter (first-page probe, November 11). Its existing
-per-title is18Plus conversion already marks that title NSFW. A catalogue rating of 1 would
-require hiding adult titles by default. Other consumer catalogue ratings are unchanged.
+Eternal keeps catalogue contentRating 1 by the owner's explicit decision. Its per-title
+is18Plus conversion remains independent. Do not raise this catalogue rating during cleanup.
+Its site-specific Spanish home, supported sorts and filters are isolated in a dedicated
+submission commit; shared novel support and parameter compatibility stay with Iken changes.
 
 All 26 consumer tests passed, as did six deterministic template tests and the loopback
 HTTP/deep-link regressions. The optional captured-home test had no capture directory and
@@ -155,3 +155,8 @@ Before this cleanup, all five already-published consumers passed their live suit
 Nyx 5, Vortex 5, Magus 5 and Eternal 5. The novel test reports a catalogue with no novels or
 accessible chapters explicitly; a passing suite does not mean every site currently has novels.
 App layout, WebView sessions and device novel rendering require separate device evidence.
+
+The rating/history correction changes no Rust behavior. The local execution runtime was
+unavailable for this correction, so prior test results above were not rerun. Final production
+blob hashes are compared with the previously verified tree; only Eternal's catalogue rating
+is restored on the submission, and main additionally bumps its package/README to version 10.

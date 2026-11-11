@@ -124,3 +124,5 @@ Audited every production file on `fix-iken` against current guidance, attached s
 Completed the follow-up [[iken-template]] audit against every review-table row and the historical and recent reviewer threads. Shared request headers/timeouts, consumed JSON responses, removed redundant sortedness scans and unused public model access, and covered dispatched HTTP/encoded chapter deep links with loopback regressions. The attached checker and branch script predate current exclusion, instruction-copy and submission rules.
 
 The final Eternal default-catalogue probe contained explicitly adult content without an opt-in filter, so its catalogue rating is now 2. Per-title NSFW conversion already honored the response flag. All consumer suites passed; the existing unrelated NovelArchive documentation references remain a full-docs-lint limitation.
+
+Restored Eternal's catalogue rating to 1 at the owner's request and separated its site-specific migration from shared Iken commits. Per-title NSFW handling stays unchanged. Published a new Eternal package version for the rating correction.

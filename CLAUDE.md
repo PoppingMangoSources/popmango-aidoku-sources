@@ -1404,6 +1404,10 @@ Home also loads compact New Releases (createdAt descending) and Novels (seriesTy
 rows concurrently with the HTML. isNovel is ignored by the current APIs; do not use it as a
 novel filter. Omit empty rows and keep successful components on a partial failure.
 
+Preserve EternalMangas' catalogue rating at 1, as explicitly chosen by the owner; per-title
+NSFW classification is separate. Keep its site-specific migration in its own submission
+commit, with shared template compatibility changes in the template commits.
+
 The owner requested the submission branch name `fix-iken`; it is an explicit exception to
 the usual template branch spelling. Publish restored consumers to fork main before running
 their live suites, then prepare the submission from canonical upstream with fork tests removed.
