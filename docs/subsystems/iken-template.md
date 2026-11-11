@@ -26,8 +26,12 @@ branch is `fix-iken`, based on canonical `4ac8414`, with production files only.
 ## API and keys
 
 Search uses `/api/query` with page/perPage, archive view, orderBy/orderDirection, seriesType,
-seriesStatus and included genreIds. The sorts are lastChapterAddedAt, totalViews, createdAt,
-chaptersCount and postTitle. Static genres come from each site's `/api/genres` response.
+seriesStatus and included genreIds. The default sorts are lastChapterAddedAt, totalViews, createdAt,
+chaptersCount and postTitle. Eternal honors updatedAt, totalViews, createdAt and postTitle, so its Params and static
+control expose those four. Its first option is last modification, rather than claiming
+chapter-update ordering. Static genres come from each site's `/api/genres` response. Eternal also exposes the
+verified adult/BL comic types from its current browse page and API. The native BL Manhwa
+spelling is not an accepted API enum; MANHWA_BL is the working value.
 Exclusion is disabled. Details use `/api/post?postId=` or postSlug; chapters use
 `/api/chapters?postId=&skip=&take=` and totalChapterCount. Reading uses chapterId alone.
 Four APIs were reachable directly on November 11; Hive's API returned 403. All five public
@@ -76,3 +80,6 @@ Vodka VortexScans, Seyden VortexScans/Iken, CorruptBytes VortexScans and Kitty N
 Their endpoints, sort ids, pagination and access flags are leads confirmed against API/HTML
 responses. Their JS state parsers, caching and authentication scaffolding are not needed for
 these public API paths. See [[source-checks]] for the repository gates.
+
+> ⚠️ Eternal silently ignores lastChapterAddedAt and chaptersCount sorting. Reversed direction
+> probes returned the same fallback order. Do not re-enable these options without fresh evidence.

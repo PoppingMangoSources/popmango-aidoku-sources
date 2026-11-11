@@ -2,11 +2,10 @@
 	{
 		"type": "sort",
 		"options": [
-			"Latest Updates",
-			"Most Popular",
-			"Recently Added",
-			"Chapter Count",
-			"Title"
+			"Última modificación",
+			"Más popular",
+			"Recientemente añadido",
+			"Título"
 		]
 	},
 	{
@@ -14,14 +13,13 @@
 		"id": "seriesStatus",
 		"title": "Estado",
 		"options": [
-			"All",
-			"Ongoing",
-			"Completed",
-			"Cancelled",
-			"Dropped",
-			"Mass Released",
-			"Coming Soon",
-			"Hiatus"
+			"Todos",
+			"En emisión",
+			"Finalizado",
+			"Cancelado",
+			"Abandonado",
+			"Próximamente",
+			"Pausado"
 		],
 		"ids": [
 			"",
@@ -29,7 +27,6 @@
 			"COMPLETED",
 			"CANCELLED",
 			"DROPPED",
-			"MASS_RELEASED",
 			"COMING_SOON",
 			"HIATUS"
 		]
@@ -39,34 +36,32 @@
 		"id": "seriesType",
 		"title": "Tipo",
 		"options": [
-			"All",
-			"Webtoon",
-			"Manhwa",
-			"Manhua",
+			"Todos",
 			"Manga",
-			"Manhwa +19",
-			"+19 Sin Censura",
-			"BL Sin Censura",
-			"Manhwa BL",
+			"Manhua",
 			"Manhua BL",
-			"Novela Visual",
-			"Spanish",
-			"Novel"
+			"Manhwa",
+			"Manhwa BL",
+			"Manhwa +19",
+			"BL sin censura",
+			"+19 sin censura",
+			"Webtoon",
+			"Novela",
+			"Novela visual"
 		],
 		"ids": [
 			"",
-			"WEBTOON",
-			"MANHWA",
-			"MANHUA",
 			"MANGA",
-			"MANWA_PLUS_19",
-			"PLUS_19_SIN_CENSURA",
-			"BL_SIN_CENSURA",
-			"MANHWA_BL",
+			"MANHUA",
 			"MANHUA_BL",
-			"NOVELA_VISUAL",
-			"SPANISH",
-			"NOVEL"
+			"MANHWA",
+			"MANHWA_BL",
+			"MANHWA_PLUS_19",
+			"BL_SIN_CENSURA",
+			"PLUS_19_SIN_CENSURA",
+			"WEBTOON",
+			"NOVEL",
+			"NOVELA_VISUAL"
 		]
 	},
 	{

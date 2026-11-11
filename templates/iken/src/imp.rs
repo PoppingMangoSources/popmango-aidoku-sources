@@ -9,13 +9,6 @@ use aidoku::{
 };
 
 const PAGE_SIZE: i32 = 18;
-const SORTS: [&str; 5] = [
-	"lastChapterAddedAt",
-	"totalViews",
-	"createdAt",
-	"chaptersCount",
-	"postTitle",
-];
 
 pub trait Impl {
 	fn new() -> Self;
@@ -43,7 +36,7 @@ pub trait Impl {
 		qs.push("page", Some(&page.to_string()));
 		qs.push("perPage", Some(&PAGE_SIZE.to_string()));
 		qs.push("view", Some("archive"));
-		qs.push("orderBy", Some(SORTS[0]));
+		qs.push("orderBy", Some(params.sorts[0]));
 		qs.push("orderDirection", Some("desc"));
 		if let Some(query) = query {
 			qs.push("searchTerm", Some(query.trim()));
@@ -55,7 +48,7 @@ pub trait Impl {
 				} => {
 					qs.set(
 						"orderBy",
-						Some(SORTS.get(index as usize).unwrap_or(&SORTS[0])),
+						Some(params.sorts.get(index as usize).unwrap_or(&params.sorts[0])),
 					);
 					qs.set(
 						"orderDirection",

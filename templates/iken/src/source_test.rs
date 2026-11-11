@@ -1,5 +1,6 @@
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, Manga, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, Manga,
+	PageContent, Source,
 	alloc::{Vec, format, vec},
 };
 use aidoku_test::aidoku_test;
@@ -8,7 +9,7 @@ use aidoku_test::aidoku_test;
 fn review_static_filter_capabilities() {
 	let filters: json::Value = json::from_str(FILTERS_JSON).unwrap();
 	assert_eq!(filters[0]["type"], "sort");
-	assert_eq!(filters[0]["options"].as_array().unwrap().len(), 5);
+	assert_eq!(filters[0]["options"].as_array().unwrap().len(), SORT_COUNT);
 	for filter in filters.as_array().unwrap() {
 		if filter["type"] == "multi-select" {
 			assert_eq!(filter["canExclude"], false);
@@ -53,7 +54,7 @@ fn live_search_pagination_sorts_and_clearing() {
 		first.entries.iter().map(|m| &m.key).collect::<Vec<_>>(),
 		cleared.entries.iter().map(|m| &m.key).collect::<Vec<_>>()
 	);
-	for index in 0..5 {
+	for index in 0..SORT_COUNT as i32 {
 		let desc = source
 			.get_search_manga_list(
 				None,
@@ -195,4 +196,41 @@ fn live_home_has_site_rows() {
 		c.value,
 		HomeComponentValue::BigScroller { .. } | HomeComponentValue::ImageScroller { .. }
 	)));
+}
+
+#[aidoku_test]
+fn live_novel_reader() {
+	let source = Target::new();
+	let novels = source
+		.get_search_manga_list(
+			None,
+			1,
+			vec![FilterValue::Select {
+				id: "seriesType".into(),
+				value: "NOVEL".into(),
+			}],
+		)
+		.unwrap();
+	let Some(novel) = novels.entries.into_iter().next() else {
+		aidoku::println!("The current catalogue has no novels");
+		return;
+	};
+	let novel = source.get_manga_update(novel, true, true).unwrap();
+	let Some(chapter) = novel.chapters.unwrap().into_iter().find(|c| !c.locked) else {
+		aidoku::println!("The sampled novel has no accessible chapters");
+		return;
+	};
+	let pages = source
+		.get_page_list(
+			Manga {
+				key: novel.key,
+				..Default::default()
+			},
+			Chapter {
+				key: chapter.key,
+				..Default::default()
+			},
+		)
+		.unwrap();
+	assert!(matches!(&pages[0].content, PageContent::Text(text) if !text.trim().is_empty()));
 }

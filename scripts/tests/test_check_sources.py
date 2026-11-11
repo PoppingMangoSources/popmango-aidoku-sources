@@ -2,6 +2,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('check_sources', SCRIPTS / 'check-sources.py')
@@ -18,6 +19,19 @@ class CardRuleTests(unittest.TestCase):
         self.source = checks.ROOT / 'sources/en.example'
         (self.source / 'res').mkdir(parents=True)
         self.path = self.source / 'lib.rs'
+
+    def test_published_snapshot_needs_no_second_bump(self):
+        (self.source / "Cargo.toml").write_text('[dependencies]\niken = { path = "../../templates/iken" }\n')
+        with patch.object(checks, "git", return_value="") as git:
+            checks.check_version_bump(self.source, 3, "origin/main")
+        self.assertEqual(checks.failures, [])
+        self.assertIn("templates/iken", git.call_args.args)
+
+    def test_changed_template_still_requires_bump(self):
+        (self.source / "Cargo.toml").write_text('[dependencies]\niken = { path = "../../templates/iken" }\n')
+        with patch.object(checks, "git", side_effect=["templates/iken/src/imp.rs\n", '{"info":{"version":3}}']):
+            checks.check_version_bump(self.source, 3, "origin/main")
+        self.assertTrue(any("not bumped" in failure for failure in checks.failures))
 
     def cards(self, text):
         checks.check_cards(self.path, text)

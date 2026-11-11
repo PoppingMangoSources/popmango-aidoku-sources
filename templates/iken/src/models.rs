@@ -165,7 +165,16 @@ impl Post {
 			},
 			viewer: match self.series_type.as_deref() {
 				Some("MANGA") => Viewer::RightToLeft,
-				Some("MANHWA" | "MANHUA" | "WEBTOON") => Viewer::Webtoon,
+				Some(
+					"MANHWA"
+					| "MANHUA"
+					| "WEBTOON"
+					| "MANHWA_BL"
+					| "MANHUA_BL"
+					| "MANHWA_PLUS_19"
+					| "BL_SIN_CENSURA"
+					| "PLUS_19_SIN_CENSURA",
+				) => Viewer::Webtoon,
 				_ => Viewer::Unknown,
 			},
 			..basic

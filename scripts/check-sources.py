@@ -350,6 +350,16 @@ def readme_version(source_id: str) -> int | None:
 
 def check_version_bump(source: Path, version: int, base: str) -> None:
     path = source / "res" / "source.json"
+    paths = [str(source.relative_to(ROOT))]
+    manifest = tomllib.loads((source / "Cargo.toml").read_text())
+    for dependency in manifest.get("dependencies", {}).values():
+        if isinstance(dependency, dict) and "path" in dependency:
+            try:
+                paths.append(str((source / dependency["path"]).resolve().relative_to(ROOT)))
+            except ValueError:
+                continue
+    if not git("diff", "--name-only", base, "--", *paths).strip():
+        return
     try:
         before = json.loads(git("show", f"{base}:{path.relative_to(ROOT)}"))
     except subprocess.CalledProcessError:

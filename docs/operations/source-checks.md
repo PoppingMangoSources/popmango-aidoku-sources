@@ -213,3 +213,7 @@ and review stamps; they do not replace live tests or manual review.
 > runs accept `templates/<name>` alongside source IDs. Selecting only dependent sources
 > leaves a template's own parser regressions unexecuted. `scripts/tests/test_template_tests.py`
 > runs the workflow's actual selection step against a temporary repository to cover both modes.
+
+> ⚠️ After publication, review-source compares against the same origin/main snapshot. An
+> unchanged source and its path dependencies need no second bump. Changed source or template
+> files still require one; the version checker tests both cases.

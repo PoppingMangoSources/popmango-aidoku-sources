@@ -1,6 +1,7 @@
 use super::*;
 use serde_json as json;
 type Target = Iken<HiveScans>;
+const SORT_COUNT: usize = 5;
 const SERIES_SLUG: &str = "crocodile";
 const LATEST_TITLE: &str = "Latest Releases";
 const FILTERS_JSON: &str = include_str!("../res/filters.json");
