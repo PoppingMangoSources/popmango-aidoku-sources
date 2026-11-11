@@ -112,3 +112,7 @@ Test chapter-only requests with numeric series keys without a detail request, in
 lock flags, complete pagination, empty page URL errors, compact home cards and paragraph-safe
 novel emphasis. Hive's script-backed banners stay local. The owner explicitly requested
 `fix-iken` from canonical upstream and publication on fork main before the live suites.
+
+Iken New Releases and Novels use the query API with createdAt and seriesType=NOVEL respectively.
+Test ordering, compact links, empty novel catalogues and one/all failed requests. Keep novel
+sections and formatted reading together in their own submission commit when requested.

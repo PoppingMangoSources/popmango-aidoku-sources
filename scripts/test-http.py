@@ -26,15 +26,22 @@ class Responses(http.server.BaseHTTPRequestHandler):
         if self.path == "/novel":
             body = '<div id="readerarea"><p><strong>First<br>Second</strong></p><p><em>Third</em></p></div><script>ts_reader.run({"is_novel":true,"images":[]})</script>'
         query = parse_qs(urlsplit(self.path).query)
-        if urlsplit(self.path).path == "/home":
+        if urlsplit(self.path).path in {"/home", "/home-existing"}:
             body = "<main><section><h2>Latest Releases</h2><a href='/series/old' title='Old'><img src='https://example.com/old.jpg'></a></section><section><h2>Most Popular</h2><a href='/series/popular' title='Popular'><img src='https://example.com/popular.jpg'></a></section></main>"
+        if urlsplit(self.path).path == "/home-existing":
+            body = body.replace("</main>", "<section><h2>Novels</h2><a href='/series/old-novel' title='Old novel'><img src='https://example.com/cover.jpg'></a></section></main>")
         if urlsplit(self.path).path.endswith("/api/query"):
             content_type = "application/json"
-            if set(query) != {"page", "perPage", "view", "orderBy", "orderDirection"} or query.get("orderBy") != ["createdAt"] or query.get("orderDirection") != ["desc"]:
+            novel = query.get("seriesType") == ["NOVEL"]
+            expected_keys = {"page", "perPage", "view", "orderBy", "orderDirection"} | ({"seriesType"} if novel else set())
+            if set(query) != expected_keys or query.get("orderBy") != (["lastChapterAddedAt"] if novel else ["createdAt"]) or query.get("orderDirection") != ["desc"]:
                 status = 400
-            if urlsplit(self.path).path.startswith("/fail"):
+            if urlsplit(self.path).path.startswith("/fail") and (not urlsplit(self.path).path.startswith("/fail-new") or not novel):
                 status = 503
-            body = json.dumps({"posts": [{"id": 7, "slug": "new", "postTitle": "New", "featuredImage": "https://example.com/new.jpg"}], "totalCount": 1})
+            posts = [{"id": 8 if novel else 7, "slug": "novel" if novel else "new", "postTitle": "Novel" if novel else "New", "featuredImage": "https://example.com/cover.jpg"}]
+            if novel and urlsplit(self.path).path.startswith("/empty-novels"):
+                posts = []
+            body = json.dumps({"posts": posts, "totalCount": len(posts)})
         if urlsplit(self.path).path.startswith("/api/"):
             content_type = "application/json"
             chapter = {"id": 11, "slug": "chapter-1", "number": "1", "content": "<p><strong>Text</strong></p>"}

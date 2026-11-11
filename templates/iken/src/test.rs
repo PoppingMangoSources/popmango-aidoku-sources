@@ -260,6 +260,7 @@ fn review_http_new_releases_are_compact_and_ordered() {
 		[
 			Some("Latest Releases"),
 			Some("New Releases"),
+			Some("Novels"),
 			Some("Most Popular")
 		]
 	);
@@ -271,6 +272,43 @@ fn review_http_new_releases_are_compact_and_ordered() {
 	assert!(
 		matches!(&entries[0].value, Some(LinkValue::Manga(m)) if m.key == "7" && m.tags.is_none() && m.description.is_none())
 	);
+	params.api_url = Some(format!("{base}/empty-novels").into());
+	let no_novels = Site.get_home(&params).unwrap();
+	assert_eq!(no_novels.components.len(), 3);
+	assert!(
+		!no_novels
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some("Novels"))
+	);
+	params.api_url = Some(format!("{base}/fail-new").into());
+	let novel_only = Site.get_home(&params).unwrap();
+	assert!(
+		novel_only
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some("Novels"))
+	);
+	assert!(
+		!novel_only
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some("New Releases"))
+	);
+	params.base_url = format!("{base}/home-existing").into();
+	params.api_url = Some(base.into());
+	params.home_section_titles = &["Latest Releases", "Most Popular", "Novels"];
+	let existing = Site.get_home(&params).unwrap();
+	assert_eq!(
+		existing
+			.components
+			.iter()
+			.filter(|c| c.title.as_deref() == Some("Novels"))
+			.count(),
+		1
+	);
+	assert_eq!(existing.components[3].title.as_deref(), Some("Novels"));
+	params.base_url = format!("{base}/home").into();
 	params.api_url = Some(format!("{base}/fail").into());
 	let partial = Site.get_home(&params).unwrap();
 	assert_eq!(partial.components.len(), 2);

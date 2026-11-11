@@ -207,6 +207,28 @@ fn live_home_has_site_rows() {
 		c.value,
 		HomeComponentValue::BigScroller { .. } | HomeComponentValue::ImageScroller { .. }
 	)));
+	let novels = Target::new()
+		.get_search_manga_list(
+			None,
+			1,
+			vec![FilterValue::Select {
+				id: "seriesType".into(),
+				value: "NOVEL".into(),
+			}],
+		)
+		.unwrap();
+	let novel_title = if BASE_URL.contains("eternalmangas") {
+		"Novelas"
+	} else {
+		"Novels"
+	};
+	assert_eq!(
+		layout
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some(novel_title)),
+		!novels.entries.is_empty()
+	);
 }
 
 #[aidoku_test]

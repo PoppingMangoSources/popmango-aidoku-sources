@@ -12,13 +12,18 @@ use aidoku::{
 
 pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> {
 	let mut urls = vec![params.base_url.to_string()];
-	let mut query = QueryParameters::new();
-	query.push("page", Some("1"));
-	query.push("perPage", Some("18"));
-	query.push("view", Some("archive"));
-	query.push("orderBy", Some("createdAt"));
-	query.push("orderDirection", Some("desc"));
-	urls.push(format!("{}/api/query?{query}", params.api_url()));
+	for (sort, series_type) in [("createdAt", None), (params.sorts[0], Some("NOVEL"))] {
+		let mut query = QueryParameters::new();
+		query.push("page", Some("1"));
+		query.push("perPage", Some("18"));
+		query.push("view", Some("archive"));
+		query.push("orderBy", Some(sort));
+		query.push("orderDirection", Some("desc"));
+		if let Some(series_type) = series_type {
+			query.push("seriesType", Some(series_type));
+		}
+		urls.push(format!("{}/api/query?{query}", params.api_url()));
+	}
 	let requests = urls
 		.iter()
 		.map(|url| {
@@ -52,13 +57,28 @@ pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> 
 					.collect();
 				if !entries.is_empty() {
 					let component = HomeComponent {
-						title: Some(params.new_releases_title.into()),
+						title: Some(
+							if index == 1 {
+								params.new_releases_title
+							} else {
+								params.novels_title
+							}
+							.into(),
+						),
 						value: HomeComponentValue::Scroller {
 							entries,
 							listing: None,
 						},
 						..Default::default()
 					};
+					if let Some(existing) = layout
+						.components
+						.iter_mut()
+						.find(|c| c.title == component.title)
+					{
+						*existing = component;
+						return Ok(());
+					}
 					let index = layout
 						.components
 						.iter()

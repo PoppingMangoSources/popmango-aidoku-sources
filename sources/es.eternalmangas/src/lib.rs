@@ -17,6 +17,7 @@ impl Impl for EternalMangas {
 			base_url: BASE_URL.into(),
 			api_url: Some(API_URL.into()),
 			new_releases_title: "Nuevos lanzamientos",
+			novels_title: "Novelas",
 			sorts: &["updatedAt", "totalViews", "createdAt", "postTitle"],
 			home_slider_selector: ".em-hero .carousel-item".into(),
 			home_section_titles: &[
