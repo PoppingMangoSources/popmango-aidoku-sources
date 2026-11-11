@@ -32,7 +32,16 @@ def main():
         run(sys.executable, "scripts/sync-agent-docs.py", "--check")
         run(sys.executable, "-m", "unittest", "discover", "-s", "scripts/tests", "-v")
         run(sys.executable, "scripts/check-workflows.py", "--offline")
-        run(sys.executable, "scripts/check-sources.py", "--base", base)
+        branch = os.environ.get("GITHUB_REF") or subprocess.check_output(
+            ["git", "branch", "--show-current"], cwd=ROOT, text=True).strip()
+        if branch.removeprefix("refs/heads/") in {"merged-sources", "dead-sources"}:
+            crates = subprocess.check_output(
+                [sys.executable, "scripts/changed-crates.py", "--base", base, "--sources-only"],
+                cwd=ROOT, text=True).splitlines()
+            if crates:
+                run(sys.executable, "scripts/check-sources.py", "--upstream", *(Path(crate).name for crate in crates))
+        else:
+            run(sys.executable, "scripts/check-sources.py", "--base", base)
         print("All offline repository checks passed. Rust, live and device checks remain explicit gates.")
         return 0
     except (OSError, ValueError, subprocess.CalledProcessError) as error:

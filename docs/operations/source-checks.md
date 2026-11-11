@@ -32,6 +32,7 @@ sources:
   - code: scripts/test-sources.py
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
+  - code: scripts/tests/test_archive_gates.py
 verified_at: 39012e1
 ---
 
@@ -48,6 +49,12 @@ file modes, including template tests. Both `ci-gates.py` and the installed push 
 The archive must be published before main removes the source. Full-history Actions checkouts
 include the archive branch; a missing archive ref fails preservation checks for a removal.
 `scripts/tests/test_archives.py` exercises complete and incomplete snapshots and stale templates.
+
+> ⚠️ Archive refs are historical snapshots, not publication branches. Their CI still runs
+> commit, documentation, workflow, script and changed-source checks, but source checks use
+> `--upstream` without a publication base: no install-card or release-bump requirement.
+> Main and submission refs keep their normal checks. `test_archive_gates.py` executes both
+> paths and verifies that the publication checks are retained outside the two archive refs.
 
 > ⚠️ CI's live tests stay red when any suite fails. `scripts/test-sources.py` runs after
 > the offline contracts, skips only the already-run `review_` cases, retains every raw suite
