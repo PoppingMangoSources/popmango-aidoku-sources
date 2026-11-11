@@ -15,6 +15,7 @@ use aidoku::{
 	},
 	prelude::*,
 };
+use base64::{Engine, engine::general_purpose::STANDARD};
 
 pub trait Impl {
 	fn new() -> Self;
@@ -71,7 +72,7 @@ pub trait Impl {
 		}
 
 		let url = format!("{}{}/?{qs}", params.base_url, params.manga_url_directory);
-		let html = Request::get(url)?.html()?;
+		let html = helpers::fetch(&url)?.get_html()?;
 
 		Ok(MangaPageResult {
 			entries: html
@@ -106,7 +107,7 @@ pub trait Impl {
 		needs_chapters: bool,
 	) -> Result<Manga> {
 		let manga_url = format!("{}{}", params.base_url, manga.key);
-		let html = Request::get(&manga_url)?.html()?;
+		let html = helpers::fetch(&manga_url)?.get_html()?;
 
 		if needs_details {
 			let details_element = html
@@ -164,16 +165,18 @@ pub trait Impl {
 				} else {
 					ContentRating::Safe
 				};
-			manga.viewer = details_element
-				.select_first(&params.series_type_selector)
-				.and_then(|el| el.text())
-				.map(|text| match text.to_lowercase().as_str() {
-					"manga" | "one-shot" | "oneshot" | "doujinshi" => Viewer::RightToLeft,
-					"manhua" | "manhwa" => Viewer::Webtoon,
-					"comic" => Viewer::LeftToRight,
-					_ => Viewer::Unknown,
-				})
-				.unwrap_or_default();
+			manga.viewer = params.viewer_override.unwrap_or_else(|| {
+				details_element
+					.select_first(&params.series_type_selector)
+					.and_then(|el| el.text())
+					.map(|text| match text.to_lowercase().as_str() {
+						"manga" | "one-shot" | "oneshot" | "doujinshi" => Viewer::RightToLeft,
+						"manhua" | "manhwa" => Viewer::Webtoon,
+						"comic" => Viewer::LeftToRight,
+						_ => Viewer::Unknown,
+					})
+					.unwrap_or_default()
+			});
 
 			send_partial_result(&manga);
 		}
@@ -279,8 +282,26 @@ pub trait Impl {
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let url = format!("{}{}", params.base_url, chapter.key);
-		let response = Request::get(&url)?.string()?;
+		let response = helpers::fetch(&url)?.get_string()?;
 		let html = Html::parse_fragment_with_url(&response, &url)?;
+		// A cache plugin can move the reader's script into a base64 `data:` url.
+		let decoded = html
+			.select_first("script[src^='data:text/javascript;base64,dHNfcmVhZGVyLnJ1bih7']")
+			.and_then(|script| script.attr("src"))
+			.and_then(|src| STANDARD.decode(src.split_once(',')?.1).ok())
+			.and_then(|script| String::from_utf8(script).ok());
+		let reader = decoded.as_deref().unwrap_or(&response);
+
+		if reader.contains("\"is_novel\":true") {
+			let text = helpers::novel_text(&html);
+			if text.is_empty() {
+				bail!("No text found");
+			}
+			return Ok(vec![Page {
+				content: PageContent::text(text),
+				..Default::default()
+			}]);
+		}
 
 		let pages: Vec<Page> = html
 			.select("div#readerarea img")
@@ -299,8 +320,8 @@ pub trait Impl {
 			return Ok(pages);
 		}
 
-		if response.contains("\"images\":") {
-			Ok(helpers::extract_images(&response)
+		if reader.contains("\"images\":") {
+			Ok(helpers::extract_images(reader)
 				.into_iter()
 				.map(|url| Page {
 					content: PageContent::url(url),
@@ -324,7 +345,7 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		let html = Request::get(&params.base_url)?.html()?;
+		let html = helpers::fetch(&params.base_url)?.get_html()?;
 
 		let mut components = Vec::new();
 

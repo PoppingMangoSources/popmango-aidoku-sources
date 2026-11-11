@@ -1,3 +1,5 @@
+This is the historical source archive. See [ARCHIVE.md](ARCHIVE.md) for preserved snapshots and testing notes.
+
 <p align="center">
   <img src="https://cdn.jsdelivr.net/gh/PoppingMangoSources/popmango-aidoku-sources@main/media/banner.svg?v=2" alt="PoppingMango Sources for Aidoku" width="100%"/>
 </p>

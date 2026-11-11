@@ -1,13 +1,17 @@
 #![no_std]
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, ImageRequestProvider,
-	Manga, MangaPageResult, Page, PageContext, Result, Source,
+	Manga, MangaPageResult, Page, PageContext, Result, Source, Viewer,
 	alloc::{String, Vec, borrow::Cow},
 	imports::net::Request,
 };
 
+pub mod child_theme;
 pub mod helpers;
 mod imp;
+
+#[cfg(test)]
+mod test;
 
 pub use imp::Impl;
 
@@ -17,6 +21,7 @@ pub struct Params {
 	pub date_format: Cow<'static, str>,
 	pub date_locale: Cow<'static, str>,
 	pub mark_all_nsfw: bool,
+	pub viewer_override: Option<Viewer>,
 	pub series_title_selector: Cow<'static, str>,
 	pub series_cover_selector: Cow<'static, str>,
 	pub series_artist_selector: Cow<'static, str>,
@@ -26,6 +31,8 @@ pub struct Params {
 	pub series_type_selector: Cow<'static, str>,
 	pub series_status_selector: Cow<'static, str>,
 	pub chapter_list_selector: Cow<'static, str>,
+	pub banner_width: Option<i32>,
+	pub banner_height: Option<i32>,
 }
 
 impl Default for Params {
@@ -36,6 +43,7 @@ impl Default for Params {
 			date_format: "MMMM dd, yyyy".into(),
 			date_locale: "en_US_POSIX".into(),
 			mark_all_nsfw: false,
+			viewer_override: None,
 			series_title_selector: "h1.entry-title, .ts-breadcrumb li:last-child span".into(),
 			series_cover_selector: ".infomanga > div[itemprop=image] img, .thumb img".into(),
 			series_artist_selector: helpers::selector(
@@ -86,6 +94,8 @@ impl Default for Params {
 				],
 			).into(),
 			chapter_list_selector: "div.bxcl li, div.cl li, #chapterlist li, ul li:has(div.chbox):has(div.eph-num)".into(),
+			banner_width: None,
+			banner_height: None,
 		}
 	}
 }
