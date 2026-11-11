@@ -2,12 +2,15 @@
 	"info": {
 		"id": "en.mistscans",
 		"name": "Mist Scans",
-		"version": 9,
-		"url": "https://mistscans.com",
+		"version": 11,
+		"url": "https://mistscans.org",
 		"contentRating": 0,
 		"languages": [
 			"en"
 		],
 		"minAppVersion": "0.8.3"
+	},
+	"config": {
+		"supportsTagSearch": true
 	}
 }

@@ -2,7 +2,7 @@
 title: Keyoapp template
 type: subsystem
 created: 2026-11-08
-updated: 2026-11-10
+updated: 2026-11-11
 sources:
   - code: templates/keyoapp/src/lib.rs
   - code: templates/keyoapp/src/imp.rs
@@ -36,7 +36,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/865
   - ext: https://github.com/Aidoku-Community/sources/pull/824
   - ext: https://github.com/Aidoku-Community/sources/pull/666
-verified_at: 17c5faf
+verified_at: f82ad0a
 ---
 
 The Keyoapp template ports keiyoushi's first-generation `Keyoapp` library: a site lists its whole
@@ -45,7 +45,7 @@ Toons is the first consumer; the same live checks (catalogue, details, chapters,
 chapter deep links) passed against Grim, Mist, Eris, Kewn and Timelesstoons on 2026-11-08.
 
 > ⚠️ The second generation is `KeyoappV2` in `templates/keyoapp/src/v2.rs`, with Asmodeus,
-> Siren, Kaizen and Luna Toons as consumers (keiyoushi still files Kaizen under the first).
+> Siren, Kaizen, Luna Toons and Mist as consumers (keiyoushi still files Kaizen under the first).
 > A plain sandbox HTTP client can receive 403 while Firecrawl or the Aidoku runner succeeds;
 > report runner results separately from browser observations. Art Lapsa, Kitsune Dawn and Rithar are
 > custom in keiyoushi (`/series/` is a 404). MeiToon answers "the website has been stopped".
@@ -271,3 +271,5 @@ passed. Kaizen and Luna remained blocked by HTTP 403 Cloudflare challenge pages,
 identified directly in failure logs. Asmodeus initially compared different slugs from two
 live responses; the filter case and full 13-test suite passed on retry. The existing upstream
 submission was inspected without modification: scope and upstream CI checks passed.
+
+> ⚠️ Mist now uses `https://mistscans.org` and V2. The old `.com` returned 522 while `.org` exposed the V2 catalogue and reader. Its series and chapter keys now use the V2 flat paths rather than V1 `/series/.../` and `/chapter/...` paths. Keep the source id `en.mistscans`.

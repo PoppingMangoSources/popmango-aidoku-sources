@@ -114,3 +114,5 @@ Added New Releases and Novels API rows to [[iken-template]], with compact cards,
 Synchronized checked-request helpers into the KeyoApp and Rage submission trees. Extended the HTTP regressions to include 522 and clarified route-specific site availability in [[source-checks]].
 
 Set [[iken-template]] latest-release lists to five rows per page and popular ranked lists to three, with English/Spanish layout regressions preserving all cards.
+
+Moved Mist Scans to its working `.org` V2 site and replaced V1 filters/tests in [[keyoapp-template]].

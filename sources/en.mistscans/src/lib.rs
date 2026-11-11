@@ -1,15 +1,15 @@
 #![no_std]
 use aidoku::{Source, prelude::*};
-use keyoapp::{Impl, Keyoapp, Params};
+use keyoapp::{ImplV2, KeyoappV2, Params};
 
 #[cfg(test)]
 mod test;
 
-const BASE_URL: &str = "https://mistscans.com";
+const BASE_URL: &str = "https://mistscans.org";
 
 struct MistScans;
 
-impl Impl for MistScans {
+impl ImplV2 for MistScans {
 	fn new() -> Self {
 		Self
 	}
@@ -22,4 +22,4 @@ impl Impl for MistScans {
 	}
 }
 
-register_source!(Keyoapp<MistScans>, Home, DeepLinkHandler);
+register_source!(KeyoappV2<MistScans>, Home, DeepLinkHandler);

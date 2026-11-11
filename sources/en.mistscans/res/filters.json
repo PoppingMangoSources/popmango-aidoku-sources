@@ -1,24 +1,52 @@
 [
 	{
-		"type": "multi-select",
+		"type": "sort",
+		"id": "sort",
+		"canAscend": false,
+		"options": [
+			"Latest",
+			"Trending",
+			"Popular",
+			"Most Viewed",
+			"Top Rated",
+			"A–Z",
+			"Z–A"
+		]
+	},
+	{
+		"type": "select",
 		"id": "type",
 		"title": "Type",
-		"canExclude": false,
 		"options": [
+			"All",
 			"Manhwa",
 			"Manhua",
-			"Manga",
 			"Mangatoon",
-			"Novel",
-			"Comic"
+			"Manga",
+			"Novel"
 		],
 		"ids": [
+			"",
 			"manhwa",
 			"manhua",
-			"manga",
 			"mangatoon",
-			"novel",
-			"comic"
+			"manga",
+			"novel"
+		]
+	},
+	{
+		"type": "select",
+		"id": "status",
+		"title": "Status",
+		"options": [
+			"All",
+			"Ongoing",
+			"Completed"
+		],
+		"ids": [
+			"",
+			"ongoing",
+			"completed"
 		]
 	},
 	{
@@ -162,24 +190,6 @@
 			"villain",
 			"wuxia",
 			"yuri"
-		]
-	},
-	{
-		"type": "multi-select",
-		"id": "status",
-		"title": "Status",
-		"canExclude": false,
-		"options": [
-			"Ongoing",
-			"Completed",
-			"Dropped",
-			"Hiatus"
-		],
-		"ids": [
-			"ongoing",
-			"completed",
-			"dropped",
-			"hiatus"
 		]
 	}
 ]
