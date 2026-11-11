@@ -1,0 +1,13 @@
+{
+	"info": {
+		"id": "en.hivescans",
+		"name": "Hive Scans",
+		"version": 3,
+		"url": "https://hivetoons.org",
+		"contentRating": 0,
+		"languages": [
+			"en"
+		],
+		"minAppVersion": "0.8.3"
+	}
+}

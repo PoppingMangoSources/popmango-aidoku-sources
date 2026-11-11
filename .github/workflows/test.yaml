@@ -98,7 +98,7 @@ jobs:
       - name: Run HTTP response regressions
         run: |
           set -euo pipefail
-          for template in keyoapp mangathemesia; do
+          for template in keyoapp mangathemesia iken; do
             if grep -qx "templates/$template" "$RUNNER_TEMP/tested"; then
               python3 scripts/test-http.py "templates/$template"
             fi

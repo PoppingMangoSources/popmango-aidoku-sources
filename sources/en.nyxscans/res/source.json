@@ -1,0 +1,13 @@
+{
+	"info": {
+		"id": "en.nyxscans",
+		"name": "Nyx Scans",
+		"version": 2,
+		"url": "https://nyxscans.com",
+		"contentRating": 0,
+		"languages": [
+			"en"
+		],
+		"minAppVersion": "0.8.3"
+	}
+}

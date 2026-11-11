@@ -5,7 +5,7 @@
 <p align="center">
   <img src="media/badge-platform.svg" alt="iOS / iPadOS" height="28"/>
   <img src="media/badge-aidoku.svg" alt="Aidoku 0.8+" height="28"/>
-  <img src="media/badge-sources.svg" alt="34 sources" height="28"/>
+  <img src="media/badge-sources.svg" alt="39 sources" height="28"/>
   <img src="media/badge-unofficial.svg" alt="Best effort, not maintained 24/7" height="28"/>
 </p>
 
@@ -30,7 +30,7 @@
 These are Aidoku sources for sites that aren't in [Aidoku Community sources](https://github.com/Aidoku-Community/sources) yet: Aidoku clones of my [Paperback sources](https://github.com/PoppingMangoSources/general-extensions-mangago), plus popular sites Aidoku doesn't have. They're public in case they're useful to someone else too.
 
 - **The goal is to get every source here merged into Aidoku Community.** Once one is merged, it leaves this repository, so switch to the Aidoku Community version.
-- **Sources already in Aidoku Community aren't duplicated here.** Use that one, it's maintained by more people than just me.
+- **Sources already in Aidoku Community usually aren't duplicated here.** Temporary updates may be published here for testing before submission.
 - **These are not maintained 24/7.** When a site changes its layout or API, a source here may stay broken for a while.
 - **My Paperback repository is still the main one for my Paperback sources.** Those get fixed there first.
 
@@ -137,3 +137,19 @@ Licensed under either of Apache License, version 2.0 or the MIT license at your 
 Please don't rehost, repackage or republish these packages or the source list as your own.
 
 These extensions are not affiliated with Aidoku, Paperback, or any supported website. All site names and logos belong to their respective owners.
+
+## Iken updates under review
+
+<table>
+<tr>
+<td align="center" width="50%"><img src="sources/en.hivescans/res/icon.png" width="64"/><br/><b>Hive Scans</b><br/><sub><a href="https://hivetoons.org">hivetoons.org</a></sub><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.hivescans-v3.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.hivescans-v3.aix">.aix (v3)</a></sub></td>
+<td align="center" width="50%"><img src="sources/en.nyxscans/res/icon.png" width="64"/><br/><b>Nyx Scans</b><br/><sub><a href="https://nyxscans.com">nyxscans.com</a></sub><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.nyxscans-v2.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.nyxscans-v2.aix">.aix (v2)</a></sub></td>
+</tr>
+<tr>
+<td align="center" width="50%"><img src="sources/en.vortexscans/res/icon.png" width="64"/><br/><b>Vortex Scans</b><br/><sub><a href="https://vortexscans.org">vortexscans.org</a></sub><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vortexscans-v4.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vortexscans-v4.aix">.aix (v4)</a></sub></td>
+<td align="center" width="50%"><img src="sources/en.magusmanga/res/icon.png" width="64"/><br/><b>Magus Manga</b><br/><sub><a href="https://magustoon.org">magustoon.org</a></sub><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.magusmanga-v3.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.magusmanga-v3.aix">.aix (v3)</a></sub></td>
+</tr>
+<tr>
+<td align="center" width="50%"><img src="sources/es.eternalmangas/res/icon.png" width="64"/><br/><b>EternalMangas</b><br/><sub><a href="https://eternalmangas.org">eternalmangas.org</a></sub><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/es.eternalmangas-v3.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/es.eternalmangas-v3.aix">.aix (v3)</a></sub></td>
+</tr>
+</table>

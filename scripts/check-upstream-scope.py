@@ -22,6 +22,8 @@ def source_for_branch(branch):
 
 def template_for_branch(branch):
     """feat/<name>-template submits a template with the sources that show it working (#824)."""
+    if branch == "fix-iken":
+        return "iken"
     match = TEMPLATE_BRANCH.fullmatch(branch)
     return match.group(1) if match else None
 

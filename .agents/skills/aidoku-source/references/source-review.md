@@ -104,3 +104,11 @@ November review cross-checks:
 - [865: host matching](https://github.com/Aidoku-Community/sources/pull/865#discussion_r4497295451): a hostname substring can also occur inside another hostname.
 - [865: shared credits](https://github.com/Aidoku-Community/sources/pull/865#discussion_r4503529194): writing and drawing are independent roles.
 - [666: unified search](https://github.com/Aidoku-Community/sources/pull/666#discussion_r3707511508): use the browse endpoint for queries too when it supports them. Keyoapp V1 instead filters the one catalogue locally because its site ignores those parameters; V2 uses its single search endpoint.
+
+## Iken maintenance evidence
+
+See `docs/subsystems/iken-template.md` for the five consumers and current endpoint contracts.
+Test chapter-only requests with numeric series keys without a detail request, independent
+lock flags, complete pagination, empty page URL errors, compact home cards and paragraph-safe
+novel emphasis. Hive's script-backed banners stay local. The owner explicitly requested
+`fix-iken` from canonical upstream and publication on fork main before the live suites.

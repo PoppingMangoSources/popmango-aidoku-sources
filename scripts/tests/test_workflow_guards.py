@@ -44,6 +44,10 @@ class ScopeTests(unittest.TestCase):
     def inspect(self):
         return scope.inspect(self.repo, self.base, 'HEAD', 'en.example')['errors']
 
+    def test_requested_iken_branch_maps_to_template(self):
+        self.assertEqual(scope.template_for_branch("fix-iken"), "iken")
+        self.assertIsNone(scope.template_for_branch("fix-other"))
+
     def test_clean_submission(self):
         self.assertEqual(self.inspect(), [])
 

@@ -1388,6 +1388,21 @@ reaches the site, unless marked.
 - **Errors.** Search answers `{"message": …}`; the other endpoints answer plain text
   (`Chapter not found`) or a validation object, so only search's message is shown.
 
+## Iken maintenance
+
+Iken consumers currently use numeric series and chapter keys from the JSON API. Home links
+arrive as `/series/<slug>` and resolve before returning details or deep links. A numeric
+chapter-only update skips the details lookup; the reader requests the chapter by id alone.
+`/api/post` may contain no chapters, so collect `/api/chapters` with `skip`/`take` until
+`totalChapterCount` is reached. Empty or repeating pages before completion are errors.
+Treat independent lock flags independently; an explicit accessible response overrides only
+the price fallback. Keep Hive's custom script banners local to that consumer. Novel imports
+require app 0.8.3 for every consumer. See `docs/subsystems/iken-template.md`.
+
+The owner requested the submission branch name `fix-iken`; it is an explicit exception to
+the usual template branch spelling. Publish restored consumers to fork main before running
+their live suites, then prepare the submission from canonical upstream with fork tests removed.
+
 ## 17. Sources kept off `main` while upstream
 
 A source leaves `main` once it is upstream, or while its upstream branch waits on review. Its

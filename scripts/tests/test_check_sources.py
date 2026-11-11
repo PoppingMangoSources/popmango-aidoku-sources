@@ -351,3 +351,24 @@ class MangaThemesiaHttpTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class IkenHttpTests(unittest.TestCase):
+    def test_home_requires_checked_response_but_image_factory_does_not(self):
+        previous_root = checks.ROOT
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                checks.ROOT = Path(directory)
+                folder = checks.ROOT / "templates/iken/src"
+                folder.mkdir(parents=True)
+                path = folder / "home.rs"
+                path.write_text('let html = Request::get(url)?.html()?;\n')
+                checks.failures.clear()
+                checks.check_template_http("iken")
+                self.assertEqual(len(checks.failures), 1)
+                path.write_text('let html = check_response(Request::get(url)?.send()?, url)?.get_html()?;\n')
+                (folder / "imp.rs").write_text('fn image() { Ok(Request::get(url)?.header("Referer", base)) }\n')
+                checks.failures.clear()
+                checks.check_template_http("iken")
+                self.assertEqual(checks.failures, [])
+            finally:
+                checks.ROOT = previous_root

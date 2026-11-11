@@ -67,3 +67,5 @@ Codex can invoke the same workflows as `$docs-sync`, `$docs-lint`, `$docs-query`
 
 Every page carries `verified_at`, the commit it was checked against. Change code, run
 `/docs-sync`.
+
+- [[iken-template]]: shared API, home layouts, reader keys and verification.

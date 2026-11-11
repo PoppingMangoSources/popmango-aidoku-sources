@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import threading
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 
 
 class Responses(http.server.BaseHTTPRequestHandler):
@@ -25,6 +25,28 @@ class Responses(http.server.BaseHTTPRequestHandler):
             body = f'<div class="postbody"><h1 class="entry-title">Title</h1><div class="tsinfo"><span class="type">{kind}</span></div><div class="comments"><span>Author discussed this story.</span><span>Artist discussed this story.</span></div></div>'
         if self.path == "/novel":
             body = '<div id="readerarea"><p><strong>First<br>Second</strong></p><p><em>Third</em></p></div><script>ts_reader.run({"is_novel":true,"images":[]})</script>'
+        query = parse_qs(urlsplit(self.path).query)
+        if urlsplit(self.path).path.startswith("/api/"):
+            content_type = "application/json"
+            chapter = {"id": 11, "slug": "chapter-1", "number": "1", "content": "<p><strong>Text</strong></p>"}
+            if parts[2] == "chapter":
+                if set(query) != {"chapterId"}:
+                    status = 400
+                chapter_id = query.get("chapterId", [""])[0]
+                if chapter_id == "12": chapter.update(content=None, images=[{"url": " "}])
+                if chapter_id == "13": chapter.update(isLocked=False, isTimeLocked=True)
+                body = json.dumps({"chapter": chapter})
+            elif parts[2] == "chapters":
+                skip = int(query.get("skip", ["0"])[0])
+                post_id = query.get("postId", [""])[0]
+                ids = [11, 12] if skip == 0 or post_id == "998" else ([13] if post_id != "999" else [])
+                body = json.dumps({"post": {"chapters": [dict(chapter, id=i) for i in ids]}, "totalChapterCount": 3})
+        if parts[1:3] == ["captured", "home"]:
+            evidence = os.environ.get("AIDOKU_IKEN_EVIDENCE_DIR")
+            if evidence and parts[3] in {"hive", "nyx", "vortex", "magus", "eternal"}:
+                body = (Path(evidence) / (parts[3] + "-home.html")).read_text()
+            else:
+                status = 404
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.end_headers()
@@ -75,8 +97,8 @@ def run(crate):
 
 
 if __name__ == "__main__":
-    crates = sys.argv[1:] or ["templates/keyoapp", "templates/mangathemesia"]
-    if any(crate not in {"templates/keyoapp", "templates/mangathemesia"} for crate in crates):
-        raise SystemExit("Expected templates/keyoapp or templates/mangathemesia")
+    crates = sys.argv[1:] or ["templates/keyoapp", "templates/mangathemesia", "templates/iken"]
+    if any(crate not in {"templates/keyoapp", "templates/mangathemesia", "templates/iken"} for crate in crates):
+        raise SystemExit("Expected templates/keyoapp, templates/mangathemesia or templates/iken")
     results = [run(crate) for crate in crates]
     raise SystemExit(int(any(results)))

@@ -104,3 +104,7 @@ updated dependent source versions, and changed Madara's icon background to its h
 Fixed adjacent nested emphasis markers and empty home keys, aligned Editor Picks title and
 description handling, and shortened comments. Added deterministic coverage without changing
 the shared default home or introducing dependencies.
+
+## 2026-11-11
+
+Resumed [[iken-template]] maintenance for the five upstream consumers. Updated pagination, keys, lock handling, home parsing and novel emphasis; retained fork-only regression coverage.

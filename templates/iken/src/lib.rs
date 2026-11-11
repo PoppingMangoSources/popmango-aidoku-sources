@@ -7,7 +7,9 @@ use aidoku::{
 };
 
 mod helpers;
+pub mod home;
 mod imp;
+mod markdown;
 pub mod models;
 
 pub use imp::Impl;
@@ -15,12 +17,8 @@ pub use imp::Impl;
 pub struct Params {
 	pub base_url: Cow<'static, str>,
 	pub api_url: Option<Cow<'static, str>>,
-	// if the post endpoint require slugs instead of ids
-	pub use_slug_series_keys: bool,
-	// the post endpoint doesn't contain all keys for the chapter objects
-	pub fetch_full_chapter_list: bool,
-	pub get_sort_value: fn(i32) -> Cow<'static, str>,
-	pub hide_home_lists: bool,
+	pub home_slider_selector: Cow<'static, str>,
+	pub home_section_titles: &'static [&'static str],
 }
 
 impl Default for Params {
@@ -28,20 +26,15 @@ impl Default for Params {
 		Self {
 			base_url: "".into(),
 			api_url: None,
-			use_slug_series_keys: false,
-			fetch_full_chapter_list: false,
-			get_sort_value: |_| "".into(),
-			hide_home_lists: false,
+			home_slider_selector: ".main-banner-slider .swiper-slide, .mainSlider .swiper-slide, .cinematic-slider-5 .swiper-slide".into(),
+			home_section_titles: &["Popular Today", "Latest Releases", "Most Popular", "Latest Updates"],
 		}
 	}
 }
 
 impl Params {
-	#[inline]
-	pub fn get_api_url(&self) -> Cow<'static, str> {
-		self.api_url
-			.clone()
-			.unwrap_or_else(|| self.base_url.clone())
+	pub fn api_url(&self) -> &str {
+		self.api_url.as_deref().unwrap_or(&self.base_url)
 	}
 }
 
@@ -99,3 +92,6 @@ impl<T: Impl> DeepLinkHandler for Iken<T> {
 		self.inner.handle_deep_link(&self.params, url)
 	}
 }
+
+#[cfg(test)]
+mod test;

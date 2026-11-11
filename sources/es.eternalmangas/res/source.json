@@ -1,0 +1,13 @@
+{
+	"info": {
+		"id": "es.eternalmangas",
+		"name": "EternalMangas",
+		"version": 3,
+		"url": "https://eternalmangas.org",
+		"contentRating": 1,
+		"languages": [
+			"es"
+		],
+		"minAppVersion": "0.8.3"
+	}
+}

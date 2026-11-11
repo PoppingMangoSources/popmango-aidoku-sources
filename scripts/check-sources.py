@@ -403,7 +403,7 @@ def check_tests(source: Path) -> None:
 
 def check_template_http(template: str) -> None:
     """Live-tested templates check HTTP status before decoding response bodies."""
-    for name in ("imp.rs", "v2.rs", "child_theme.rs"):
+    for name in ("imp.rs", "v2.rs", "child_theme.rs", "home.rs"):
         path = ROOT / "templates" / template / "src" / name
         if not path.exists():
             continue
@@ -471,7 +471,7 @@ def main() -> int:
         check_source(name, args.base, args.upstream)
 
     if not args.upstream:
-        for template in ("keyoapp", "mangathemesia"):
+        for template in ("keyoapp", "mangathemesia", "iken"):
             if any(f"templates/{template}" in (SOURCES / name / "Cargo.toml").read_text()
                    for name in names if (SOURCES / name / "Cargo.toml").exists()):
                 check_template_http(template)
