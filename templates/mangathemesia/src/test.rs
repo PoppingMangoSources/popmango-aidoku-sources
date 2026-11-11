@@ -85,7 +85,7 @@ fn review_http_status_and_diagnostics() {
 		panic!("run scripts/test-http.py");
 	};
 	let site = Site::new();
-	for status in [403, 404, 429, 503] {
+	for status in [403, 404, 429, 503, 522] {
 		let mut params = site.params();
 		params.base_url = format!("{base}/status/{status}").into();
 		assert_http(

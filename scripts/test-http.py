@@ -93,7 +93,7 @@ def run(crate):
     if result.returncode:
         return result.returncode
     lines = result.stdout.splitlines()
-    for status in (403, 404, 429, 503):
+    for status in (403, 404, 429, 503, 522):
         if not any(line.startswith(f"URL: {base}/status/{status}") and
                    f'; HTTP {status}; Content-Type: Some("text/html; charset=utf-8"); body prefix: Some("<h1>Unavailable</h1>' in line
                    for line in lines):

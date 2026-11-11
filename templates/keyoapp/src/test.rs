@@ -164,7 +164,7 @@ fn review_http_status_and_diagnostics() {
 	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
 		panic!("run scripts/test-http.py");
 	};
-	for status in [403, 404, 429, 503] {
+	for status in [403, 404, 429, 503, 522] {
 		let url = format!("{base}/status/{status}");
 		let error = helpers::fetch(&url).unwrap_err();
 		assert!(

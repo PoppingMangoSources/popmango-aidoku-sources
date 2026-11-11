@@ -110,3 +110,5 @@ the shared default home or introducing dependencies.
 Resumed [[iken-template]] maintenance for the five upstream consumers. Updated pagination, keys, lock handling, home parsing and novel emphasis; retained fork-only regression coverage.
 
 Added New Releases and Novels API rows to [[iken-template]], with compact cards, concurrent requests and deterministic partial-failure/order coverage. The submission keeps novel sections and formatted reading in a separate commit.
+
+Synchronized checked-request helpers into the KeyoApp and Rage submission trees. Extended the HTTP regressions to include 522 and clarified route-specific site availability in [[source-checks]].

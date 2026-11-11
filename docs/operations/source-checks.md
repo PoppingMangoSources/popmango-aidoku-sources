@@ -2,9 +2,12 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-09
+updated: 2026-11-11
 sources:
   - code: scripts/check-sources.py
+  - code: scripts/test-http.py
+  - code: templates/keyoapp/src/test.rs
+  - code: templates/mangathemesia/src/test.rs
   - code: scripts/tests/test_check_sources.py
   - code: scripts/calibrate-rules.sh
   - code: .github/workflows/check.yaml
@@ -25,7 +28,7 @@ sources:
   - code: .github/workflows/test.yaml
   - code: scripts/tests/test_template_tests.py
   - code: scripts/commit.sh
-verified_at: 1891576
+verified_at: 39012e1
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -221,3 +224,8 @@ and review stamps; they do not replace live tests or manual review.
 > ⚠️ Template submissions use the tooling checkout's hook but must pass `--repo` for the
 > submission worktree and `--upstream` to the source checker. Otherwise the hook checks the
 > fork's unrelated history and reports unrelated consumers as failures.
+
+> ⚠️ An HTTP 522 from a source request does not establish a global site outage. Compare
+> direct requests, a fresh browser session and the device report. Keep the origin-timeout
+> response distinct from a Cloudflare 403 challenge; changing parsers does not establish
+> that either server-side failure is fixed. HTTP regressions cover 522 alongside other errors.
