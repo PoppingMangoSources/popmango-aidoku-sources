@@ -234,12 +234,17 @@ pub fn parse(html: &Document, params: &Params) -> Result<HomeLayout> {
 				continue;
 			}
 			let ranking = matches!(title.as_str(), "Most Popular" | "Tendencias");
+			let paged = ranking
+				|| matches!(
+					title.as_str(),
+					"Latest Releases" | "Latest Updates" | "Últimas Actualizaciones"
+				);
 			components.push(HomeComponent {
 				title: Some(title),
-				value: if ranking {
+				value: if paged {
 					HomeComponentValue::MangaList {
-						ranking: true,
-						page_size: Some(5),
+						ranking,
+						page_size: Some(if ranking { 3 } else { 5 }),
 						entries,
 						listing: None,
 					}

@@ -87,8 +87,14 @@ fn review_home_order_compact_cards_and_section_boundaries() {
 		Some("Latest Releases")
 	);
 	assert_eq!(layout.components[1].title.as_deref(), Some("Most Popular"));
-	let HomeComponentValue::Scroller { entries, .. } = &layout.components[0].value else {
-		panic!("Expected scroller");
+	let HomeComponentValue::MangaList {
+		entries,
+		ranking: false,
+		page_size: Some(5),
+		..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected five-row latest list");
 	};
 	assert_eq!(entries.len(), 1);
 	assert!(entries[0].subtitle.is_none());
@@ -100,7 +106,7 @@ fn review_home_order_compact_cards_and_section_boundaries() {
 	assert!(matches!(
 		layout.components[1].value,
 		HomeComponentValue::MangaList {
-			page_size: Some(5),
+			page_size: Some(3),
 			..
 		}
 	));
@@ -112,7 +118,7 @@ fn review_http_errors_and_key_only_reading() {
 	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
 		panic!("Run scripts/test-http.py");
 	};
-	for status in [403, 404, 429, 503] {
+	for status in [403, 404, 429, 503, 522] {
 		let url = format!("{base}/status/{status}");
 		assert!(
 			helpers::check_response(Request::get(&url).unwrap().send().unwrap(), &url).is_err()
@@ -314,4 +320,52 @@ fn review_http_new_releases_are_compact_and_ordered() {
 	assert_eq!(partial.components.len(), 2);
 	params.base_url = format!("{base}/status/503").into();
 	assert!(Site.get_home(&params).is_err());
+}
+
+#[aidoku_test]
+fn review_home_latest_and_popular_page_sizes_keep_every_entry() {
+	for (latest, popular) in [
+		("Latest Releases", "Most Popular"),
+		("Latest Updates", "Most Popular"),
+		("Últimas Actualizaciones", "Tendencias"),
+	] {
+		let cards = (0..7)
+			.map(|i| {
+				format!(
+					"<a href='/series/title-{i}' title='Title {i}'><img src='https://example.com/{i}.jpg'></a>"
+				)
+			})
+			.collect::<String>();
+		let html = Html::parse(format!("<main><section><h2>{latest}</h2>{cards}</section><section><h2>{popular}</h2>{cards}</section></main>")).unwrap();
+		let params = Params {
+			base_url: "https://example.com".into(),
+			home_section_titles: &[
+				"Latest Releases",
+				"Latest Updates",
+				"Most Popular",
+				"Últimas Actualizaciones",
+				"Tendencias",
+			],
+			..Default::default()
+		};
+		let layout = home::parse(&html, &params).unwrap();
+		assert_eq!(layout.components.len(), 2);
+		for (component, expected_size, expected_ranking) in [
+			(&layout.components[0], 5, false),
+			(&layout.components[1], 3, true),
+		] {
+			let HomeComponentValue::MangaList {
+				entries,
+				page_size,
+				ranking,
+				..
+			} = &component.value
+			else {
+				panic!("Expected paged list");
+			};
+			assert_eq!(*page_size, Some(expected_size));
+			assert_eq!(*ranking, expected_ranking);
+			assert_eq!(entries.len(), 7);
+		}
+	}
 }

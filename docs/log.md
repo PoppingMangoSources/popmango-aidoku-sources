@@ -112,3 +112,5 @@ Resumed [[iken-template]] maintenance for the five upstream consumers. Updated p
 Added New Releases and Novels API rows to [[iken-template]], with compact cards, concurrent requests and deterministic partial-failure/order coverage. The submission keeps novel sections and formatted reading in a separate commit.
 
 Synchronized checked-request helpers into the KeyoApp and Rage submission trees. Extended the HTTP regressions to include 522 and clarified route-specific site availability in [[source-checks]].
+
+Set [[iken-template]] latest-release lists to five rows per page and popular ranked lists to three, with English/Spanish layout regressions preserving all cards.

@@ -15,7 +15,7 @@ sources:
   - code: sources/en.hivescans/src/helpers.rs
   - ext: https://github.com/Aidoku-Community/sources/commit/a5b9802a25780ba5db5dbe2590793e88bfd3d355
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
-verified_at: 779de0f
+verified_at: 4806c6d
 ---
 
 The template serves Hive Scans, Nyx Scans, Vortex Scans, Magus Manga and EternalMangas.
@@ -56,8 +56,9 @@ consumer can localize both headings. Novels uses seriesType=NOVEL and the consum
 feeds are omitted; an existing novel component keeps its original position. Failed rows are omitted; all failures return an error.
 Home reads real HTML cards, recognizes verified headings in DOM order and bounds the ancestor
 walk before a neighboring section. It does not construct artificial chapters or fetch each
-card. Latest Releases is a compact scroller because the HTML links carry chapter slugs, not
-stable chapter ids. Most Popular/Tendencias is a ranked list with five visible entries.
+card. Latest Releases/Latest Updates/Últimas Actualizaciones is a compact paged list with five rows per page.
+The HTML links carry chapter slugs rather than stable chapter ids, so cards remain series links.
+Most Popular/Tendencias is a ranked list with three rows per page.
 Looped featured slides are ordered by their slide indexes and deduplicated. Vortex's original
 cover fallback is preferred over a wide banner. Eternal uses its own Spanish headings and
 hero selector. Hive's custom four-banner script data is parsed only in that consumer.
