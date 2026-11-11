@@ -97,6 +97,7 @@ Use them for their demonstrated patterns while verifying each site's current con
 
 November review cross-checks:
 
+- [872: unnecessary allocations](https://github.com/Aidoku-Community/sources/pull/872#discussion_r4507635520): reuse constructed request URLs and borrow script JSON while decoding instead of copying its remainder.
 - [872: helpers and comments](https://github.com/Aidoku-Community/sources/pull/872#discussion_r4507630284): move free helpers out of trait wiring; retain only non-obvious explanations.
 - [872: chapter keys](https://github.com/Aidoku-Community/sources/pull/872#discussion_r4503603425): preserve suffixes rather than interpreting chapter identity as a number.
 - [869: deep-link dispatch](https://github.com/Aidoku-Community/sources/pull/869#discussion_r4503542558): matching hosts are already selected by the app; this does not cover arbitrary pasted search input.

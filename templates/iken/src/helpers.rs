@@ -4,7 +4,7 @@ use crate::{
 };
 use aidoku::{
 	Result,
-	alloc::{String, Vec},
+	alloc::{String, Vec, collections::BTreeSet},
 	helpers::uri::{QueryParameters, decode_uri},
 	imports::net::{Request, Response},
 	prelude::*,
@@ -27,19 +27,16 @@ pub fn check_response(response: Response, url: &str) -> Result<Response> {
 	Ok(response)
 }
 
-fn response(params: &Params, path: &str) -> Result<Response> {
-	Ok(Request::get(format!("{}{path}", params.api_url()))?
+fn response(params: &Params, url: &str) -> Result<Response> {
+	Ok(Request::get(url)?
 		.header("Accept", "application/json")
 		.header("Referer", &format!("{}/", params.base_url))
 		.send()?)
 }
 
 pub fn json<T: DeserializeOwned>(params: &Params, path: &str) -> Result<T> {
-	check_response(
-		response(params, path)?,
-		&format!("{}{path}", params.api_url()),
-	)?
-	.get_json()
+	let url = format!("{}{path}", params.api_url);
+	check_response(response(params, &url)?, &url)?.get_json()
 }
 
 pub fn post(params: &Params, key: &str) -> Result<Option<Post>> {
@@ -57,13 +54,13 @@ pub fn post(params: &Params, key: &str) -> Result<Option<Post>> {
 		);
 		qs.push("postSlug", Some(&slug));
 	}
-	let path = format!("/api/post?{qs}");
-	let response = response(params, &path)?;
+	let url = format!("{}/api/post?{qs}", params.api_url);
+	let response = response(params, &url)?;
 	if response.status_code() == 404 {
 		return Ok(None);
 	}
 	Ok(Some(
-		check_response(response, &format!("{}{path}", params.api_url()))?
+		check_response(response, &url)?
 			.get_json::<PostResponse>()?
 			.post,
 	))
@@ -71,6 +68,7 @@ pub fn post(params: &Params, key: &str) -> Result<Option<Post>> {
 
 pub fn chapters(params: &Params, id: &str) -> Result<Vec<IkenChapter>> {
 	let mut chapters: Vec<IkenChapter> = Vec::new();
+	let mut ids = BTreeSet::new();
 	loop {
 		let data: ChaptersResponse = json(
 			params,
@@ -80,10 +78,7 @@ pub fn chapters(params: &Params, id: &str) -> Result<Vec<IkenChapter>> {
 		if page.is_empty() && chapters.len() < data.total_chapter_count {
 			bail!("Incomplete chapter list");
 		}
-		if page
-			.first()
-			.is_some_and(|first| chapters.iter().any(|c| c.id == first.id))
-		{
+		if page.iter().any(|chapter| !ids.insert(chapter.id)) {
 			bail!("Repeating chapter page");
 		}
 		chapters.extend(page);

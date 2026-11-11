@@ -118,3 +118,5 @@ Set [[iken-template]] latest-release lists to five rows per page and popular ran
 Moved Mist Scans to its working `.org` V2 site and replaced V1 filters/tests in [[keyoapp-template]].
 
 Restored real chapter numbers and release dates to the Iken latest row with one metadata batch, preserving pinned HTML order and existing page sizes. Checked Hive against the linked reference client and current API; the lowercase title comes from the site. See [[iken-template]].
+
+Audited every production file on `fix-iken` against current guidance, attached snapshots and merged patterns. Removed the API fallback accessor and duplicate URL/slug allocations; expanded chapter overlap rejection and emphasis regressions. Recent reviewer evidence and remaining device checks are recorded in [[iken-template]].

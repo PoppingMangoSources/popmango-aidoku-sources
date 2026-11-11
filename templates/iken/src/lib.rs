@@ -16,7 +16,7 @@ pub use imp::Impl;
 
 pub struct Params {
 	pub base_url: Cow<'static, str>,
-	pub api_url: Option<Cow<'static, str>>,
+	pub api_url: Cow<'static, str>,
 	pub home_slider_selector: Cow<'static, str>,
 	pub home_section_titles: &'static [&'static str],
 	pub sorts: &'static [&'static str],
@@ -28,19 +28,13 @@ impl Default for Params {
 	fn default() -> Self {
 		Self {
 			base_url: "".into(),
-			api_url: None,
+			api_url: "".into(),
 			new_releases_title: "New Releases",
 			novels_title: "Novels",
 			home_slider_selector: ".main-banner-slider .swiper-slide, .mainSlider .swiper-slide, .cinematic-slider-5 .swiper-slide".into(),
 			sorts: &["lastChapterAddedAt", "totalViews", "createdAt", "chaptersCount", "postTitle"],
 			home_section_titles: &["Popular Today", "Latest Releases", "Most Popular", "Latest Updates"],
 		}
-	}
-}
-
-impl Params {
-	pub fn api_url(&self) -> &str {
-		self.api_url.as_deref().unwrap_or(&self.base_url)
 	}
 }
 

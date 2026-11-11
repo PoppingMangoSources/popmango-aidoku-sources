@@ -25,10 +25,10 @@ pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> 
 		if let Some(series_type) = series_type {
 			query.push("seriesType", Some(series_type));
 		}
-		urls.push(format!("{}/api/query?{query}", params.api_url()));
+		urls.push(format!("{}/api/query?{query}", params.api_url));
 	}
 	// Pinned titles can fall below the first API page.
-	urls.push(format!("{}/api/posts?page=1&perPage=100", params.api_url()));
+	urls.push(format!("{}/api/posts?page=1&perPage=100", params.api_url));
 	let requests = urls
 		.iter()
 		.map(|url| {
@@ -269,7 +269,12 @@ pub fn parse(html: &Document, params: &Params) -> Result<HomeLayout> {
 							continue;
 						}
 						if let Some(manga) = manga(&card, params)
-							&& !entries.iter().any(|entry| matches!(&entry.value, Some(LinkValue::Manga(existing)) if existing.key == manga.key)) { entries.push(Link::from(manga)); }
+							&& !entries.iter().any(|entry| {
+								matches!(&entry.value, Some(LinkValue::Manga(existing)) if existing.key == manga.key)
+							})
+						{
+							entries.push(Link::from(manga));
+						}
 					}
 				}
 				if !entries.is_empty() {

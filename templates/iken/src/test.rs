@@ -16,6 +16,10 @@ fn review_novel_emphasis_and_paragraph_boundaries() {
 		.unwrap(),
 		"***onetwo***\n\n**three**\n\n**four**"
 	);
+	assert_eq!(
+		markdown::parse("<p><i><b>one</b></i><i><b>two</b></i></p>").unwrap(),
+		"***onetwo***"
+	);
 	let prose = "Hello, world. Wait: yes! ".repeat(500);
 	assert_eq!(markdown::parse(&prose).unwrap(), prose.trim());
 	assert!(markdown::parse("<script>hidden</script><p> </p>").is_err());
@@ -126,6 +130,7 @@ fn review_http_errors_and_key_only_reading() {
 	}
 	let params = Params {
 		base_url: base.into(),
+		api_url: base.into(),
 		..Default::default()
 	};
 	struct Site;
@@ -176,7 +181,7 @@ fn review_http_errors_and_key_only_reading() {
 		.is_err()
 	);
 	assert_eq!(helpers::chapters(&params, "7").unwrap().len(), 3);
-	for id in ["998", "999"] {
+	for id in ["996", "997", "998", "999"] {
 		assert!(helpers::chapters(&params, id).is_err());
 	}
 }
@@ -253,7 +258,7 @@ fn review_http_new_releases_are_compact_and_ordered() {
 	}
 	let mut params = Params {
 		base_url: format!("{base}/home").into(),
-		api_url: Some(base.into()),
+		api_url: base.into(),
 		..Default::default()
 	};
 	let layout = Site.get_home(&params).unwrap();
@@ -278,7 +283,7 @@ fn review_http_new_releases_are_compact_and_ordered() {
 	assert!(
 		matches!(&entries[0].value, Some(LinkValue::Manga(m)) if m.key == "7" && m.tags.is_none() && m.description.is_none())
 	);
-	params.api_url = Some(format!("{base}/empty-novels").into());
+	params.api_url = format!("{base}/empty-novels").into();
 	let no_novels = Site.get_home(&params).unwrap();
 	assert_eq!(no_novels.components.len(), 3);
 	assert!(
@@ -287,7 +292,7 @@ fn review_http_new_releases_are_compact_and_ordered() {
 			.iter()
 			.any(|c| c.title.as_deref() == Some("Novels"))
 	);
-	params.api_url = Some(format!("{base}/fail-new").into());
+	params.api_url = format!("{base}/fail-new").into();
 	let novel_only = Site.get_home(&params).unwrap();
 	assert!(
 		novel_only
@@ -302,7 +307,7 @@ fn review_http_new_releases_are_compact_and_ordered() {
 			.any(|c| c.title.as_deref() == Some("New Releases"))
 	);
 	params.base_url = format!("{base}/home-existing").into();
-	params.api_url = Some(base.into());
+	params.api_url = base.into();
 	params.home_section_titles = &["Latest Releases", "Most Popular", "Novels"];
 	let existing = Site.get_home(&params).unwrap();
 	assert_eq!(
@@ -315,7 +320,7 @@ fn review_http_new_releases_are_compact_and_ordered() {
 	);
 	assert_eq!(existing.components[3].title.as_deref(), Some("Novels"));
 	params.base_url = format!("{base}/home").into();
-	params.api_url = Some(format!("{base}/fail").into());
+	params.api_url = format!("{base}/fail").into();
 	let partial = Site.get_home(&params).unwrap();
 	assert_eq!(partial.components.len(), 2);
 	params.base_url = format!("{base}/status/503").into();

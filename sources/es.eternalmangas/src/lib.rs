@@ -15,7 +15,7 @@ impl Impl for EternalMangas {
 	fn params(&self) -> Params {
 		Params {
 			base_url: BASE_URL.into(),
-			api_url: Some(API_URL.into()),
+			api_url: API_URL.into(),
 			new_releases_title: "Nuevos lanzamientos",
 			novels_title: "Novelas",
 			sorts: &["updatedAt", "totalViews", "createdAt", "postTitle"],

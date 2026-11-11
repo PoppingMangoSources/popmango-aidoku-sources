@@ -59,6 +59,10 @@ class Responses(http.server.BaseHTTPRequestHandler):
                 skip = int(query.get("skip", ["0"])[0])
                 post_id = query.get("postId", [""])[0]
                 ids = [11, 12] if skip == 0 or post_id == "998" else ([13] if post_id != "999" else [])
+                if post_id == "997" and skip > 0:
+                    ids = [13, 12]
+                if post_id == "996" and skip == 0:
+                    ids = [11, 11]
                 body = json.dumps({"post": {"chapters": [dict(chapter, id=i) for i in ids]}, "totalChapterCount": 3})
         if parts[1:3] == ["captured", "home"]:
             evidence = os.environ.get("AIDOKU_IKEN_EVIDENCE_DIR")

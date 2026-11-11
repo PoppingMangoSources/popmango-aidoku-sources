@@ -1394,7 +1394,8 @@ Iken consumers currently use numeric series and chapter keys from the JSON API. 
 arrive as `/series/<slug>` and resolve before returning details or deep links. A numeric
 chapter-only update skips the details lookup; the reader requests the chapter by id alone.
 `/api/post` may contain no chapters, so collect `/api/chapters` with `skip`/`take` until
-`totalChapterCount` is reached. Empty or repeating pages before completion are errors.
+`totalChapterCount` is reached. Empty pages before completion and any repeated chapter id,
+including overlaps later in a page or within the same page, are errors.
 Treat independent lock flags independently; an explicit accessible response overrides only
 the price fallback. Keep Hive's custom script banners local to that consumer. Novel imports
 require app 0.8.3 for every consumer. See `docs/subsystems/iken-template.md`.

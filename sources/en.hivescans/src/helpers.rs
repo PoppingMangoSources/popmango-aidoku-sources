@@ -1,29 +1,27 @@
 use crate::models::Banner;
 use aidoku::{
-	HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, Result,
-	alloc::{String, Vec},
-	prelude::*,
+	HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, Result, alloc::Vec,
+	imports::html::Document, prelude::*,
 };
 use iken::{Params, home};
+use serde::Deserialize;
 
-pub fn parse_home(html: &aidoku::imports::html::Document, params: &Params) -> Result<HomeLayout> {
+pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 	let mut layout = home::parse(html, params)?;
 	// The remaining slides are initialized by the site's script.
-	let data: String = html
+	let banners = html
 		.select("script")
 		.and_then(|scripts| {
 			scripts
 				.filter_map(|s| s.data().or_else(|| s.html()))
 				.find_map(|s| {
-					s.split_once("const hvtXHeroLibrary = ")
-						.map(|(_, data)| data.into())
+					let (_, data) = s.split_once("const hvtXHeroLibrary = ")?;
+					Some(Vec::<Banner>::deserialize(
+						&mut serde_json::Deserializer::from_str(data),
+					))
 				})
 		})
-		.ok_or(error!("Banner data not found"))?;
-	let banners = serde_json::Deserializer::from_str(&data)
-		.into_iter::<Vec<Banner>>()
-		.next()
-		.ok_or(error!("Empty banner data"))??;
+		.ok_or(error!("Banner data not found"))??;
 	let links: Vec<Link> = banners
 		.into_iter()
 		.take(4)

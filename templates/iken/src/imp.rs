@@ -88,13 +88,15 @@ pub trait Impl {
 		let mut slug = None;
 		if needs_details || manga.key.parse::<i32>().is_err() {
 			let post = helpers::post(params, &manga.key)?.ok_or(error!("Series not found"))?;
-			manga.key = post.key()?;
-			slug = Some(post.slug.clone());
 			if needs_details {
+				slug = needs_chapters.then(|| post.slug.clone());
 				manga.copy_from(post.into_details(&params.base_url)?);
 				if needs_chapters {
 					send_partial_result(&manga);
 				}
+			} else {
+				manga.key = post.key()?;
+				slug = Some(post.slug);
 			}
 		}
 		if needs_chapters {

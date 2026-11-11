@@ -15,7 +15,7 @@ sources:
   - code: sources/en.hivescans/src/helpers.rs
   - ext: https://github.com/Aidoku-Community/sources/commit/a5b9802a25780ba5db5dbe2590793e88bfd3d355
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
-verified_at: 913edae
+verified_at: e07a9ac
 ---
 
 The template serves Hive Scans, Nyx Scans, Vortex Scans, Magus Manga and EternalMangas.
@@ -25,6 +25,7 @@ branch is `fix-iken`, based on canonical `4ac8414`, with production files only.
 
 ## API and keys
 
+All five consumers explicitly set both base_url and api_url, as in the merged MangaK template.
 Search uses `/api/query` with page/perPage, archive view, orderBy/orderDirection, seriesType,
 seriesStatus and included genreIds. The default sorts are lastChapterAddedAt, totalViews, createdAt,
 chaptersCount and postTitle. Eternal honors updatedAt, totalViews, createdAt and postTitle, so its Params and static
@@ -38,7 +39,7 @@ Four APIs were reachable directly on November 11; Hive's API returned 403. All f
 home pages were available through Firecrawl. Direct home requests returned 403.
 
 > ⚠️ The details response can contain an empty chapter list despite a nonzero chapter count.
-> Never use it as the complete inventory. Empty or repeating pagination before completion
+> Never use it as the complete inventory. Empty pagination before completion or a repeated chapter id anywhere in the inventory
 > must fail instead of returning a shortened list (`helpers::chapters`).
 
 > ⚠️ Numeric keys retain existing libraries. Home slug paths resolve to those keys before
@@ -90,3 +91,24 @@ these public API paths. See [[source-checks]] for the repository gates.
 
 > ⚠️ Eternal silently ignores lastChapterAddedAt and chaptersCount sorting. Reversed direction
 > probes returned the same fallback order. Do not re-enable these options without fresh evidence.
+
+## Review audit
+
+The November 11 audit compared every production file changed by `fix-iken` with canonical
+`4ac8414`, the current main instructions and attached snapshots. MangaK supplied the Params/Impl
+and conversion reference; Flame and NovelArchive supplied the HTML emphasis references.
+The recent reviewer threads checked were 890, 889, 884, 883, 881, 882, 872 and 869.
+
+| Area | Outcome |
+| --- | --- |
+| Layout, names and helpers | Trait forwarding remains in lib.rs, behavior in imp.rs, DTO conversions in models.rs, network operations in helpers.rs, and the substantial home/reader logic in their own modules. Removed the unused API fallback accessor. |
+| Ownership and duplication | Reuse request URLs, decode Hive banner JSON while its script buffer is borrowed, and avoid duplicate identity validation and unnecessary slug clones. The chapter date fields use take because the remaining chapter is subsequently consumed by its normal conversion. |
+| Pagination and errors | Reject duplicate ids within or between pages, including overlaps after the first entry. Loopback regressions retain incomplete-page, HTTP, missing-page and key-only reader checks. |
+| Cards and filters | Compact cards, blank required identity rejection, sort first, static tag taps, explicit unsupported exclusions and source-local sort/type overrides remain. No settings or dynamic-genre machinery is needed. |
+| Home and reader | Preserve pinned HTML order, real chapter ids, latest five/popular three, source-local banners, partial success and separate novel support. Both emphasis nesting orders have deterministic coverage. |
+| Submission | Keep the two requested commits, upstream+1 submission versions, and no fork tests, docs or unused test dependencies. |
+
+Before this cleanup, all five already-published consumers passed their live suites: Hive 6,
+Nyx 5, Vortex 5, Magus 5 and Eternal 5. The novel test reports a catalogue with no novels or
+accessible chapters explicitly; a passing suite does not mean every site currently has novels.
+App layout, WebView sessions and device novel rendering require separate device evidence.
