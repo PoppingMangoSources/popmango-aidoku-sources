@@ -1,7 +1,8 @@
-use crate::{Params, helpers};
+use crate::{Impl, Params, helpers, models::SearchResponse};
 use aidoku::{
 	HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Manga, Result,
-	alloc::{String, Vec},
+	alloc::{String, Vec, string::ToString, vec},
+	helpers::uri::QueryParameters,
 	imports::{
 		html::{Document, Element},
 		net::Request,
@@ -9,11 +10,76 @@ use aidoku::{
 	prelude::*,
 };
 
-pub fn fetch(params: &Params) -> Result<Document> {
-	Ok(
-		helpers::check_response(Request::get(&params.base_url)?.send()?, &params.base_url)?
-			.get_html()?,
-	)
+pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> {
+	let mut urls = vec![params.base_url.to_string()];
+	let mut query = QueryParameters::new();
+	query.push("page", Some("1"));
+	query.push("perPage", Some("18"));
+	query.push("view", Some("archive"));
+	query.push("orderBy", Some("createdAt"));
+	query.push("orderDirection", Some("desc"));
+	urls.push(format!("{}/api/query?{query}", params.api_url()));
+	let requests = urls
+		.iter()
+		.map(|url| {
+			Ok(Request::get(url)?
+				.header(
+					"Accept",
+					if url == &params.base_url {
+						"text/html"
+					} else {
+						"application/json"
+					},
+				)
+				.header("Referer", &format!("{}/", params.base_url))
+				.timeout(30.))
+		})
+		.collect::<Result<Vec<_>>>()?;
+	let mut layout = HomeLayout::default();
+	let mut failure = None;
+	for (index, response) in Request::send_all(requests).into_iter().enumerate() {
+		let result = (|| -> Result<()> {
+			let mut response = helpers::check_response(response?, &urls[index])?;
+			if index == 0 {
+				layout = source.parse_home(params, &response.get_html()?)?;
+			} else {
+				let data: SearchResponse = response.get_json()?;
+				let entries: Vec<Link> = data
+					.posts
+					.iter()
+					.filter_map(|post| Manga::try_from(post).ok())
+					.map(Link::from)
+					.collect();
+				if !entries.is_empty() {
+					let component = HomeComponent {
+						title: Some(params.new_releases_title.into()),
+						value: HomeComponentValue::Scroller {
+							entries,
+							listing: None,
+						},
+						..Default::default()
+					};
+					let index = layout
+						.components
+						.iter()
+						.position(|c| {
+							matches!(c.title.as_deref(), Some("Most Popular" | "Tendencias"))
+						})
+						.unwrap_or(layout.components.len());
+					layout.components.insert(index, component);
+				}
+			}
+			Ok(())
+		})();
+		if let Err(error) = result {
+			println!("Home request {} failed: {error:?}", urls[index]);
+			failure = Some(error);
+		}
+	}
+	if layout.components.is_empty() {
+		return Err(failure.unwrap_or_else(|| error!("Home sections not found")));
+	}
+	Ok(layout)
 }
 
 fn manga(element: &Element, params: &Params) -> Option<Manga> {

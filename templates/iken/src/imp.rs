@@ -4,7 +4,7 @@ use aidoku::{
 	PageContext, Result,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::QueryParameters,
-	imports::{net::Request, std::send_partial_result},
+	imports::{html::Document, net::Request, std::send_partial_result},
 	prelude::*,
 };
 
@@ -142,7 +142,11 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		home::parse(&home::fetch(params)?, params)
+		home::get(self, params)
+	}
+
+	fn parse_home(&self, params: &Params, html: &Document) -> Result<HomeLayout> {
+		home::parse(html, params)
 	}
 
 	fn get_image_request(

@@ -192,6 +192,17 @@ fn live_home_has_site_rows() {
 			.iter()
 			.any(|c| c.title.as_deref() == Some(LATEST_TITLE))
 	);
+	let new_title = if BASE_URL.contains("eternalmangas") {
+		"Nuevos lanzamientos"
+	} else {
+		"New Releases"
+	};
+	assert!(
+		layout
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some(new_title))
+	);
 	assert!(layout.components.iter().any(|c| matches!(
 		c.value,
 		HomeComponentValue::BigScroller { .. } | HomeComponentValue::ImageScroller { .. }

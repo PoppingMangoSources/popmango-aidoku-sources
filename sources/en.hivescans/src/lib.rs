@@ -1,6 +1,7 @@
 #![no_std]
+use aidoku::imports::html::Document;
 use aidoku::{Source, prelude::*};
-use iken::{Iken, Impl, Params, home};
+use iken::{Iken, Impl, Params};
 
 mod helpers;
 mod models;
@@ -22,8 +23,8 @@ impl Impl for HiveScans {
 			..Default::default()
 		}
 	}
-	fn get_home(&self, params: &Params) -> aidoku::Result<aidoku::HomeLayout> {
-		helpers::parse_home(&home::fetch(params)?, params)
+	fn parse_home(&self, params: &Params, html: &Document) -> aidoku::Result<aidoku::HomeLayout> {
+		helpers::parse_home(html, params)
 	}
 }
 

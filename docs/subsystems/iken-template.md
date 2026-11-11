@@ -50,6 +50,9 @@ home pages were available through Firecrawl. Direct home requests returned 403.
 
 ## Home and novels
 
+Home requests the HTML and the New Releases API feed concurrently. Newly added series use
+createdAt descending, and their compact row sits before Most Popular/Tendencias. The
+consumer can localize the heading. Failed rows are omitted; all failures return an error.
 Home reads real HTML cards, recognizes verified headings in DOM order and bounds the ancestor
 walk before a neighboring section. It does not construct artificial chapters or fetch each
 card. Latest Releases is a compact scroller because the HTML links carry chapter slugs, not

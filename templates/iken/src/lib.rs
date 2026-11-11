@@ -20,6 +20,7 @@ pub struct Params {
 	pub home_slider_selector: Cow<'static, str>,
 	pub home_section_titles: &'static [&'static str],
 	pub sorts: &'static [&'static str],
+	pub new_releases_title: &'static str,
 }
 
 impl Default for Params {
@@ -27,6 +28,7 @@ impl Default for Params {
 		Self {
 			base_url: "".into(),
 			api_url: None,
+			new_releases_title: "New Releases",
 			home_slider_selector: ".main-banner-slider .swiper-slide, .mainSlider .swiper-slide, .cinematic-slider-5 .swiper-slide".into(),
 			sorts: &["lastChapterAddedAt", "totalViews", "createdAt", "chaptersCount", "postTitle"],
 			home_section_titles: &["Popular Today", "Latest Releases", "Most Popular", "Latest Updates"],

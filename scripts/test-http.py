@@ -26,6 +26,15 @@ class Responses(http.server.BaseHTTPRequestHandler):
         if self.path == "/novel":
             body = '<div id="readerarea"><p><strong>First<br>Second</strong></p><p><em>Third</em></p></div><script>ts_reader.run({"is_novel":true,"images":[]})</script>'
         query = parse_qs(urlsplit(self.path).query)
+        if urlsplit(self.path).path == "/home":
+            body = "<main><section><h2>Latest Releases</h2><a href='/series/old' title='Old'><img src='https://example.com/old.jpg'></a></section><section><h2>Most Popular</h2><a href='/series/popular' title='Popular'><img src='https://example.com/popular.jpg'></a></section></main>"
+        if urlsplit(self.path).path.endswith("/api/query"):
+            content_type = "application/json"
+            if set(query) != {"page", "perPage", "view", "orderBy", "orderDirection"} or query.get("orderBy") != ["createdAt"] or query.get("orderDirection") != ["desc"]:
+                status = 400
+            if urlsplit(self.path).path.startswith("/fail"):
+                status = 503
+            body = json.dumps({"posts": [{"id": 7, "slug": "new", "postTitle": "New", "featuredImage": "https://example.com/new.jpg"}], "totalCount": 1})
         if urlsplit(self.path).path.startswith("/api/"):
             content_type = "application/json"
             chapter = {"id": 11, "slug": "chapter-1", "number": "1", "content": "<p><strong>Text</strong></p>"}
@@ -91,8 +100,10 @@ def run(crate):
     for line in result.stdout.splitlines():
         if "; body prefix: Some(" in line:
             prefix = json.loads(line.split("; body prefix: Some(", 1)[1][:-1])
-            if len(prefix) != 240:
-                raise AssertionError("Expected exactly 240 Unicode characters in the preview")
+            if len(prefix) > 240:
+                raise AssertionError("Response preview exceeded 240 Unicode characters")
+            if prefix.startswith("<h1>Unavailable</h1>") and len(prefix) != 240:
+                raise AssertionError("Expected exactly 240 Unicode characters in the long preview")
     return 0
 
 

@@ -229,3 +229,51 @@ fn review_http_captured_homes() {
 		);
 	}
 }
+
+#[aidoku_test]
+#[ignore]
+fn review_http_new_releases_are_compact_and_ordered() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	let mut params = Params {
+		base_url: format!("{base}/home").into(),
+		api_url: Some(base.into()),
+		..Default::default()
+	};
+	let layout = Site.get_home(&params).unwrap();
+	assert_eq!(
+		layout
+			.components
+			.iter()
+			.map(|c| c.title.as_deref())
+			.collect::<Vec<_>>(),
+		[
+			Some("Latest Releases"),
+			Some("New Releases"),
+			Some("Most Popular")
+		]
+	);
+	let HomeComponentValue::Scroller { entries, .. } = &layout.components[1].value else {
+		panic!("Expected scroller");
+	};
+	assert_eq!(entries.len(), 1);
+	assert!(entries[0].subtitle.is_none());
+	assert!(
+		matches!(&entries[0].value, Some(LinkValue::Manga(m)) if m.key == "7" && m.tags.is_none() && m.description.is_none())
+	);
+	params.api_url = Some(format!("{base}/fail").into());
+	let partial = Site.get_home(&params).unwrap();
+	assert_eq!(partial.components.len(), 2);
+	params.base_url = format!("{base}/status/503").into();
+	assert!(Site.get_home(&params).is_err());
+}
