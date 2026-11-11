@@ -13,7 +13,7 @@ use aidoku::{
 	prelude::*,
 };
 
-pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> {
+pub(crate) fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> {
 	let mut urls = vec![params.base_url.to_string()];
 	for (sort, series_type) in [("createdAt", None), (params.sorts[0], Some("NOVEL"))] {
 		let mut query = QueryParameters::new();
@@ -32,28 +32,23 @@ pub fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> 
 	let requests = urls
 		.iter()
 		.map(|url| {
-			Ok(Request::get(url)?
-				.header(
-					"Accept",
-					if url == &params.base_url {
-						"text/html"
-					} else {
-						"application/json"
-					},
-				)
-				.header("Referer", &format!("{}/", params.base_url))
-				.timeout(30.))
+			let request = helpers::request(params, url)?;
+			Ok(if url == &params.base_url {
+				request.header("Accept", "text/html")
+			} else {
+				request
+			})
 		})
 		.collect::<Result<Vec<_>>>()?;
 	let mut layout = HomeLayout::default();
 	let mut failure = None;
 	for (index, response) in Request::send_all(requests).into_iter().enumerate() {
 		let result = (|| -> Result<()> {
-			let mut response = helpers::check_response(response?, &urls[index])?;
+			let response = helpers::check_response(response?, &urls[index])?;
 			if index == 0 {
 				layout = source.parse_home(params, &response.get_html()?)?;
 			} else {
-				let data: SearchResponse = response.get_json()?;
+				let data: SearchResponse = response.get_json_owned()?;
 				if index + 1 == urls.len() {
 					latest(&mut layout, data.posts, params)?;
 					return Ok(());
@@ -213,9 +208,7 @@ pub fn parse(html: &Document, params: &Params) -> Result<HomeLayout> {
 		})
 		.unwrap_or_default();
 	// Looping carousels can rotate and duplicate their DOM slides.
-	if !slides.is_sorted_by_key(|(index, _)| *index) {
-		slides.sort_by_key(|(index, _)| *index);
-	}
+	slides.sort_by_key(|(index, _)| *index);
 	let mut entries: Vec<Manga> = Vec::new();
 	for (_, manga) in slides {
 		if !entries.iter().any(|entry| entry.key == manga.key) {

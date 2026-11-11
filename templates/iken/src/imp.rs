@@ -3,7 +3,7 @@ use aidoku::{
 	Chapter, DeepLinkResult, FilterValue, HomeLayout, Manga, MangaPageResult, Page, PageContent,
 	PageContext, Result,
 	alloc::{String, Vec, string::ToString, vec},
-	helpers::uri::QueryParameters,
+	helpers::uri::{QueryParameters, decode_uri},
 	imports::{html::Document, net::Request, std::send_partial_result},
 	prelude::*,
 };
@@ -126,9 +126,7 @@ pub trait Impl {
 		if images.is_empty() {
 			bail!("Chapter has no pages");
 		}
-		if !images.is_sorted_by_key(|i| i.order.unwrap_or(i32::MAX)) {
-			images.sort_by_key(|i| i.order.unwrap_or(i32::MAX));
-		}
+		images.sort_by_key(|i| i.order.unwrap_or(i32::MAX));
 		images
 			.into_iter()
 			.map(|image| {
@@ -162,8 +160,9 @@ pub trait Impl {
 
 	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
 		let Some(path) = url
-			.strip_prefix(params.base_url.as_ref())
-			.and_then(|p| p.strip_prefix("/series/"))
+			.splitn(4, '/')
+			.nth(3)
+			.and_then(|path| path.strip_prefix("series/"))
 		else {
 			return Ok(None);
 		};
@@ -180,6 +179,7 @@ pub trait Impl {
 		};
 		let key = post.key()?;
 		if let Some(chapter_slug) = chapter_slug {
+			let chapter_slug = decode_uri(chapter_slug);
 			if let Some(chapter) = helpers::chapters(params, &key)?
 				.into_iter()
 				.find(|c| c.slug == chapter_slug)

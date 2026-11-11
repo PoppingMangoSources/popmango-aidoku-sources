@@ -48,7 +48,11 @@ class Responses(http.server.BaseHTTPRequestHandler):
         if urlsplit(self.path).path.startswith("/api/"):
             content_type = "application/json"
             chapter = {"id": 11, "slug": "chapter-1", "number": "1", "content": "<p><strong>Text</strong></p>"}
-            if parts[2] == "chapter":
+            if parts[2] == "post":
+                if query != {"postSlug": ["título"]}:
+                    status = 404
+                body = json.dumps({"post": {"id": 7, "slug": "título", "postTitle": "Title"}})
+            elif parts[2] == "chapter":
                 if set(query) != {"chapterId"}:
                     status = 400
                 chapter_id = query.get("chapterId", [""])[0]
@@ -63,7 +67,7 @@ class Responses(http.server.BaseHTTPRequestHandler):
                     ids = [13, 12]
                 if post_id == "996" and skip == 0:
                     ids = [11, 11]
-                body = json.dumps({"post": {"chapters": [dict(chapter, id=i) for i in ids]}, "totalChapterCount": 3})
+                body = json.dumps({"post": {"chapters": [dict(chapter, id=i, slug=f"capítulo-{i}-part-2") for i in ids]}, "totalChapterCount": 3})
         if parts[1:3] == ["captured", "home"]:
             evidence = os.environ.get("AIDOKU_IKEN_EVIDENCE_DIR")
             if evidence and parts[3] in {"hive", "nyx", "vortex", "magus", "eternal"}:

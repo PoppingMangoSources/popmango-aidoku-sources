@@ -188,6 +188,67 @@ fn review_http_errors_and_key_only_reading() {
 
 #[aidoku_test]
 #[ignore]
+fn review_http_deep_link_paths_and_chapter_only_update() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	let params = Params {
+		base_url: base.replacen("http:", "https:", 1).into(),
+		api_url: base.into(),
+		..Default::default()
+	};
+	for suffix in ["", "/", "?ref=home", "/#chapter-list"] {
+		assert_eq!(
+			Site.handle_deep_link(&params, format!("{base}/series/t%C3%ADtulo{suffix}"))
+				.unwrap(),
+			Some(DeepLinkResult::Manga { key: "7".into() })
+		);
+	}
+	assert_eq!(
+		Site.handle_deep_link(
+			&params,
+			format!("{base}/series/t%C3%ADtulo/cap%C3%ADtulo-11-part-2/?ref=home#reader")
+		)
+		.unwrap(),
+		Some(DeepLinkResult::Chapter {
+			manga_key: "7".into(),
+			key: "11".into()
+		})
+	);
+	for path in ["/browse", "/other/series/title", "/series/missing"] {
+		assert!(
+			Site.handle_deep_link(&params, format!("{base}{path}"))
+				.unwrap()
+				.is_none()
+		);
+	}
+	let manga = Site
+		.get_manga_update(
+			&params,
+			Manga {
+				key: "7".into(),
+				..Default::default()
+			},
+			false,
+			true,
+		)
+		.unwrap();
+	assert_eq!(manga.key, "7");
+	assert!(manga.title.is_empty());
+	assert_eq!(manga.chapters.unwrap().len(), 3);
+}
+
+#[aidoku_test]
+#[ignore]
 fn review_http_captured_homes() {
 	if option_env!("AIDOKU_IKEN_EVIDENCE_DIR").is_none() {
 		return;

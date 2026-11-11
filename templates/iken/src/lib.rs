@@ -10,7 +10,7 @@ mod helpers;
 pub mod home;
 mod imp;
 mod markdown;
-pub mod models;
+mod models;
 
 pub use imp::Impl;
 

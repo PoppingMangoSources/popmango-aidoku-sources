@@ -27,16 +27,16 @@ pub fn check_response(response: Response, url: &str) -> Result<Response> {
 	Ok(response)
 }
 
-fn response(params: &Params, url: &str) -> Result<Response> {
+pub(crate) fn request(params: &Params, url: &str) -> Result<Request> {
 	Ok(Request::get(url)?
 		.header("Accept", "application/json")
 		.header("Referer", &format!("{}/", params.base_url))
-		.send()?)
+		.timeout(30.))
 }
 
 pub fn json<T: DeserializeOwned>(params: &Params, path: &str) -> Result<T> {
 	let url = format!("{}{path}", params.api_url);
-	check_response(response(params, &url)?, &url)?.get_json()
+	check_response(request(params, &url)?.send()?, &url)?.get_json_owned()
 }
 
 pub fn post(params: &Params, key: &str) -> Result<Option<Post>> {
@@ -55,13 +55,13 @@ pub fn post(params: &Params, key: &str) -> Result<Option<Post>> {
 		qs.push("postSlug", Some(&slug));
 	}
 	let url = format!("{}/api/post?{qs}", params.api_url);
-	let response = response(params, &url)?;
+	let response = request(params, &url)?.send()?;
 	if response.status_code() == 404 {
 		return Ok(None);
 	}
 	Ok(Some(
 		check_response(response, &url)?
-			.get_json::<PostResponse>()?
+			.get_json_owned::<PostResponse>()?
 			.post,
 	))
 }
