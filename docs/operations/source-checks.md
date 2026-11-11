@@ -28,12 +28,39 @@ sources:
   - code: .github/workflows/test.yaml
   - code: scripts/tests/test_template_tests.py
   - code: scripts/commit.sh
+  - code: scripts/check-archives.py
+  - code: scripts/test-sources.py
+  - code: scripts/tests/test_archives.py
+  - code: scripts/tests/test_live_test_report.py
 verified_at: 39012e1
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
 that need no network and no toolchain. It is the third gate after `cargo fmt`/`clippy` and
 `aidoku package`/`verify`; the rules themselves live in the root file, not here.
+
+## Archive and live-test evidence
+
+`scripts/check-archives.py --base <before-removal>` finds deleted source manifests and
+requires an exact tracked snapshot of each source, its tests, icon and recursive Cargo path
+dependencies on `origin/merged-sources` or `origin/dead-sources`. It compares blob hashes and
+file modes, including template tests. Both `ci-gates.py` and the installed push hook run it.
+The archive must be published before main removes the source. Full-history Actions checkouts
+include the archive branch; a missing archive ref fails preservation checks for a removal.
+`scripts/tests/test_archives.py` exercises complete and incomplete snapshots and stale templates.
+
+> ⚠️ CI's live tests stay red when any suite fails. `scripts/test-sources.py` runs after
+> the offline contracts, skips only the already-run `review_` cases, retains every raw suite
+> log and writes a per-crate Actions summary. The workflow uploads those logs even on failure.
+> HTTP evidence labels are observations, not automatic skips or proof that every assertion
+> failure is environmental. Unknown/parser failures remain failures without an HTTP label.
+
+On 2026-11-11 the Keyoapp CI run passed its template regressions but Grim returned 522;
+Kaizen, Luna and Mist returned 403 HTML titled "Just a moment...". Fresh direct requests
+reproduced those statuses. Firecrawl also received Grim's origin-timeout page, while the
+other three returned real catalogues through Firecrawl. This distinguishes an origin timeout
+observed from these clients from a runner/IP-dependent challenge. It does not establish global
+availability or device behaviour. The root guide and [[keyoapp-template]] retain that boundary.
 
 ## Running it
 

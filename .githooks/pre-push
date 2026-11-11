@@ -38,6 +38,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         elif [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base" 2>/dev/null; then
             base=$(git merge-base HEAD origin/main)
         fi
+        python3 "$tooling/scripts/check-archives.py" --repo "$root" --base "$base"
         crates=$(python3 "$tooling/scripts/changed-crates.py" --base "$base")
         while IFS= read -r crate; do
             [ -f "$root/$crate/Cargo.toml" ] || continue

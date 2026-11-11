@@ -299,3 +299,11 @@ live responses; the filter case and full 13-test suite passed on retry. The exis
 submission was inspected without modification: scope and upstream CI checks passed.
 
 > ⚠️ Mist now uses `https://mistscans.org` and V2. The old `.com` returned 522 while `.org` exposed the V2 catalogue and reader. Its series and chapter keys now use the V2 flat paths rather than V1 `/series/.../` and `/chapter/...` paths. Keep the source id `en.mistscans`.
+
+> ⚠️ The 2026-11-11 main CI failures are HTTP evidence before parsing: Grim's catalogue/home
+> returned 522; Kaizen, Luna and Mist returned Cloudflare 403 challenge HTML. Fresh direct
+> requests reproduced these responses. Firecrawl also received Grim's origin-timeout page,
+> but loaded the other three catalogues. Do not change selectors or suppress live failures
+> to make these responses pass. The passing template contracts are independent of those sites;
+> an unknown-series test that merely accepts an error can also pass on a challenge.
+> [[source-checks]] describes the retained logs and per-crate CI summary.

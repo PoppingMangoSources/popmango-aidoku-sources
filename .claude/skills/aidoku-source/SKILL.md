@@ -244,4 +244,20 @@ pagination with a second page, filters with a value that should match nothing, e
 rating independently, missing/locked chapters, pasted URLs, deep links and page-list errors.
 Count requests per operation and identify any per-item fan-out. Consult the reference's
 reviewer evidence, then reread the final diff and every prior review thread before resubmission.
+
+## Phase 9 — Preserve merged sources
+
+Confirm the PR is merged in canonical upstream. Preserve the complete main snapshot, tests,
+icons and shared path dependencies on `merged-sources`, following section 17 of the root guide.
+Publish the archive first, then remove the crate, README entry and unused icon from main.
+Keep applicable review guidance and shared-template regressions on main. Replace archived
+frontmatter `code:` citations with pinned external references so the wiki retains working links.
+Run `scripts/check-archives.py --base <before-removal>` before publishing main; CI and the
+push hook run it as well. Later maintenance starts from current upstream, restoring only
+needed tests from the archive. Archive branches do not publish packages or need release bumps.
+
+Treat live HTTP diagnostics as evidence, not a reason to skip a failure. Source tests keeps
+offline `review_` contracts separate from live suites, preserves logs and reports observed
+Cloudflare challenges/origin timeouts while retaining nonzero exits. Compare direct requests
+with fresh page evidence before changing a parser or declaring a site globally offline.
 Do not claim a live test passed when network access or WebView support prevented execution.

@@ -9,6 +9,7 @@ on:
       - "sources/**"
       - "templates/**"
       - ".github/workflows/test.yaml"
+      - "scripts/test-sources.py"
   workflow_dispatch:
     inputs:
       sources:
@@ -112,15 +113,12 @@ jobs:
           done < "$RUNNER_TEMP/tested"
 
       - name: Run tests
-        run: |
-          set -euo pipefail
-          failed=()
-          while IFS= read -r source; do
-            echo "::group::Testing $source"
-            if ! (cd "$source" && cargo test); then failed+=("$source"); fi
-            echo "::endgroup::"
-          done < "$RUNNER_TEMP/tested"
-          if (( ${#failed[@]} )); then
-            for source in "${failed[@]}"; do echo "::error title=Tests failed::$source"; done
-            exit 1
-          fi
+        run: python3 scripts/test-sources.py "$RUNNER_TEMP/tested" --output "$RUNNER_TEMP/source-tests"
+
+      - name: Upload source test logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-test-logs
+          path: ${{ runner.temp }}/source-tests
+          if-no-files-found: ignore

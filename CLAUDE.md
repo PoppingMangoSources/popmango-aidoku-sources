@@ -302,6 +302,7 @@ Each of these was a real comment. They generalise.
 | A pasted link answered with the full series | Look the series up the way a search card is built — one compact request — and fall back to text search when it isn't found. |
 | Explicit `"default"` on a sort filter | Don't set what the framework already defaults to. |
 | Icon filled the whole canvas | Leave margin; aim for something closer to the site's favicon. 128×128, fully opaque. |
+| Madara’s dark artwork sat on white (#884) | Choose an opaque background that fits the site’s artwork/header. Madara uses its verified `#0e0f13` header colour; do not impose that colour on other sources. |
 | A translated-languages filter | If the app's own languages setting covers it, the filter is redundant. Don't ship both a filter and a setting for the same axis unless the filter **overrides** the setting for that search. kkantan asked for that with content ratings (#815); `en.atsumaru` does it for content types too, since readers filter novels and comics per search. A filter that only repeats a setting, or is silently ANDed with it, is the redundant kind. |
 | Genre filter presentation | Genre multi-selects show as tags. In `filters.json`, `isGenre` already implies `usesTagStyle` (AidokuRunner decodes the default from `isGenre`), so don't set it there; a `MultiSelectFilter` built in Rust defaults to `false` and must set `uses_tag_style: true`. |
 | 14 listings | Listings that are just search sorts don't need to exist. Keep the ones home sections link to. |
@@ -1309,6 +1310,11 @@ matrix. Use the `.agents/skills/aidoku-source/references/source-review.md` copy 
   none establish correctness. Do not restore an old cache or compiler action as a substitute
   for a missing behavioral or scope check. Preserve diagnostics when a build fails.
 
+Live CI failures retain their raw logs. `scripts/test-sources.py` runs non-review tests after
+contracts and reports observed Cloudflare 403/HTTP 522 evidence without suppressing failures.
+An unknown-series test accepting any error can pass on a blocked request; that pass does not
+establish correct missing-series handling.
+
 ## 16. Atsumaru specifics
 
 `en.atsumaru` lives upstream only; it was removed from `main` once merged (#843), and a later
@@ -1419,8 +1425,17 @@ their live suites, then prepare the submission from canonical upstream with fork
 A source leaves `main` once it is upstream, or while its upstream branch waits on review. Its
 crate and live tests stay in `main`'s history; what it taught stays in this file and `docs/`.
 The `merged-sources` branch keeps the last copy of each merged one, tests included (Atsumaru,
-MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive), so they can be read and
+MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive and the six MangaThemesia
+sources merged in the November batch), so they can be read and
 tested in one place.
+
+Confirm the canonical PR is merged before archiving. Copy the complete tracked crate, tests,
+icons and its current path dependencies to `merged-sources`, verify the snapshot and publish
+that branch first. Remove the crate, README entry and unused source icon from main afterwards;
+removal does not publish a new source version. Keep shared templates and their regressions on
+main while other sources use them. `scripts/check-archives.py --base <before>` compares every
+removed crate and dependency against `origin/merged-sources` or `origin/dead-sources`; repository
+and push gates reject incomplete preservation. Archive branches do not publish packages.
 
 | Source | State | Last copy on `main` | Branch | What it taught |
 |---|---|---|---|---|
@@ -1433,6 +1448,12 @@ tested in one place.
 | `en.kingofshojo` | merged (#875) | `c667b2d` | from `upstream/main` | `docs/subsystems/mangathemesia-consumers.md` |
 | `en.rokaricomics` | merged (#874) | `c667b2d` | from `upstream/main` | `docs/subsystems/mangathemesia-consumers.md` |
 | `en.novelarchive` | merged (#873) | `56e8bb7` | from `upstream/main` | section 3, `docs/subsystems/novelarchive.md` |
+| `en.violetscans` | merged (#884) | `ce4c298` | `merged-sources`; maintenance from upstream | child-theme layouts and keys; MangaThemesia docs |
+| `en.thunderscans` | merged (#884) | `ce4c298` | `merged-sources`; maintenance from upstream | novels and shared template reuse; MangaThemesia docs |
+| `en.madarascans` | merged (#884) | `ce4c298` | `merged-sources`; maintenance from upstream | icon background and catalogue rating; MangaThemesia docs |
+| `en.evascans` | merged (#884) | `ce4c298` | `merged-sources`; maintenance from upstream | shared reader and minimum app version; MangaThemesia docs |
+| `en.ragescans` | merged (#883) | `ce4c298` | `merged-sources`; maintenance from upstream | metadata scope, author filter and viewer override; MangaThemesia docs |
+| `en.lagoonscans` | merged (#881) | `ce4c298` | `merged-sources`; maintenance from upstream | static filters and template reuse; MangaThemesia docs |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a

@@ -2,7 +2,7 @@
 title: MangaThemesia consumers
 type: subsystem
 created: 2026-11-07
-updated: 2026-11-10
+updated: 2026-11-11
 sources:
   - code: templates/mangathemesia/src/imp.rs
   - code: templates/mangathemesia/src/helpers.rs
@@ -11,18 +11,18 @@ sources:
   - code: .github/workflows/test.yaml
   - code: templates/mangathemesia/src/child_theme.rs
   - code: sources/en.scythescans/src/lib.rs
-  - code: sources/en.lagoonscans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.lagoonscans/src/lib.rs
   - code: sources/en.ravenscans/src/lib.rs
-  - code: sources/en.ragescans/src/lib.rs
-  - code: sources/en.violetscans/src/lib.rs
-  - code: sources/en.violetscans/src/test.rs
-  - code: sources/en.thunderscans/src/lib.rs
-  - code: sources/en.madarascans/src/lib.rs
-  - code: sources/en.madarascans/res/filters.json
-  - code: sources/en.evascans/src/lib.rs
-  - code: sources/en.thunderscans/src/test.rs
-  - code: sources/en.madarascans/src/test.rs
-  - code: sources/en.evascans/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.ragescans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.violetscans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.violetscans/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.thunderscans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.madarascans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.madarascans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.evascans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.thunderscans/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.madarascans/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
 verified_at: c4c71c6
 ---
@@ -78,9 +78,10 @@ came back from maintenance later the same day and is a copy of Madara's crate: t
 and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 
 > ⚠️ A source's rating follows what most of the site carries, not the genres it lists (the
-> owner's call); each title still gets its own rating from its tags. Every one of these is safe,
-> as keiyoushi has them, except Raven, rated 2 because adult titles fill every list and there is
-> no way to filter them (keiyoushi has it MIXED, the owner kept 2).
+> owner's call); each title still gets its own rating from its tags. Madara is rated 1 because
+> its catalogue includes Hentai. Raven is rated 2 because adult titles fill its lists; the
+> remaining consumers in this batch are rated 0. Adult/Smut genre names alone do not require
+> increasing a source rating.
 
 > ⚠️ Eva's images go through WordPress.com's proxy (`i1.wp.com/evascans.net/…`), which answers 404
 > to Python's and curl's default clients but 200 to a browser user agent, as the app sends. Fetch
@@ -217,3 +218,25 @@ header, with its existing 128×128 size and margin. The old white background is 
 > corrupts their Markdown when the next span opens; the reader keeps the closed markers in
 > order. Child-theme banners, cards, chapters and Editor Picks share `link_key` to reject
 > blank paths. Editor Picks also trims titles and omits blank descriptions.
+
+## Merged review record and archive
+
+Violet, Thunder, Madara and Eva merged in [884](https://github.com/Aidoku-Community/sources/pull/884),
+Rage in [883](https://github.com/Aidoku-Community/sources/pull/883), and Lagoon in
+[881](https://github.com/Aidoku-Community/sources/pull/881). Their last main snapshot is
+`ce4c298`; complete crates/tests and the shared template are kept on
+[merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources).
+
+| Review evidence | Result and retained regression |
+|---|---|
+| Rage: author filter lacked real author metadata; comment prose became the author | Removed the filter and scoped both credit selectors to metadata. The archived Rage contract checks selectors and the omitted control. |
+| Rage: webtoons were labelled Manga | Optional viewer override; the template loopback test checks the override and default Manga/Manhwa/Comic mappings. |
+| Shared novels: preserving emphasis requires newer imports | Shared support with minimum app 0.8.3 for every dependent consumer; optional Cargo gating was an offered alternative. Main retains paragraph/emphasis and key-only reader tests. |
+| Madara icon: white background did not fit the artwork | Kept the artwork/margin and used the reviewed opaque header colour `#0e0f13`. |
+| Lagoon | Approved without requested changes. Keep its static site filter IDs and standard template wiring as a reference; no extra reviewer requirement was inferred. |
+| Owner's layout/key checks | Archived child-theme fixtures cover home order, five-row paging, compact internal banners, blank titles/keys and canonical chapter links. |
+
+> ⚠️ The archive needs the template version these tests used, not just each consumer's
+> directory. Main retains the shared template for Scythe and Raven. The archive's older
+> KingOfShojo/Rokari metadata minimums move to 0.8.3 for its shared reader imports; archive
+> package versions stay unchanged. Future source updates start from current canonical upstream.

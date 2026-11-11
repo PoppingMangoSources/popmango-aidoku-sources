@@ -20,6 +20,16 @@ the broad details container. Scope the source's author/artist selectors to its m
 omit author search, and use an optional viewer override when the site's type label is wrong.
 A nonsense-name query returning zero results establishes neither real author data nor a useful filter.
 
+Merged MangaThemesia batch: Lagoon was approved without requested changes in
+[881](https://github.com/Aidoku-Community/sources/pull/881). Rage's author/viewer fixes above
+were approved in [883](https://github.com/Aidoku-Community/sources/pull/883). Violet, Thunder,
+Madara and Eva merged together in [884](https://github.com/Aidoku-Community/sources/pull/884).
+That review accepted the shared 0.8.3 minimum for novel emphasis and requested
+[Madara's dark/header-colour icon background](https://github.com/Aidoku-Community/sources/pull/884#discussion_r4529913487).
+The feature-gated reader was an offered alternative, not a requirement; the owner chose shared support.
+Preserve source tests with their template when archiving. The main template retains its
+paragraph/emphasis, key-only reader and viewer-override loopback regressions.
+
 Shared-template novel review: [minimum-version discussion](https://github.com/Aidoku-Community/sources/pull/884#issuecomment-6777916715).
 The owner chose shared emphasis support with a 0.8.3 minimum for all consumers, without a Cargo
 feature. Flame demonstrates walking text nodes alongside element children; NovelArchive keeps

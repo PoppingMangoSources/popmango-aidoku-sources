@@ -2,16 +2,16 @@
 title: Novel Archive (en.novelarchive)
 type: subsystem
 created: 2026-11-06
-updated: 2026-11-07
+updated: 2026-11-11
 sources:
-  - code: sources/en.novelarchive/src/lib.rs
-  - code: sources/en.novelarchive/src/helpers.rs
-  - code: sources/en.novelarchive/src/markdown.rs
-  - code: sources/en.novelarchive/src/models.rs
-  - code: sources/en.novelarchive/src/test.rs
-  - code: sources/en.novelarchive/src/settings.rs
-  - code: sources/en.novelarchive/res/filters.json
-  - code: sources/en.novelarchive/res/icon.png
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/src/markdown.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/src/settings.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56e8bb771f5f3a292cde96e1fc3ede22f1545058/sources/en.novelarchive/res/icon.png
   - ext: https://novelarchive.st/assets/js/libary-page.js
   - ext: https://novelarchive.st/assets/js/index-home.js
 verified_at: 46b15d9
