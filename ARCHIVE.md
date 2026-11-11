@@ -19,3 +19,24 @@ override and deterministic regressions. `scripts/test-http.py templates/mangathe
 the loopback regressions with `aidoku-test-runner` installed. Existing archived sources remain.
 The earlier KingOfShojo/Rokari metadata minimums are raised to 0.8.3 because the shared
 reader now imports `child_nodes`; archive versions are unchanged.
+
+## Keyoapp
+
+PR 888 merged into canonical upstream at `289b5613bb47f62c6eb91de3d8b2282643586533`.
+The complete fork snapshot is main `81e42e5312cda0aed39d174c3dcf3b2797f858c0`, including
+both template generations, all source/template tests and `scripts/test-http.py`.
+
+- `en.asmotoon`
+- `en.erisscans`
+- `en.genztoons`
+- `en.grimscans`
+- `en.kaizenscan`
+- `en.kewnscans`
+- `en.lunatoons`
+- `en.mistscans`
+- `en.sirenscans`
+- `en.timelesstoons`
+
+Run the template contracts with `cargo test review_` from `templates/keyoapp` and its
+loopback regressions with `python3 scripts/test-http.py templates/keyoapp` from this root.
+Source versions are preserved. Later changes start from current canonical upstream.
