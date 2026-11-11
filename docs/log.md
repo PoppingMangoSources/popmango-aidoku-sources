@@ -120,3 +120,7 @@ Moved Mist Scans to its working `.org` V2 site and replaced V1 filters/tests in 
 Restored real chapter numbers and release dates to the Iken latest row with one metadata batch, preserving pinned HTML order and existing page sizes. Checked Hive against the linked reference client and current API; the lowercase title comes from the site. See [[iken-template]].
 
 Audited every production file on `fix-iken` against current guidance, attached snapshots and merged patterns. Removed the API fallback accessor and duplicate URL/slug allocations; expanded chapter overlap rejection and emphasis regressions. Recent reviewer evidence and remaining device checks are recorded in [[iken-template]].
+
+Completed the follow-up [[iken-template]] audit against every review-table row and the historical and recent reviewer threads. Shared request headers/timeouts, consumed JSON responses, removed redundant sortedness scans and unused public model access, and covered dispatched HTTP/encoded chapter deep links with loopback regressions. The attached checker and branch script predate current exclusion, instruction-copy and submission rules.
+
+The final Eternal default-catalogue probe contained explicitly adult content without an opt-in filter, so its catalogue rating is now 2. Per-title NSFW conversion already honored the response flag. All consumer suites passed; the existing unrelated NovelArchive documentation references remain a full-docs-lint limitation.

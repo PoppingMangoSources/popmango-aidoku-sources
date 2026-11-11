@@ -13,15 +13,17 @@ sources:
   - code: templates/iken/src/test.rs
   - code: templates/iken/src/source_test.rs
   - code: sources/en.hivescans/src/helpers.rs
+  - code: sources/es.eternalmangas/res/source.json
   - ext: https://github.com/Aidoku-Community/sources/commit/a5b9802a25780ba5db5dbe2590793e88bfd3d355
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
-verified_at: e07a9ac
+verified_at: a276190
 ---
 
 The template serves Hive Scans, Nyx Scans, Vortex Scans, Magus Manga and EternalMangas.
 Shared behavior follows the Params/Impl arrangement used by [[mangak-template]]. The fork
 restores these upstream sources temporarily for publication and testing. The submission
 branch is `fix-iken`, based on canonical `4ac8414`, with production files only.
+Review fixes append to the existing submission history.
 
 ## API and keys
 
@@ -37,6 +39,8 @@ Exclusion is disabled. Details use `/api/post?postId=` or postSlug; chapters use
 `/api/chapters?postId=&skip=&take=` and totalChapterCount. Reading uses chapterId alone.
 Four APIs were reachable directly on November 11; Hive's API returned 403. All five public
 home pages were available through Firecrawl. Direct home requests returned 403.
+Shared API and home requests use the same JSON headers, referer and 30-second timeout;
+the home document overrides Accept to text/html. Responses are checked before owned JSON decoding.
 
 > ⚠️ The details response can contain an empty chapter list despite a nonzero chapter count.
 > Never use it as the complete inventory. Empty pagination before completion or a repeated chapter id anywhere in the inventory
@@ -45,6 +49,10 @@ home pages were available through Firecrawl. Direct home requests returned 403.
 > ⚠️ Numeric keys retain existing libraries. Home slug paths resolve to those keys before
 > details/deep-link results. Chapter-only updates need no details lookup for numeric keys,
 > and reader calls require no cached metadata (`imp.rs`).
+
+> ⚠️ Deep links are already dispatched by the app. Parse their path without requiring the
+> configured URL's exact scheme, and decode the chapter slug as well as the series slug.
+> Keep the complete chapter suffix. Pasted search links still require the configured base/path boundary.
 
 > ⚠️ Lock flags are independent. `false.or(Some(true))` loses a time lock. Explicit accessible
 > responses override the price fallback, not a true lock flag (`IkenChapter::locked`).
@@ -106,7 +114,42 @@ The recent reviewer threads checked were 890, 889, 884, 883, 881, 882, 872 and 8
 | Pagination and errors | Reject duplicate ids within or between pages, including overlaps after the first entry. Loopback regressions retain incomplete-page, HTTP, missing-page and key-only reader checks. |
 | Cards and filters | Compact cards, blank required identity rejection, sort first, static tag taps, explicit unsupported exclusions and source-local sort/type overrides remain. No settings or dynamic-genre machinery is needed. |
 | Home and reader | Preserve pinned HTML order, real chapter ids, latest five/popular three, source-local banners, partial success and separate novel support. Both emphasis nesting orders have deterministic coverage. |
-| Submission | Keep the two requested commits, upstream+1 submission versions, and no fork tests, docs or unused test dependencies. |
+| Submission | Preserve the existing two commits and append the review cleanup; retain upstream+1 submission versions and exclude fork tests, docs and unused test dependencies. |
+
+The follow-up checked all 97 section-three table rows for applicability and fetched the
+listed historical review threads plus the latest 100 repository inline comments. Reused
+request setup and owned response decoding follow the merged NovelArchive helper pattern;
+stable sorts need no separate sortedness scan. `models` is private because no consumer uses
+it. The two remaining production clones retain a slug for the separate chapter request and
+copy a compact cover from a borrowed post that is still needed by the details/feed conversion.
+Changing those would add a second conversion path or field-moving scaffolding.
+
+The attached checker is a snapshot: it rejects explicit canExclude=false and expects a
+CLAUDE.md pointer. Current main correctly permits disabled exclusions and checks complete
+instruction copies. The attached pr-branch.sh also predates test/dependency stripping and
+template submissions; preparation uses current normalization and scope checks instead.
+
+Eternal is rated 2 because its default updatedAt catalogue includes an is18Plus=true,
+BL_SIN_CENSURA title without an opt-in filter (first-page probe, November 11). Its existing
+per-title is18Plus conversion already marks that title NSFW. A catalogue rating of 1 would
+require hiding adult titles by default. Other consumer catalogue ratings are unchanged.
+
+All 26 consumer tests passed, as did six deterministic template tests and the loopback
+HTTP/deep-link regressions. The optional captured-home test had no capture directory and
+did not exercise captures. Direct type/status/impossible-value probes passed for Nyx,
+Vortex, Magus and Eternal; their 356 static genre ids and names matched current APIs.
+The repository's 103 regressions and nine offline workflow checks passed. The full docs
+linter still reports eight pre-existing broken NovelArchive source references outside this
+change. Device rendering and WebView behavior were not exercised.
+
+| Requested audit | Evidence |
+| --- | --- |
+| Guidance, scripts, workflows and test conventions | Current instructions and synchronized references, offline CI gates, source review gates; stale attached checker rules identified above. |
+| Production code, module layout, names and inlining | All changed template and five consumer production files compared with canonical upstream; merged Iken/MangaK templates and Flame/NovelArchive helpers supplied the matching patterns. |
+| Duplication, unused code and complexity | Shared request factory, owned decoding, redundant sortedness checks removed, unused public model surface removed; warning-failing Clippy covers production and tests. |
+| Comments and prior review feedback | All six production comments explain site/Markdown constraints; no decorative dividers or narration. Existing chapter identity, independent-lock, complete-pagination and compact-card regressions retained. |
+| Deep-link correction | review_http_deep_link_paths_and_chapter_only_update covers HTTP, encoded series/chapter slugs, query/fragment/trailing-slash variants, full suffixes, missing paths and numeric chapter-only updates without a details lookup. |
+| Both publication targets | Main consumers bumped once with README links; submission keeps its existing versions and receives normalized production files only. |
 
 Before this cleanup, all five already-published consumers passed their live suites: Hive 6,
 Nyx 5, Vortex 5, Magus 5 and Eternal 5. The novel test reports a catalogue with no novels or
