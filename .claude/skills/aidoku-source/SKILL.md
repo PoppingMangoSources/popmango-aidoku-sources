@@ -269,3 +269,17 @@ offline `review_` contracts separate from live suites, preserves logs and report
 Cloudflare challenges/origin timeouts while retaining nonzero exits. Compare direct requests
 with fresh page evidence before changing a parser or declaring a site globally offline.
 Do not claim a live test passed when network access or WebView support prevented execution.
+
+
+Commercial price, sale, discount and purchasing controls are omitted from source forms,
+filters and settings. Chapter visibility controls remain useful: Show Locked Chapters
+uses `showLocked`, defaults off and only appears where chapter lock metadata exists.
+Mixed comic/novel catalogues use `labelNovels`, default on, to append `(Novel)` without
+changing keys or reader routing. Eternal has novels but no locked chapters; its novel
+catalogue form uses `type=novel`.
+
+Iken keeps Latest Releases and New Releases, excluding the separate paid Latest Updates
+section. Excluded headings still bound their neighbors. Featured carousels use all metadata
+already available from home HTML and existing responses, without per-card requests. True
+banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
+BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.

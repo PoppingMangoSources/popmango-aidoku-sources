@@ -20,6 +20,16 @@ class CardRuleTests(unittest.TestCase):
         (self.source / 'res').mkdir(parents=True)
         self.path = self.source / 'lib.rs'
 
+    def test_commercial_controls_and_chapter_exception(self):
+        for item in [{"id": "saleFilter", "title": "Availability"}, {"title": "Price"}, {"title": "Availability", "options": ["On Sale"]}]:
+            checks.failures.clear()
+            checks.check_commercial_control(self.path, item)
+            self.assertTrue(checks.failures)
+        for item in [{"key": "hidePaidChapters", "title": "Exclude Paid Chapters"}, {"key": "showLocked", "title": "Show Locked Chapters"}, {"isGenre": True, "options": ["Sales"]}]:
+            checks.failures.clear()
+            checks.check_commercial_control(self.path, item)
+            self.assertEqual(checks.failures, [])
+
     def test_published_snapshot_needs_no_second_bump(self):
         (self.source / "Cargo.toml").write_text('[dependencies]\niken = { path = "../../templates/iken" }\n')
         with patch.object(checks, "git", return_value="") as git:

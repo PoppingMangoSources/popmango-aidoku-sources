@@ -188,3 +188,17 @@ formatting, production/test Clippy, packaging and Aidoku verification. The final
 included/excluded-genre checks were rerun after strengthening their assertions. Static resources
 match all 55 Hijala and nine Sana API genre id/name pairs. The five-commit submission still
 passes independent scope checks; no runtime changes or additional PR commit were required.
+
+
+Commercial price, sale, discount and purchasing controls are omitted from source forms,
+filters and settings. Chapter visibility controls remain useful: Show Locked Chapters
+uses `showLocked`, defaults off and only appears where chapter lock metadata exists.
+Mixed comic/novel catalogues use `labelNovels`, default on, to append `(Novel)` without
+changing keys or reader routing. Eternal has novels but no locked chapters; its novel
+catalogue form uses `type=novel`.
+
+Iken keeps Latest Releases and New Releases, excluding the separate paid Latest Updates
+section. Excluded headings still bound their neighbors. Featured carousels use all metadata
+already available from home HTML and existing responses, without per-card requests. True
+banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
+BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.

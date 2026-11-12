@@ -6,7 +6,7 @@ use aidoku_test::aidoku_test;
 #[aidoku_test]
 fn review_current_details_keep_synopsis_and_independent_credits() {
 	let html = Html::parse(r#"<main><h1> Title </h1><div class='col-lg-3'><li><strong>Autor:</strong> First,Second &amp; First</li><li><strong>Artista:</strong> Second</li><li><strong>Estado:</strong> En emisión</li><li><strong>Tipo:</strong> BL Manhwa</li></div><div id='tab-sinopsis'><div id='resume-content'>A "quoted" name.<br><br>Another paragraph.</div><span class='em-badge'>Smut</span></div></main>"#).unwrap();
-	let details = helpers::details(&html, "/series/title".into()).unwrap();
+	let details = helpers::details(&html, "/series/title".into(), true).unwrap();
 	assert_eq!(details.title, "Title");
 	assert_eq!(details.authors, Some(vec!["First".into(), "Second".into()]));
 	assert_eq!(details.artists, Some(vec!["Second".into()]));
@@ -132,4 +132,22 @@ fn live_current_home_and_legacy_library_keys_load() {
 		.unwrap();
 	assert_eq!(legacy.key, "1035");
 	assert!(legacy.chapters.unwrap().len() >= 109);
+}
+
+#[aidoku_test]
+fn review_novel_labels_preserve_identity() {
+	assert!(settings::label_novels());
+	let html = Html::parse(
+		"<main><h1>Title</h1><div class='col-lg-3'><li><strong>Tipo:</strong>Novela</li></div></main>",
+	)
+	.unwrap();
+	assert_eq!(
+		helpers::basic(&html, "/series/title".into(), true)
+			.unwrap()
+			.title,
+		"Title (Novel)"
+	);
+	let manga = helpers::basic(&html, "/series/title".into(), false).unwrap();
+	assert_eq!(manga.title, "Title");
+	assert_eq!(manga.key, "/series/title");
 }

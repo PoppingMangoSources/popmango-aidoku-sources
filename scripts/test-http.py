@@ -64,7 +64,7 @@ class Responses(http.server.BaseHTTPRequestHandler):
                 "page": query.get("page"), "perPage": query.get("perPage"),
                 "view": ["archive"], "orderBy": ["postTitle"], "orderDirection": ["asc"],
                 "searchTerm": ["word & café"], "genreIds": ["1"], "excludedGenreIds": ["2"],
-                "seriesType": ["MANHWA,MANGA"], "seriesStatus": ["ONGOING"], "saleFilter": ["on_sale"],
+                "seriesType": ["MANHWA,MANGA"], "seriesStatus": ["ONGOING"],
                 "minChapters": ["5"], "maxChapters": ["50"],
                 "createdAfter": ["2020-01-01"], "createdBefore": ["2030-12-31"],
             }
@@ -95,7 +95,7 @@ class Responses(http.server.BaseHTTPRequestHandler):
                     ids = [13, 12]
                 if post_id == "996" and skip == 0:
                     ids = [11, 11]
-                body = json.dumps({"post": {"chapters": [dict(chapter, id=i, slug=f"capítulo-{i}-part-2") for i in ids]}, "totalChapterCount": 3})
+                body = json.dumps({"post": {"chapters": [dict(chapter, id=i, slug=f"capítulo-{i}-part-2", isLocked=post_id == "77" and i == 13) for i in ids]}, "totalChapterCount": 3})
         if parts[1:3] == ["captured", "home"]:
             evidence = os.environ.get("AIDOKU_IKEN_EVIDENCE_DIR")
             if evidence and parts[3] in {"hive", "nyx", "vortex", "magus", "eternal"}:

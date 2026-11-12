@@ -58,7 +58,7 @@ pub fn resolve_series_key(key: &str) -> Result<String> {
 		series_key(key).ok_or(error!("Invalid series key"))
 	}
 }
-pub fn manga_from_card(card: &Element) -> Option<Manga> {
+pub fn manga_from_card(card: &Element, label_novels: bool) -> Option<Manga> {
 	let href = card
 		.attr("href")
 		.or_else(|| card.select_first("a[href*='/series/']")?.attr("href"))?;
@@ -80,12 +80,18 @@ pub fn manga_from_card(card: &Element) -> Option<Manga> {
 	}
 	Some(Manga {
 		key,
-		title: title.into(),
+		title: display_title(
+			title,
+			card.select_first(".em-series-type-badge")
+				.and_then(|kind| kind.text())
+				.is_some_and(|kind| kind.to_lowercase().contains("novel")),
+			label_novels,
+		),
 		cover: image.attr("src"),
 		..Default::default()
 	})
 }
-pub fn basic(html: &Document, key: String) -> Result<Manga> {
+pub fn basic(html: &Document, key: String, label_novels: bool) -> Result<Manga> {
 	let title = html
 		.select_first("main h1")
 		.and_then(|title| title.text())
@@ -93,20 +99,24 @@ pub fn basic(html: &Document, key: String) -> Result<Manga> {
 		.ok_or(error!("Series not found"))?;
 	Ok(Manga {
 		key,
-		title: title.trim().into(),
+		title: display_title(
+			&title,
+			labelled(html, "Tipo:").is_some_and(|kind| kind.to_lowercase().contains("novel")),
+			label_novels,
+		),
 		cover: html
 			.select_first(".em-cover-lg")
 			.and_then(|cover| cover.attr("src")),
 		..Default::default()
 	})
 }
-pub fn search(html: &Document) -> MangaPageResult {
+pub fn search(html: &Document, label_novels: bool) -> MangaPageResult {
 	MangaPageResult {
 		entries: html
 			.select("a.em-series-catalog-card")
 			.into_iter()
 			.flatten()
-			.filter_map(|card| manga_from_card(&card))
+			.filter_map(|card| manga_from_card(&card, label_novels))
 			.collect(),
 		has_next_page: html.select_first("a[rel=next]").is_some(),
 	}
@@ -132,8 +142,8 @@ fn names(text: &str) -> Option<Vec<String>> {
 	}
 	(!names.is_empty()).then_some(names)
 }
-pub fn details(html: &Document, key: String) -> Result<Manga> {
-	let tags: Vec<String> = html
+pub fn details(html: &Document, key: String, label_novels: bool) -> Result<Manga> {
+	let mut tags: Vec<String> = html
 		.select("#tab-sinopsis .em-badge")
 		.into_iter()
 		.flatten()
@@ -141,6 +151,8 @@ pub fn details(html: &Document, key: String) -> Result<Manga> {
 		.map(|tag| tag.trim().into())
 		.filter(|tag: &String| !tag.is_empty())
 		.collect();
+	tags.sort_unstable();
+	tags.dedup();
 	let series_type = labelled(html, "Tipo:").map(|kind| kind.to_lowercase());
 	let adult = series_type
 		.as_deref()
@@ -151,13 +163,7 @@ pub fn details(html: &Document, key: String) -> Result<Manga> {
 				"+18" | "+19" | "adulto" | "smut" | "yaoi"
 			)
 		});
-	let content_rating = if adult {
-		ContentRating::NSFW
-	} else if tags.iter().any(|tag| tag.eq_ignore_ascii_case("ecchi")) {
-		ContentRating::Suggestive
-	} else {
-		ContentRating::Safe
-	};
+	let content_rating = content_rating(&tags, adult);
 	Ok(Manga {
 		description: html
 			.select_first("#resume-content")
@@ -183,7 +189,7 @@ pub fn details(html: &Document, key: String) -> Result<Manga> {
 		content_rating,
 		tags: (!tags.is_empty()).then_some(tags),
 		url: Some(format!("{URL}{key}")),
-		..basic(html, key)?
+		..basic(html, key, label_novels)?
 	})
 }
 pub fn date(element: &Element) -> Option<i64> {
@@ -286,4 +292,28 @@ pub fn pages(html: &Document) -> Result<Vec<Page>> {
 			})
 		})
 		.collect()
+}
+
+pub fn display_title(title: &str, novel: bool, label: bool) -> String {
+	let title = title.trim();
+	let suffix = ["(Novel)", "[Novel]", "(Novela)", "[Novela]"]
+		.into_iter()
+		.find(|suffix| title.ends_with(suffix));
+	let novel = novel || suffix.is_some();
+	let title = suffix.map_or(title, |suffix| title.trim_end_matches(suffix).trim_end());
+	if novel && label {
+		format!("{title} (Novel)")
+	} else {
+		title.into()
+	}
+}
+
+pub fn content_rating(tags: &[String], adult: bool) -> ContentRating {
+	if adult {
+		ContentRating::NSFW
+	} else if tags.iter().any(|tag| tag.eq_ignore_ascii_case("ecchi")) {
+		ContentRating::Suggestive
+	} else {
+		ContentRating::Safe
+	}
 }

@@ -147,3 +147,17 @@ novel emphasis. Hive's script-backed banners stay local. The owner explicitly re
 Iken New Releases and Novels use the query API with createdAt and seriesType=NOVEL respectively.
 Test ordering, compact links, empty novel catalogues and one/all failed requests. Keep novel
 sections and formatted reading together in their own submission commit when requested.
+
+
+Commercial price, sale, discount and purchasing controls are omitted from source forms,
+filters and settings. Chapter visibility controls remain useful: Show Locked Chapters
+uses `showLocked`, defaults off and only appears where chapter lock metadata exists.
+Mixed comic/novel catalogues use `labelNovels`, default on, to append `(Novel)` without
+changing keys or reader routing. Eternal has novels but no locked chapters; its novel
+catalogue form uses `type=novel`.
+
+Iken keeps Latest Releases and New Releases, excluding the separate paid Latest Updates
+section. Excluded headings still bound their neighbors. Featured carousels use all metadata
+already available from home HTML and existing responses, without per-card requests. True
+banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
+BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.

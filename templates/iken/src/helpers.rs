@@ -98,3 +98,55 @@ pub(crate) fn names(text: &str) -> Option<Vec<String>> {
 	}
 	(!names.is_empty()).then_some(names)
 }
+
+pub fn display_title(title: &str, novel: bool, label: bool) -> String {
+	let title = title.trim();
+	let suffix = ["(Novel)", "[Novel]"]
+		.into_iter()
+		.find(|suffix| title.ends_with(suffix));
+	let novel = novel || suffix.is_some();
+	let title = suffix.map_or(title, |suffix| title.trim_end_matches(suffix).trim_end());
+	if novel && label {
+		format!("{title} (Novel)")
+	} else {
+		title.into()
+	}
+}
+
+pub fn content_rating(tags: &[String], adult: bool) -> aidoku::ContentRating {
+	use aidoku::ContentRating;
+	if adult
+		|| tags.iter().any(|tag| {
+			matches!(
+				tag.to_lowercase().as_str(),
+				"adult" | "hentai" | "smut" | "yaoi" | "pornographic"
+			)
+		}) {
+		ContentRating::NSFW
+	} else if tags
+		.iter()
+		.any(|tag| matches!(tag.to_lowercase().as_str(), "ecchi" | "mature"))
+	{
+		ContentRating::Suggestive
+	} else {
+		ContentRating::Safe
+	}
+}
+
+pub fn viewer(kind: Option<&str>) -> aidoku::Viewer {
+	use aidoku::Viewer;
+	match kind {
+		Some("MANGA") => Viewer::RightToLeft,
+		Some(
+			"MANHWA"
+			| "MANHUA"
+			| "WEBTOON"
+			| "MANHWA_BL"
+			| "MANHUA_BL"
+			| "MANHWA_PLUS_19"
+			| "BL_SIN_CENSURA"
+			| "PLUS_19_SIN_CENSURA",
+		) => Viewer::Webtoon,
+		_ => Viewer::Unknown,
+	}
+}

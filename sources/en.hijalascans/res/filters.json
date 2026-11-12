@@ -59,21 +59,6 @@
 		"canExclude": false
 	},
 	{
-		"type": "select",
-		"id": "saleFilter",
-		"title": "Availability",
-		"options": [
-			"Any",
-			"On Sale",
-			"Full Price"
-		],
-		"ids": [
-			"",
-			"on_sale",
-			"not_on_sale"
-		]
-	},
-	{
 		"type": "multi-select",
 		"id": "genreIds",
 		"title": "Genres",
@@ -103,7 +88,7 @@
 			"School Life",
 			"Monsters",
 			"Magic",
-			"\tDemons",
+			"Demons",
 			"Harem",
 			"Crime",
 			"mature",
@@ -121,7 +106,7 @@
 			"Adaptation",
 			"Tragedy",
 			"Web Comic",
-			" Full Color",
+			"Full Color",
 			"Mafia",
 			"Sci-Fi",
 			"Hunter",

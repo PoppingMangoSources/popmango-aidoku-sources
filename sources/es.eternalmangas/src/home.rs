@@ -1,4 +1,4 @@
-use crate::helpers;
+use crate::{helpers, settings};
 use aidoku::{
 	HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, MangaWithChapter, Result,
 	alloc::Vec, imports::html::Document, prelude::*,
@@ -10,11 +10,23 @@ pub fn parse_home(html: &Document) -> Result<HomeLayout> {
 		.into_iter()
 		.flatten()
 		.filter_map(|card| {
-			let mut manga = helpers::manga_from_card(&card)?;
+			let mut manga = helpers::manga_from_card(&card, settings::label_novels())?;
 			manga.description = card
 				.select_first(".em-hero-copy p.d-none")
 				.and_then(|description| description.text())
 				.map(|description| description.trim().into());
+			let mut tags: Vec<_> = card
+				.select(".em-hero-badges .em-badge")
+				.into_iter()
+				.flatten()
+				.filter_map(|tag| tag.text())
+				.map(|tag| tag.trim().into())
+				.filter(|tag: &aidoku::alloc::String| !tag.is_empty())
+				.collect();
+			tags.sort_unstable();
+			tags.dedup();
+			manga.content_rating = helpers::content_rating(&tags, false);
+			manga.tags = (!tags.is_empty()).then_some(tags);
 			Some(manga)
 		})
 		.collect();
@@ -41,7 +53,7 @@ pub fn parse_home(html: &Document) -> Result<HomeLayout> {
 				.into_iter()
 				.flatten()
 				.filter_map(|card| {
-					let manga = helpers::manga_from_card(&card)?;
+					let manga = helpers::manga_from_card(&card, settings::label_novels())?;
 					let parent = card.parent()?;
 					let link = parent.select_first("a.em-chapter-pill")?;
 					let mut chapter = helpers::chapter(&link).ok()?;
@@ -62,8 +74,14 @@ pub fn parse_home(html: &Document) -> Result<HomeLayout> {
 				.select("a[href*='/series/']")
 				.into_iter()
 				.flatten()
-				.filter_map(|card| helpers::manga_from_card(&card))
-				.map(Link::from)
+				.filter_map(|card| helpers::manga_from_card(&card, settings::label_novels()))
+				.map(|mut manga| {
+					if title == "Novelas" {
+						manga.title =
+							helpers::display_title(&manga.title, true, settings::label_novels());
+					}
+					Link::from(manga)
+				})
 				.collect();
 			if entries.is_empty() {
 				continue;

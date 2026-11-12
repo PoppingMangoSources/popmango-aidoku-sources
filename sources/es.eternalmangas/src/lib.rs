@@ -11,6 +11,7 @@ mod helpers;
 mod home;
 mod markdown;
 mod models;
+mod settings;
 const URL: &str = "https://eternalmangas.org";
 struct EternalMangas;
 impl Source for EternalMangas {
@@ -33,7 +34,7 @@ impl Source for EternalMangas {
 			if response.status_code() != 404 {
 				let html = helpers::check_response(response, &url)?.get_html()?;
 				return Ok(MangaPageResult {
-					entries: vec![helpers::basic(&html, key)?],
+					entries: vec![helpers::basic(&html, key, settings::label_novels())?],
 					has_next_page: false,
 				});
 			}
@@ -50,9 +51,10 @@ impl Source for EternalMangas {
 				qs.push(&id, Some(&value));
 			}
 		}
-		Ok(helpers::search(&helpers::get_html(&format!(
-			"{URL}/series?{qs}"
-		))?))
+		Ok(helpers::search(
+			&helpers::get_html(&format!("{URL}/series?{qs}"))?,
+			settings::label_novels(),
+		))
 	}
 	fn get_manga_update(
 		&self,
@@ -63,7 +65,7 @@ impl Source for EternalMangas {
 		let key = helpers::resolve_series_key(&manga.key)?;
 		let html = helpers::get_html(&format!("{URL}{key}"))?;
 		if needs_details {
-			let mut details = helpers::details(&html, key)?;
+			let mut details = helpers::details(&html, key, settings::label_novels())?;
 			details.key = core::mem::take(&mut manga.key);
 			manga.copy_from(details);
 		}

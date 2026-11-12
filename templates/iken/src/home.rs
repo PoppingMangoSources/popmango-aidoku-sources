@@ -1,6 +1,7 @@
 use crate::{
 	Impl, Params, helpers,
 	models::{Post, SearchResponse},
+	settings,
 };
 use aidoku::{
 	Chapter, HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Manga,
@@ -16,6 +17,7 @@ use aidoku::{
 };
 
 pub(crate) fn get_home<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> {
+	let label_novels = settings::label_novels();
 	let mut urls = vec![params.base_url.to_string()];
 	for (sort, series_type) in [("createdAt", None), (params.sorts[0], Some("NOVEL"))] {
 		let mut query = QueryParameters::new();
@@ -52,13 +54,13 @@ pub(crate) fn get_home<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<
 			} else {
 				let data: SearchResponse = response.get_json_owned()?;
 				if index + 1 == urls.len() {
-					update_latest_chapters(&mut layout, data.posts, params)?;
+					update_home_metadata(&mut layout, data.posts, params)?;
 					return Ok(());
 				}
 				let entries: Vec<Link> = data
 					.posts
 					.iter()
-					.filter_map(|post| Manga::try_from(post).ok())
+					.filter_map(|post| post.to_manga(label_novels).ok())
 					.map(Link::from)
 					.collect();
 				if !entries.is_empty() {
@@ -108,17 +110,30 @@ pub(crate) fn get_home<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<
 	Ok(layout)
 }
 
-pub(crate) fn update_latest_chapters(
+pub(crate) fn update_home_metadata(
 	layout: &mut HomeLayout,
 	mut posts: Vec<Post>,
 	params: &Params,
 ) -> Result<()> {
-	for component in layout.components.iter_mut().filter(|component| {
-		matches!(
-			component.title.as_deref(),
-			Some("Latest Releases" | "Latest Updates" | "Últimas Actualizaciones")
-		)
-	}) {
+	let label_novels = settings::label_novels();
+	for component in &mut layout.components {
+		if let HomeComponentValue::BigScroller { entries, .. } = &mut component.value {
+			for entry in entries {
+				let slug = entry.key.strip_prefix("/series/").unwrap_or(&entry.key);
+				if let Some(index) = posts.iter().position(|post| post.slug == slug) {
+					let mut updated = posts[index].to_featured(&params.base_url, label_novels)?;
+					if updated.description.is_none() {
+						updated.description = entry.description.take();
+					}
+					if updated.tags.as_ref().is_none_or(|tags| tags.is_empty()) {
+						updated.tags = entry.tags.take();
+					}
+					*entry = updated;
+				}
+			}
+			continue;
+		}
+
 		if let HomeComponentValue::MangaChapterList { entries, .. } = &mut component.value {
 			for entry in entries {
 				let slug = entry
@@ -131,7 +146,7 @@ pub(crate) fn update_latest_chapters(
 				};
 				if let Some(updated) = posts
 					.remove(index)
-					.into_manga_with_chapter(&params.base_url)?
+					.into_manga_with_chapter(&params.base_url, label_novels)?
 					&& updated.chapter.url == entry.chapter.url
 				{
 					*entry = updated;
@@ -154,7 +169,7 @@ pub(crate) fn update_latest_chapters(
 				.ok_or_else(|| error!("Latest series missing from API: {slug}"))?;
 			if let Some(entry) = posts
 				.remove(index)
-				.into_manga_with_chapter(&params.base_url)?
+				.into_manga_with_chapter(&params.base_url, label_novels)?
 			{
 				chapters.push(entry);
 			}
@@ -294,11 +309,38 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 			slides
 				.filter_map(|e| {
 					let mut manga = manga(&e, params)?;
+					if params.banner_width.zip(params.banner_height).is_some() {
+						manga.cover = e
+							.select_first("img")
+							.and_then(|image| image.attr("abs:src"));
+					}
 					manga.description = e
-						.select_first("h3 + p, .text-lg, .em-hero-copy p.d-none")
+						.select_first("h3 + p, .text-lg, .break-words, .em-hero-copy p.d-none")
 						.and_then(|p| p.text())
 						.map(|s| s.trim().into())
 						.filter(|s: &String| !s.is_empty());
+					let mut tags: Vec<String> = e
+						.select("span.capitalize, span.font-light")
+						.into_iter()
+						.flatten()
+						.filter_map(|tag| tag.text())
+						.map(|tag| tag.trim().into())
+						.filter(|tag: &String| !tag.is_empty())
+						.collect();
+					tags.sort_unstable();
+					tags.dedup();
+					let kind = e
+						.select_first(".uppercase")
+						.and_then(|kind| kind.text())
+						.map(|kind| kind.trim().to_uppercase());
+					manga.title = helpers::display_title(
+						&manga.title,
+						kind.as_deref() == Some("NOVEL"),
+						settings::label_novels(),
+					);
+					manga.content_rating = helpers::content_rating(&tags, false);
+					manga.viewer = helpers::viewer(kind.as_deref());
+					manga.tags = (!tags.is_empty()).then_some(tags);
 					let index = e
 						.attr("data-swiper-slide-index")
 						.and_then(|s| s.parse::<usize>().ok())
@@ -318,9 +360,18 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 	}
 	if !entries.is_empty() {
 		components.push(HomeComponent {
-			value: HomeComponentValue::BigScroller {
-				entries,
-				auto_scroll_interval: None,
+			value: if let Some((width, height)) = params.banner_width.zip(params.banner_height) {
+				HomeComponentValue::ImageScroller {
+					links: entries.into_iter().map(Link::from).collect(),
+					width: Some(width),
+					height: Some(height),
+					auto_scroll_interval: None,
+				}
+			} else {
+				HomeComponentValue::BigScroller {
+					entries,
+					auto_scroll_interval: None,
+				}
 			},
 			..Default::default()
 		});
@@ -352,7 +403,9 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 				}
 				let neighbors = block.select("h1, h2, h3").is_some_and(|hs| {
 					hs.filter_map(|h| h.text()).any(|t| {
-						t.trim() != title && params.home_section_titles.contains(&t.trim())
+						t.trim() != title
+							&& (params.home_section_titles.contains(&t.trim())
+								|| t.trim() == "Latest Updates")
 					})
 				});
 				if neighbors {

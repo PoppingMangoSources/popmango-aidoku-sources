@@ -59,21 +59,6 @@
 		"canExclude": false
 	},
 	{
-		"type": "select",
-		"id": "saleFilter",
-		"title": "Availability",
-		"options": [
-			"Any",
-			"On Sale",
-			"Full Price"
-		],
-		"ids": [
-			"",
-			"on_sale",
-			"not_on_sale"
-		]
-	},
-	{
 		"type": "multi-select",
 		"id": "genreIds",
 		"title": "Genres",
@@ -81,7 +66,7 @@
 		"canExclude": true,
 		"options": [
 			"Shoujo",
-			"Drama ",
+			"Drama",
 			"Slice of Life",
 			"Fantasy",
 			"Romance",

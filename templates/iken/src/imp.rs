@@ -1,4 +1,4 @@
-use crate::{Params, helpers, home, markdown, models::*};
+use crate::{Params, helpers, home, markdown, models::*, settings};
 use aidoku::{
 	Chapter, DeepLinkResult, FilterValue, HomeLayout, Manga, MangaPageResult, Page, PageContent,
 	PageContext, Result,
@@ -19,6 +19,7 @@ pub trait Impl {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
+		let label_novels = settings::label_novels();
 		if let Some(key) = query
 			.as_deref()
 			.and_then(|q| q.strip_prefix(params.base_url.as_ref()))
@@ -26,7 +27,7 @@ pub trait Impl {
 			&& let Some(post) = helpers::post(params, key)?
 		{
 			return Ok(MangaPageResult {
-				entries: vec![Manga::try_from(&post)?],
+				entries: vec![post.to_manga(label_novels)?],
 				has_next_page: false,
 			});
 		}
@@ -62,7 +63,7 @@ pub trait Impl {
 					qs.push(&id, Some(&value))
 				}
 				FilterValue::Select { id, value }
-					if matches!(id.as_str(), "seriesStatus" | "seriesType" | "saleFilter")
+					if matches!(id.as_str(), "seriesStatus" | "seriesType")
 						&& !value.is_empty() =>
 				{
 					qs.push(&id, Some(&value))
@@ -90,7 +91,7 @@ pub trait Impl {
 			entries: data
 				.posts
 				.iter()
-				.filter_map(|p| Manga::try_from(p).ok())
+				.filter_map(|p| p.to_manga(label_novels).ok())
 				.collect(),
 		})
 	}
@@ -102,12 +103,14 @@ pub trait Impl {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
+		let label_novels = settings::label_novels();
+		let show_locked = settings::show_locked();
 		let mut slug = None;
 		if needs_details || manga.key.parse::<i32>().is_err() {
 			let post = helpers::post(params, &manga.key)?.ok_or(error!("Series not found"))?;
 			if needs_details {
 				slug = needs_chapters.then(|| post.slug.clone());
-				manga.copy_from(post.into_details(&params.base_url)?);
+				manga.copy_from(post.to_details(&params.base_url, label_novels)?);
 				if needs_chapters {
 					send_partial_result(&manga);
 				}
@@ -120,6 +123,7 @@ pub trait Impl {
 			manga.chapters = Some(
 				helpers::chapters(params, &manga.key)?
 					.into_iter()
+					.filter(|c| show_locked || !c.locked())
 					.map(|c| c.into_chapter(&params.base_url, slug.as_deref()))
 					.collect::<Result<_>>()?,
 			);

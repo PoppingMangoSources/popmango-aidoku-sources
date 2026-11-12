@@ -60,11 +60,11 @@ fn review_independent_locks_and_numeric_strings() {
 #[aidoku_test]
 fn review_identity_compact_cards_and_blank_metadata() {
 	let post: models::Post = serde_json::from_str(r#"{"id":7,"slug":"title","postTitle":" Title ","author":"  ","artist":" ","postContent":"<p> </p>","is18Plus":true,"genres":[{"name":"Z"},{"name":"A"}]}"#).unwrap();
-	let basic = Manga::try_from(&post).unwrap();
+	let basic = post.to_manga(true).unwrap();
 	assert_eq!(basic.key, "7");
 	assert_eq!(basic.title, "Title");
 	assert!(basic.tags.is_none() && basic.authors.is_none() && basic.description.is_none());
-	let detail = post.into_details("https://example.com").unwrap();
+	let detail = post.to_details("https://example.com", true).unwrap();
 	assert!(detail.description.is_none() && detail.authors.is_none() && detail.artists.is_none());
 	assert_eq!(detail.content_rating, aidoku::ContentRating::NSFW);
 	assert_eq!(detail.tags, Some(vec!["A".into(), "Z".into()]));
@@ -73,7 +73,7 @@ fn review_identity_compact_cards_and_blank_metadata() {
 			r#"{{"id":{id},"slug":"{slug}","postTitle":"{title}"}}"#
 		))
 		.unwrap();
-		assert!(Manga::try_from(&post).is_err());
+		assert!(post.to_manga(true).is_err());
 	}
 }
 
@@ -325,16 +325,7 @@ fn review_http_captured_homes() {
 				.map(|c| c.title.as_deref())
 				.collect::<Vec<_>>()
 		);
-		assert_eq!(
-			layout.components.len(),
-			if site == "hive" {
-				2
-			} else if site == "magus" {
-				5
-			} else {
-				4
-			}
-		);
+		assert_eq!(layout.components.len(), if site == "hive" { 2 } else { 4 });
 	}
 }
 
@@ -481,7 +472,7 @@ fn review_latest_chapters_preserve_site_order_and_skip_locked() {
 	};
 	let mut layout = home::parse_home(&html, &params).unwrap();
 	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":2,"slug":"recent","postTitle":"Recent","chapters":[{"id":21,"slug":"chapter-3","number":3,"createdAt":"2026-11-11T12:00:00.000Z","isAccessible":true}]},{"id":1,"slug":"pinned","postTitle":"pinned","chapters":[{"id":12,"slug":"chapter-2","number":2,"isLocked":true},{"id":11,"slug":"chapter-1","number":1,"createdAt":"2026-11-10T12:00:00.000Z","isAccessible":true}]}],"totalCount":2}"#).unwrap();
-	home::update_latest_chapters(&mut layout, data.posts, &params).unwrap();
+	home::update_home_metadata(&mut layout, data.posts, &params).unwrap();
 	let HomeComponentValue::MangaChapterList {
 		page_size, entries, ..
 	} = &layout.components[0].value
@@ -511,18 +502,18 @@ fn review_latest_chapters_preserve_site_order_and_skip_locked() {
 			.all(|e| !e.chapter.locked && e.manga.description.is_none())
 	);
 	let original = layout.clone();
-	assert!(home::update_latest_chapters(&mut layout, Vec::new(), &params).is_ok());
+	assert!(home::update_home_metadata(&mut layout, Vec::new(), &params).is_ok());
 	assert_eq!(layout, original);
 	let mut missing = home::parse_home(&html, &params).unwrap();
 	let original = missing.clone();
-	assert!(home::update_latest_chapters(&mut missing, Vec::new(), &params).is_err());
+	assert!(home::update_home_metadata(&mut missing, Vec::new(), &params).is_err());
 	assert_eq!(missing, original);
 }
 
 #[aidoku_test]
 fn review_credit_names_split_trim_and_keep_roles() {
 	let post: models::Post = serde_json::from_str(r#"{"id":7,"slug":"title","postTitle":"Title","author":" First,Second & First, , ","artist":"Second & Third,Third"}"#).unwrap();
-	let details = post.into_details("https://example.com").unwrap();
+	let details = post.to_details("https://example.com", true).unwrap();
 	assert_eq!(details.authors, Some(vec!["First".into(), "Second".into()]));
 	assert_eq!(details.artists, Some(vec!["Second".into(), "Third".into()]));
 }
@@ -534,7 +525,7 @@ fn review_descriptions_accept_plain_text_and_html() {
 			r#"{{"id":7,"slug":"title","postTitle":"Title","postContent":"{content}"}}"#
 		))
 		.unwrap();
-		let details = post.into_details("https://example.com").unwrap();
+		let details = post.to_details("https://example.com", true).unwrap();
 		assert_eq!(details.title, "Title");
 		assert_eq!(details.description.as_deref(), Some("short synopsis"));
 	}
@@ -549,9 +540,10 @@ fn review_latest_html_survives_missing_pinned_metadata() {
 	};
 	let mut layout = home::parse_home(&html, &params).unwrap();
 	let original = layout.clone();
-	home::update_latest_chapters(&mut layout, Vec::new(), &params).unwrap();
+	home::update_home_metadata(&mut layout, Vec::new(), &params).unwrap();
 	assert_eq!(layout, original);
-	for (i, n) in [8., 3.].into_iter().enumerate() {
+	assert_eq!(layout.components.len(), 1);
+	for (i, n) in [8.].into_iter().enumerate() {
 		let HomeComponentValue::MangaChapterList {
 			entries, page_size, ..
 		} = &layout.components[i].value
@@ -565,10 +557,11 @@ fn review_latest_html_survives_missing_pinned_metadata() {
 }
 
 #[aidoku_test]
-fn review_latest_update_rows_keep_each_chapter_and_relative_dates() {
+fn review_explicit_chapter_rows_keep_each_chapter_and_relative_dates() {
 	let html=Html::parse(r#"<main><section><h2>Latest Updates</h2><div class='newly-free-chapter-row'><a href='/series/title' title='Title'><img src='cover.jpg'></a><a href='/series/title/chapter-8' title='Chapter 8: Part'>Chapter 8: Part</a><span>2 hours ago</span></div><div class='newly-free-chapter-row'><a href='/series/title' title='Title'><img src='cover.jpg'></a><a href='/series/title/chapter-7' title='Chapter 7'>Chapter 7</a><span>3 hours ago</span></div></section></main>"#).unwrap();
 	let params = Params {
 		base_url: "https://example.com".into(),
+		home_section_titles: &["Latest Updates"],
 		..Default::default()
 	};
 	let layout = home::parse_home(&html, &params).unwrap();
@@ -630,10 +623,6 @@ fn review_http_search_controls_and_page_sizes() {
 							id: "seriesStatus".into(),
 							value: "ONGOING".into(),
 						},
-						FilterValue::Select {
-							id: "saleFilter".into(),
-							value: "on_sale".into(),
-						},
 						FilterValue::Text {
 							id: "minChapters".into(),
 							value: "5".into(),
@@ -657,4 +646,103 @@ fn review_http_search_controls_and_page_sizes() {
 			assert_eq!(result.entries[0].key, format!("{page}"));
 		}
 	}
+}
+
+#[aidoku_test]
+fn review_preferences_keep_keys_and_plain_featured_metadata() {
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	assert!(!settings::show_locked());
+	assert!(settings::label_novels());
+	defaults_set("showLocked", DefaultValue::Bool(true));
+	assert!(settings::show_locked());
+	defaults_set("showLocked", DefaultValue::Null);
+	defaults_set("labelNovels", DefaultValue::Bool(false));
+	assert!(!settings::label_novels());
+	defaults_set("labelNovels", DefaultValue::Null);
+	for suffix in ["", " (Novel)", " [Novel]"] {
+		let post: models::Post = serde_json::from_str(&format!(r#"{{"id":7,"slug":"title","postTitle":"Title{suffix}","seriesType":"NOVEL","postContent":"<p>Plain, prose.</p>","genres":[{{"name":" Z "}},{{"name":"A"}},{{"name":"A"}}]}}"#)).unwrap();
+		assert_eq!(post.to_manga(true).unwrap().title, "Title (Novel)");
+		assert_eq!(post.to_manga(false).unwrap().title, "Title");
+		assert_eq!(post.to_manga(false).unwrap().key, "7");
+		let featured = post.to_featured("https://example.com", true).unwrap();
+		assert_eq!(featured.description.as_deref(), Some("Plain, prose."));
+		assert_eq!(featured.tags, Some(vec!["A".into(), "Z".into()]));
+	}
+}
+
+#[aidoku_test]
+fn review_banner_art_and_excluded_updates_boundary() {
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/title' title='Title'><img src='https://example.com/banner.jpg' data-fallback-src='https://example.com/cover.jpg'></a></div></div><main><section><h2>Latest Releases</h2><div><h2>Latest Updates</h2><a href='/series/paid' title='Paid'><img src='cover.jpg'></a></div></section><section><h2>Most Popular</h2><a href='/series/other' title='Other'><img src='cover.jpg'></a></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		banner_width: Some(1920),
+		banner_height: Some(1080),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	assert!(!layout.components.iter().any(|c| matches!(
+		c.title.as_deref(),
+		Some("Latest Releases" | "Latest Updates")
+	)));
+	let HomeComponentValue::ImageScroller {
+		links,
+		width,
+		height,
+		..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected banner artwork")
+	};
+	assert_eq!((*width, *height), (Some(1920), Some(1080)));
+	assert_eq!(
+		links[0].image_url.as_deref(),
+		Some("https://example.com/banner.jpg")
+	);
+	assert!(
+		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.key == "/series/title")
+	);
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_locked_visibility_preserves_complete_inventory() {
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py")
+	};
+	let params = Params {
+		base_url: base.into(),
+		api_url: base.into(),
+		..Default::default()
+	};
+	for (show, count) in [(false, 2), (true, 3)] {
+		defaults_set("showLocked", DefaultValue::Bool(show));
+		let manga = Site
+			.get_manga_update(
+				&params,
+				Manga {
+					key: "77".into(),
+					..Default::default()
+				},
+				false,
+				true,
+			)
+			.unwrap();
+		let chapters = manga.chapters.unwrap();
+		assert_eq!(chapters.len(), count);
+		assert_eq!(
+			chapters.iter().filter(|chapter| chapter.locked).count(),
+			usize::from(show)
+		);
+	}
+	defaults_set("showLocked", DefaultValue::Null);
 }

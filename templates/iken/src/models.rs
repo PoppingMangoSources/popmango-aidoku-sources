@@ -1,6 +1,6 @@
 use crate::helpers::names;
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Result, Viewer,
+	Chapter, Manga, MangaStatus, MangaWithChapter, Result,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{element::ElementHelpers, string::PlainText},
 	imports::html::Html,
@@ -41,6 +41,7 @@ pub struct Post {
 	pub id: i32,
 	pub slug: String,
 	post_title: String,
+	is_novel: Option<bool>,
 	post_content: Option<String>,
 	featured_image: Option<String>,
 	author: Option<String>,
@@ -108,8 +109,17 @@ fn number<'de, D: Deserializer<'de>>(deserializer: D) -> core::result::Result<f3
 }
 
 impl Post {
-	pub fn into_manga_with_chapter(self, base_url: &str) -> Result<Option<MangaWithChapter>> {
-		let manga = Manga::try_from(&self)?;
+	pub fn to_details(&self, base_url: &str, label_novels: bool) -> Result<Manga> {
+		let mut manga = self.to_featured(base_url, label_novels)?;
+		manga.description = manga.description.map(|text| text.escape_markdown());
+		Ok(manga)
+	}
+	pub fn into_manga_with_chapter(
+		self,
+		base_url: &str,
+		label_novels: bool,
+	) -> Result<Option<MangaWithChapter>> {
+		let manga = self.to_manga(label_novels)?;
 		let Some(mut chapter) = self.chapters.into_iter().find(|chapter| !chapter.locked()) else {
 			return Ok(None);
 		};
@@ -131,41 +141,29 @@ impl Post {
 		Ok(self.id.to_string())
 	}
 
-	pub fn into_details(self, base_url: &str) -> Result<Manga> {
-		let basic = Manga::try_from(&self)?;
+	pub fn to_featured(&self, base_url: &str, label_novels: bool) -> Result<Manga> {
+		let basic = self.to_manga(label_novels)?;
 		let mut tags: Vec<String> = self
 			.genres
-			.unwrap_or_default()
-			.into_iter()
-			.map(|g| g.name)
+			.iter()
+			.flatten()
+			.map(|g| g.name.trim().into())
+			.filter(|name: &String| !name.is_empty())
 			.collect();
 		tags.sort_unstable();
-		let content_rating = if self.is_18_plus == Some(true)
-			|| tags.iter().any(|tag| {
-				matches!(
-					tag.to_lowercase().as_str(),
-					"adult" | "hentai" | "smut" | "yaoi" | "pornographic"
-				)
-			}) {
-			ContentRating::NSFW
-		} else if tags
-			.iter()
-			.any(|tag| matches!(tag.to_lowercase().as_str(), "ecchi" | "mature"))
-		{
-			ContentRating::Suggestive
-		} else {
-			ContentRating::Safe
-		};
+		tags.dedup();
+		let content_rating = crate::helpers::content_rating(&tags, self.is_18_plus == Some(true));
 		Ok(Manga {
 			authors: self.author.as_deref().and_then(names),
 			artists: self.artist.as_deref().and_then(names),
 			description: self
 				.post_content
+				.as_ref()
 				.and_then(|s| Html::parse(format!("<div id=description>{s}</div>")).ok())
 				.and_then(|html| html.select_first("#description"))
 				.and_then(|e| e.text_with_newlines().or_else(|| e.text()))
-				.map(|s| s.trim().escape_markdown())
-				.filter(|s| !s.is_empty()),
+				.map(|s| s.trim().into())
+				.filter(|s: &String| !s.is_empty()),
 			url: Some(format!("{base_url}/series/{}", self.slug)),
 			tags: Some(tags),
 			content_rating,
@@ -176,31 +174,22 @@ impl Post {
 				Some("HIATUS") => MangaStatus::Hiatus,
 				_ => MangaStatus::Unknown,
 			},
-			viewer: match self.series_type.as_deref() {
-				Some("MANGA") => Viewer::RightToLeft,
-				Some(
-					"MANHWA"
-					| "MANHUA"
-					| "WEBTOON"
-					| "MANHWA_BL"
-					| "MANHUA_BL"
-					| "MANHWA_PLUS_19"
-					| "BL_SIN_CENSURA"
-					| "PLUS_19_SIN_CENSURA",
-				) => Viewer::Webtoon,
-				_ => Viewer::Unknown,
-			},
+			viewer: crate::helpers::viewer(self.series_type.as_deref()),
 			..basic
 		})
 	}
 }
 
-impl TryFrom<&Post> for Manga {
-	type Error = aidoku::AidokuError;
-	fn try_from(value: &Post) -> Result<Self> {
-		Ok(Self {
+impl Post {
+	pub fn to_manga(&self, label_novels: bool) -> Result<Manga> {
+		let value = self;
+		Ok(Manga {
 			key: value.key()?,
-			title: value.post_title.trim().into(),
+			title: crate::helpers::display_title(
+				&value.post_title,
+				value.series_type.as_deref() == Some("NOVEL") || value.is_novel == Some(true),
+				label_novels,
+			),
 			cover: value
 				.featured_image
 				.clone()

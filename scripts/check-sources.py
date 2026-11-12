@@ -99,6 +99,19 @@ def check_source_json(path: Path, source_id: str) -> dict:
     return info
 
 
+COMMERCIAL_CONTROL = re.compile(r"price|pricing|discount|sale|purchase|payment|coin|currency|paid", re.I)
+CHAPTER_VISIBILITY = re.compile(r"(?:hide|exclude|skip).*?(?:paid|locked|premium).*?chapter|(?:paid|locked|premium).*?chapter.*?(?:hide|exclude|skip)", re.I)
+
+
+def check_commercial_control(path: Path, item: dict) -> None:
+    if item.get("isGenre"):
+        return
+    text = " ".join(str(item.get(key, "")) for key in ("id", "key", "title"))
+    labels = " ".join(str(value) for value in item.get("options", []) if isinstance(value, str))
+    if COMMERCIAL_CONTROL.search(text + " " + labels) and not CHAPTER_VISIBILITY.search(text):
+        fail(path, "commercial price/discount/purchase controls are omitted; chapter visibility controls remain supported")
+
+
 def check_filters_json(path: Path, rating: object = None) -> None:
     filters = check_json(path)
     if not isinstance(filters, list):
@@ -106,6 +119,7 @@ def check_filters_json(path: Path, rating: object = None) -> None:
     for item in filters:
         if not isinstance(item, dict):
             continue
+        check_commercial_control(path, item)
         name = item.get("id") or item.get("title")
         # A Hentai genre means the source contains NSFW content, whatever most of it is.
         options = [str(option).lower() for option in item.get("options", [])]
@@ -144,6 +158,9 @@ def check_settings_json(path: Path, rating: object) -> None:
             items.append(item)
     has_login = any(item.get("type") == "login" for item in items)
     for item in items:
+        check_commercial_control(path, item)
+        if item.get("key") == "labelNovels" and item.get("default") is not True:
+            fail(path, "Label Novels defaults on")
         if item.get("type") != "switch":
             continue
         key = str(item.get("key", ""))

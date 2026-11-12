@@ -147,3 +147,7 @@ Compared current Keiyoushi Nyx/Iken and Kitty Nyx/vcomics. Existing API and sort
 ## 2026-11-12: Hijala and Sana source audit
 
 Compared source wiring, resources and shared additions with merged Iken, MangaK, MangaThemesia and Flame patterns and current project rules. Kept the minimal production consumers, removed duplicate advanced-filter tests, required positive detail-tag evidence and added an HTTP contract for all query controls and both page sizes. See [[iken-template]].
+
+## 2026-11-12
+
+Added chapter visibility and novel-label preferences, banner artwork and rich featured metadata. Omitted commercial controls and the separate paid-update row. Eternal uses novels without a locked-chapter setting.

@@ -1428,7 +1428,7 @@ rows concurrently with the HTML. isNovel is ignored by the current APIs; do not 
 novel filter. Omit empty rows and keep successful components on a partial failure.
 
 Eternal uses its current HTML catalogue/details/chapters and the old API only to resolve legacy numeric keys.
-Hijala and Sana expose verified genre exclusions, availability, chapter/year ranges and multiple types.
+Hijala and Sana expose verified genre exclusions, chapter/year ranges and multiple types.
 Sana uses 30 results per page and filename page ordering; other consumers keep their defaults.
 
 EternalMangas' catalogue rating is 2, explicitly requested by the owner on November 12,
@@ -1498,3 +1498,17 @@ add `#[cfg(test)] mod test;` back to `lib.rs`. Upstream is often ahead: XCOMIC's
 the `canExclude: false` lines kkantan asked for on #853 and #807's warning fixes landed upstream
 only. Set the version above both upstream's and the fork's last one, then
 `pr-branch.sh <id> --update …`.
+
+
+Commercial price, sale, discount and purchasing controls are omitted from source forms,
+filters and settings. Chapter visibility controls remain useful: Show Locked Chapters
+uses `showLocked`, defaults off and only appears where chapter lock metadata exists.
+Mixed comic/novel catalogues use `labelNovels`, default on, to append `(Novel)` without
+changing keys or reader routing. Eternal has novels but no locked chapters; its novel
+catalogue form uses `type=novel`.
+
+Iken keeps Latest Releases and New Releases, excluding the separate paid Latest Updates
+section. Excluded headings still bound their neighbors. Featured carousels use all metadata
+already available from home HTML and existing responses, without per-card requests. True
+banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
+BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.
