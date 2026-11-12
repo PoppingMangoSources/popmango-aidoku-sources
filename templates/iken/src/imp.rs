@@ -8,8 +8,6 @@ use aidoku::{
 	prelude::*,
 };
 
-const PAGE_SIZE: i32 = 18;
-
 pub trait Impl {
 	fn new() -> Self;
 	fn params(&self) -> Params;
@@ -34,7 +32,7 @@ pub trait Impl {
 		}
 		let mut qs = QueryParameters::new();
 		qs.push("page", Some(&page.to_string()));
-		qs.push("perPage", Some(&PAGE_SIZE.to_string()));
+		qs.push("perPage", Some(&params.page_size.to_string()));
 		qs.push("view", Some("archive"));
 		qs.push("orderBy", Some(params.sorts[0]));
 		qs.push("orderDirection", Some("desc"));
@@ -55,21 +53,40 @@ pub trait Impl {
 						Some(if ascending { "asc" } else { "desc" }),
 					);
 				}
+				FilterValue::Text { id, value }
+					if matches!(
+						id.as_str(),
+						"minChapters" | "maxChapters" | "createdAfter" | "createdBefore"
+					) =>
+				{
+					qs.push(&id, Some(&value))
+				}
 				FilterValue::Select { id, value }
-					if matches!(id.as_str(), "seriesStatus" | "seriesType")
+					if matches!(id.as_str(), "seriesStatus" | "seriesType" | "saleFilter")
 						&& !value.is_empty() =>
 				{
 					qs.push(&id, Some(&value))
 				}
-				FilterValue::MultiSelect { id, included, .. } if id == "genreIds" => {
+				FilterValue::MultiSelect { id, included, .. } if id == "seriesType" => {
 					qs.push(&id, Some(&included.join(",")))
+				}
+				FilterValue::MultiSelect {
+					id,
+					included,
+					excluded,
+				} if id == "genreIds" => {
+					qs.push(&id, Some(&included.join(",")));
+					if !excluded.is_empty() {
+						qs.push("excludedGenreIds", Some(&excluded.join(",")));
+					}
 				}
 				_ => {}
 			}
 		}
 		let data: SearchResponse = helpers::get_json(params, &format!("/api/query?{qs}"))?;
 		Ok(MangaPageResult {
-			has_next_page: data.total_count > page * PAGE_SIZE,
+			has_next_page: data.total_count > page * params.page_size
+				&& data.posts.len() < data.total_count as usize,
 			entries: data
 				.posts
 				.iter()
@@ -111,8 +128,21 @@ pub trait Impl {
 	}
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
+		let key = if let Some(path) = chapter.key.strip_prefix("/series/") {
+			let (slug, chapter_slug) = path.split_once('/').ok_or(error!("Invalid chapter key"))?;
+			let chapter_slug = decode_uri(chapter_slug);
+			let post = helpers::post(params, slug)?.ok_or(error!("Series not found"))?;
+			helpers::chapters(params, &post.key()?)?
+				.into_iter()
+				.find(|chapter| chapter.slug == chapter_slug)
+				.ok_or(error!("Chapter not found"))?
+				.id
+				.to_string()
+		} else {
+			chapter.key
+		};
 		let data: ChapterResponse =
-			helpers::get_json(params, &format!("/api/chapter?chapterId={}", chapter.key))?;
+			helpers::get_json(params, &format!("/api/chapter?chapterId={key}"))?;
 		if data.chapter.locked() {
 			bail!("Chapter is locked");
 		}
@@ -126,7 +156,18 @@ pub trait Impl {
 		if images.is_empty() {
 			bail!("Chapter has no pages");
 		}
-		images.sort_by_key(|i| i.order.unwrap_or(i32::MAX));
+		if params.sort_pages_by_filename {
+			images.sort_by_key(|image| {
+				let name = image.url.rsplit('/').next().unwrap_or(&image.url);
+				let digits = name.trim_start_matches(|c: char| !c.is_ascii_digit());
+				let end = digits
+					.find(|c: char| !c.is_ascii_digit())
+					.unwrap_or(digits.len());
+				digits[..end].parse::<u32>().unwrap_or(u32::MAX)
+			});
+		} else {
+			images.sort_by_key(|image| image.order.unwrap_or(i32::MAX));
+		}
 		images
 			.into_iter()
 			.map(|image| {

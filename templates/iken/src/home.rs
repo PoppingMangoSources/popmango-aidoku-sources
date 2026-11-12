@@ -3,12 +3,14 @@ use crate::{
 	models::{Post, SearchResponse},
 };
 use aidoku::{
-	HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Manga, Result,
+	Chapter, HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Manga,
+	MangaWithChapter, Result,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::uri::QueryParameters,
 	imports::{
 		html::{Document, Element},
 		net::Request,
+		std::current_date,
 	},
 	prelude::*,
 };
@@ -111,41 +113,136 @@ pub(crate) fn update_latest_chapters(
 	mut posts: Vec<Post>,
 	params: &Params,
 ) -> Result<()> {
-	let Some(component) = layout.components.iter_mut().find(|component| {
+	for component in layout.components.iter_mut().filter(|component| {
 		matches!(
 			component.title.as_deref(),
 			Some("Latest Releases" | "Latest Updates" | "Últimas Actualizaciones")
 		)
-	}) else {
-		return Ok(());
-	};
-	let HomeComponentValue::MangaList { entries, .. } = &component.value else {
-		return Ok(());
-	};
-	let mut chapters = Vec::new();
-	for link in entries {
-		let Some(LinkValue::Manga(manga)) = &link.value else {
+	}) {
+		if let HomeComponentValue::MangaChapterList { entries, .. } = &mut component.value {
+			for entry in entries {
+				let slug = entry
+					.manga
+					.key
+					.strip_prefix("/series/")
+					.unwrap_or(&entry.manga.key);
+				let Some(index) = posts.iter().position(|post| post.slug == slug) else {
+					continue;
+				};
+				if let Some(updated) = posts
+					.remove(index)
+					.into_manga_with_chapter(&params.base_url)?
+					&& updated.chapter.url == entry.chapter.url
+				{
+					*entry = updated;
+				}
+			}
+			continue;
+		}
+		let HomeComponentValue::MangaList { entries, .. } = &component.value else {
 			continue;
 		};
-		let slug = manga.key.strip_prefix("/series/").unwrap_or(&manga.key);
-		let index = posts
-			.iter()
-			.position(|post| post.slug == slug)
-			.ok_or_else(|| error!("Latest series missing from API: {slug}"))?;
-		let post = posts.remove(index);
-		if let Some(entry) = post.into_manga_with_chapter(&params.base_url)? {
-			chapters.push(entry);
+		let mut chapters = Vec::new();
+		for link in entries {
+			let Some(LinkValue::Manga(manga)) = &link.value else {
+				continue;
+			};
+			let slug = manga.key.strip_prefix("/series/").unwrap_or(&manga.key);
+			let index = posts
+				.iter()
+				.position(|post| post.slug == slug)
+				.ok_or_else(|| error!("Latest series missing from API: {slug}"))?;
+			if let Some(entry) = posts
+				.remove(index)
+				.into_manga_with_chapter(&params.base_url)?
+			{
+				chapters.push(entry);
+			}
 		}
+		if chapters.is_empty() {
+			bail!("No accessible latest chapters");
+		}
+		component.value = HomeComponentValue::MangaChapterList {
+			page_size: Some(5),
+			entries: chapters,
+			listing: None,
+		};
 	}
-	if chapters.is_empty() {
-		bail!("No accessible latest chapters");
-	}
-	component.value = HomeComponentValue::MangaChapterList {
-		page_size: Some(5),
-		entries: chapters,
-		listing: None,
-	};
 	Ok(())
+}
+
+fn latest_chapter(link: &Element, params: &Params) -> Option<Chapter> {
+	let card = link.parent()?;
+	let row = card.has_class("newly-free-chapter-row");
+	if row && card.has_class("paid-chapter-row") {
+		return None;
+	}
+	let chapter = if row {
+		card.select("a[href*='/series/']")?.find(|link| {
+			link.attr("href").is_some_and(|href| {
+				href.strip_prefix(params.base_url.as_ref())
+					.unwrap_or(&href)
+					.matches('/')
+					.count() == 3
+			})
+		})?
+	} else {
+		card.select("a.newly-free-chapter-row")?.find(|link| {
+			!link.has_class("paid-chapter-row") && link.select_first(".lucide-lock").is_none()
+		})?
+	};
+	let href = chapter.attr("href")?;
+	let key = href.strip_prefix(params.base_url.as_ref()).unwrap_or(&href);
+	let label = chapter
+		.attr("title")
+		.or_else(|| chapter.select_first("span").and_then(|span| span.text()))
+		.or_else(|| chapter.text())?;
+	let label = label.trim().strip_prefix("Chapter ")?;
+	let end = label
+		.find(|c: char| !c.is_ascii_digit() && c != '.')
+		.unwrap_or(label.len());
+	let number = label[..end].parse().ok()?;
+	let title = label[end..].trim_start_matches([' ', ':', '-']).trim();
+	let scope = if row { &card } else { &chapter };
+	let date_uploaded = scope
+		.select_first("time")
+		.and_then(|time| time.attr("datetime"))
+		.and_then(|date| chrono::DateTime::parse_from_rfc3339(&date).ok())
+		.map(|date| date.timestamp())
+		.or_else(|| {
+			let text = scope
+				.select("time, span")?
+				.filter_map(|span| span.text())
+				.find(|text| text.trim().ends_with("ago"))?;
+			let (amount, unit) = text.trim().strip_suffix("ago")?.trim().split_once(' ')?;
+			let amount: i64 = amount.parse().ok()?;
+			let seconds = if unit.starts_with("second") {
+				1
+			} else if unit.starts_with("min") {
+				60
+			} else if unit.starts_with("hour") {
+				3600
+			} else if unit.starts_with("day") {
+				86400
+			} else if unit.starts_with("week") {
+				604800
+			} else if unit.starts_with("month") {
+				2592000
+			} else if unit.starts_with("year") {
+				31536000
+			} else {
+				return None;
+			};
+			Some(current_date() - amount * seconds)
+		});
+	Some(Chapter {
+		key: key.into(),
+		url: Some(format!("{}{key}", params.base_url)),
+		title: (!title.is_empty()).then(|| title.into()),
+		chapter_number: Some(number),
+		date_uploaded,
+		..Default::default()
+	})
 }
 
 fn manga(element: &Element, params: &Params) -> Option<Manga> {
@@ -245,6 +342,7 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 			}
 			let mut parent = heading.parent();
 			let mut entries: Vec<Link> = Vec::new();
+			let mut chapters: Vec<MangaWithChapter> = Vec::new();
 			for _ in 0..3 {
 				let Some(block) = parent else {
 					break;
@@ -270,16 +368,24 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 								matches!(&entry.value, Some(LinkValue::Manga(existing)) if existing.key == manga.key)
 							})
 						{
-							entries.push(Link::from(manga));
+							if matches!(title.as_str(), "Latest Releases" | "Latest Updates")
+                                && let Some(chapter) = latest_chapter(&card, params)
+                            {
+                                if !chapters.iter().any(|entry| entry.chapter.key == chapter.key) {
+                                    chapters.push(MangaWithChapter { manga, chapter });
+                                }
+                            } else {
+                                entries.push(Link::from(manga));
+                            }
 						}
 					}
 				}
-				if !entries.is_empty() {
+				if !entries.is_empty() || !chapters.is_empty() {
 					break;
 				}
 				parent = block.parent();
 			}
-			if entries.is_empty() {
+			if entries.is_empty() && chapters.is_empty() {
 				continue;
 			}
 			let ranking = matches!(title.as_str(), "Most Popular" | "Tendencias");
@@ -290,7 +396,13 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 				);
 			components.push(HomeComponent {
 				title: Some(title),
-				value: if paged {
+				value: if !chapters.is_empty() {
+					HomeComponentValue::MangaChapterList {
+						page_size: Some(5),
+						entries: chapters,
+						listing: None,
+					}
+				} else if paged {
 					HomeComponentValue::MangaList {
 						ranking,
 						page_size: Some(if ranking { 3 } else { 5 }),

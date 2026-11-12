@@ -300,6 +300,8 @@ Each of these was a real comment. They generalise.
 | Big scroller descriptions showed `life\, while` and `\[Domestic` (our own miss, `en.novelarchive`) | `escape_markdown` only on the details path. A `BigScroller` shows its description verbatim, so give it the site's plain text (section 6). |
 | A chapter escaped whole, one paragraph of 600 hard breaks, crashed the app with a stack overflow (our own miss, `en.novelarchive`, crash logs) | The scroll reader's MarkdownUI joins every inline node of a paragraph into one SwiftUI `Text` with `+`, and the crash logs show the main thread's stack running out at about 650 levels. Make each line its own paragraph and join them with blank lines, as `en.atsumaru` and `zh.wenku8` do. cmark makes every backslash escape a node of its own, so `escape_markdown`, which escapes all punctuation, can still overflow a long line (mirror chapters run to thousands of characters on one line); `en.novelarchive` escapes only Markdown syntax for chapter text. `check-sources.py` fails `PageContent::text(x.escape_markdown())`. |
 | A "chapter" invented for `MangaChapterList` from a feed with no chapters | Use `MangaChapterList` only when the feed carries a real chapter; otherwise the section is a `Scroller`. |
+| Latest releases passed a heading-only test but displayed cover-only rows (owner's Iken screenshots) | Test real chapter keys/numbers/timestamps and pinned titles missing from optional API enrichment. Every latest component remains MangaChapterList when the HTML supplies actual chapters; a missing enrichment match cannot downgrade the row. |
+| A legacy API omitted new series and returned escaped descriptions (owner's Eternal screenshots) | Verify the reported positive titles against the current site, including chapter inventory and displayed synopsis. A plausible API response and one old title passing do not establish freshness. Keep an obsolete API only for legacy-key compatibility after a site migration. |
 | A pasted link answered with the full series | Look the series up the way a search card is built — one compact request — and fall back to text search when it isn't found. |
 | Explicit `"default"` on a sort filter | Don't set what the framework already defaults to. |
 | Icon filled the whole canvas | Leave margin; aim for something closer to the site's favicon. 128×128, fully opaque. |
@@ -1409,7 +1411,7 @@ reaches the site, unless marked.
 
 ## Iken maintenance
 
-Iken consumers currently use numeric series and chapter keys from the JSON API. Home links
+Hive, Nyx, Vortex, Magus, Hijala and Sana use Iken with numeric API series and chapter keys. Home links
 arrive as `/series/<slug>` and resolve before returning details or deep links. A numeric
 chapter-only update skips the details lookup; the reader requests the chapter by id alone.
 `/api/post` may contain no chapters, so collect `/api/chapters` with `skip`/`take` until
@@ -1423,13 +1425,17 @@ Home also loads compact New Releases (createdAt descending) and Novels (seriesTy
 rows concurrently with the HTML. isNovel is ignored by the current APIs; do not use it as a
 novel filter. Omit empty rows and keep successful components on a partial failure.
 
-Preserve EternalMangas' catalogue rating at 1, as explicitly chosen by the owner; per-title
+Eternal uses its current HTML catalogue/details/chapters and the old API only to resolve legacy numeric keys.
+Hijala and Sana expose verified genre exclusions, availability, chapter/year ranges and multiple types.
+Sana uses 30 results per page and filename page ordering; other consumers keep their defaults.
+
+EternalMangas' catalogue rating is 2, explicitly requested by the owner on November 12,
+superseding the earlier rating-1 instruction; per-title
 NSFW classification is separate. Keep its site-specific migration in its own submission
 commit, with shared template compatibility changes in the template commits.
 
 The owner requested the submission branch name `fix-iken`; it is an explicit exception to
-the usual template branch spelling. Publish restored consumers to fork main before running
-their live suites, then prepare the submission from canonical upstream with fork tests removed.
+the usual template branch spelling. Validate restored consumers on fork main with their live suites, then prepare the submission from canonical upstream with fork tests removed.
 
 ## 17. Sources kept off `main` while upstream
 

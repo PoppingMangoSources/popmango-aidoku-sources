@@ -3,7 +3,7 @@ use aidoku::println;
 use aidoku::{
 	HomeComponentValue, LinkValue,
 	alloc::{format, vec},
-	imports::html::Html,
+	imports::{html::Html, std::current_date},
 };
 use aidoku_test::aidoku_test;
 
@@ -179,6 +179,42 @@ fn review_http_errors_and_key_only_reading() {
 			}
 		)
 		.is_err()
+	);
+	for (filename_order, first) in [(false, "page-10.jpg"), (true, "page-2.jpg")] {
+		let params = Params {
+			sort_pages_by_filename: filename_order,
+			base_url: base.into(),
+			api_url: base.into(),
+			..Default::default()
+		};
+		let pages = Site
+			.get_page_list(
+				&params,
+				Manga::default(),
+				Chapter {
+					key: "14".into(),
+					..Default::default()
+				},
+			)
+			.unwrap();
+		assert_eq!(pages.len(), 2);
+		assert_eq!(
+			pages[0].content,
+			aidoku::PageContent::url(format!("https://example.com/{first}"))
+		);
+	}
+	assert_eq!(
+		Site.get_page_list(
+			&params,
+			Manga::default(),
+			Chapter {
+				key: "/series/t%C3%ADtulo/cap%C3%ADtulo-11-part-2".into(),
+				..Default::default()
+			}
+		)
+		.unwrap()[0]
+			.content,
+		aidoku::PageContent::text("**Text**")
 	);
 	assert_eq!(helpers::chapters(&params, "7").unwrap().len(), 3);
 	for id in ["996", "997", "998", "999"] {
@@ -502,4 +538,46 @@ fn review_descriptions_accept_plain_text_and_html() {
 		assert_eq!(details.title, "Title");
 		assert_eq!(details.description.as_deref(), Some("short synopsis"));
 	}
+}
+
+#[aidoku_test]
+fn review_latest_html_survives_missing_pinned_metadata() {
+	let html=Html::parse(r#"<main><section><h2>Latest Releases</h2><div><a href='/series/pinned' title='Pinned'><img src='cover.jpg'></a><a class='newly-free-chapter-row paid-chapter-row' href='/series/pinned/chapter-9'><span>Chapter 9</span></a><a class='newly-free-chapter-row' href='/series/pinned/chapter-8'><span>Chapter 8</span><time datetime='2026-11-11T12:00:00.000Z'></time></a></div></section><section><h2>Latest Updates</h2><div><a href='/series/recent' title='Recent'><img src='cover.jpg'></a><a class='newly-free-chapter-row' href='/series/recent/chapter-3'><span>Chapter 3</span><time datetime='2026-11-11T12:00:00.000Z'></time></a></div></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let mut layout = home::parse_home(&html, &params).unwrap();
+	let original = layout.clone();
+	home::update_latest_chapters(&mut layout, Vec::new(), &params).unwrap();
+	assert_eq!(layout, original);
+	for (i, n) in [8., 3.].into_iter().enumerate() {
+		let HomeComponentValue::MangaChapterList {
+			entries, page_size, ..
+		} = &layout.components[i].value
+		else {
+			panic!("Expected chapter rows")
+		};
+		assert_eq!(*page_size, Some(5));
+		assert_eq!(entries[0].chapter.chapter_number, Some(n));
+		assert_eq!(entries[0].chapter.date_uploaded, Some(1794398400));
+	}
+}
+
+#[aidoku_test]
+fn review_latest_update_rows_keep_each_chapter_and_relative_dates() {
+	let html=Html::parse(r#"<main><section><h2>Latest Updates</h2><div class='newly-free-chapter-row'><a href='/series/title' title='Title'><img src='cover.jpg'></a><a href='/series/title/chapter-8' title='Chapter 8: Part'>Chapter 8: Part</a><span>2 hours ago</span></div><div class='newly-free-chapter-row'><a href='/series/title' title='Title'><img src='cover.jpg'></a><a href='/series/title/chapter-7' title='Chapter 7'>Chapter 7</a><span>3 hours ago</span></div></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	let HomeComponentValue::MangaChapterList { entries, .. } = &layout.components[0].value else {
+		panic!("Expected chapter rows")
+	};
+	assert_eq!(entries.len(), 2);
+	assert_eq!(entries[0].chapter.chapter_number, Some(8.));
+	assert_eq!(entries[0].chapter.title.as_deref(), Some("Part"));
+	let expected = current_date() - 7200;
+	assert!((entries[0].chapter.date_uploaded.unwrap() - expected).abs() <= 1);
 }

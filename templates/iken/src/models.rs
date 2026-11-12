@@ -3,7 +3,7 @@ use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Result, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{element::ElementHelpers, string::PlainText},
-	imports::{html::Html, std::parse_date_with_options},
+	imports::html::Html,
 	prelude::*,
 };
 use serde::{Deserialize, Deserializer};
@@ -237,7 +237,9 @@ impl IkenChapter {
 				.filter(|s: &String| !s.is_empty()),
 			chapter_number: Some(self.number),
 			date_uploaded: self.created_at.and_then(|d| {
-				parse_date_with_options(d, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "en_US_POSIX", "UTC")
+				chrono::DateTime::parse_from_rfc3339(&d)
+					.ok()
+					.map(|date| date.timestamp())
 			}),
 			scanlators: self
 				.team

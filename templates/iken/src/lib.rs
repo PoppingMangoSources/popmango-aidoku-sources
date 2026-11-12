@@ -20,6 +20,8 @@ pub struct Params {
 	pub home_slider_selector: Cow<'static, str>,
 	pub home_section_titles: &'static [&'static str],
 	pub sorts: &'static [&'static str],
+	pub page_size: i32,
+	pub sort_pages_by_filename: bool,
 	pub new_releases_title: &'static str,
 	pub novels_title: &'static str,
 }
@@ -32,6 +34,8 @@ impl Default for Params {
 			new_releases_title: "New Releases",
 			novels_title: "Novels",
 			home_slider_selector: ".main-banner-slider .swiper-slide, .mainSlider .swiper-slide, .cinematic-slider-5 .swiper-slide".into(),
+			page_size: 18,
+			sort_pages_by_filename: false,
 			sorts: &["lastChapterAddedAt", "totalViews", "createdAt", "chaptersCount", "postTitle"],
 			home_section_titles: &["Popular Today", "Latest Releases", "Most Popular", "Latest Updates"],
 		}

@@ -132,3 +132,8 @@ Promoted the Keyoapp and MangaThemesia review lessons into portable public-API c
 Moved merged Raven Scans to `merged-sources` with its complete crate, tests and icon, verified against the shared template snapshot. Removed its main install card and updated the source count to 22; kept its review guidance and pinned history references in [[mangathemesia-consumers]].
 
 Compared every Scythe source line and introduced template line with current merged consumers and base64 decoders. Removed the extra decoded-buffer alias and the fork consumer's unused dependency, preserved inherited template code, and added cached/invalid-reader regressions. The convention mapping and rebase trap are recorded in [[mangathemesia-consumers]].
+
+
+## 2026-11-12: current Iken consumers and Eternal migration
+
+Restored the current-site Eternal parser, canonical paths, original logo and catalogue rating 2. Added Hijala and Sana as small Iken consumers with verified controls and official icons. Latest sections retain real chapter numbers/dates, including pinned entries absent from optional metadata and multiple updates for one series. Added regressions and documented the former-consumer submission exception; see [[iken-template]].

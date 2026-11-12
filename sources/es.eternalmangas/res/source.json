@@ -2,9 +2,9 @@
 	"info": {
 		"id": "es.eternalmangas",
 		"name": "EternalMangas",
-		"version": 11,
+		"version": 12,
 		"url": "https://eternalmangas.org",
-		"contentRating": 1,
+		"contentRating": 2,
 		"languages": [
 			"es"
 		],

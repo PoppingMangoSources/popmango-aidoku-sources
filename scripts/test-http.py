@@ -72,6 +72,8 @@ class Responses(http.server.BaseHTTPRequestHandler):
                 chapter_id = query.get("chapterId", [""])[0]
                 if chapter_id == "12": chapter.update(content=None, images=[{"url": " "}])
                 if chapter_id == "13": chapter.update(isLocked=False, isTimeLocked=True)
+                if chapter_id == "14":
+                    chapter.update(content=None, images=[{"url": "https://example.com/page-10.jpg", "order": 0}, {"url": "https://example.com/page-2.jpg", "order": 1}])
                 body = json.dumps({"chapter": chapter})
             elif parts[2] == "chapters":
                 skip = int(query.get("skip", ["0"])[0])

@@ -188,6 +188,18 @@ class ScopeTests(unittest.TestCase):
         self.template_consumer(2)
         self.assertTrue(any('en.other' in e and 'version 3' in e for e in self.inspect()))
 
+    def test_former_template_consumer_can_migrate(self):
+        self.template_consumer(3)
+        (self.repo / 'sources/en.other/Cargo.toml').write_text('independent parser\n')
+        self.commit('migration')
+        self.assertEqual(self.inspect(), [])
+
+    def test_former_consumer_still_needs_a_bump(self):
+        self.template_consumer(2)
+        (self.repo / 'sources/en.other/Cargo.toml').write_text('independent parser\n')
+        self.commit('migration')
+        self.assertTrue(any('version 3' in error for error in self.inspect()))
+
     def new_template_consumer(self, consumer_version, change_template=True):
         uses = 'theme = { path = "../../templates/theme" }\n'
         (self.repo / 'templates/theme/src').mkdir(parents=True)

@@ -12,7 +12,10 @@ fn review_static_filter_capabilities() {
 	assert_eq!(filters[0]["options"].as_array().unwrap().len(), SORT_COUNT);
 	for filter in filters.as_array().unwrap() {
 		if filter["type"] == "multi-select" {
-			assert_eq!(filter["canExclude"], false);
+			assert_eq!(
+				filter["canExclude"],
+				filter["id"] == "genreIds" && GENRE_EXCLUSION_SUPPORTED
+			);
 			assert_eq!(
 				filter["options"].as_array().unwrap().len(),
 				filter["ids"].as_array().unwrap().len()
@@ -190,8 +193,33 @@ fn live_home_has_site_rows() {
 		layout
 			.components
 			.iter()
-			.any(|c| c.title.as_deref() == Some(LATEST_TITLE))
+			.any(|component| component.title.as_deref() == Some(LATEST_TITLE))
 	);
+	for latest in layout.components.iter().filter(|component| {
+		matches!(
+			component.title.as_deref(),
+			Some("Latest Releases" | "Latest Updates")
+		)
+	}) {
+		let HomeComponentValue::MangaChapterList {
+			entries, page_size, ..
+		} = &latest.value
+		else {
+			panic!("Expected latest chapter rows");
+		};
+		assert_eq!(*page_size, Some(5));
+		assert!(!entries.is_empty());
+		assert!(
+			entries
+				.iter()
+				.all(|entry| entry.chapter.chapter_number.is_some())
+		);
+		assert!(
+			entries
+				.iter()
+				.any(|entry| entry.chapter.date_uploaded.is_some())
+		);
+	}
 	let new_title = if BASE_URL.contains("eternalmangas") {
 		"Nuevos lanzamientos"
 	} else {

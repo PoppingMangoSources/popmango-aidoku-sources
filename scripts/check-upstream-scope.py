@@ -78,7 +78,8 @@ def inspect(repo, base, head, source):
             return True
         if len(parts) > 2 and parts[0] == "templates":
             return parts[1] in templates
-        if len(parts) > 2 and parts[0] == "sources" and templates_used(repo, head, parts[1]) & templates:
+        # A migrated consumer can leave the template in the same submission.
+        if len(parts) > 2 and parts[0] == "sources" and (templates_used(repo, head, parts[1]) | templates_used(repo, base, parts[1])) & templates:
             consumers.add(parts[1])
             return True
         return False
