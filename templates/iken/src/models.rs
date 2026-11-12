@@ -1,3 +1,4 @@
+use crate::helpers::names;
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Result, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
@@ -156,21 +157,13 @@ impl Post {
 			ContentRating::Safe
 		};
 		Ok(Manga {
-			authors: self
-				.author
-				.map(|s| s.trim().into())
-				.filter(|s: &String| !s.is_empty())
-				.map(|s| vec![s]),
-			artists: self
-				.artist
-				.map(|s| s.trim().into())
-				.filter(|s: &String| !s.is_empty())
-				.map(|s| vec![s]),
+			authors: self.author.as_deref().and_then(names),
+			artists: self.artist.as_deref().and_then(names),
 			description: self
 				.post_content
 				.and_then(|s| Html::parse(format!("<div id=description>{s}</div>")).ok())
 				.and_then(|html| html.select_first("#description"))
-				.and_then(|e| e.text_with_newlines())
+				.and_then(|e| e.text_with_newlines().or_else(|| e.text()))
 				.map(|s| s.trim().escape_markdown())
 				.filter(|s| !s.is_empty()),
 			url: Some(format!("{base_url}/series/{}", self.slug)),

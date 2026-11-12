@@ -67,7 +67,7 @@ pub trait Impl {
 				_ => {}
 			}
 		}
-		let data: SearchResponse = helpers::json(params, &format!("/api/query?{qs}"))?;
+		let data: SearchResponse = helpers::get_json(params, &format!("/api/query?{qs}"))?;
 		Ok(MangaPageResult {
 			has_next_page: data.total_count > page * PAGE_SIZE,
 			entries: data
@@ -112,7 +112,7 @@ pub trait Impl {
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let data: ChapterResponse =
-			helpers::json(params, &format!("/api/chapter?chapterId={}", chapter.key))?;
+			helpers::get_json(params, &format!("/api/chapter?chapterId={}", chapter.key))?;
 		if data.chapter.locked() {
 			bail!("Chapter is locked");
 		}
@@ -142,11 +142,11 @@ pub trait Impl {
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
-		home::get(self, params)
+		home::get_home(self, params)
 	}
 
 	fn parse_home(&self, params: &Params, html: &Document) -> Result<HomeLayout> {
-		home::parse(html, params)
+		home::parse_home(html, params)
 	}
 
 	fn get_image_request(

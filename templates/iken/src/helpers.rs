@@ -34,7 +34,7 @@ pub(crate) fn request(params: &Params, url: &str) -> Result<Request> {
 		.timeout(30.))
 }
 
-pub fn json<T: DeserializeOwned>(params: &Params, path: &str) -> Result<T> {
+pub fn get_json<T: DeserializeOwned>(params: &Params, path: &str) -> Result<T> {
 	let url = format!("{}{path}", params.api_url);
 	check_response(request(params, &url)?.send()?, &url)?.get_json_owned()
 }
@@ -70,7 +70,7 @@ pub fn chapters(params: &Params, id: &str) -> Result<Vec<IkenChapter>> {
 	let mut chapters: Vec<IkenChapter> = Vec::new();
 	let mut ids = BTreeSet::new();
 	loop {
-		let data: ChaptersResponse = json(
+		let data: ChaptersResponse = get_json(
 			params,
 			&format!("/api/chapters?postId={id}&skip={}&take=100", chapters.len()),
 		)?;
@@ -87,4 +87,14 @@ pub fn chapters(params: &Params, id: &str) -> Result<Vec<IkenChapter>> {
 		}
 	}
 	Ok(chapters)
+}
+
+pub(crate) fn names(text: &str) -> Option<Vec<String>> {
+	let mut names: Vec<String> = Vec::new();
+	for name in text.split([',', '&']).map(str::trim) {
+		if !name.is_empty() && !names.iter().any(|existing| existing == name) {
+			names.push(name.into());
+		}
+	}
+	(!names.is_empty()).then_some(names)
 }

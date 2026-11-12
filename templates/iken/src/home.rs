@@ -13,7 +13,7 @@ use aidoku::{
 	prelude::*,
 };
 
-pub(crate) fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> {
+pub(crate) fn get_home<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeLayout> {
 	let mut urls = vec![params.base_url.to_string()];
 	for (sort, series_type) in [("createdAt", None), (params.sorts[0], Some("NOVEL"))] {
 		let mut query = QueryParameters::new();
@@ -50,7 +50,7 @@ pub(crate) fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeL
 			} else {
 				let data: SearchResponse = response.get_json_owned()?;
 				if index + 1 == urls.len() {
-					latest(&mut layout, data.posts, params)?;
+					update_latest_chapters(&mut layout, data.posts, params)?;
 					return Ok(());
 				}
 				let entries: Vec<Link> = data
@@ -106,7 +106,11 @@ pub(crate) fn get<T: Impl + ?Sized>(source: &T, params: &Params) -> Result<HomeL
 	Ok(layout)
 }
 
-pub(crate) fn latest(layout: &mut HomeLayout, mut posts: Vec<Post>, params: &Params) -> Result<()> {
+pub(crate) fn update_latest_chapters(
+	layout: &mut HomeLayout,
+	mut posts: Vec<Post>,
+	params: &Params,
+) -> Result<()> {
 	let Some(component) = layout.components.iter_mut().find(|component| {
 		matches!(
 			component.title.as_deref(),
@@ -185,7 +189,7 @@ fn manga(element: &Element, params: &Params) -> Option<Manga> {
 	})
 }
 
-pub fn parse(html: &Document, params: &Params) -> Result<HomeLayout> {
+pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 	let mut components = Vec::new();
 	let mut slides: Vec<_> = html
 		.select(&params.home_slider_selector)

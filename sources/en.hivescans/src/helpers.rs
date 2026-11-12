@@ -7,7 +7,7 @@ use iken::{Params, home};
 use serde::Deserialize;
 
 pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
-	let mut layout = home::parse(html, params)?;
+	let mut layout = home::parse_home(html, params)?;
 	// The remaining slides are initialized by the site's script.
 	let banners = html
 		.select("script")

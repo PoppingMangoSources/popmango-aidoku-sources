@@ -84,7 +84,7 @@ fn review_home_order_compact_cards_and_section_boundaries() {
 		base_url: "https://example.com".into(),
 		..Default::default()
 	};
-	let layout = home::parse(&html, &params).unwrap();
+	let layout = home::parse_home(&html, &params).unwrap();
 	assert_eq!(layout.components.len(), 2);
 	assert_eq!(
 		layout.components[0].title.as_deref(),
@@ -280,7 +280,7 @@ fn review_http_captured_homes() {
 				"Novelas",
 			];
 		}
-		let layout = home::parse(&html, &params).unwrap();
+		let layout = home::parse_home(&html, &params).unwrap();
 		println!(
 			"Captured {site}: {:?}",
 			layout
@@ -414,7 +414,7 @@ fn review_home_latest_and_popular_page_sizes_keep_every_entry() {
 			],
 			..Default::default()
 		};
-		let layout = home::parse(&html, &params).unwrap();
+		let layout = home::parse_home(&html, &params).unwrap();
 		assert_eq!(layout.components.len(), 2);
 		for (component, expected_size, expected_ranking) in [
 			(&layout.components[0], 5, false),
@@ -443,9 +443,9 @@ fn review_latest_chapters_preserve_site_order_and_skip_locked() {
 		base_url: "https://example.com".into(),
 		..Default::default()
 	};
-	let mut layout = home::parse(&html, &params).unwrap();
+	let mut layout = home::parse_home(&html, &params).unwrap();
 	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":2,"slug":"recent","postTitle":"Recent","chapters":[{"id":21,"slug":"chapter-3","number":3,"createdAt":"2026-11-11T12:00:00.000Z","isAccessible":true}]},{"id":1,"slug":"pinned","postTitle":"pinned","chapters":[{"id":12,"slug":"chapter-2","number":2,"isLocked":true},{"id":11,"slug":"chapter-1","number":1,"createdAt":"2026-11-10T12:00:00.000Z","isAccessible":true}]}],"totalCount":2}"#).unwrap();
-	home::latest(&mut layout, data.posts, &params).unwrap();
+	home::update_latest_chapters(&mut layout, data.posts, &params).unwrap();
 	let HomeComponentValue::MangaChapterList {
 		page_size, entries, ..
 	} = &layout.components[0].value
@@ -475,10 +475,31 @@ fn review_latest_chapters_preserve_site_order_and_skip_locked() {
 			.all(|e| !e.chapter.locked && e.manga.description.is_none())
 	);
 	let original = layout.clone();
-	assert!(home::latest(&mut layout, Vec::new(), &params).is_ok());
+	assert!(home::update_latest_chapters(&mut layout, Vec::new(), &params).is_ok());
 	assert_eq!(layout, original);
-	let mut missing = home::parse(&html, &params).unwrap();
+	let mut missing = home::parse_home(&html, &params).unwrap();
 	let original = missing.clone();
-	assert!(home::latest(&mut missing, Vec::new(), &params).is_err());
+	assert!(home::update_latest_chapters(&mut missing, Vec::new(), &params).is_err());
 	assert_eq!(missing, original);
+}
+
+#[aidoku_test]
+fn review_credit_names_split_trim_and_keep_roles() {
+	let post: models::Post = serde_json::from_str(r#"{"id":7,"slug":"title","postTitle":"Title","author":" First,Second & First, , ","artist":"Second & Third,Third"}"#).unwrap();
+	let details = post.into_details("https://example.com").unwrap();
+	assert_eq!(details.authors, Some(vec!["First".into(), "Second".into()]));
+	assert_eq!(details.artists, Some(vec!["Second".into(), "Third".into()]));
+}
+
+#[aidoku_test]
+fn review_descriptions_accept_plain_text_and_html() {
+	for content in ["short synopsis", "<div><p>short synopsis</p></div>"] {
+		let post: models::Post = serde_json::from_str(&format!(
+			r#"{{"id":7,"slug":"title","postTitle":"Title","postContent":"{content}"}}"#
+		))
+		.unwrap();
+		let details = post.into_details("https://example.com").unwrap();
+		assert_eq!(details.title, "Title");
+		assert_eq!(details.description.as_deref(), Some("short synopsis"));
+	}
 }

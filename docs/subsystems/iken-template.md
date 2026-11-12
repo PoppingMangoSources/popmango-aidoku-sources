@@ -2,7 +2,7 @@
 title: Iken template and consumers
 type: subsystem
 created: 2026-11-11
-updated: 2026-11-11
+updated: 2026-11-12
 sources:
   - code: templates/iken/src/lib.rs
   - code: templates/iken/src/imp.rs
@@ -16,13 +16,15 @@ sources:
   - code: sources/es.eternalmangas/res/source.json
   - ext: https://github.com/Aidoku-Community/sources/commit/a5b9802a25780ba5db5dbe2590793e88bfd3d355
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
-verified_at: 882ee09
+  - ext: https://github.com/Aidoku-Community/sources/commit/289b5613bb47f62c6eb91de3d8b2282643586533
+  - ext: https://github.com/Aidoku-Community/sources/commit/79f1619cc0d14e853619b4e13d48b5331cd099b1
+verified_at: 14fe54dc
 ---
 
 The template serves Hive Scans, Nyx Scans, Vortex Scans, Magus Manga and EternalMangas.
 Shared behavior follows the Params/Impl arrangement used by [[mangak-template]]. The fork
 restores these upstream sources temporarily for publication and testing. The submission
-branch is `fix-iken`, based on canonical `4ac8414`, with production files only.
+branch is `fix-iken`, based on canonical `289b5613`, with production files only.
 The submission history separates Eternal's site migration from shared Iken behavior.
 
 ## API and keys
@@ -100,63 +102,181 @@ these public API paths. See [[source-checks]] for the repository gates.
 > ⚠️ Eternal silently ignores lastChapterAddedAt and chaptersCount sorting. Reversed direction
 > probes returned the same fallback order. Do not re-enable these options without fresh evidence.
 
-## Review audit
+## Review audit, November 12
 
-The November 11 audit compared every production file changed by `fix-iken` with canonical
-`4ac8414`, the current main instructions and attached snapshots. MangaK supplied the Params/Impl
-and conversion reference; Flame and NovelArchive supplied the HTML emphasis references.
-The recent reviewer threads checked were 890, 889, 884, 883, 881, 882, 872 and 869.
+The submission is based on canonical upstream `289b5613bb47f62c6eb91de3d8b2282643586533`.
+Every changed production module and resource was compared with that tree, current fork
+instructions, attached snapshots and the merged Keyoapp, Flame, MangaK and MangaThemesia changes.
+The submission has three commits: shared Iken fixes, Eternal's site migration, then novel support.
+The former fourth audit commit is distributed by responsibility. Shared request timeout imports
+already require app 0.8.3 in the first commit; every intermediate consumer must compile.
+Submission versions remain upstream + 1 across review rounds. Eternal stays rated 1.
 
-| Area | Outcome |
+| Merged reference | Applied pattern |
 | --- | --- |
-| Layout, names and helpers | Trait forwarding remains in lib.rs, behavior in imp.rs, DTO conversions in models.rs, network operations in helpers.rs, and the substantial home/reader logic in their own modules. Removed the unused API fallback accessor. |
-| Ownership and duplication | Reuse request URLs, decode Hive banner JSON while its script buffer is borrowed, and avoid duplicate identity validation and unnecessary slug clones. The chapter date fields use take because the remaining chapter is subsequently consumed by its normal conversion. |
-| Pagination and errors | Reject duplicate ids within or between pages, including overlaps after the first entry. Loopback regressions retain incomplete-page, HTTP, missing-page and key-only reader checks. |
-| Cards and filters | Compact cards, blank required identity rejection, sort first, static tag taps, explicit unsupported exclusions and source-local sort/type overrides remain. No settings or dynamic-genre machinery is needed. |
-| Home and reader | Preserve pinned HTML order, real chapter ids, latest five/popular three, source-local banners, partial success and separate novel support. Both emphasis nesting orders have deterministic coverage. |
-| Submission | Keep shared fixes, Eternal's site-specific migration, shared novel support and audit cleanup as separate commits; retain upstream+1 submission versions and exclude fork tests, docs and unused test dependencies. |
+| [Keyoapp](https://github.com/Aidoku-Community/sources/pull/888) | Split comma/ampersand credits, trim, omit blanks, deduplicate per role without losing dual roles. Keep optional short synopses. Name shared entry points get_home/parse_home. |
+| [Flame](https://github.com/Aidoku-Community/sources/pull/860) | Fallible required identities, details conversion with context, paragraph/emphasis preservation and inaccessible chapter handling. |
+| [MangaK](https://github.com/Aidoku-Community/sources/pull/850) | Params/Impl template layout, local overrides, compact cards and metadata conversions in models.rs. |
+| [MangaThemesia](https://github.com/Aidoku-Community/sources/pull/884) | Stateful HTML novel formatting, separate reader module and shared-consumer app minimum. |
+| Merged NovelArchive, ManhwaWeb and Olympus | Reusable checked request setup and get_json naming; keep error-aware pagination and lookup helpers substantial enough to justify their existence. |
 
-The follow-up checked all 97 section-three table rows for applicability and fetched the
-listed historical review threads plus the latest 100 repository inline comments. Reused
-request setup and owned response decoding follow the merged NovelArchive helper pattern;
-stable sorts need no separate sortedness scan. `models` is private because no consumer uses
-it. The two remaining production clones retain a slug for the separate chapter request and
-copy a compact cover from a borrowed post that is still needed by the details/feed conversion.
-Changing those would add a second conversion path or field-moving scaffolding.
+The new Eternal API sample contains comma-separated credits. The prior implementation returned
+one combined name. `helpers::names` now follows Keyoapp's verified separators; both roles use it.
+The regression also found plain-text API synopses lost by the SDK newline helper's fragment
+reparse. Fall back to the selected element's text only when that helper returns None, retaining
+paragraph-aware parsing for HTML. No additional conversion path or HTTP request is needed.
 
-The attached checker is a snapshot: it rejects explicit canExclude=false and expects a
-CLAUDE.md pointer. Current main correctly permits disabled exclusions and checks complete
-instruction copies. The attached pr-branch.sh also predates test/dependency stripping and
-template submissions; preparation uses current normalization and scope checks instead.
+Trait forwarding is required by the template. `Post::key` shares required-identity validation;
+context-bearing into_details/into_chapter methods match merged patterns rather than artificial
+TryFrom tuples. Pagination and post lookup helpers retain meaningful error/404 behavior.
+The remaining cover and slug clones preserve values still needed by their callers. No redundant
+sorting, dependency, public model surface, suppression, decorative divider or narration was added.
 
-Eternal keeps catalogue contentRating 1 by the owner's explicit decision. Its per-title
-is18Plus conversion remains independent. Do not raise this catalogue rating during cleanup.
-Its site-specific Spanish home, supported sorts and filters are isolated in a dedicated
-submission commit; shared novel support and parameter compatibility stay with Iken changes.
+Current kkantan feedback was read in the four linked PRs and the latest 100 repository inline
+comments, including compact details/cards, blank keys, independent credit roles, URI/date helpers,
+full chapter suffixes, optional values, include-only filters, complete pagination and home order.
+The following matrix covers every current section-three feedback row individually. A convention
+is not treated as a universal requirement when API evidence or a meaningful context differs.
 
-All 26 consumer tests passed, as did six deterministic template tests and the loopback
-HTTP/deep-link regressions. The optional captured-home test had no capture directory and
-did not exercise captures. Direct type/status/impossible-value probes passed for Nyx,
-Vortex, Magus and Eternal; their 356 static genre ids and names matched current APIs.
-The repository's 103 regressions and nine offline workflow checks passed. The full docs
-linter still reports eight pre-existing broken NovelArchive source references outside this
-change. Device rendering and WebView behavior were not exercised.
+| Row | Recorded feedback | Iken disposition / evidence |
+| --- | --- | --- |
+| 1 | Search returned tags + descriptions | Compact TryFrom<Post> and Link::from in search, pasted links and home. |
+| 2 | Short synopses disappeared without an expand control (Keyoapp review) | Plain/HTML/empty descriptions covered by deterministic regressions. |
+| 3 | Combined credits and duplicate names reached the app (Keyoapp review) | Shared names parser; independent author and artist regressions. |
+| 4 | A comment containing "Author" became a title's author (Rage review) | API credit fields, no broad text metadata selector. |
+| 5 | A webtoon labeled "Manga" opened right-to-left (Rage review) | API type enum selects viewer; no evidence requiring a site override. |
+| 6 | Novel emphasis was stripped to keep an older app minimum (shared-template review) | Separate Markdown reader and app minimum 0.8.3 on all five consumers. |
+| 7 | Home rows showed "Manhwa · ★ 8.3" (our own miss, `en.atsumaru`) | Compact ordinary cards; richer data only for the hero. |
+| 8 | Big scroller descriptions showed `life\, while` and `\[Domestic` (our own miss, `en.novelarchive`) | Hero uses HTML text; escaping stays on details. |
+| 9 | A chapter escaped whole, one paragraph of 600 hard breaks, crashed the app with a stack overflow (our own miss, `en.novelarchive`, crash logs) | Reader escapes syntax only and separates paragraphs; device check remains. |
+| 10 | A "chapter" invented for `MangaChapterList` from a feed with no chapters | Batch API supplies actual chapter identities. |
+| 11 | A pasted link answered with the full series | Pasted link returns compact Manga with text-search fallback. |
+| 12 | Explicit `"default"` on a sort filter | No explicit sort default. |
+| 13 | Icon filled the whole canvas | Existing icons unchanged; package validation retained. |
+| 14 | Madara’s dark artwork sat on white (#884) | Madara-specific artwork not applicable to these unchanged icons. |
+| 15 | A translated-languages filter | Single-language sources; no duplicate language control. |
+| 16 | Genre filter presentation | Static genre JSON uses isGenre. |
+| 17 | 14 listings | No redundant listing registration. |
+| 18 | A helper sat in `lib.rs` | Free helpers live outside lib.rs. |
+| 19 | `String::new()` / `Vec::new()` everywhere | Default structs retained; no repeated empty initialization. |
+| 20 | Temporary vectors before assigning to params | Direct QueryParameters assignment. |
+| 21 | Settings lookups outside `settings.rs` | No persistent settings in this template. |
+| 22 | `page_size: Some(10)` on home components | Latest five, popular three. |
+| 23 | Latest Comics used `page_size: None` when it was meant to show five rows (owner's correction) | Explicit latest page_size Some(5). |
+| 24 | Web view urls 404'd | API slug URLs; fallback chapter post slug when details are absent. |
+| 25 | `language: Some("en")` on every chapter | No chapter language assignment. |
+| 26 | "Does this not support the filtered types setting?" on the latest feed | No content-preference settings requiring feed propagation. |
+| 27 | Dynamic genres without `supportsTagSearch` | Static genres; no fetched list or dynamic tag capability. |
+| 28 | The "Has Chapters" check sat in the filters header | No secondary filter toggles. |
+| 29 | `query.filter(\|q\| !q.is_empty())` | No redundant optional query emptiness guard. |
+| 30 | A big scroller with only titles and covers | Hero fills metadata available in HTML without per-card requests. |
+| 31 | Everything in `lib.rs` | Traits/lib, behavior/imp, DTOs/models, network/helpers, home and Markdown modules. |
+| 32 | `fn into_manga(self)` / hand-built `Chapter` in a loop | TryFrom for compact cards; context-bearing details/chapter conversion matches Flame. |
+| 33 | `AidokuError::message(..)`, `.map_err(\|_\| ..)` on `Request::post` | error!/bail!; network errors propagated. |
+| 34 | `.string()?` then `serde_json::from_str` | Owned response JSON; Hive embedded script is not an HTTP JSON response. |
+| 35 | A hand-written ISO date parser | SDK parse_date_with_options UTC conversion. |
+| 36 | HMAC signing in `JsContext` | No signing or JS context. |
+| 37 | `Home` registered returning `Unimplemented` | Home implemented for every registered consumer. |
+| 38 | `if !needs_details && !needs_chapters` | No impossible neither-flag guard. |
+| 39 | `query.as_deref().map(\|q\| !q.is_empty())` | No optional query map-to-bool. |
+| 40 | `if !included.is_empty()` in a multi-select arm | Include-only genre arm sends joined values directly. |
+| 41 | `url.starts_with(base)` then slicing | strip_prefix for pasted link base boundary. |
+| 42 | Matching status strings as-is | Captured API uses uppercase enums; keep exact enum matching, unlike variable HTML labels. |
+| 43 | A name→id map in Rust for a filter | Genre ids in JSON. |
+| 44 | `canExclude` left on where the API can't exclude | Explicit canExclude false throughout. |
+| 45 | A description that can be `""` | Descriptions trim and filter empty text. |
+| 46 | Two code paths for query and no query | One query endpoint for search and browse. |
+| 47 | Listings that are really search options (Uncensored, Raw) | Type/status are filters, not redundant listings. |
+| 48 | Scraping `__NEXT_DATA__` when an API exists | API used for catalogue/details/chapters; HTML only supplies actual home presentation. |
+| 49 | A source on a known theme written from scratch | All five consume Iken with small overrides. |
+| 50 | A rebranded site added under a new id | Existing source ids retained. |
+| 51 | `Vec<Regex>` built per call | No regex allocation. |
+| 52 | Pages silently dropped when a per-page key fails | Missing/blank image pages fail; no filter_map reader truncation. |
+| 53 | A per-item cache on the source struct | No cache state. |
+| 54 | `"HQ-now"`, `struct Theblank` | Eternal struct renamed to match its own source. |
+| 55 | No `minAppVersion` | All consumers declare 0.8.3. |
+| 56 | Comments marked resolved without a change | No PR threads posted or resolved by this audit. |
+| 57 | `#[serde(rename_all = "camelCase")]` on JSON that isn't ("have you verified this?", #846) | camelCase DTO fields checked against current API captures. |
+| 58 | `sort` and `order` sent to an endpoint that ignores them ("this doesn't seem to do anything", #846) | Eternal unsupported sorts removed after direction probes; supported Params stay local. |
+| 59 | The sort filter built last, titled "Sort" (#846) | Sort first. |
+| 60 | `hideNsfw` defaulting to `false` with `contentRating` 1 (#845) | Rating 1 preserved by explicit owner decision; no hide-adult setting exists. Do not claim opt-in filtering. |
+| 61 | Discover sections in a different order from the site (#845) | DOM order preserved; localized row headings and novel placement. |
+| 62 | `.unwrap_or("")` repeated down a chain (zh.suduguu, November: "keep this an optional result. it doesn't make sense for callers to check if the result is an empty string rather than `None`") | Missing metadata stays optional. |
+| 63 | A page limit ending a loop with `break` (zh.suduguu, November: "it would be better to return an error here") | Incomplete/overlapping chapter inventory returns an error. |
+| 64 | Genre exclusion offered on Genz Toons, whose site and keiyoushi only include genres ("are genres even excludable in genz site?", owner's correction) | Genres include only; unsupported exclusions disabled. |
+| 65 | Eva Scans rated 17+ because its genre list has Adult, Smut and Mature (our own miss, owner's correction) | Existing catalogue ratings retained; per-title rating computed independently. |
+| 66 | Scans.GG rated 0 though its genres include Hentai (kkantan: "given that there is a 'Hentai' genre and such, this should be marked as containing nsfw content", 0 to 1) | Eternal remains 1; English catalogues remain 0 per reviewed inventory. |
+| 67 | Comics and novels behind a source setting (#842, also dyphire) | Novel type filter and feed, no catalogue-switch setting. |
+| 68 | `page_url_hd` dropped in a rework (#842) | Original cover fallback and all image pages retained. |
+| 69 | `requiresFalse: "contentType == novel"` on a setting (#842) | No dependent settings. |
+| 70 | A slug looked up by searching the whole series list each time (#840) | Stable numeric keys and direct numeric lookup; no full-catalogue slug search. |
+| 71 | `ImageScroller` with `width: None` (#819) | Hive script banners specify 400 by 150. |
+| 72 | A banner linking a series page with `LinkValue::Url` (#819) | Series banners link internally. |
+| 73 | The two newest chapters of a long series didn't load (#819) | Live source tests read available chapters; newest device reading remains unverified. |
+| 74 | A chapter that failed to load returned "(empty chapter)" text (#819, fix commit) | Empty/locked reader content returns meaningful errors. |
+| 75 | Missing titles became empty strings (#865) | Blank keys/slugs/titles rejected by shared fallible validation. |
+| 76 | Rechecking the host in a deep-link handler (#869) | Dispatched deep links parse path; pasted search checks base boundary. |
+| 77 | Chapter ids with suffixes were truncated (#872) | Complete decoded chapter suffix retained. |
+| 78 | Extra helpers and long explanations in `lib.rs` (#872) | Only traits/template setup in lib; six existing why comments calibrated. |
+| 79 | A contributor with both writing and drawing credits lost one role (#865) | Author and artist parsed independently. |
+| 80 | `impl From<Entry> for Manga` with `key(..).unwrap_or_default()` ("we don't want to return manga objects with empty keys") | TryFrom returns identity error, details propagates it. |
+| 81 | A "Show Locked Chapters" switch defaulting on | No locked-chapter toggle; inaccessible entries are omitted. |
+| 82 | A home row and listing titled "New in the Archive" for the library's default sort ("does this title come from somewhere?") | createdAt feed named New Releases; existing site headings preserved. |
+| 83 | Genz Toon's cover slider showed as cropped banners in the app, while the runner and its `review_` test read it as covers (owner's screenshots) | No quoted bracket substring selector; app selector parity still requires device evidence. |
+| 84 | V2 Trending Now was overridden with Month despite the site's Today default (owner's correction) | Keyoapp-specific periods not present in Iken. |
+| 85 | Newly Added fell back to a document-wide grid (owner's review) | Each heading uses its bounded own card scope. |
+| 86 | The Keyoapp V1 section ancestor bound was widened from three to five without evidence (owner's correction) | Three-level traversal; regression prevents neighboring-row borrowing. |
+| 87 | Blocked requests looked like missing catalogues or invalid JSON (owner’s CI log) | Checked shared responses; loopback covers HTTP diagnostics and bounded body prefix. |
+| 88 | `SEARCH_URL`, `BASE_URL` plus a path and only ever followed by `?` | Only API/base constants; single-use paths inline. |
+| 89 | `manga_page_url`, `chapters_url`, `read_url` over an `api_url` helper, each used once | No one-use endpoint wrapper chain; substantive request/post/pagination helpers retained. |
+| 90 | Five Typesense parameters as constants, each sent once | No one-use Typesense constants. |
+| 91 | `FEED_LIMIT`, `SEARCH_LIMIT` for page sizes | PAGE_SIZE for catalogue page size. |
+| 92 | `fn is_novel(&self) { is_novel(self.medium…) }` | No field-only is_novel forwarding method. |
+| 93 | `aidoku::imports::std::current_date()` in an expression | No fully qualified current_date expression. |
+| 94 | Deduplication discarded same-number parts from one scanlator | No group deduplication or group-preference controls; pagination duplicate IDs are errors. |
+| 95 | The novels row mapped search hits to cards a second way | Novel feed reuses compact TryFrom + Link::from. |
+| 96 | A comment on the fallback sort described the feeds | Existing comments reread beside their actual code. |
+| 97 | Full `mediums`/`types` lists sent to the feeds | No full-selection media setting; one optional type filter. |
+| 98 | Ranking periods defaulted to a week and applied to the home page | No ranking-period setting. |
+| 99 | `actions/cache@v4` (and `checkout@v4`, `upload-artifact@v4`, a pages action) on Node 20 | Submission changes no workflows; main offline workflow checker verifies repository actions. |
+| 100 | `aidoku-test-runner` install failed on GitHub's runner | Runner available; current workflow dependency checker retained. |
 
-| Requested audit | Evidence |
-| --- | --- |
-| Guidance, scripts, workflows and test conventions | Current instructions and synchronized references, offline CI gates, source review gates; stale attached checker rules identified above. |
-| Production code, module layout, names and inlining | All changed template and five consumer production files compared with canonical upstream; merged Iken/MangaK templates and Flame/NovelArchive helpers supplied the matching patterns. |
-| Duplication, unused code and complexity | Shared request factory, owned decoding, redundant sortedness checks removed, unused public model surface removed; warning-failing Clippy covers production and tests. |
-| Comments and prior review feedback | All six production comments explain site/Markdown constraints; no decorative dividers or narration. Existing chapter identity, independent-lock, complete-pagination and compact-card regressions retained. |
-| Deep-link correction | review_http_deep_link_paths_and_chapter_only_update covers HTTP, encoded series/chapter slugs, query/fragment/trailing-slash variants, full suffixes, missing paths and numeric chapter-only updates without a details lookup. |
-| Both publication targets | Main consumers bumped once with README links; submission keeps its existing versions and receives normalized production files only. |
+## Audit verification
 
-Before this cleanup, all five already-published consumers passed their live suites: Hive 6,
-Nyx 5, Vortex 5, Magus 5 and Eternal 5. The novel test reports a catalogue with no novels or
-accessible chapters explicitly; a passing suite does not mean every site currently has novels.
-App layout, WebView sessions and device novel rendering require separate device evidence.
+Deterministic template regressions include credit splitting, short/HTML/empty descriptions,
+blank required identities, independent locks, numeric strings, compact cards, bounded home
+sections, actual chapters and balanced novel emphasis. Loopback tests cover non-2xx responses,
+key-only reading, incomplete/overlapping chapter pages and dispatched deep-link variants.
+Current API captures confirm all 356 static genre IDs/names across Nyx, Vortex, Magus and
+Eternal; whitespace in labels matches the API. Hive's direct API returned HTTP 403.
 
-The rating/history correction changes no Rust behavior. The local execution runtime was
-unavailable for this correction, so prior test results above were not rerun. Final production
-blob hashes are compared with the previously verified tree; only Eternal's catalogue rating
-is restored on the submission, and main additionally bumps its package/README to version 10.
+The attached checker is stale: current main permits explicit canExclude=false and requires
+complete synchronized instruction copies. Attached pr-branch.sh also predates test/dependency
+stripping and template scope validation. Use current repository scripts.
+
+Fresh results: all 26 consumer tests passed (20 live tests and six deterministic source checks).
+All five fork reviews passed formatting, production/test Clippy with warnings denied, packaging,
+Aidoku verification and source rules. All five normalized submission packages passed those
+production gates too; both intermediate shared and Eternal snapshots compiled cleanly.
+The final submission scope/history check reports exactly three commits, with no fork tests,
+tooling or unused test dependencies. Its final tree equals the preserved audited snapshot.
+
+Eight deterministic template regressions passed. The loopback suite passed its three active
+HTTP/reader/layout tests; the optional captured-home entry returned without exercising captures
+because no capture directory was configured. Repository checks passed 132 Python regressions,
+nine offline workflow checks, instruction-copy synchronization and documentation validation.
+Direct Hive API access returned 403, while the actual runner-based Hive suite passed.
+Runner results do not establish app rendering, WebView sessions or selector parity. Those
+remain device checks.
+
+| Consumer | Fork publication version | Submission version | Catalogue rating |
+| --- | --- | --- | --- |
+| Hive | 10 | 3 | 0 |
+| Nyx | 9 | 2 | 0 |
+| Vortex | 11 | 4 | 0 |
+| Magus | 10 | 3 | 0 |
+| Eternal | 11 | 3 | 1 |
+
+The [submission branch](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/fix-iken)
+was published with an explicit expected-SHA force lease. Its three commits keep shared fixes,
+Eternal's site migration and novels separate. Fork regressions and this record remain on main.
