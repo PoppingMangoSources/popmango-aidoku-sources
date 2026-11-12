@@ -130,3 +130,5 @@ Restored Eternal's catalogue rating to 1 at the owner's request and separated it
 Promoted the Keyoapp and MangaThemesia review lessons into portable public-API contracts, static consumer guards and installed push/CI gates. Calibrated new guards against 169 merged sources, passed all 11 upstream contracts and confirmed five deliberately restored regressions fail. The automation matrix and remaining visual/live checks are in [[source-checks]].
 
 Moved merged Raven Scans to `merged-sources` with its complete crate, tests and icon, verified against the shared template snapshot. Removed its main install card and updated the source count to 22; kept its review guidance and pinned history references in [[mangathemesia-consumers]].
+
+Compared every Scythe source line and introduced template line with current merged consumers and base64 decoders. Removed the extra decoded-buffer alias and the fork consumer's unused dependency, preserved inherited template code, and added cached/invalid-reader regressions. The convention mapping and rebase trap are recorded in [[mangathemesia-consumers]].

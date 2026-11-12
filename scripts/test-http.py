@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run template HTTP regressions against a loopback server, without contacting a site."""
 
+import base64
 import http.server
 import json
 import os
@@ -20,8 +21,24 @@ class Responses(http.server.BaseHTTPRequestHandler):
         if self.path.startswith("/metadata/"):
             kind = parts[2]
             body = f'<div class="postbody"><h1 class="entry-title">Title</h1><div class="tsinfo"><span class="type">{kind}</span></div><div class="comments"><span>Author discussed this story.</span><span>Artist discussed this story.</span></div></div>'
-        if self.path == "/novel":
-            body = '<div id="readerarea"><p><strong>First<br>Second</strong></p><p><em>Third</em></p></div><script>ts_reader.run({"is_novel":true,"images":[]})</script>'
+        if self.path in {"/novel", "/novel-cached", "/novel-bad-base64", "/novel-bad-utf8"}:
+            script = 'ts_reader.run({"is_novel":true,"images":[]})'
+            body = '<div id="readerarea"><p><strong>First<br>Second</strong></p><p><em>Third</em></p></div>'
+            if self.path != "/novel":
+                data = script.encode() + (b"\xff" if self.path == "/novel-bad-utf8" else b"")
+                encoded = base64.b64encode(data).decode()
+                if self.path == "/novel-bad-base64":
+                    encoded += "!"
+                body += f'<script src="data:text/javascript;base64,{encoded}"></script>'
+            if self.path != "/novel-cached":
+                body += f"<script>{script}</script>"
+        if self.path in {"/images", "/images-cached"}:
+            script = 'ts_reader.run({"images":["https://example.com/1.jpg","https://example.com/2.jpg"]})'
+            if self.path == "/images-cached":
+                encoded = base64.b64encode(script.encode()).decode()
+                body = f'<script src="data:text/javascript;base64,{encoded}"></script>'
+            else:
+                body = f"<script>{script}</script>"
         query = parse_qs(urlsplit(self.path).query)
         if urlsplit(self.path).path in {"/home", "/home-existing"}:
             body = "<main><section><h2>Latest Releases</h2><a href='/series/old' title='Old'><img src='https://example.com/old.jpg'></a></section><section><h2>Most Popular</h2><a href='/series/popular' title='Popular'><img src='https://example.com/popular.jpg'></a></section></main>"

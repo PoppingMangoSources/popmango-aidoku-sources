@@ -35,6 +35,13 @@ The feature-gated reader was an offered alternative, not a requirement; the owne
 Preserve source tests with their template when archiving. The main template retains its
 paragraph/emphasis, key-only reader and viewer-override loopback regressions.
 
+Cached-reader comparison: merged [Madara](https://github.com/Aidoku-Community/sources/blob/289b5613bb47f62c6eb91de3d8b2282643586533/templates/madara/src/imp.rs#L317)
+decodes data-URL JavaScript inline; [Keyoapp](https://github.com/Aidoku-Community/sources/blob/289b5613bb47f62c6eb91de3d8b2282643586533/templates/keyoapp/src/home.rs#L227)
+uses `STANDARD.decode` followed by `String::from_utf8`. Compare selector contracts before
+copying prefix checks or fallbacks. After shared-reader rebases, test plain/cached image
+and novel scripts: a conflict-free merge can leave novel detection using the original body.
+Main's MangaThemesia HTTP regressions cover those paths and invalid decode fallback.
+
 Shared-template novel review: [minimum-version discussion](https://github.com/Aidoku-Community/sources/pull/884#issuecomment-6777916715).
 The owner chose shared emphasis support with a 0.8.3 minimum for all consumers, without a Cargo
 feature. Flame demonstrates walking text nodes alongside element children; NovelArchive keeps

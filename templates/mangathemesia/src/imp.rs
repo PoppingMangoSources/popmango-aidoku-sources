@@ -285,12 +285,12 @@ pub trait Impl {
 		let response = helpers::fetch(&url)?.get_string()?;
 		let html = Html::parse_fragment_with_url(&response, &url)?;
 		// A cache plugin can move the reader's script into a base64 `data:` url.
-		let decoded = html
+		let reader = html
 			.select_first("script[src^='data:text/javascript;base64,dHNfcmVhZGVyLnJ1bih7']")
 			.and_then(|script| script.attr("src"))
 			.and_then(|src| STANDARD.decode(src.split_once(',')?.1).ok())
-			.and_then(|script| String::from_utf8(script).ok());
-		let reader = decoded.as_deref().unwrap_or(&response);
+			.and_then(|bytes| String::from_utf8(bytes).ok())
+			.unwrap_or(response);
 
 		if reader.contains("\"is_novel\":true") {
 			let text = helpers::novel_text(&html);
@@ -321,7 +321,7 @@ pub trait Impl {
 		}
 
 		if reader.contains("\"images\":") {
-			Ok(helpers::extract_images(reader)
+			Ok(helpers::extract_images(&reader)
 				.into_iter()
 				.map(|url| Page {
 					content: PageContent::url(url),

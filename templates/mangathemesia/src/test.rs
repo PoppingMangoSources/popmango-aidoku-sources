@@ -178,24 +178,61 @@ fn review_http_novel_reader_uses_only_chapter_key() {
 		base_url: base.into(),
 		..Default::default()
 	};
-	let pages = Site
-		.get_page_list(
-			&params,
-			Manga::default(),
-			Chapter {
-				key: "/novel".into(),
-				..Default::default()
+	for key in [
+		"/novel",
+		"/novel-cached",
+		"/novel-bad-base64",
+		"/novel-bad-utf8",
+	] {
+		let pages = Site
+			.get_page_list(
+				&params,
+				Manga::default(),
+				Chapter {
+					key: key.into(),
+					..Default::default()
+				},
+			)
+			.unwrap();
+		let [
+			Page {
+				content: aidoku::PageContent::Text(text),
+				..
 			},
-		)
-		.unwrap();
-	let [
-		Page {
-			content: aidoku::PageContent::Text(text),
-			..
-		},
-	] = pages.as_slice()
-	else {
-		panic!("Expected one text page");
+		] = pages.as_slice()
+		else {
+			panic!("Expected one text page");
+		};
+		assert_eq!(text, "**First**\n\n**Second**\n\n*Third*");
+	}
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_cached_images_keep_site_order() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("run scripts/test-http.py");
 	};
-	assert_eq!(text, "**First**\n\n**Second**\n\n*Third*");
+	let params = Params {
+		base_url: base.into(),
+		..Default::default()
+	};
+	for key in ["/images", "/images-cached"] {
+		let pages = Site
+			.get_page_list(
+				&params,
+				Manga::default(),
+				Chapter {
+					key: key.into(),
+					..Default::default()
+				},
+			)
+			.unwrap();
+		assert_eq!(pages.len(), 2);
+		for (index, page) in pages.iter().enumerate() {
+			assert!(
+				matches!(&page.content, aidoku::PageContent::Url(url, _) if url == &format!("https://example.com/{}.jpg", index + 1))
+			);
+		}
+	}
 }

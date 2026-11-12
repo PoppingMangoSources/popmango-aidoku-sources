@@ -2,12 +2,14 @@
 title: MangaThemesia consumers
 type: subsystem
 created: 2026-11-07
-updated: 2026-11-11
+updated: 2026-11-12
 sources:
   - code: templates/mangathemesia/src/imp.rs
   - code: templates/mangathemesia/src/helpers.rs
   - code: templates/mangathemesia/src/test.rs
   - code: scripts/test-http.py
+  - ext: https://github.com/Aidoku-Community/sources/blob/289b5613bb47f62c6eb91de3d8b2282643586533/templates/madara/src/imp.rs
+  - ext: https://github.com/Aidoku-Community/sources/blob/289b5613bb47f62c6eb91de3d8b2282643586533/templates/keyoapp/src/home.rs
   - code: .github/workflows/test.yaml
   - code: templates/mangathemesia/src/child_theme.rs
   - code: sources/en.scythescans/src/lib.rs
@@ -24,7 +26,7 @@ sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.madarascans/src/test.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
-verified_at: 5882af8
+verified_at: 8244562
 ---
 
 Portable review gates and their coverage are recorded in [[source-checks]].
@@ -128,6 +130,25 @@ and `/series` path. Hades Scans, in maintenance on 2026-11-08, has no crate yet.
 > (`ts_reader.run({`), the selector keiyoushi's base uses for every consumer, and reads the images
 > and the novel flag from it; the other sites' chapters carry plain JSON. Scythe keeps only
 > keiyoushi's rate limit of three requests a second.
+
+Scythe's introduced lines were compared with canonical `289b561`: Raven/Lagoon for the
+consumer scaffold and manifests, Kagane/Desu for rate limiting, Madara's
+`get_page_list` for data-URL JavaScript decoding, and Keyoapp's `editor_pick` for the
+base64/UTF-8 chain. This is a convention comparison, not a new universal decoder rule.
+The decoder stays inline and yields one owned string, falling back to the existing body;
+there is no separate optional decoded buffer or borrowed alias. The selector already
+constrains the data-URL prefix, so splitting once at the comma avoids a repeated prefix
+check. Main's direct consumer `base64` dependency was removed; the shared template owns it.
+The standard SDK test dependencies match the merged consumer manifests. Scythe's type
+label remains `MangaToon` for `comic`: its current search form uses that label, unlike the
+merged consumers' `Comic`. Source-specific display labels should follow site evidence.
+
+> ⚠️ A clean rebase can leave novel detection reading the original HTML while image parsing
+> reads decoded JavaScript. Both must use the selected reader string. The loopback novel
+> contract covers plain and base64 scripts plus invalid-base64/UTF-8 fallback; its image
+> contract checks both script forms and page order (`scripts/test-http.py`,
+> `templates/mangathemesia/src/test.rs`). Parser, child-theme and helper implementations
+> already merged upstream remain inherited, rather than copied into Scythe.
 
 > ⚠️ Violet and Thunder list novels among comics. The shared reader recognizes
 > `"is_novel":true` and walks `#readerarea` as Markdown paragraphs. `<strong>`/`<b>` and
