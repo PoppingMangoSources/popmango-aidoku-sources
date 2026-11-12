@@ -156,13 +156,7 @@ pub fn details(html: &Document, key: String, label_novels: bool) -> Result<Manga
 	let series_type = labelled(html, "Tipo:").map(|kind| kind.to_lowercase());
 	let adult = series_type
 		.as_deref()
-		.is_some_and(|kind| kind.contains("19") || kind.contains("sin censura"))
-		|| tags.iter().any(|tag| {
-			matches!(
-				tag.to_lowercase().as_str(),
-				"+18" | "+19" | "adulto" | "smut" | "yaoi"
-			)
-		});
+		.is_some_and(|kind| kind.contains("19") || kind.contains("sin censura"));
 	let content_rating = content_rating(&tags, adult);
 	Ok(Manga {
 		description: html
@@ -309,7 +303,13 @@ pub fn display_title(title: &str, novel: bool, label: bool) -> String {
 }
 
 pub fn content_rating(tags: &[String], adult: bool) -> ContentRating {
-	if adult {
+	if adult
+		|| tags.iter().any(|tag| {
+			matches!(
+				tag.to_lowercase().as_str(),
+				"+18" | "+19" | "adulto" | "smut" | "yaoi"
+			)
+		}) {
 		ContentRating::NSFW
 	} else if tags.iter().any(|tag| tag.eq_ignore_ascii_case("ecchi")) {
 		ContentRating::Suggestive

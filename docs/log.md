@@ -151,3 +151,7 @@ Compared source wiring, resources and shared additions with merged Iken, MangaK,
 ## 2026-11-12
 
 Added chapter visibility and novel-label preferences, banner artwork and rich featured metadata. Omitted commercial controls and the separate paid-update row. Eternal uses novels without a locked-chapter setting.
+
+## 2026-11-12 Iken quality recheck
+
+Restricted optional chapter enrichment to release rows, preserved featured metadata, aligned HTML novel labels and Eternal tag ratings, and removed redundant aliases, clones and settings reads. Added deterministic regressions against ranking and featured/release overlap.

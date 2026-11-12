@@ -1,4 +1,4 @@
-use crate::helpers::names;
+use crate::helpers::{self, names};
 use aidoku::{
 	Chapter, Manga, MangaStatus, MangaWithChapter, Result,
 	alloc::{String, Vec, string::ToString, vec},
@@ -152,7 +152,7 @@ impl Post {
 			.collect();
 		tags.sort_unstable();
 		tags.dedup();
-		let content_rating = crate::helpers::content_rating(&tags, self.is_18_plus == Some(true));
+		let content_rating = helpers::content_rating(&tags, self.is_18_plus == Some(true));
 		Ok(Manga {
 			authors: self.author.as_deref().and_then(names),
 			artists: self.artist.as_deref().and_then(names),
@@ -165,7 +165,7 @@ impl Post {
 				.map(|s| s.trim().into())
 				.filter(|s: &String| !s.is_empty()),
 			url: Some(format!("{base_url}/series/{}", self.slug)),
-			tags: Some(tags),
+			tags: (!tags.is_empty()).then_some(tags),
 			content_rating,
 			status: match self.series_status.as_deref() {
 				Some("ONGOING" | "COMING_SOON" | "MASS_RELEASED") => MangaStatus::Ongoing,
@@ -174,26 +174,20 @@ impl Post {
 				Some("HIATUS") => MangaStatus::Hiatus,
 				_ => MangaStatus::Unknown,
 			},
-			viewer: crate::helpers::viewer(self.series_type.as_deref()),
+			viewer: helpers::viewer(self.series_type.as_deref()),
 			..basic
 		})
 	}
-}
 
-impl Post {
 	pub fn to_manga(&self, label_novels: bool) -> Result<Manga> {
-		let value = self;
 		Ok(Manga {
-			key: value.key()?,
-			title: crate::helpers::display_title(
-				&value.post_title,
-				value.series_type.as_deref() == Some("NOVEL") || value.is_novel == Some(true),
+			key: self.key()?,
+			title: helpers::display_title(
+				&self.post_title,
+				self.series_type.as_deref() == Some("NOVEL") || self.is_novel == Some(true),
 				label_novels,
 			),
-			cover: value
-				.featured_image
-				.clone()
-				.filter(|s| !s.trim().is_empty()),
+			cover: self.featured_image.clone().filter(|s| !s.trim().is_empty()),
 			..Default::default()
 		})
 	}

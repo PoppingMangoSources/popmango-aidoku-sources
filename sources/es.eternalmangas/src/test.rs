@@ -151,3 +151,17 @@ fn review_novel_labels_preserve_identity() {
 	assert_eq!(manga.title, "Title");
 	assert_eq!(manga.key, "/series/title");
 }
+
+#[aidoku_test]
+fn review_featured_and_detail_ratings_use_the_same_tags() {
+	let html = Html::parse("<div class='em-hero'><div class='carousel-item'><a href='/series/title'><img alt='Title' src='cover.jpg'></a><div class='em-hero-badges'><span class='em-badge'>Smut</span></div></div></div>").unwrap();
+	let layout = home::parse_home(&html).unwrap();
+	let HomeComponentValue::BigScroller { entries, .. } = &layout.components[0].value else {
+		panic!("Expected featured series")
+	};
+	assert_eq!(entries[0].content_rating, ContentRating::NSFW);
+	assert_eq!(
+		helpers::content_rating(&["Ecchi".into()], false),
+		ContentRating::Suggestive
+	);
+}

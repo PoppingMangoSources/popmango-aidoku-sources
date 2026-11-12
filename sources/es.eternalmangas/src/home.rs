@@ -4,13 +4,14 @@ use aidoku::{
 	alloc::Vec, imports::html::Document, prelude::*,
 };
 pub fn parse_home(html: &Document) -> Result<HomeLayout> {
+	let label_novels = settings::label_novels();
 	let mut components = Vec::new();
 	let featured: Vec<Manga> = html
 		.select(".em-hero .carousel-item")
 		.into_iter()
 		.flatten()
 		.filter_map(|card| {
-			let mut manga = helpers::manga_from_card(&card, settings::label_novels())?;
+			let mut manga = helpers::manga_from_card(&card, label_novels)?;
 			manga.description = card
 				.select_first(".em-hero-copy p.d-none")
 				.and_then(|description| description.text())
@@ -53,7 +54,7 @@ pub fn parse_home(html: &Document) -> Result<HomeLayout> {
 				.into_iter()
 				.flatten()
 				.filter_map(|card| {
-					let manga = helpers::manga_from_card(&card, settings::label_novels())?;
+					let manga = helpers::manga_from_card(&card, label_novels)?;
 					let parent = card.parent()?;
 					let link = parent.select_first("a.em-chapter-pill")?;
 					let mut chapter = helpers::chapter(&link).ok()?;
@@ -74,11 +75,10 @@ pub fn parse_home(html: &Document) -> Result<HomeLayout> {
 				.select("a[href*='/series/']")
 				.into_iter()
 				.flatten()
-				.filter_map(|card| helpers::manga_from_card(&card, settings::label_novels()))
+				.filter_map(|card| helpers::manga_from_card(&card, label_novels))
 				.map(|mut manga| {
 					if title == "Novelas" {
-						manga.title =
-							helpers::display_title(&manga.title, true, settings::label_novels());
+						manga.title = helpers::display_title(&manga.title, true, label_novels);
 					}
 					Link::from(manga)
 				})

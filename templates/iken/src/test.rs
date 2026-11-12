@@ -746,3 +746,46 @@ fn review_http_locked_visibility_preserves_complete_inventory() {
 	}
 	defaults_set("showLocked", DefaultValue::Null);
 }
+
+#[aidoku_test]
+fn review_enrichment_keeps_rankings_and_html_metadata() {
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/shared' title='Shared'><img src='cover.jpg'><div class='uppercase'>Manhwa</div><span class='font-light'>Smut</span></a></div></div><main><section><h2>Latest Releases</h2><a href='/series/shared' title='Shared'><img src='cover.jpg'></a></section><section><h2>Most Popular</h2><a href='/series/shared' title='Shared'><img src='cover.jpg'></a><a href='/series/absent' title='Absent'><img src='cover.jpg'></a></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let mut layout = home::parse_home(&html, &params).unwrap();
+	let ranking = layout.components[2].clone();
+	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":7,"slug":"shared","postTitle":"Shared","author":"First","chapters":[{"id":11,"slug":"chapter-1","number":1}]}],"totalCount":1}"#).unwrap();
+	home::update_home_metadata(&mut layout, data.posts, &params).unwrap();
+	assert_eq!(layout.components[2], ranking);
+	assert!(matches!(
+		layout.components[1].value,
+		HomeComponentValue::MangaChapterList { .. }
+	));
+	let HomeComponentValue::BigScroller { entries, .. } = &layout.components[0].value else {
+		panic!("Expected featured series")
+	};
+	assert_eq!(entries[0].key, "7");
+	assert_eq!(entries[0].authors, Some(vec!["First".into()]));
+	assert_eq!(entries[0].content_rating, aidoku::ContentRating::NSFW);
+	assert_eq!(entries[0].viewer, aidoku::Viewer::Webtoon);
+	assert_eq!(entries[0].tags, Some(vec!["Smut".into()]));
+}
+
+#[aidoku_test]
+fn review_html_cards_respect_novel_labels() {
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	let html = Html::parse("<main><section><h2>Most Popular</h2><a href='/series/novel' title='Title'><img src='cover.jpg'><span class='uppercase'>Novel</span></a></section></main>").unwrap();
+	for (label, expected) in [(true, "Title (Novel)"), (false, "Title")] {
+		defaults_set("labelNovels", DefaultValue::Bool(label));
+		let layout = home::parse_home(&html, &Params::default()).unwrap();
+		let HomeComponentValue::MangaList { entries, .. } = &layout.components[0].value else {
+			panic!("Expected ranking")
+		};
+		assert!(
+			matches!(&entries[0].value, Some(LinkValue::Manga(manga)) if manga.title == expected && manga.key == "/series/novel")
+		);
+	}
+	defaults_set("labelNovels", DefaultValue::Null);
+}

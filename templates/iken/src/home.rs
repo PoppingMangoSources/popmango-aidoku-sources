@@ -125,12 +125,28 @@ pub(crate) fn update_home_metadata(
 					if updated.description.is_none() {
 						updated.description = entry.description.take();
 					}
-					if updated.tags.as_ref().is_none_or(|tags| tags.is_empty()) {
+					if updated.tags.is_none() {
 						updated.tags = entry.tags.take();
+						if let Some(tags) = &updated.tags {
+							updated.content_rating = helpers::content_rating(
+								tags,
+								updated.content_rating == aidoku::ContentRating::NSFW,
+							);
+						}
+					}
+					if updated.viewer == aidoku::Viewer::Unknown {
+						updated.viewer = entry.viewer;
 					}
 					*entry = updated;
 				}
 			}
+			continue;
+		}
+
+		if !matches!(
+			component.title.as_deref(),
+			Some("Latest Releases" | "Latest Updates" | "Últimas Actualizaciones")
+		) {
 			continue;
 		}
 
@@ -260,7 +276,7 @@ fn latest_chapter(link: &Element, params: &Params) -> Option<Chapter> {
 	})
 }
 
-fn manga(element: &Element, params: &Params) -> Option<Manga> {
+fn manga(element: &Element, params: &Params, label_novels: bool) -> Option<Manga> {
 	let child;
 	let link = if element.attr("href").is_some() {
 		element
@@ -291,7 +307,14 @@ fn manga(element: &Element, params: &Params) -> Option<Manga> {
 	}
 	Some(Manga {
 		key: format!("/series/{slug}"),
-		title: title.trim().into(),
+		title: helpers::display_title(
+			&title,
+			element
+				.select_first(".uppercase")
+				.and_then(|kind| kind.text())
+				.is_some_and(|kind| kind.eq_ignore_ascii_case("novel")),
+			label_novels,
+		),
 		cover: element.select_first("img").and_then(|img| {
 			img.attr("data-fallback-src")
 				.filter(|s| s.starts_with("https://") && !s.contains("no-cover"))
@@ -302,13 +325,14 @@ fn manga(element: &Element, params: &Params) -> Option<Manga> {
 }
 
 pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
+	let label_novels = settings::label_novels();
 	let mut components = Vec::new();
 	let mut slides: Vec<_> = html
 		.select(&params.home_slider_selector)
 		.map(|slides| {
 			slides
 				.filter_map(|e| {
-					let mut manga = manga(&e, params)?;
+					let mut manga = manga(&e, params, label_novels)?;
 					if params.banner_width.zip(params.banner_height).is_some() {
 						manga.cover = e
 							.select_first("img")
@@ -333,11 +357,7 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 						.select_first(".uppercase")
 						.and_then(|kind| kind.text())
 						.map(|kind| kind.trim().to_uppercase());
-					manga.title = helpers::display_title(
-						&manga.title,
-						kind.as_deref() == Some("NOVEL"),
-						settings::label_novels(),
-					);
+
 					manga.content_rating = helpers::content_rating(&tags, false);
 					manga.viewer = helpers::viewer(kind.as_deref());
 					manga.tags = (!tags.is_empty()).then_some(tags);
@@ -416,20 +436,20 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 						if card.select_first("img").is_none() {
 							continue;
 						}
-						if let Some(manga) = manga(&card, params)
+						if let Some(manga) = manga(&card, params, label_novels)
 							&& !entries.iter().any(|entry| {
 								matches!(&entry.value, Some(LinkValue::Manga(existing)) if existing.key == manga.key)
 							})
 						{
 							if matches!(title.as_str(), "Latest Releases" | "Latest Updates")
-                                && let Some(chapter) = latest_chapter(&card, params)
-                            {
-                                if !chapters.iter().any(|entry| entry.chapter.key == chapter.key) {
-                                    chapters.push(MangaWithChapter { manga, chapter });
-                                }
-                            } else {
-                                entries.push(Link::from(manga));
-                            }
+        && let Some(chapter) = latest_chapter(&card, params)
+       {
+        if !chapters.iter().any(|entry| entry.chapter.key == chapter.key) {
+         chapters.push(MangaWithChapter { manga, chapter });
+        }
+       } else {
+        entries.push(Link::from(manga));
+       }
 						}
 					}
 				}
