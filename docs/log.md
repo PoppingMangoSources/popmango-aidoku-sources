@@ -155,3 +155,7 @@ Added chapter visibility and novel-label preferences, banner artwork and rich fe
 ## 2026-11-12 Iken quality recheck
 
 Restricted optional chapter enrichment to release rows, preserved featured metadata, aligned HTML novel labels and Eternal tag ratings, and removed redundant aliases, clones and settings reads. Added deterministic regressions against ranking and featured/release overlap.
+
+## 2026-11-12 Source icon quality
+
+Replaced Hijala and Sana’s low-resolution icons using original site logos, downsampled directly to opaque 128×128 PNGs with margin. Recorded the source assets and dimensions for future updates.

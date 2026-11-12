@@ -204,3 +204,13 @@ banner artwork uses ImageScroller and known dimensions; portrait-cover hero slid
 BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.
 
 Home enrichment must keep ranking rows unchanged and preserve available HTML metadata when API fields are absent. Novel labels apply to HTML cards as well as API cards, and featured/detail tag ratings use the same classifier. Deterministic regressions cover these boundaries.
+
+### Icon assets
+
+Use the original header logos, downsampled with margin onto the site's dark background,
+rather than enlarging favicons. Verified natural sizes on November 12, 2026:
+
+- [Hijala logo](https://storage.en-hijala.com/upload/2025/06/24/final-523b7e2e4fb3a659.webp): 751×751.
+- [Sana logo](https://media.sanascans.com/upload/2025/08/07/1000301312-836f79641ae0985a.webp): 2354×2564.
+
+Final package icons remain opaque 128×128 PNGs, with the artwork fitted inside 112×112.
