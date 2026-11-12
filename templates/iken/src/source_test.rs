@@ -42,19 +42,41 @@ fn live_search_pagination_sorts_and_clearing() {
 			.entries
 			.is_empty()
 	);
+	let unfiltered = source
+		.get_search_manga_list(
+			None,
+			1,
+			vec![FilterValue::Sort {
+				id: "sort".into(),
+				index: 4,
+				ascending: true,
+			}],
+		)
+		.unwrap();
 	let cleared = source
 		.get_search_manga_list(
 			None,
 			1,
-			vec![FilterValue::MultiSelect {
-				id: "genreIds".into(),
-				included: Vec::new(),
-				excluded: Vec::new(),
-			}],
+			vec![
+				FilterValue::Sort {
+					id: "sort".into(),
+					index: 4,
+					ascending: true,
+				},
+				FilterValue::MultiSelect {
+					id: "genreIds".into(),
+					included: Vec::new(),
+					excluded: Vec::new(),
+				},
+			],
 		)
 		.unwrap();
 	assert_eq!(
-		first.entries.iter().map(|m| &m.key).collect::<Vec<_>>(),
+		unfiltered
+			.entries
+			.iter()
+			.map(|m| &m.key)
+			.collect::<Vec<_>>(),
 		cleared.entries.iter().map(|m| &m.key).collect::<Vec<_>>()
 	);
 	for index in 0..SORT_COUNT as i32 {
@@ -68,7 +90,7 @@ fn live_search_pagination_sorts_and_clearing() {
 					ascending: false,
 				}],
 			)
-			.unwrap();
+			.unwrap_or_else(|error| panic!("Sort {index} descending failed: {error:?}"));
 		let asc = source
 			.get_search_manga_list(
 				None,
@@ -79,7 +101,7 @@ fn live_search_pagination_sorts_and_clearing() {
 					ascending: true,
 				}],
 			)
-			.unwrap();
+			.unwrap_or_else(|error| panic!("Sort {index} ascending failed: {error:?}"));
 		assert!(!asc.entries.is_empty() && !desc.entries.is_empty());
 		assert_ne!(asc.entries[0].key, desc.entries[0].key);
 	}
@@ -98,6 +120,67 @@ fn live_search_pagination_sorts_and_clearing() {
 			.entries
 			.is_empty()
 	);
+	if GENRE_EXCLUSION_SUPPORTED {
+		let impossible = source
+			.get_search_manga_list(
+				None,
+				1,
+				vec![
+					FilterValue::Text {
+						id: "minChapters".into(),
+						value: "100000".into(),
+					},
+					FilterValue::Text {
+						id: "createdAfter".into(),
+						value: "2099-01-01".into(),
+					},
+				],
+			)
+			.unwrap();
+		assert!(impossible.entries.is_empty());
+		let results = source
+			.get_search_manga_list(
+				None,
+				1,
+				vec![FilterValue::MultiSelect {
+					id: "genreIds".into(),
+					included: vec!["1".into()],
+					excluded: vec!["2".into()],
+				}],
+			)
+			.unwrap();
+		assert!(!results.entries.is_empty());
+		let filters: json::Value = json::from_str(FILTERS_JSON).unwrap();
+		let genre = filters
+			.as_array()
+			.unwrap()
+			.iter()
+			.find(|filter| filter["id"] == "genreIds")
+			.unwrap();
+		let [included, excluded] = ["1", "2"].map(|id| {
+			let position = genre["ids"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.position(|value| value == id)
+				.unwrap();
+			genre["options"][position].as_str().unwrap().trim()
+		});
+		let key = results.entries.into_iter().next().unwrap().key;
+		let details = source
+			.get_manga_update(
+				Manga {
+					key,
+					..Default::default()
+				},
+				true,
+				false,
+			)
+			.unwrap();
+		let tags = details.tags.unwrap();
+		assert!(tags.iter().any(|tag| tag.trim() == included));
+		assert!(tags.iter().all(|tag| tag.trim() != excluded));
+	}
 }
 
 #[aidoku_test]

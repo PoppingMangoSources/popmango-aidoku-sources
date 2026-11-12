@@ -18,7 +18,11 @@ sources:
   - code: sources/es.eternalmangas/src/test.rs
   - code: sources/es.eternalmangas/res/source.json
   - code: sources/en.hijalascans/src/lib.rs
+  - code: sources/en.hijalascans/res/filters.json
+  - code: sources/en.hijalascans/Cargo.toml
   - code: sources/en.sanascans/src/lib.rs
+  - code: sources/en.sanascans/res/filters.json
+  - code: sources/en.sanascans/Cargo.toml
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/iken
   - ext: https://github.com/LucifersCircle/pirate.vodka-extensions/tree/0.9/stable/src/Hijala
   - ext: https://github.com/kittycatgit/kitty-extensions-0.9/tree/main/src/SanaScans
@@ -26,7 +30,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
   - ext: https://github.com/Aidoku-Community/sources/commit/289b5613bb47f62c6eb91de3d8b2282643586533
   - ext: https://github.com/Aidoku-Community/sources/commit/79f1619cc0d14e853619b4e13d48b5331cd099b1
-verified_at: 67021b2
+verified_at: 75b3e9f
 ---
 
 
@@ -113,7 +117,11 @@ pagination failures. Optional captured-home tests require AIDOKU_IKEN_EVIDENCE_D
 directory does not count as captured-site evidence. Live home suites check every latest component.
 
 Full live suites passed for Eternal, Hive, Vortex, Magus, Hijala and Sana. Nyx passed four tests,
-but the sort/pagination suite timed out on a network request, including a targeted retry.
+but the original sort/pagination run had a network request failure. Its retry instead failed an
+exact equality assertion on two latest-update snapshots: the same title moved to the front.
+Filter-clearing comparisons now use alphabetical order for both requests. Sort request errors
+identify the sort index and direction. The corrected follow-up passed all five Nyx tests,
+including all sort directions, paging, clearing, novels, home and chapter reading.
 This does not establish a global outage and does not justify removing the assertion or hiding
 its failure. Deterministic checks and publication gates remain separate from live availability.
 No runner result establishes app selector parity, cookies, WebView sessions or device rendering.
@@ -127,3 +135,56 @@ No runner result establishes app selector parity, cookies, WebView sessions or d
 | Eternal | 12 | 3 | 2 |
 | Hijala | 1 | 1 | 0 |
 | Sana | 1 | 1 | 0 |
+
+
+## Nyx reference follow-up
+
+Current Keiyoushi Nyx extends Iken and enables hideNovelsListedAsComics. That option compensates
+for its comic-only reader. This source supports novel content, so copying that exclusion would
+remove supported reading. Its five sort fields, API host, genre query encoding and chapter-ID
+reader requests match ours. Kitty's Nyx extends vcomics; the shared engine also uses the public
+query/post/chapters/chapter routes. Its 27-item page size is a client choice, while Keiyoushi
+uses 18. Its additional home rails and views/averageRating sorts are not evidence that those
+sorts work on this site. No production change is warranted from these differences alone.
+
+References checked November 12:
+[Keiyoushi Nyx](https://github.com/keiyoushi/extensions-source/blob/main/src/en/nyxscans/src/eu/kanade/tachiyomi/extension/en/nyxscans/NyxScans.kt),
+[Keiyoushi Iken](https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/iken),
+[Kitty Nyx](https://github.com/kittycatgit/kitty-extensions-0.9/tree/main/src/NyxScans) and
+[Kitty vcomics](https://github.com/kittycatgit/kitty-extensions-0.9/tree/main/src/vcomics).
+
+> ⚠️ Live catalogue order can change while a multi-request test runs. Filter clearing needs a
+> stable sort rather than an earlier latest-update snapshot. Fork-only regression changes do
+> not require package version bumps; a simultaneous runtime change still does.
+
+
+## Hijala and Sana audit
+
+Reviewed every introduced source Rust file, resource, manifest and fork test against the current
+root rules, matching skill references, attached snapshots, main scripts/workflows and canonical
+upstream `289b5613`. The shared search/filter, page-size and image-order additions were read with
+their callers and consumers (`templates/iken/src/imp.rs:19`, `templates/iken/src/imp.rs:159`).
+The consumer wiring lives at `sources/en.hijalascans/src/lib.rs:8` and
+`sources/en.sanascans/src/lib.rs:8`; static controls stay in each res/filters.json. No additional production wrapper, parser, dependency or naming change
+was needed. Their source files contain no narrative comments or decorative dividers.
+
+| Area | Merged comparison and result |
+| --- | --- |
+| Source names, traits and file split | Existing Hive/Iken and MangaK consumers: minimal lib.rs trait wiring, site constants, direct Params construction and the shared generic engine. Both retain their site names and ids. |
+| Site differences | Madara/MangaK Params defaults: Sana sets only page_size=30 and sort_pages_by_filename=true. Hijala inherits defaults. No new override chain or site-only parser. |
+| Queries and filters | MangaK/MangaThemesia match FilterValue directly and use QueryParameters. Iken sends the verified CSV genre/type values, excludedGenreIds and actual range/availability fields. Static genres keep ids in JSON; exclusions are disabled for types and enabled only for the verified genre control. |
+| Pagination and reading | Original Iken uses API totalCount and ordered images. Sana's demonstrated filename exception uses one inline numeric sort, without adding a regex dependency, cache or extra helper. A loopback case distinguishes page 2 from page 10 and verifies key-only reading. |
+| Models, details and errors | Flame's fallible identity and existing Iken DTOs/conversions: reused compact TryFrom cards, owned response decoding, checked HTTP errors and independent lock flags. No duplicate source-specific models. |
+| Review feedback | Root section 3 checked for applicable compact-card, credits, synopsis, novel, filters, keys, error, comment, request-cost, layout, rating and app-minimum rules. No extra listings, settings or per-card fetches. Static raw genre labels match API detail tags, preserving host tag-to-filter lookup. |
+| Tests and tooling | Consolidated the identical advanced-filter tests into the existing shared fixture. Positive included/excluded genre assertions require actual detail tags. The HTTP contract checks all advanced parameters, non-ASCII encoding and 18/30-item paging. Fork tests, dev dependencies and tooling remain outside the five production submission commits. |
+
+Source-scoped review gates cover formatting, production/test Clippy with warnings denied,
+packaging, schema/icon/WASM verification, source checks and current live suites. SDK/runner checks
+cannot establish device rendering or app selector parity; those remain explicit manual checks.
+
+
+Both source-scoped reviews passed all five current tests after test consolidation, plus
+formatting, production/test Clippy, packaging and Aidoku verification. The final positive
+included/excluded-genre checks were rerun after strengthening their assertions. Static resources
+match all 55 Hijala and nine Sana API genre id/name pairs. The five-commit submission still
+passes independent scope checks; no runtime changes or additional PR commit were required.

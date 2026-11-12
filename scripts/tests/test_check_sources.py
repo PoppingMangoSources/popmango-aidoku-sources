@@ -33,6 +33,19 @@ class CardRuleTests(unittest.TestCase):
             checks.check_version_bump(self.source, 3, "origin/main")
         self.assertTrue(any("not bumped" in failure for failure in checks.failures))
 
+    def test_fork_regressions_need_no_publication_bump(self):
+        (self.source / "Cargo.toml").write_text('[dependencies]\niken = { path = "../../templates/iken" }\n')
+        with patch.object(checks, "git", return_value="sources/en.example/src/test.rs\ntemplates/iken/src/source_test.rs\n") as git:
+            checks.check_version_bump(self.source, 3, "origin/main")
+        self.assertEqual(checks.failures, [])
+        self.assertEqual(git.call_count, 1)
+
+    def test_regression_beside_runtime_change_still_needs_bump(self):
+        (self.source / "Cargo.toml").write_text('[dependencies]\niken = { path = "../../templates/iken" }\n')
+        with patch.object(checks, "git", side_effect=["templates/iken/src/source_test.rs\ntemplates/iken/src/imp.rs\n", '{"info":{"version":3}}']):
+            checks.check_version_bump(self.source, 3, "origin/main")
+        self.assertTrue(any("not bumped" in failure for failure in checks.failures))
+
     def cards(self, text):
         checks.check_cards(self.path, text)
         return list(checks.failures)

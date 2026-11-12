@@ -137,3 +137,13 @@ Compared every Scythe source line and introduced template line with current merg
 ## 2026-11-12: current Iken consumers and Eternal migration
 
 Restored the current-site Eternal parser, canonical paths, original logo and catalogue rating 2. Added Hijala and Sana as small Iken consumers with verified controls and official icons. Latest sections retain real chapter numbers/dates, including pinned entries absent from optional metadata and multiple updates for one series. Added regressions and documented the former-consumer submission exception; see [[iken-template]].
+
+
+## 2026-11-12: Nyx reference follow-up
+
+Compared current Keiyoushi Nyx/Iken and Kitty Nyx/vcomics. Existing API and sort mapping match; kept novel support. Corrected a filter-clearing test that compared changing latest-update snapshots, added sort-specific request diagnostics, and passed all five Nyx tests. The first failure was a request error, while its retry was an order mismatch. Calibrated publication checks so fork-only regressions do not require package bumps; runtime changes still do. See [[iken-template]].
+
+
+## 2026-11-12: Hijala and Sana source audit
+
+Compared source wiring, resources and shared additions with merged Iken, MangaK, MangaThemesia and Flame patterns and current project rules. Kept the minimal production consumers, removed duplicate advanced-filter tests, required positive detail-tag evidence and added an HTTP contract for all query controls and both page sizes. See [[iken-template]].

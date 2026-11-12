@@ -369,7 +369,8 @@ def check_version_bump(source: Path, version: int, base: str) -> None:
                 paths.append(str((source / dependency["path"]).resolve().relative_to(ROOT)))
             except ValueError:
                 continue
-    if not git("diff", "--name-only", base, "--", *paths).strip():
+    changed = git("diff", "--name-only", base, "--", *paths).splitlines()
+    if not any(not name.endswith(("/src/test.rs", "/src/source_test.rs")) for name in changed):
         return
     try:
         before = json.loads(git("show", f"{base}:{path.relative_to(ROOT)}"))

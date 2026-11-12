@@ -37,8 +37,9 @@ rest of this file still applies, so read each section before the work it covers.
   refuses any other `git commit`, including one inside a script it runs. Conventional subject;
   a one- or two-sentence body, or `- ` bullets for a first `feat: add <id>`. No `#123`, links or
   AI attribution.
-- **Every push that changes a source bumps it** (`scripts/bump.sh <id>`), after
-  `scripts/review-source.sh <id>` passes on its current files.
+- **Every push that changes a published source bumps it** (`scripts/bump.sh <id>`), after
+  `scripts/review-source.sh <id>` passes on its current files. Fork-only `src/test.rs` and shared
+  `src/source_test.rs` regression changes do not change the published package and need no bump.
 - **Before a push or `pr-branch.sh`, read section 3 against the diff row by row.** The hook
   prints it as a checklist at that moment.
 - **List what the person asked for before calling it done.** Number each item from their
@@ -300,6 +301,7 @@ Each of these was a real comment. They generalise.
 | Big scroller descriptions showed `life\, while` and `\[Domestic` (our own miss, `en.novelarchive`) | `escape_markdown` only on the details path. A `BigScroller` shows its description verbatim, so give it the site's plain text (section 6). |
 | A chapter escaped whole, one paragraph of 600 hard breaks, crashed the app with a stack overflow (our own miss, `en.novelarchive`, crash logs) | The scroll reader's MarkdownUI joins every inline node of a paragraph into one SwiftUI `Text` with `+`, and the crash logs show the main thread's stack running out at about 650 levels. Make each line its own paragraph and join them with blank lines, as `en.atsumaru` and `zh.wenku8` do. cmark makes every backslash escape a node of its own, so `escape_markdown`, which escapes all punctuation, can still overflow a long line (mirror chapters run to thousands of characters on one line); `en.novelarchive` escapes only Markdown syntax for chapter text. `check-sources.py` fails `PageContent::text(x.escape_markdown())`. |
 | A "chapter" invented for `MangaChapterList` from a feed with no chapters | Use `MangaChapterList` only when the feed carries a real chapter; otherwise the section is a `Scroller`. |
+| Clearing a filter was tested by comparing two live latest-update snapshots (Nyx retry) | Compare cleared and unset filters with the same stable sort. Keep request failures distinct from order changes between requests; diagnostics name the failing sort/direction. |
 | Latest releases passed a heading-only test but displayed cover-only rows (owner's Iken screenshots) | Test real chapter keys/numbers/timestamps and pinned titles missing from optional API enrichment. Every latest component remains MangaChapterList when the HTML supplies actual chapters; a missing enrichment match cannot downgrade the row. |
 | A legacy API omitted new series and returned escaped descriptions (owner's Eternal screenshots) | Verify the reported positive titles against the current site, including chapter inventory and displayed synopsis. A plausible API response and one old title passing do not establish freshness. Keep an obsolete API only for legacy-key compatibility after a site migration. |
 | A pasted link answered with the full series | Look the series up the way a search card is built — one compact request — and fall back to text search when it isn't found. |

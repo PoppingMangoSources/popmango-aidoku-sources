@@ -59,6 +59,18 @@ class Responses(http.server.BaseHTTPRequestHandler):
             if novel and urlsplit(self.path).path.startswith("/empty-novels"):
                 posts = []
             body = json.dumps({"posts": posts, "totalCount": len(posts)})
+        if urlsplit(self.path).path == "/catalogue/api/query":
+            expected = {
+                "page": query.get("page"), "perPage": query.get("perPage"),
+                "view": ["archive"], "orderBy": ["postTitle"], "orderDirection": ["asc"],
+                "searchTerm": ["word & café"], "genreIds": ["1"], "excludedGenreIds": ["2"],
+                "seriesType": ["MANHWA,MANGA"], "seriesStatus": ["ONGOING"], "saleFilter": ["on_sale"],
+                "minChapters": ["5"], "maxChapters": ["50"],
+                "createdAfter": ["2020-01-01"], "createdBefore": ["2030-12-31"],
+            }
+            status = 200 if query == expected and query["page"] in (["1"], ["2"]) and query["perPage"] in (["18"], ["30"]) else 400
+            page = int(query.get("page", ["0"])[0])
+            body = json.dumps({"posts": [{"id": page, "slug": f"title-{page}", "postTitle": f"Title {page}"}], "totalCount": 31})
         if urlsplit(self.path).path.startswith("/api/"):
             content_type = "application/json"
             chapter = {"id": 11, "slug": "chapter-1", "number": "1", "content": "<p><strong>Text</strong></p>"}

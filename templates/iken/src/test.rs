@@ -581,3 +581,80 @@ fn review_latest_update_rows_keep_each_chapter_and_relative_dates() {
 	let expected = current_date() - 7200;
 	assert!((entries[0].chapter.date_uploaded.unwrap() - expected).abs() <= 1);
 }
+
+#[aidoku_test]
+#[ignore]
+fn review_http_search_controls_and_page_sizes() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	for page_size in [18, 30] {
+		let params = Params {
+			base_url: base.into(),
+			api_url: format!("{base}/catalogue").into(),
+			page_size,
+			..Default::default()
+		};
+		for page in [1, 2] {
+			let result = Site
+				.get_search_manga_list(
+					&params,
+					Some("word & café".into()),
+					page,
+					vec![
+						FilterValue::Sort {
+							id: "sort".into(),
+							index: 4,
+							ascending: true,
+						},
+						FilterValue::MultiSelect {
+							id: "genreIds".into(),
+							included: vec!["1".into()],
+							excluded: vec!["2".into()],
+						},
+						FilterValue::MultiSelect {
+							id: "seriesType".into(),
+							included: vec!["MANHWA".into(), "MANGA".into()],
+							excluded: Vec::new(),
+						},
+						FilterValue::Select {
+							id: "seriesStatus".into(),
+							value: "ONGOING".into(),
+						},
+						FilterValue::Select {
+							id: "saleFilter".into(),
+							value: "on_sale".into(),
+						},
+						FilterValue::Text {
+							id: "minChapters".into(),
+							value: "5".into(),
+						},
+						FilterValue::Text {
+							id: "maxChapters".into(),
+							value: "50".into(),
+						},
+						FilterValue::Text {
+							id: "createdAfter".into(),
+							value: "2020-01-01".into(),
+						},
+						FilterValue::Text {
+							id: "createdBefore".into(),
+							value: "2030-12-31".into(),
+						},
+					],
+				)
+				.unwrap();
+			assert_eq!(result.has_next_page, page == 1);
+			assert_eq!(result.entries[0].key, format!("{page}"));
+		}
+	}
+}
