@@ -3,31 +3,11 @@
 		"type": "sort",
 		"id": "sort",
 		"options": [
-			"Relevance",
 			"Latest Updated",
-			"Recently Added",
-			"Title",
 			"Most Viewed",
-			"Top Rated"
-		]
-	},
-	{
-		"type": "select",
-		"id": "type",
-		"title": "Type",
-		"options": [
-			"Any",
-			"Manga",
-			"Manhwa",
-			"Manhua",
-			"Comics"
-		],
-		"ids": [
-			"any",
-			"manga",
-			"manhwa",
-			"manhua",
-			"comics"
+			"Top Rated",
+			"Recently Added",
+			"Title A-Z"
 		]
 	},
 	{
@@ -53,6 +33,25 @@
 	},
 	{
 		"type": "select",
+		"id": "type",
+		"title": "Publication Type",
+		"options": [
+			"Any",
+			"Manga",
+			"Manhwa",
+			"Manhua",
+			"Comics"
+		],
+		"ids": [
+			"any",
+			"manga",
+			"manhwa",
+			"manhua",
+			"comics"
+		]
+	},
+	{
+		"type": "select",
 		"id": "demographic",
 		"title": "Demographic",
 		"options": [
@@ -68,6 +67,20 @@
 			"shoujo",
 			"seinen",
 			"josei"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "rating",
+		"title": "Content Rating",
+		"canExclude": false,
+		"options": [
+			"Safe",
+			"18+"
+		],
+		"ids": [
+			"safe",
+			"adult"
 		]
 	},
 	{
@@ -113,20 +126,6 @@
 			"sv",
 			"th",
 			"vi"
-		]
-	},
-	{
-		"type": "multi-select",
-		"id": "rating",
-		"title": "Content Rating",
-		"canExclude": false,
-		"options": [
-			"Safe",
-			"18+"
-		],
-		"ids": [
-			"safe",
-			"adult"
 		]
 	},
 	{

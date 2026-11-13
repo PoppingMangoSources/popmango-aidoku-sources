@@ -48,7 +48,7 @@ pub fn fill(
 	search: &SearchParams,
 ) -> HomeComponentValue {
 	// Search applies the settings itself.
-	let sorted = SORTS.contains(&Some(id));
+	let sorted = SORTS.contains(&id);
 	let titles = titles
 		.into_iter()
 		.filter(|title| sorted || search.allows(title));

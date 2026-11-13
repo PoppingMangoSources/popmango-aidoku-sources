@@ -460,6 +460,13 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | A metadata selector that also matched chapter badges (#899) | Scope selectors to the metadata area. | R |
 | An adult switch off by default on a source rated 2 (#899) | Rated 2 may show adult titles by default; rated 1 hides them (the #845 row). | R |
 
+### From the owner's checks of `multi.mangaball`
+
+| What was flagged | The rule | |
+|---|---|---|
+| A Relevance sort the site doesn't have, copied from a reference client that omits `sort_by` (owner's screenshot of the site's Sort By list) | Sorts and filters come from the site's own controls, in the site's order and wording. A reference client shows which parameters work, never which options to offer. When the sandbox can't load the search page, ask for a screenshot of its panel before writing `filters.json`. | R |
+| A second commit pushed to a `feat/` branch before any PR was open (owner's correction) | Until a PR is open the submission branch is one `feat: add <id>` commit with a body: rebuild it with `pr-branch.sh <id> --rebuild --body "<bullets>" --push`. `--fix` is only for a review round on an open PR. | R |
+
 ### From #860 (`en.flamecomics`)
 
 | What was flagged | The rule | |

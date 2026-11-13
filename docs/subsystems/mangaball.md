@@ -38,9 +38,13 @@ own client does. Everything below was read from the owner's captures of the site
 | Chapters | `POST /chapter/chapter-listing-by-title-id` with `{"title_id": id}` | every language in one answer; the site's reader and the keiyoushi extension call it |
 | Pages | `GET /chapter-detail?chapter_id=` | `data.chapter.pages` are full urls; `title_id` resolves a chapter link |
 
-`sort_by` takes `lastupdate`, `created_at`, `name`, `views` and `rating`. Without one the API
-orders by relevance, which only means something with a keyword, so a search without either
-sends `lastupdate`, the site's own default.
+`sort_by` takes `lastupdate`, `views`, `rating`, `created_at` and `name`: the site's Sort By
+list is Latest Updated, Most Viewed, Top Rated, Recently Added and Title A-Z, with one
+direction arrow, and Latest Updated descending is its default with or without a keyword.
+
+> ⚠️ The site has no relevance sort. The first version offered one because a reference client
+> does (it omits `sort_by`); the owner's screenshot of the site's panel corrected it. A filter
+> or sort is taken from the site's own control, never from a reference client alone.
 
 > ⚠️ The title JSON mixes naming styles: `originalLanguage` and `availableTranslatedLanguages`
 > beside `recent_chapters` and `is18plus`. A `rename_all` on `Title` silently empties

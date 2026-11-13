@@ -15,20 +15,13 @@ use serde::de::DeserializeOwned;
 pub const BASE_URL: &str = "https://mangaball.com";
 pub const API_URL: &str = "https://mangaball.com/api/v1";
 
-// Sorts in `filters.json` order; relevance sends none.
-pub const SORTS: [Option<&str>; 6] = [
-	None,
-	Some("lastupdate"),
-	Some("created_at"),
-	Some("name"),
-	Some("views"),
-	Some("rating"),
-];
+// Sorts in `filters.json` order.
+pub const SORTS: [&str; 5] = ["lastupdate", "views", "rating", "created_at", "name"];
 
 #[derive(Default)]
 pub struct SearchParams {
 	pub query: Option<String>,
-	pub sort: Option<&'static str>,
+	pub sort: &'static str,
 	pub ascending: bool,
 	pub adult_mode: &'static str,
 	pub kind: String,
@@ -45,6 +38,7 @@ impl SearchParams {
 	pub fn new(query: Option<String>) -> Self {
 		Self {
 			query,
+			sort: SORTS[0],
 			adult_mode: settings::adult_mode(),
 			kind: settings::content_type(),
 			excluded_tags: settings::excluded_tags(),
@@ -56,7 +50,7 @@ impl SearchParams {
 
 	pub fn sorted(sort: &'static str) -> Self {
 		Self {
-			sort: Some(sort),
+			sort,
 			..Self::new(None)
 		}
 	}
@@ -71,12 +65,8 @@ impl SearchParams {
 		if let Some(keyword) = &self.query {
 			set("keyword", keyword.trim());
 		}
-		// Without a sort the site orders by relevance, which needs a keyword.
-		let sort = self.sort.or(self.query.is_none().then_some("lastupdate"));
-		if let Some(sort) = sort {
-			set("sort_by", sort);
-			set("sort_order", if self.ascending { "asc" } else { "desc" });
-		}
+		set("sort_by", self.sort);
+		set("sort_order", if self.ascending { "asc" } else { "desc" });
 		set("adult_mode", self.adult_mode);
 		set("tag_mode", &self.tag_mode);
 		let languages = self

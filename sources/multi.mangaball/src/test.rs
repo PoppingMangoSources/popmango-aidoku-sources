@@ -213,10 +213,10 @@ fn review_search_parameters() {
 	assert_eq!(param(&browse, "type"), None);
 	assert_eq!(param(&browse, "excluded_tags"), None);
 
-	// A keyword without a sort is ranked by relevance.
+	// The site keeps its default sort when a keyword is typed.
 	let keyword = SearchParams::new(Some(" hound ".into())).url(1);
 	assert_eq!(param(&keyword, "keyword").as_deref(), Some("hound"));
-	assert_eq!(param(&keyword, "sort_by"), None);
+	assert_eq!(param(&keyword, "sort_by").as_deref(), Some("lastupdate"));
 
 	defaults_set("languages", strings(&["zh", "pt-BR"]));
 	defaults_set("showAdult", DefaultValue::Bool(true));

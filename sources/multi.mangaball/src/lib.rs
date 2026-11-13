@@ -47,7 +47,9 @@ impl Source for MangaBall {
 				FilterValue::Sort {
 					index, ascending, ..
 				} => {
-					search.sort = SORTS.get(index as usize).copied().flatten();
+					if let Some(sort) = SORTS.get(index as usize) {
+						search.sort = sort;
+					}
 					search.ascending = ascending;
 				}
 				FilterValue::Select { id, value } => match id.as_str() {
@@ -147,7 +149,7 @@ impl Source for MangaBall {
 
 impl ListingProvider for MangaBall {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let Some(sort) = SORTS.iter().flatten().find(|sort| **sort == listing.id) else {
+		let Some(sort) = SORTS.iter().find(|sort| **sort == listing.id) else {
 			bail!("Unknown listing");
 		};
 		SearchParams::sorted(sort).page(page)
