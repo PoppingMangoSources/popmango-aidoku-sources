@@ -1,6 +1,6 @@
 use crate::{
 	helpers::{site_languages, title_type},
-	models::{Paged, Title},
+	models::{Paginated, Title},
 	settings,
 };
 use aidoku::{
@@ -98,7 +98,7 @@ impl SearchParams {
 	}
 
 	pub fn page(&self, page: i32) -> Result<MangaPageResult> {
-		let response: Paged<Title> = get(&self.url(page))?;
+		let response: Paginated<Title> = get(&self.url(page))?;
 		Ok(MangaPageResult {
 			entries: response.data.into_iter().map(Into::into).collect(),
 			has_next_page: response.pagination.page < response.pagination.total_pages,
@@ -122,10 +122,14 @@ impl SearchParams {
 	}
 }
 
-pub fn request(url: &str) -> Result<Request> {
-	Ok(Request::get(url)?
+pub fn site_headers(request: Request) -> Request {
+	request
 		.header("Accept", "application/json")
-		.header("Referer", &format!("{BASE_URL}/")))
+		.header("Referer", &format!("{BASE_URL}/"))
+}
+
+pub fn request(url: &str) -> Result<Request> {
+	Ok(site_headers(Request::get(url)?))
 }
 
 pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {

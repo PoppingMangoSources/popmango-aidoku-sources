@@ -1,7 +1,7 @@
 use crate::{
 	MangaBall,
 	api::{API_URL, SORTS, SearchParams, parse, request},
-	models::{Data, Title},
+	models::{ApiResponse, Title},
 };
 use aidoku::{
 	Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link, Listing,
@@ -119,7 +119,7 @@ impl Home for MangaBall {
 			.iter()
 			.zip(Request::send_all(requests))
 			.filter_map(|((id, name, layout), response)| {
-				let titles = parse::<Data<Vec<Title>>>(response.ok()?).ok()?.data;
+				let titles = parse::<ApiResponse<Vec<Title>>>(response.ok()?).ok()?.data;
 				Some(HomeComponent {
 					title: Some(String::from(*name)),
 					subtitle: None,

@@ -35,7 +35,7 @@ own client does. Everything below was read from the owner's captures of the site
 | Ranking | `GET /title/top-views?period=week&limit=&section_key=sidebar_ranking&adult_mode=` | the site's "Top Ranking", Weekly tab |
 | Recommended | `GET /title/recommended?limit=10&adult_mode=` | the site's "Titles Recommended" |
 | Details | `GET /title/detail/{id}` | also answers a slug |
-| Chapters | `GET /title/chapter-listing?title_id=&page=&limit=&group_by=flat&sort_order=desc&language=` | `language` is a comma list; `pagination.total_pages` ends the loop |
+| Chapters | `POST /chapter/chapter-listing-by-title-id` with `{"title_id": id}` | every language in one answer; the site's reader and the keiyoushi extension call it |
 | Pages | `GET /chapter-detail?chapter_id=` | `data.chapter.pages` are full urls; `title_id` resolves a chapter link |
 
 `sort_by` takes `lastupdate`, `created_at`, `name`, `views` and `rating`. Without one the API
@@ -62,7 +62,7 @@ deep link works with or without the slug. Chapter keys are chapter ids.
 The source lists the site's interface languages and uses the app's own language setting. The
 site stores chapters under legacy and regional codes as well (`jp`, `kr`, `cn`, `zh-hk`,
 `es-la`), so `site_languages` pairs every site code with the app language that selects it.
-The pairs feed `chapterLanguage` in search, `language` in the chapter list, and each
+The pairs feed `chapterLanguage` in search, pick which chapters are kept, and set each
 chapter's `language`.
 
 > ⚠️ A title's `availableTranslatedLanguages` holds junk beside real codes (`vn`, `vie`,
@@ -106,7 +106,15 @@ row takes the first one in a selected language and drops the title when there is
 
 ## Chapters
 
-One request per 1,000 chapters. Names mostly repeat the number ("Ch.22", "Chapter 188",
+One request returns every chapter in every language; the selected languages are kept. The
+site's title page pages `GET /title/chapter-listing` instead (`page`, `limit`, `group_by`,
+`language`), but its largest `limit` and the `flat` grouping were never observed, so the
+source uses the call the keiyoushi extension has in production.
+
+> ⚠️ The chapter request must send `Content-Type: application/json` with no charset; the API
+> answers 400 to anything else (noted in the keiyoushi extension, unverified here).
+
+Names mostly repeat the number ("Ch.22", "Chapter 188",
 "Vol.5 Ch.22"), so a name containing the number is dropped and only a real title is kept.
 Timestamps are UTC with microseconds and no zone; the first 19 characters are parsed with the
 `T` replaced by a space, because the test runner drops quoted literals from a date format.

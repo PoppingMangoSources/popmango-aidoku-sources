@@ -440,6 +440,26 @@ below (**F** fails `check-sources.py`, **N** prints a note, **R** is read in rev
 | Extra helpers and long explanations in `lib.rs` (#872) | Put free helpers in `helpers.rs` or inline a single-use operation. Comments explain a non-obvious constraint, not the function body. | R |
 | A contributor with both writing and drawing credits lost one role (#865) | Assign author and artist roles independently, so one person can appear in both lists. (inferred) | R |
 
+### From #878, #894 and #899 (other contributors, November)
+
+Read on 2026-11-13 from the PR pages; quotes are kkantan's.
+
+| What was flagged | The rule | |
+|---|---|---|
+| A listing that repeated the search code ("you could just be calling `get_search_manga_list` instead of duplicating the logic", #878) | A listing that is a search sort calls the search path with that sort. `multi.mangaball` builds both from one `SearchParams`. | R |
+| `unwrap_or("[]")` on a parse that failed ("it would be better to propagate the errors", "instead of returning an empty chapter list", #894) | A failed parse is an error, never an empty list or a default. | R |
+| `return Ok(MangaPageResult { entries: Vec::new(), has_next_page: false })` (#894) | `MangaPageResult::default()`. | R |
+| `.text()` then `.trim()` ("`text()` already trims the result", #894) | Don't trim what `text()` returns. | R |
+| `serde_json = "1.0.105"` ("exclude the patch version for dependencies", #878) | Dependencies name major and minor only. | R |
+| A doc comment on the page-list function ("this is considered common knowledge", #878) | No comment for what the trait already documents. | R |
+| `let mut manga = manga;` (#878) | Mark the parameter `mut`. | R |
+| A hand-written percent encoder (#878) | `encode_uri_component`. | R |
+| A select filter used for sorting (#878) | Use the `sort` filter type, first in the list. | R |
+| A genre select without `isGenre` (#878, #894) | Every genre select or multi-select sets `"isGenre": true`. | R |
+| Filter `ids` that repeat `options` (#899) | Leave `ids` out when the site's ids are the option names. | R |
+| A metadata selector that also matched chapter badges (#899) | Scope selectors to the metadata area. | R |
+| An adult switch off by default on a source rated 2 (#899) | Rated 2 may show adult titles by default; rated 1 hides them (the #845 row). | R |
+
 ### From #860 (`en.flamecomics`)
 
 | What was flagged | The rule | |

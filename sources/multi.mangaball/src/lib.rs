@@ -15,9 +15,9 @@ use aidoku::{
 	imports::{net::Request, std::send_partial_result},
 	prelude::*,
 };
-use api::{API_URL, BASE_URL, SORTS, SearchParams, get};
+use api::{API_URL, BASE_URL, SORTS, SearchParams, get, parse, site_headers};
 use helpers::{Link, parse_link, site_languages};
-use models::{ChapterDetail, ChapterItem, Data, Paged, Title};
+use models::{ApiResponse, ChapterDetail, ChapterItem, Title};
 
 struct MangaBall;
 
@@ -33,7 +33,7 @@ impl Source for MangaBall {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		if let Some(Link::Title(id)) = query.as_deref().and_then(parse_link)
-			&& let Ok(found) = get::<Data<Title>>(&format!("{API_URL}/title/detail/{id}"))
+			&& let Ok(found) = get::<ApiResponse<Title>>(&format!("{API_URL}/title/detail/{id}"))
 		{
 			return Ok(MangaPageResult {
 				entries: vec![found.data.into()],
@@ -94,7 +94,7 @@ impl Source for MangaBall {
 	) -> Result<Manga> {
 		if needs_details {
 			let url = format!("{API_URL}/title/detail/{}", manga.key);
-			let mut details = get::<Data<Title>>(&url)?.data.into_details();
+			let mut details = get::<ApiResponse<Title>>(&url)?.data.into_details();
 			details.description = details
 				.description
 				.map(|description| description.escape_markdown());
@@ -106,35 +106,23 @@ impl Source for MangaBall {
 
 		if needs_chapters {
 			let languages = site_languages(settings::languages());
-			let codes = languages
-				.iter()
-				.map(|(code, _)| code.as_str())
-				.collect::<Vec<_>>()
-				.join(",");
 			let excluded = settings::excluded_scanlators();
-			let mut chapters = Vec::new();
-			let mut page = 1;
-			loop {
-				let response: Paged<ChapterItem> = get(&format!(
-					"{API_URL}/title/chapter-listing?title_id={}&page={page}&limit=1000&group_by=flat&sort_order=desc&language={codes}",
-					manga.key
-				))?;
-				chapters.extend(
-					response
-						.data
-						.into_iter()
-						.filter(|chapter| {
-							!chapter.group_name.as_deref().is_some_and(|group| {
-								excluded.contains(&group.trim().to_lowercase())
-							})
-						})
-						.filter_map(|chapter| chapter.into_chapter(&languages)),
-				);
-				if page >= response.pagination.total_pages {
-					break;
-				}
-				page += 1;
-			}
+			let url = format!("{API_URL}/chapter/chapter-listing-by-title-id");
+			// The API rejects a content type that carries a charset.
+			let request = site_headers(Request::post(url)?)
+				.header("Content-Type", "application/json")
+				.body(format!(r#"{{"title_id":"{}"}}"#, manga.key));
+			let chapters = parse::<ApiResponse<Vec<ChapterItem>>>(request.send()?)?
+				.data
+				.into_iter()
+				.filter(|chapter| {
+					!chapter
+						.group
+						.as_ref()
+						.is_some_and(|group| excluded.contains(&group.name.trim().to_lowercase()))
+				})
+				.filter_map(|chapter| chapter.into_chapter(&languages))
+				.collect();
 			manga.chapters = Some(chapters);
 		}
 
@@ -143,7 +131,7 @@ impl Source for MangaBall {
 
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let url = format!("{API_URL}/chapter-detail?chapter_id={}", chapter.key);
-		let pages = get::<Data<ChapterDetail>>(&url)?.data.chapter.pages;
+		let pages = get::<ApiResponse<ChapterDetail>>(&url)?.data.chapter.pages;
 		if pages.is_empty() {
 			bail!("This chapter has no pages");
 		}
@@ -179,7 +167,7 @@ impl DeepLinkHandler for MangaBall {
 			Some(Link::Title(key)) => Some(DeepLinkResult::Manga { key }),
 			Some(Link::Chapter(key)) => {
 				let url = format!("{API_URL}/chapter-detail?chapter_id={key}");
-				get::<Data<ChapterDetail>>(&url)?
+				get::<ApiResponse<ChapterDetail>>(&url)?
 					.data
 					.chapter
 					.title_id

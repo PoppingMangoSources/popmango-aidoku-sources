@@ -62,7 +62,7 @@ fn title(id: &str, language: &str, adult: bool) -> Title {
 				"number": 40,
 				"volume": 0,
 				"lang": "vi",
-				"group_name": "Group A",
+				"group": { "name": "Group A" },
 				"created_at": "2026-11-13T13:39:37.229000"
 			},
 			{
@@ -71,7 +71,7 @@ fn title(id: &str, language: &str, adult: bool) -> Title {
 				"number": 39.5,
 				"volume": 5,
 				"lang": "en",
-				"group_name": "Group B",
+				"group": { "name": "Group B" },
 				"created_at": "2026-11-08T13:14:16.408000"
 			}
 		]
@@ -279,7 +279,7 @@ fn review_chapters() {
 	};
 	let labelled = chapter(serde_json::json!({
 		"id": "a", "name": "Chapter 188", "number": 188, "volume": 0, "lang": "en",
-		"group_name": "Group A", "created_at": "2026-11-08T17:07:41.732000"
+		"group": { "name": "Group A" }, "created_at": "2026-11-08T17:07:41.732000"
 	}))
 	.unwrap();
 	assert_eq!(labelled.title, None);
