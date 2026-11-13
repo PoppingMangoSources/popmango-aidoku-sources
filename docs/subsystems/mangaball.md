@@ -53,7 +53,8 @@ direction arrow, and Latest Updated descending is its default with or without a 
 
 > ⚠️ `top_viewed` is switched off in the site's home configuration and answers nothing; the
 > ranking the site shows is the same endpoint with `section_key=sidebar_ranking`. The site asks
-> for 7; the source asks for 9 to fill three pages of three (unverified: the server may cap it).
+> for 7; the source asks for 9 to fill three pages of three, and the owner saw all nine in the
+> app on 2026-11-13.
 
 ## Keys
 
