@@ -30,7 +30,7 @@ own client does. Everything below was read from the owner's captures of the site
 
 | Use | Request | Notes |
 |---|---|---|
-| Search, listings, two home rows | `GET /title/search-advanced` | `keyword`, `sort_by`, `sort_order`, `adult_mode`, `tag_mode`, `chapterLanguage`, `type`, `status`, `publicationDemographic`, `originalLanguage`, `included_tags`, `excluded_tags`, `page`, `limit`; answers `data` and `pagination {page, total_pages}` |
+| Search, listings, two home rows | `GET /title/search-advanced` | `keyword`, `sort_by`, `sort_order`, `adult_mode`, `tag_mode`, `chapterLanguage`, `type`, `status`, `publicationDemographic`, `included_tags`, `excluded_tags`, `page`, `limit`; answers `data` and `pagination {page, total_pages}` |
 | Hero | `GET /title/featured?limit=10&adult_mode=` | the site's "Featured Manga" |
 | Ranking | `GET /title/top-views?period=week&limit=&section_key=sidebar_ranking&adult_mode=` | the site's "Top Ranking", Weekly tab |
 | Recommended | `GET /title/recommended?limit=10&adult_mode=` | the site's "Titles Recommended" |
@@ -78,7 +78,15 @@ chapter's `language`.
 
 The API has one axis, `adult_mode`: `no_18`, `all` or `only_18`, and each title carries only
 `is18plus`. Two switches give the three modes (Show 18+ Content, then 18+ Only), and the
-Content Rating filter overrides them for one search. A four-way rating setting was left out:
+Content Rating filter, the site's own three-option select, overrides them for one search.
+
+> ⚠️ The Content Rating filter's default is Safe Only, and the app does not send a select left
+> on its default. So a reader whose setting shows 18+ titles cannot pick Safe Only for one
+> search; the other two options always override.
+
+> ⚠️ The site's panel has no original-language control (owner's screenshots, 2026-11-13). An
+> Original Language filter copied from a reference client was removed; `originalLanguage` is a
+> parameter the API may accept, not a filter the site offers. A four-way rating setting was left out:
 Safe and Suggestive could only be told apart by filtering each page locally from tags.
 Per-title ratings still follow the app's scale: `is18plus` or an Adult, Hentai, Manhwa 18+ or
 Smut tag is NSFW, Ecchi or Mature is Suggestive.

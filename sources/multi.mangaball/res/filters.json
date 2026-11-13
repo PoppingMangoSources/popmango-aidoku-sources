@@ -70,63 +70,20 @@
 		]
 	},
 	{
-		"type": "multi-select",
+		"type": "select",
 		"id": "rating",
 		"title": "Content Rating",
-		"canExclude": false,
 		"options": [
-			"Safe",
-			"18+"
+			"All Content (18+ Incl.)",
+			"Safe Only (No 18+)",
+			"18+ Only"
 		],
 		"ids": [
-			"safe",
-			"adult"
-		]
-	},
-	{
-		"type": "select",
-		"id": "original_language",
-		"title": "Original Language",
-		"options": [
-			"Any",
-			"Japanese",
-			"Korean",
-			"Chinese",
-			"English",
-			"Filipino",
-			"French",
-			"German",
-			"Indonesian",
-			"Italian",
-			"Malay",
-			"Polish",
-			"Portuguese (BR)",
-			"Russian",
-			"Spanish",
-			"Swedish",
-			"Thai",
-			"Vietnamese"
+			"all",
+			"no_18",
+			"only_18"
 		],
-		"ids": [
-			"any",
-			"ja",
-			"ko",
-			"cn",
-			"en",
-			"tl",
-			"fr",
-			"de",
-			"id",
-			"it",
-			"ms",
-			"pl",
-			"pt-br",
-			"ru",
-			"es",
-			"sv",
-			"th",
-			"vi"
-		]
+		"default": "no_18"
 	},
 	{
 		"type": "multi-select",

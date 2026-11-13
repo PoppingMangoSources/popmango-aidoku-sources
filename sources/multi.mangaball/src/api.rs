@@ -23,11 +23,10 @@ pub struct SearchParams {
 	pub query: Option<String>,
 	pub sort: &'static str,
 	pub ascending: bool,
-	pub adult_mode: &'static str,
+	pub adult_mode: String,
 	pub kind: String,
 	pub status: String,
 	pub demographic: String,
-	pub original_language: String,
 	pub included_tags: Vec<String>,
 	pub excluded_tags: Vec<String>,
 	pub tag_mode: String,
@@ -39,7 +38,7 @@ impl SearchParams {
 		Self {
 			query,
 			sort: SORTS[0],
-			adult_mode: settings::adult_mode(),
+			adult_mode: settings::adult_mode().into(),
 			kind: settings::content_type(),
 			excluded_tags: settings::excluded_tags(),
 			tag_mode: "AND".into(),
@@ -67,7 +66,7 @@ impl SearchParams {
 		}
 		set("sort_by", self.sort);
 		set("sort_order", if self.ascending { "asc" } else { "desc" });
-		set("adult_mode", self.adult_mode);
+		set("adult_mode", &self.adult_mode);
 		set("tag_mode", &self.tag_mode);
 		let languages = self
 			.languages
@@ -78,7 +77,6 @@ impl SearchParams {
 		set("type", &self.kind);
 		set("status", &self.status);
 		set("publicationDemographic", &self.demographic);
-		set("originalLanguage", &self.original_language);
 		set("included_tags", &self.included_tags.join(","));
 		set("excluded_tags", &self.excluded_tags.join(","));
 		set("page", &page.to_string());

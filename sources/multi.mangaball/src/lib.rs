@@ -56,7 +56,7 @@ impl Source for MangaBall {
 					"type" => search.kind = value,
 					"status" => search.status = value,
 					"demographic" => search.demographic = value,
-					"original_language" => search.original_language = value,
+					"rating" => search.adult_mode = value,
 					"tag_mode" => search.tag_mode = value,
 					_ => {}
 				},
@@ -65,13 +65,6 @@ impl Source for MangaBall {
 					included,
 					excluded,
 				} => match id.as_str() {
-					"rating" => {
-						search.adult_mode = match included.as_slice() {
-							[rating] if rating == "adult" => "only_18",
-							[_] => "no_18",
-							_ => "all",
-						}
-					}
 					"genre" | "theme" | "format" | "content" => {
 						search.included_tags.extend(included);
 						search.excluded_tags.extend(excluded);

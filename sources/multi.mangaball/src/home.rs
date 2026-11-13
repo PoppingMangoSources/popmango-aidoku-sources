@@ -28,7 +28,7 @@ pub const SECTIONS: [(&str, &str, Layout); 5] = [
 ];
 
 pub fn section_url(id: &'static str, search: &SearchParams) -> String {
-	let adult_mode = search.adult_mode;
+	let adult_mode = &search.adult_mode;
 	match id {
 		"featured" | "recommended" => {
 			format!("{API_URL}/title/{id}?limit=10&adult_mode={adult_mode}")

@@ -363,10 +363,9 @@ fn search_pages_and_filters() {
 		.get_search_manga_list(
 			None,
 			1,
-			vec![FilterValue::MultiSelect {
+			vec![FilterValue::Select {
 				id: "rating".into(),
-				included: vec!["adult".into()],
-				excluded: Vec::new(),
+				value: "only_18".into(),
 			}],
 		)
 		.unwrap();
