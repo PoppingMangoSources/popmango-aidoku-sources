@@ -1,67 +1,115 @@
-use aidoku::{Result, prelude::*};
+use aidoku::{
+	Result,
+	alloc::{String, Vec, borrow::Cow},
+	prelude::*,
+};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-pub fn extract<T: DeserializeOwned>(body: &str, required_key: &str) -> Result<T> {
-	for line in body.lines() {
-		let candidate = line.split_once(':').map_or(line, |(_, value)| value);
-		if let Ok(value) = serde_json::from_str::<Value>(candidate)
-			&& let Some(found) = find_object(value, required_key)
-			&& let Ok(result) = serde_json::from_value(found)
+pub fn decode(body: &str) -> Result<Cow<'_, str>> {
+	if !body.trim_start().starts_with('<') {
+		return Ok(Cow::Borrowed(body));
+	}
+	let mut flight = String::new();
+	for chunk in body.split("self.__next_f.push(").skip(1) {
+		let Some(Ok(value)) = serde_json::Deserializer::from_str(chunk)
+			.into_iter::<Value>()
+			.next()
+		else {
+			continue;
+		};
+		if value[0] == 1
+			&& let Some(text) = value[1].as_str()
 		{
-			return Ok(result);
+			flight.push_str(text);
 		}
 	}
-
-	if let Ok(value) = serde_json::from_str::<Value>(body)
-		&& let Some(found) = find_object(value, required_key)
-	{
-		return Ok(serde_json::from_value(found)?);
+	if flight.is_empty() {
+		bail!("Missing page data");
 	}
-
-	bail!("Unable to find {required_key} in RSC response")
+	Ok(Cow::Owned(flight))
 }
 
-fn find_object(value: Value, required_key: &str) -> Option<Value> {
-	match value {
-		Value::Object(mut object) => {
-			if object.contains_key(required_key) {
-				return Some(Value::Object(object));
+pub fn extract<T: DeserializeOwned>(body: &str, keys: &[&str]) -> Result<T> {
+	let value = objects(body, keys)
+		.into_iter()
+		.next()
+		.ok_or(error!("Missing {} in page data", keys.join("/")))?;
+	Ok(serde_json::from_value(value)?)
+}
+
+pub fn objects(body: &str, keys: &[&str]) -> Vec<Value> {
+	let mut output = Vec::new();
+	let mut remaining = body;
+	while let Some((id, row)) = remaining.split_once(':') {
+		if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+			remaining = remaining.split_once('\n').map_or("", |(_, rest)| rest);
+			continue;
+		}
+		if let Some(raw) = row.strip_prefix('T') {
+			let Some((length, text)) = raw.split_once(',') else {
+				break;
+			};
+			let Some(length) = usize::from_str_radix(length, 16).ok() else {
+				break;
+			};
+			// Text rows have a byte length and need not end at a newline.
+			let Some(rest) = text.get(length..) else {
+				break;
+			};
+			remaining = rest.trim_start_matches('\n');
+		} else {
+			let (line, rest) = row.split_once('\n').unwrap_or((row, ""));
+			if let Ok(value) = serde_json::from_str(line) {
+				collect(value, keys, &mut output);
 			}
-			object
-				.values_mut()
-				.find_map(|value| find_object(core::mem::take(value), required_key))
+			remaining = rest;
 		}
-		Value::Array(values) => values
-			.into_iter()
-			.find_map(|value| find_object(value, required_key)),
-		Value::String(string) => serde_json::from_str::<Value>(&string)
-			.ok()
-			.and_then(|value| find_object(value, required_key)),
-		_ => None,
+	}
+	output
+}
+
+fn collect(value: Value, keys: &[&str], output: &mut Vec<Value>) {
+	match value {
+		Value::Object(object) if keys.iter().all(|key| object.contains_key(*key)) => {
+			output.push(Value::Object(object))
+		}
+		Value::Object(object) => {
+			for (_, value) in object {
+				collect(value, keys, output);
+			}
+		}
+		Value::Array(values) => {
+			for value in values {
+				collect(value, keys, output);
+			}
+		}
+		_ => {}
 	}
 }
 
-#[cfg(test)]
-mod tests {
-	use super::extract;
-	use aidoku::alloc::string::String;
-	use aidoku_test::aidoku_test;
-	use serde::Deserialize;
-
-	#[derive(Deserialize)]
-	struct Payload {
-		series: Series,
+pub fn text<'a>(body: &'a str, value: &'a str) -> Result<Cow<'a, str>> {
+	let Some(id) = value
+		.strip_prefix('$')
+		.filter(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_hexdigit()))
+	else {
+		return Ok(Cow::Borrowed(value));
+	};
+	let marker = format!("\n{id}:");
+	let row = body
+		.split_once(&marker)
+		.map(|(_, row)| row)
+		.or_else(|| body.strip_prefix(&marker[1..]))
+		.ok_or(error!("Missing chapter text"))?;
+	if let Some(raw) = row.strip_prefix('T') {
+		let (length, raw) = raw.split_once(',').ok_or(error!("Invalid chapter text"))?;
+		let length =
+			usize::from_str_radix(length, 16).map_err(|_| error!("Invalid chapter text length"))?;
+		return Ok(Cow::Borrowed(
+			raw.get(..length).ok_or(error!("Incomplete chapter text"))?,
+		));
 	}
-
-	#[derive(Deserialize)]
-	struct Series {
-		title: String,
-	}
-
-	#[aidoku_test]
-	fn test_extraction() {
-		let payload: Payload = extract(r#"1:["$",{"series":{"title":"Test"}}]"#, "series").unwrap();
-		assert_eq!(payload.series.title, "Test");
-	}
+	Ok(Cow::Owned(serde_json::from_str(
+		row.lines().next().unwrap_or_default(),
+	)?))
 }

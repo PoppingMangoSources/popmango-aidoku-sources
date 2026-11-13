@@ -18,4 +18,11 @@ impl Impl for DrakeScans {
 	}
 }
 
-register_source!(VineTheme<DrakeScans>, Home, DeepLinkHandler);
+register_source!(
+	VineTheme<DrakeScans>,
+	Home,
+	ListingProvider,
+	DynamicFilters,
+	ImageRequestProvider,
+	DeepLinkHandler
+);
