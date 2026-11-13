@@ -1,4 +1,4 @@
-use crate::helpers::{chapter_url, manga_url, title_type};
+use crate::{api::BASE_URL, helpers::title_type};
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Viewer,
 	alloc::{String, Vec, format, string::ToString, vec},
@@ -160,7 +160,7 @@ impl Title {
 		if detailed {
 			let mut tags: Vec<_> = self.tags.into_iter().map(|tag| tag.name).collect();
 			tags.sort_unstable();
-			manga.url = Some(manga_url(&self.id));
+			manga.url = Some(format!("{BASE_URL}/title-detail/{}", self.id));
 			manga.description = Some(self.description.join("\n\n")).filter(|text| !text.is_empty());
 			manga.authors = Some(self.author.into_iter().map(|author| author.name).collect());
 			manga.tags = Some(tags);
@@ -201,7 +201,7 @@ impl ChapterItem {
 			.and_then(|date| date.get(..19))
 			.and_then(|date| parse_date(date.replace('T', " "), "yyyy-MM-dd HH:mm:ss"));
 		Some(Chapter {
-			url: Some(chapter_url(&self.id)),
+			url: Some(format!("{BASE_URL}/chapter-detail/{}", self.id)),
 			key: self.id,
 			title,
 			chapter_number: self.number,

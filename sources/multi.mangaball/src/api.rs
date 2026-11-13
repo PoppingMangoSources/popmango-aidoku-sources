@@ -14,7 +14,6 @@ use serde::de::DeserializeOwned;
 
 pub const BASE_URL: &str = "https://mangaball.com";
 pub const API_URL: &str = "https://mangaball.com/api/v1";
-const PAGE_SIZE: i32 = 24;
 
 // Sorts in `filters.json` order; relevance sends none.
 pub const SORTS: [Option<&str>; 6] = [
@@ -93,7 +92,7 @@ impl SearchParams {
 		set("included_tags", &self.included_tags.join(","));
 		set("excluded_tags", &self.excluded_tags.join(","));
 		set("page", &page.to_string());
-		set("limit", &PAGE_SIZE.to_string());
+		set("limit", "24");
 		format!("{API_URL}/title/search-advanced?{query}")
 	}
 

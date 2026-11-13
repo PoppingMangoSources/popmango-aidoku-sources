@@ -1,5 +1,5 @@
 use crate::api::BASE_URL;
-use aidoku::alloc::{String, Vec, format};
+use aidoku::alloc::{String, Vec};
 
 // Chapters also use legacy and regional codes.
 const LANGUAGE_ALIASES: [(&str, &[&str]); 5] = [
@@ -23,20 +23,15 @@ pub enum Link {
 	Chapter(String),
 }
 
-pub fn manga_url(key: &str) -> String {
-	format!("{BASE_URL}/title-detail/{key}")
-}
-
-pub fn chapter_url(key: &str) -> String {
-	format!("{BASE_URL}/chapter-detail/{key}")
-}
-
-// Title paths are `/title-detail/<id>-<slug>`; chapter paths carry the id alone.
+// A pasted link must be this site's: title paths are `/title-detail/<id>-<slug>`, chapter
+// paths carry the id alone.
 pub fn parse_link(url: &str) -> Option<Link> {
-	let path = url.split(['?', '#']).next()?;
-	let id = |marker| {
-		let segment = path.split_once(marker)?.1.split('/').next()?;
-		let id = segment.split('-').next()?;
+	let path = url.trim().strip_prefix(BASE_URL)?;
+	let id = |prefix| {
+		let id = path
+			.strip_prefix(prefix)?
+			.split(['-', '/', '?', '#'])
+			.next()?;
 		(id.len() == 24 && id.bytes().all(|byte| byte.is_ascii_hexdigit())).then(|| id.into())
 	};
 	id("/title-detail/")

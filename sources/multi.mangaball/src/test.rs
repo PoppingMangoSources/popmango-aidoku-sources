@@ -331,6 +331,14 @@ fn review_links() {
 	);
 	assert_eq!(key("https://mangaball.com/search-advanced"), "none");
 	assert_eq!(key("hound"), "none");
+	assert_eq!(
+		key("https://example.com/title-detail/6851547b702284f834178357"),
+		"none"
+	);
+	assert_eq!(
+		key("https://mangaball.com.example.com/title-detail/6851547b702284f834178357"),
+		"none"
+	);
 }
 
 #[aidoku_test]
