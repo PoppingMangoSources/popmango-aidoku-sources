@@ -9,12 +9,12 @@ use serde::Deserialize;
 const CDN_URL: &str = "https://bulbasaur.poke-black-and-white.net/covers";
 
 #[derive(Deserialize)]
-pub struct Data<T> {
+pub struct ApiResponse<T> {
 	pub data: T,
 }
 
 #[derive(Deserialize)]
-pub struct Paged<T> {
+pub struct Paginated<T> {
 	pub data: Vec<T>,
 	pub pagination: Pagination,
 }
@@ -80,8 +80,13 @@ pub struct ChapterItem {
 	#[serde(default)]
 	volume: f32,
 	lang: String,
-	pub group_name: Option<String>,
+	pub group: Option<Group>,
 	created_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Group {
+	pub name: String,
 }
 
 #[derive(Deserialize)]
@@ -202,7 +207,7 @@ impl ChapterItem {
 			chapter_number: self.number,
 			volume_number: (self.volume > 0.0).then_some(self.volume),
 			date_uploaded,
-			scanlators: self.group_name.map(|group| vec![group]),
+			scanlators: self.group.map(|group| vec![group.name]),
 			language: Some(language),
 			..Default::default()
 		})
