@@ -165,3 +165,7 @@ Replaced Hijala and Sana’s low-resolution icons using original site logos, dow
 Recorded the Scythe review requirement to synchronize all 25 MangaThemesia consumers when adding base64. Added a transitive path-dependency lock guard, calibrated lock-only upstream version checks, and regressions.
 
 Consumer package verification also found Rage Scans still declaring app 0.7.1 despite the shared child_nodes import requiring 0.8.3. The submission updates its minimum app version and source version; a regression now checks this requirement for every consumer.
+
+## 2026-11-13 MangaBall
+
+Added [[mangaball]] with the new `multi.mangaball` source. The site refuses the sandbox, so the page separates what the owner's captures show from what is still unverified.

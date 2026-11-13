@@ -38,7 +38,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 
 ## Route select
 
-<sub><b>22 routes</b> in this repository. Add the whole repository with the button up top, or tap <b>Choose route</b> to install one source on its own.</sub>
+<sub><b>23 routes</b> in this repository. Add the whole repository with the button up top, or tap <b>Choose route</b> to install one source on its own.</sub>
 
 ### Manga, manhwa & manhua
 
@@ -52,30 +52,31 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 <td align="center" width="50%"><img src="sources/en.hijalascans/res/icon.png" width="64"/><br/><b>Hijala Scans</b><br/><sub><a href="https://en-hijala.com">en-hijala.com</a></sub><br/><img src="media/heat-0.svg" alt="Safe" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.hijalascans-v4.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.hijalascans-v4.aix">.aix (v4)</a></sub></td>
 </tr>
 <tr>
+<td align="center" width="50%"><img src="media/sources/mangaball.png" width="64"/><br/><b>MangaBall</b><br/><sub><a href="https://mangaball.com">mangaball.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.mangaball-v1.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.mangaball-v1.aix">.aix (v1)</a></sub></td>
 <td align="center" width="50%"><img src="sources/en.mangaberri/res/icon.png" width="64"/><br/><b>MangaBerri</b><br/><sub><a href="https://mangaberri.com">mangaberri.com</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangaberri-v6.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangaberri-v6.aix">.aix (v6)</a></sub></td>
+</tr>
+<tr>
 <td align="center" width="50%"><img src="sources/en.mangacherri/res/icon.png" width="64"/><br/><b>MangaCherri</b><br/><sub><a href="https://mangacherri.com">mangacherri.com</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangacherri-v8.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangacherri-v8.aix">.aix (v8)</a></sub></td>
-</tr>
-<tr>
 <td align="center" width="50%"><img src="sources/en.mangahome/res/icon.png" width="64"/><br/><b>MangaHome</b><br/><sub><a href="https://www.mangahome.com">mangahome.com</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangahome-v5.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangahome-v5.aix">.aix (v5)</a></sub></td>
+</tr>
+<tr>
 <td align="center" width="50%"><img src="media/sources/mangatown.png" width="64"/><br/><b>MangaTown</b><br/><sub><a href="https://www.mangatown.com">mangatown.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangatown-v8.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mangatown-v8.aix">.aix (v8)</a></sub></td>
-</tr>
-<tr>
 <td align="center" width="50%"><img src="media/sources/mkissa.png" width="64"/><br/><b>Mkissa</b><br/><sub><a href="https://mkissa.to">mkissa.to</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mkissa-v21.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.mkissa-v21.aix">.aix (v21)</a></sub></td>
+</tr>
+<tr>
 <td align="center" width="50%"><img src="sources/en.reimanga/res/icon.png" width="64"/><br/><b>ReiManga</b><br/><sub><a href="https://reimanga.net">reimanga.net</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v6.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.reimanga-v6.aix">.aix (v6)</a></sub></td>
-</tr>
-<tr>
 <td align="center" width="50%"><img src="media/sources/rinkocomics.png" width="64"/><br/><b>RinkoComics</b><br/><sub><a href="https://rinkocomics.com">rinkocomics.com</a></sub><br/><img src="media/heat-0.svg" alt="Safe" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rinkocomics-v16.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.rinkocomics-v16.aix">.aix (v16)</a></sub></td>
+</tr>
+<tr>
 <td align="center" width="50%"><img src="sources/en.sanascans/res/icon.png" width="64"/><br/><b>Sana Scans</b><br/><sub><a href="https://sanascans.com">sanascans.com</a></sub><br/><img src="media/heat-0.svg" alt="Safe" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.sanascans-v4.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.sanascans-v4.aix">.aix (v4)</a></sub></td>
-</tr>
-<tr>
 <td align="center" width="50%"><img src="media/sources/scansgg.png" width="64"/><br/><b>Scans.GG</b><br/><sub><a href="https://scans.gg">scans.gg</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.scansgg-v7.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.scansgg-v7.aix">.aix (v7)</a></sub></td>
+</tr>
+<tr>
 <td align="center" width="50%"><img src="sources/en.scythescans/res/icon.png" width="64"/><br/><b>Scythe Scans</b><br/><sub><a href="https://scythescans.com">scythescans.com</a></sub><br/><img src="media/heat-0.svg" alt="Safe" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.scythescans-v10.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.scythescans-v10.aix">.aix (v10)</a></sub></td>
-</tr>
-<tr>
 <td align="center" width="50%"><img src="media/sources/templescan.png" width="64"/><br/><b>Temple Scan</b><br/><sub><a href="https://templetoons.com">templetoons.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix">.aix (v8)</a></sub></td>
-<td align="center" width="50%"><img src="media/sources/valirscans.png" width="64"/><br/><b>ValirScans</b><br/><sub><a href="https://valirscans.org">valirscans.org</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.valirscans-v9.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.valirscans-v9.aix">.aix (v9)</a></sub></td>
 </tr>
 <tr>
+<td align="center" width="50%"><img src="media/sources/valirscans.png" width="64"/><br/><b>ValirScans</b><br/><sub><a href="https://valirscans.org">valirscans.org</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.valirscans-v9.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.valirscans-v9.aix">.aix (v9)</a></sub></td>
 <td align="center" width="50%"><img src="media/sources/vymanga.png" width="64"/><br/><b>VyManga</b><br/><sub><a href="https://vymanga.com">vymanga.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v9.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v9.aix">.aix (v9)</a></sub></td>
 </tr>
 </table>

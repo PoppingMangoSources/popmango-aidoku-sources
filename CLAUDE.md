@@ -177,6 +177,10 @@ Running them:
   elements from `children()`, pairing each element node with the next child, as `en.novelbuddy`,
   `en.chikari` and `en.novelarchive` do; those elements work in the runner and the app alike. A
   document's own `child_nodes` is empty too, so walk from a selected element.
+- The runner keeps a default that is set to `DefaultValue::Null` (its `set` fails to read the
+  empty value and returns before storing), so a test that resets settings that way inherits
+  the last test's values. Write each default out, `Bool(false)` or an empty `StringArray`
+  (verified on `multi.mangaball`).
 - The runner parses selectors with `scraper`, which rejects jsoup's `:contains(…)`, so a whole
   selector list containing one returns nothing there (the mangathemesia template's status, type,
   author and genre selectors; verified on `en.kingofshojo`). The app's SwiftSoup supports it, so
@@ -1413,6 +1417,14 @@ reaches the site, unless marked.
   `/api/read/novelChapter` (`paragraphs`). Covers are AVIF with a WebP copy beside each.
 - **Errors.** Search answers `{"message": …}`; the other endpoints answer plain text
   (`Chapter not found`) or a validation object, so only search's message is shown.
+
+## MangaBall
+
+`multi.mangaball` (mangaball.com) is a JSON API behind Cloudflare, which refuses the sandbox:
+its live tests have not run, and its models were checked against the owner's captures. The
+endpoints, content modes, language codes and every unverified parameter are in
+`docs/subsystems/mangaball.md`; read it before changing the source. It is rated 1 because the
+site has a Hentai theme. Its submission branch is `feat/multi.mangaball`.
 
 ## Iken maintenance
 
