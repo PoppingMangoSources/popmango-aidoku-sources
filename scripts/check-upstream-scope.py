@@ -5,17 +5,18 @@ import argparse
 import json
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 
 SOURCE_ID = re.compile(r"(?:[a-z]{2,3}|multi)\.[a-z0-9][a-z0-9.-]*\Z")
 TEMPLATE_DEPENDENCY = re.compile(r'path\s*=\s*"\.\./\.\./templates/([A-Za-z0-9_-]+)"')
-LEGACY_BRANCHES = {"fix/kagane-chapter-fetch": "multi.kagane"}
+SOURCE_BRANCHES = {"fix/kagane-chapter-fetch": "multi.kagane", "fix-eternal": "es.eternalmangas"}
 TEMPLATE_BRANCH = re.compile(r"feat/([a-z0-9_]+)-template\Z")
 
 
 def source_for_branch(branch):
-    if branch in LEGACY_BRANCHES:
-        return LEGACY_BRANCHES[branch]
+    if branch in SOURCE_BRANCHES:
+        return SOURCE_BRANCHES[branch]
     prefix, _, source = branch.partition("/")
     return source if prefix in {"feat", "fix"} and SOURCE_ID.fullmatch(source) else None
 
@@ -78,8 +79,7 @@ def inspect(repo, base, head, source):
             return True
         if len(parts) > 2 and parts[0] == "templates":
             return parts[1] in templates
-        # A migrated consumer can leave the template in the same submission.
-        if len(parts) > 2 and parts[0] == "sources" and (templates_used(repo, head, parts[1]) | templates_used(repo, base, parts[1])) & templates:
+        if len(parts) > 2 and parts[0] == "sources" and templates_used(repo, head, parts[1]) & templates:
             consumers.add(parts[1])
             return True
         return False
@@ -96,6 +96,18 @@ def inspect(repo, base, head, source):
 
     delta = git(repo, "diff", "--no-renames", "--name-only", "-z", base + "..." + head)
     check_paths(delta)
+    for path in delta.decode("utf-8", "replace").split("\0"):
+        if not path.endswith("/Cargo.toml"):
+            continue
+        def dev_dependencies(ref):
+            try:
+                return tomllib.loads(git(repo, "show", f"{ref}:{path}").decode()).get("dev-dependencies", {})
+            except (subprocess.CalledProcessError, tomllib.TOMLDecodeError):
+                return {}
+        previous_dev, current_dev = dev_dependencies(base), dev_dependencies(head)
+        for dependency in ("aidoku", "aidoku-test"):
+            if dependency in previous_dev and dependency not in current_dev:
+                errors.add(f"{path} removes standard {dependency!r} test dependency; retain it even without tests")
     if not delta:
         errors.add("submission has commits but no source changes")
     for commit in commits:

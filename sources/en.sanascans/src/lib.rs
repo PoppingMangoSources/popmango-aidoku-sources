@@ -6,10 +6,12 @@ const BASE_URL: &str = "https://sanascans.com";
 const API_URL: &str = "https://api.sanascans.com";
 
 struct SanaScans;
+
 impl Impl for SanaScans {
 	fn new() -> Self {
 		Self
 	}
+
 	fn params(&self) -> Params {
 		Params {
 			base_url: BASE_URL.into(),
@@ -20,6 +22,7 @@ impl Impl for SanaScans {
 		}
 	}
 }
+
 register_source!(Iken<SanaScans>, Home, DeepLinkHandler, ImageRequestProvider);
 
 #[cfg(test)]

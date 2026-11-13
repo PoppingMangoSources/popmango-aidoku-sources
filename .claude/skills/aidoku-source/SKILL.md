@@ -68,7 +68,8 @@ that shipped:
 - [ ] No dead code: nothing silenced with `allow`/`expect`, no sort the API already does, no
       field or helper left over from removed behaviour (AGENTS.md / CLAUDE.md §8)
 - [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it and its unused `serde_json`
-      dev dependency out of the submission, including the root lockfile entry
+      dev dependency out of the submission, including the root lockfile entry. Keep standard
+      aidoku/aidoku-test development dependencies even when no test files remain
 - [ ] `status`, `content_rating`, `viewer` set on details when the site has them
 - [ ] Synopsis parsing covers short and expanded layouts plus missing/empty text. Credit lists
       split verified separators, trim/omit blanks and deduplicate within each role in site order.
@@ -115,6 +116,8 @@ that shipped:
 - [ ] A per-page failure fails the page list or leaves the page unprocessed, never drops it
 - [ ] Regexes compiled once in a `static`; fixed sets as arrays
 - [ ] A rebranded site keeps its id and sets `breakingChangeVersion` in `config`
+- [ ] Separate Rust items and methods with blank lines; rustfmt alone does not insert them
+- [ ] Preserve isGenre when rewriting genre options, IDs or select types
 - [ ] Comments: terse, why only, no other sources or third parties named, no dividers
 - [ ] Constants as merged sources name them: `BASE_URL`/`API_URL`/`CDN_URL`, `PAGE_SIZE`; no
       endpoint constants and no constant for a value used once (AGENTS.md / CLAUDE.md §8)
@@ -215,6 +218,10 @@ cherry-pick a commit that includes README, workflow or unrelated source changes.
 the backup until the reconstructed source has been tested and the person no longer needs it. The person opens the PR; do not open it unless asked.
 
 Before opening it, reread the reviews AGENTS.md / CLAUDE.md §13 lists and predict kkantan's comments.
+An independent source rewrite that leaves a template gets its own PR, even if it began in
+the template update. Keep only compilation/minimum-version compatibility with the shared
+template until the standalone migration merges. Inspect every consumer and preserve standard
+aidoku/aidoku-test development dependencies when excluding fork-only tests.
 
 ## Phase 7 — Review rounds
 

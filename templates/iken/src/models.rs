@@ -114,6 +114,7 @@ impl Post {
 		manga.description = manga.description.map(|text| text.escape_markdown());
 		Ok(manga)
 	}
+
 	pub fn into_manga_with_chapter(
 		self,
 		base_url: &str,

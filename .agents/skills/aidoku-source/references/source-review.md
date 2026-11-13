@@ -193,3 +193,25 @@ but our observed endpoint has no official flag. Use the observed likes/views/UTC
 fields, not an invented official classification. Retain the winning group's same-number
 parts, all unnumbered chapters and separate languages/volumes, as Atsumaru's preservation
 rule requires. Optional deduplication must keep original chapter keys and add no requests.
+
+
+## Iken review, November 13
+
+[Review 900](https://github.com/Aidoku-Community/sources/pull/900#pullrequestreview-5897319010)
+separates EternalMangas' independent current-site rewrite into its own PR. The template branch
+keeps only the legacy consumer's API field/minimum-version compatibility. Its migration,
+icon, rating, filters and parser belong on fix-eternal. The new alias is included in the same
+scope and publication gates as conventional source branches.
+
+Preserve standard aidoku/aidoku-test dev dependencies even when excluding fork tests
+([dependency comment](https://github.com/Aidoku-Community/sources/pull/900#discussion_r4568257560)).
+They are scaffolding for future tests; unused test-only serde_json is a separate question.
+The scope checker compares upstream manifests, and normalization tests preserve both standard
+entries. Keep isGenre on Eternal's genre select. Separate top-level Rust items and methods
+with blank lines; the spacing rule is advisory for unrelated merged counterexamples, strict
+for the reviewed Iken/Eternal files.
+
+The selector suggestion was explicitly optional, then requested by the owner. Use
+.col-lg-3 li:has(strong), with exact label-prefix matching, to scope metadata and reduce the
+row walk. Do not copy :contains indiscriminately: the app supports it while the runner's
+selector engine may reject it. Test labelled/unlabelled rows and near-matching labels.

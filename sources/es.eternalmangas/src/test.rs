@@ -165,3 +165,24 @@ fn review_featured_and_detail_ratings_use_the_same_tags() {
 		ContentRating::Suggestive
 	);
 }
+
+#[aidoku_test]
+fn review_genre_filter_keeps_tag_capabilities() {
+	let filters: serde_json::Value =
+		serde_json::from_str(include_str!("../res/filters.json")).unwrap();
+	let genre = filters
+		.as_array()
+		.unwrap()
+		.iter()
+		.find(|filter| filter["id"] == "genre")
+		.unwrap();
+	assert_eq!(genre["isGenre"], true);
+}
+
+#[aidoku_test]
+fn review_metadata_selector_ignores_unlabelled_rows_and_prefixes() {
+	let html = Html::parse(r#"<main><h1>Title</h1><div class='col-lg-3'><li>Autor: Wrong</li><li><strong>Subtipo:</strong> Novel</li><li><strong>Tipo:</strong> Manga</li><li><strong>Autor:</strong> Writer</li></div><div><li><strong>Autor:</strong> Comment</li></div></main>"#).unwrap();
+	let details = helpers::details(&html, "/series/title".into(), true).unwrap();
+	assert_eq!(details.authors, Some(vec!["Writer".into()]));
+	assert_eq!(details.title, "Title");
+}

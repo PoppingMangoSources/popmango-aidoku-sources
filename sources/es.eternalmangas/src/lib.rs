@@ -14,10 +14,12 @@ mod models;
 mod settings;
 const URL: &str = "https://eternalmangas.org";
 struct EternalMangas;
+
 impl Source for EternalMangas {
 	fn new() -> Self {
 		Self
 	}
+
 	fn get_search_manga_list(
 		&self,
 		query: Option<String>,
@@ -56,6 +58,7 @@ impl Source for EternalMangas {
 			settings::label_novels(),
 		))
 	}
+
 	fn get_manga_update(
 		&self,
 		mut manga: Manga,
@@ -74,6 +77,7 @@ impl Source for EternalMangas {
 		}
 		Ok(manga)
 	}
+
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let key = if chapter.key.parse::<i32>().is_ok() {
 			let series = helpers::resolve_series_key(&manga.key)?;
@@ -90,16 +94,19 @@ impl Source for EternalMangas {
 		helpers::pages(&helpers::get_html(&format!("{URL}{key}"))?)
 	}
 }
+
 impl Home for EternalMangas {
 	fn get_home(&self) -> Result<HomeLayout> {
 		home::parse_home(&helpers::get_html(URL)?)
 	}
 }
+
 impl ImageRequestProvider for EternalMangas {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?.header("Referer", &format!("{URL}/")))
 	}
 }
+
 impl DeepLinkHandler for EternalMangas {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
 		let Some(path) = url.splitn(4, '/').nth(3).map(|path| format!("/{path}")) else {
@@ -123,6 +130,7 @@ impl DeepLinkHandler for EternalMangas {
 		}))
 	}
 }
+
 register_source!(EternalMangas, Home, DeepLinkHandler, ImageRequestProvider);
 #[cfg(test)]
 mod test;

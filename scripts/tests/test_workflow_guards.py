@@ -126,6 +126,19 @@ class ScopeTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('Destination must be a recognized submission branch', result.stderr)
 
+    def test_standard_test_dependencies_are_preserved(self):
+        path = self.source / 'Cargo.toml'
+        path.write_text('[dev-dependencies]\naidoku = {version="0.3", features=["test"]}\naidoku-test = "1"\n')
+        self.commit('upstream test scaffold')
+        self.base = self.git('rev-parse', 'HEAD')
+        path.write_text('[dev-dependencies]\naidoku = {version="0.3", features=["test"]}\n')
+        self.metadata(2)
+        self.commit('remove unused scaffold')
+        self.assertTrue(any("standard 'aidoku-test' test dependency" in error for error in self.inspect()))
+        path.write_text('[dev-dependencies]\naidoku = {version="0.3", features=["test"]}\naidoku-test = "1"\n')
+        self.commit('restore scaffold')
+        self.assertEqual(self.inspect(), [])
+
     def test_generated_package(self):
         (self.source / 'package.aix').write_text('generated')
         self.commit('artifact')
@@ -138,6 +151,7 @@ class ScopeTests(unittest.TestCase):
     def test_branch_routing(self):
         self.assertEqual(scope.source_for_branch('feat/en.example'), 'en.example')
         self.assertEqual(scope.source_for_branch('fix/kagane-chapter-fetch'), 'multi.kagane')
+        self.assertEqual(scope.source_for_branch('fix-eternal'), 'es.eternalmangas')
         self.assertIsNone(scope.source_for_branch('chore/en.example-before-rebuild-12345678'))
         self.assertIsNone(scope.source_for_branch('feat/keyoapp-template'))
         self.assertEqual(scope.template_for_branch('feat/keyoapp-template'), 'keyoapp')
@@ -201,17 +215,21 @@ class ScopeTests(unittest.TestCase):
         self.assertIn('--upstream --base refs/remotes/upstream/main', branch)
         self.assertNotIn('--upstream "$source"', branch)
 
-    def test_former_template_consumer_can_migrate(self):
+    def test_independent_former_consumer_needs_a_separate_submission(self):
         self.template_consumer(3)
         (self.repo / 'sources/en.other/Cargo.toml').write_text('independent parser\n')
         self.commit('migration')
-        self.assertEqual(self.inspect(), [])
+        self.assertTrue(any('outside' in error for error in self.inspect()))
 
-    def test_former_consumer_still_needs_a_bump(self):
-        self.template_consumer(2)
-        (self.repo / 'sources/en.other/Cargo.toml').write_text('independent parser\n')
-        self.commit('migration')
-        self.assertTrue(any('version 3' in error for error in self.inspect()))
+    def test_independent_primary_source_can_leave_a_template(self):
+        path = self.source / 'Cargo.toml'
+        path.write_text('[dependencies]\ntheme = {path="../../templates/theme"}\n')
+        self.commit('upstream consumer')
+        self.base = self.git('rev-parse', 'HEAD')
+        path.write_text('[dependencies]\n')
+        self.metadata(2)
+        self.commit('independent migration')
+        self.assertEqual(self.inspect(), [])
 
     def new_template_consumer(self, consumer_version, change_template=True):
         uses = 'theme = { path = "../../templates/theme" }\n'

@@ -9,12 +9,14 @@ use aidoku::{
 	},
 	prelude::*,
 };
+
 pub fn request(url: &str) -> Result<Request> {
 	Ok(Request::get(url)?
 		.header("Accept", "text/html")
 		.header("Referer", &format!("{URL}/"))
 		.timeout(30.))
 }
+
 pub fn check_response(response: Response, url: &str) -> Result<Response> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
@@ -30,9 +32,11 @@ pub fn check_response(response: Response, url: &str) -> Result<Response> {
 	}
 	Ok(response)
 }
+
 pub fn get_html(url: &str) -> Result<Document> {
 	Ok(check_response(request(url)?.send()?, url)?.get_html()?)
 }
+
 pub fn series_key(url: &str) -> Option<String> {
 	let path = url
 		.strip_prefix(URL)
@@ -44,6 +48,7 @@ pub fn series_key(url: &str) -> Option<String> {
 		.filter(|slug| !slug.trim().is_empty())?;
 	Some(format!("/series/{slug}"))
 }
+
 pub fn resolve_series_key(key: &str) -> Result<String> {
 	if key.parse::<i32>().is_ok() {
 		// Existing libraries retain the previous API's numeric keys.
@@ -58,6 +63,7 @@ pub fn resolve_series_key(key: &str) -> Result<String> {
 		series_key(key).ok_or(error!("Invalid series key"))
 	}
 }
+
 pub fn manga_from_card(card: &Element, label_novels: bool) -> Option<Manga> {
 	let href = card
 		.attr("href")
@@ -91,6 +97,7 @@ pub fn manga_from_card(card: &Element, label_novels: bool) -> Option<Manga> {
 		..Default::default()
 	})
 }
+
 pub fn basic(html: &Document, key: String, label_novels: bool) -> Result<Manga> {
 	let title = html
 		.select_first("main h1")
@@ -110,6 +117,7 @@ pub fn basic(html: &Document, key: String, label_novels: bool) -> Result<Manga> 
 		..Default::default()
 	})
 }
+
 pub fn search(html: &Document, label_novels: bool) -> MangaPageResult {
 	MangaPageResult {
 		entries: html
@@ -121,18 +129,16 @@ pub fn search(html: &Document, label_novels: bool) -> MangaPageResult {
 		has_next_page: html.select_first("a[rel=next]").is_some(),
 	}
 }
+
 fn labelled(html: &Document, label: &str) -> Option<String> {
-	html.select(".col-lg-3 li")?.find_map(|row| {
-		if row.select_first("strong")?.text()?.trim() != label {
-			return None;
-		}
+	html.select(".col-lg-3 li:has(strong)")?.find_map(|row| {
 		row.text()?
-			.trim()
 			.strip_prefix(label)
 			.map(|text| text.trim().into())
 			.filter(|text: &String| !text.is_empty())
 	})
 }
+
 fn names(text: &str) -> Option<Vec<String>> {
 	let mut names: Vec<String> = Vec::new();
 	for name in text.split([',', '&']).map(str::trim) {
@@ -142,6 +148,7 @@ fn names(text: &str) -> Option<Vec<String>> {
 	}
 	(!names.is_empty()).then_some(names)
 }
+
 pub fn details(html: &Document, key: String, label_novels: bool) -> Result<Manga> {
 	let mut tags: Vec<String> = html
 		.select("#tab-sinopsis .em-badge")
@@ -186,6 +193,7 @@ pub fn details(html: &Document, key: String, label_novels: bool) -> Result<Manga
 		..basic(html, key, label_novels)?
 	})
 }
+
 pub fn date(element: &Element) -> Option<i64> {
 	if let Some(date) = element
 		.select_first("time")
@@ -212,6 +220,7 @@ pub fn date(element: &Element) -> Option<i64> {
 	};
 	Some(current_date() - amount * seconds)
 }
+
 pub fn chapter(link: &Element) -> Result<Chapter> {
 	let href = link.attr("href").ok_or(error!("Missing chapter link"))?;
 	let key = href
@@ -244,6 +253,7 @@ pub fn chapter(link: &Element) -> Result<Chapter> {
 		..Default::default()
 	})
 }
+
 pub fn chapters(html: &Document) -> Result<Vec<Chapter>> {
 	let list = html
 		.select_first("#chapter-list")
@@ -254,6 +264,7 @@ pub fn chapters(html: &Document) -> Result<Vec<Chapter>> {
 		.map(|link| chapter(&link))
 		.collect()
 }
+
 pub fn pages(html: &Document) -> Result<Vec<Page>> {
 	if let Some(content) = html
 		.select_first("#em-reader-pages .novel-content")

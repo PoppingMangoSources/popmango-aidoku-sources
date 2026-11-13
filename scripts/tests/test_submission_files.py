@@ -67,3 +67,11 @@ class SubmissionFilesTests(unittest.TestCase):
                              {'script.sh': b'#!/bin/sh\n', 'icon.png': b'\x89PNG\r\n', 'link.rs': b'script.sh'})
             self.assertEqual(helpers['snapshot_modes'](directory, 'HEAD', 'sources/en.example'),
                              {'script.sh': '100755', 'icon.png': '100644', 'link.rs': '120000'})
+
+    def test_standard_aidoku_test_scaffold_survives_without_test_files(self):
+        files = self.files()
+        files['Cargo.toml'] = files['Cargo.toml'].replace(b'[dev-dependencies]\n', b'[dev-dependencies]\naidoku = { version = "0.3", features = ["test"] }\n')
+        result = without_tests(files)
+        self.assertIn(b'aidoku = { version = "0.3", features = ["test"] }', result['Cargo.toml'])
+        self.assertIn(b'aidoku-test = "1"', result['Cargo.toml'])
+        self.assertNotIn('src/test.rs', result)

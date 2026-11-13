@@ -22,6 +22,7 @@ impl Impl for HiveScans {
 			..Default::default()
 		}
 	}
+
 	fn parse_home(&self, params: &Params, html: &Document) -> Result<HomeLayout> {
 		helpers::parse_home(html, params)
 	}

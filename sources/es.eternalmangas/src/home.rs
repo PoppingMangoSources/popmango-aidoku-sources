@@ -3,6 +3,7 @@ use aidoku::{
 	HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, MangaWithChapter, Result,
 	alloc::Vec, imports::html::Document, prelude::*,
 };
+
 pub fn parse_home(html: &Document) -> Result<HomeLayout> {
 	let label_novels = settings::label_novels();
 	let mut components = Vec::new();

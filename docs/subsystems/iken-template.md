@@ -2,7 +2,7 @@
 title: Iken template and consumers
 type: subsystem
 created: 2026-11-11
-updated: 2026-11-12
+updated: 2026-11-13
 sources:
   - code: templates/iken/src/lib.rs
   - code: templates/iken/src/imp.rs
@@ -23,6 +23,7 @@ sources:
   - code: sources/en.sanascans/src/lib.rs
   - code: sources/en.sanascans/res/filters.json
   - code: sources/en.sanascans/Cargo.toml
+  - ext: https://github.com/Aidoku-Community/sources/pull/900#pullrequestreview-5897319010
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/iken
   - ext: https://github.com/LucifersCircle/pirate.vodka-extensions/tree/0.9/stable/src/Hijala
   - ext: https://github.com/kittycatgit/kitty-extensions-0.9/tree/main/src/SanaScans
@@ -30,14 +31,15 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
   - ext: https://github.com/Aidoku-Community/sources/commit/289b5613bb47f62c6eb91de3d8b2282643586533
   - ext: https://github.com/Aidoku-Community/sources/commit/79f1619cc0d14e853619b4e13d48b5331cd099b1
-verified_at: 75b3e9f
+verified_at: 73fde51
 ---
 
 
 Iken serves Hive, Nyx, Vortex, Magus, Hijala and Sana through the Params/Impl arrangement
 used by [[mangak-template]]. Eternal now has an independent current-site HTML implementation.
-The production-only `fix-iken` submission starts from canonical `289b5613`; its five commits
-separate shared fixes, Eternal migration, novels, Hijala and Sana. Fork tests and tooling stay on main.
+The production-only `fix-iken` submission is refreshed onto canonical `a607bebe`; four commits
+separate shared fixes, novel settings, Hijala and Sana. Eternal's independent migration is one
+commit on `fix-eternal` from the same canonical base. Fork tests and tooling stay on main.
 
 ## API, keys and current controls
 
@@ -51,9 +53,9 @@ suffixes. Numeric chapter-only updates avoid a details request. Reader calls nee
 > independent; accessible overrides only the price fallback (`templates/iken/src/helpers.rs:60`).
 
 Hijala and Sana use the public API directly; no JS state decoder or cache is necessary.
-Current site controls include sort, tri-state genres, single status, multiple types, availability,
-chapter count and creation-year ranges. Firecrawl browser requests verified saleFilter=on_sale /
-not_on_sale, comma-separated seriesType and single seriesStatus. Positive and impossible API probes
+Current source controls include sort, tri-state genres, single status, multiple types,
+chapter count and creation-year ranges. Earlier site probes verified saleFilter (omitted from the source under the commercial-control
+policy), comma-separated seriesType and single seriesStatus. Positive and impossible API probes
 established actual narrowing and genre exclusion. Existing four consumers retain include-only controls.
 Sana sets page_size=30 and filename page sorting, matching its current Keiyoushi override;
 Hijala uses 18 results. Both use official site icons with an opaque 128-pixel canvas and margin.
@@ -64,8 +66,8 @@ Hijala uses 18 results. Both use official site icons with an opaque 128-pixel ca
 ## Home and novels
 
 Home concurrently requests HTML, createdAt New Releases, NOVEL results and one metadata batch.
-HTML determines the existing section order and real chapter rows. Every Latest Releases and
-Latest Updates component uses MangaChapterList with page_size=5 when chapters are present.
+HTML determines the existing section order and real chapter rows. Latest Releases uses MangaChapterList with page_size=5 when chapters are present. The separate
+paid Latest Updates row is excluded while still bounding adjacent sections.
 Pinned entries absent from the first metadata page survive with readable path keys, chapter
 numbers and HTML timestamps. Relative footer dates are supported, and multiple chapter updates
 for the same series remain separate (`templates/iken/src/home.rs:170`).
@@ -86,7 +88,7 @@ The former JSON catalogue is stale: the reported miracle title is absent, while 
 has chapters. The reported divorce title has more chapters on the site than its old API record.
 The new implementation reads current HTML catalogue, details, chapters and reader content.
 Old numeric keys use the API only to recover the slug, then load current HTML. They retain their
-original library key (`sources/es.eternalmangas/src/helpers.rs:40`). Current descriptions use the
+original library key (`sources/es.eternalmangas/src/helpers.rs:52`). Current descriptions use the
 site's displayed synopsis, avoiding literal escaped quotes and carriage-return strings.
 The original EM logo replaces the old icon. Catalogue contentRating is **2**, explicitly requested
 on November 12; this supersedes earlier rating-1 instructions. Individual title ratings remain separate.
@@ -116,7 +118,7 @@ HTTP tests cover errors, complete decoded chapter paths, key-only reading, filen
 pagination failures. Optional captured-home tests require AIDOKU_IKEN_EVIDENCE_DIR; a missing
 directory does not count as captured-site evidence. Live home suites check every latest component.
 
-Full live suites passed for Eternal, Hive, Vortex, Magus, Hijala and Sana. Nyx passed four tests,
+The prior full live suites passed for Eternal, Hive, Vortex, Magus, Hijala and Sana. Nyx passed four tests,
 but the original sort/pagination run had a network request failure. Its retry instead failed an
 exact equality assertion on two latest-update snapshots: the same title moved to the front.
 Filter-clearing comparisons now use alphabetical order for both requests. Sort request errors
@@ -128,13 +130,13 @@ No runner result establishes app selector parity, cookies, WebView sessions or d
 
 | Consumer | Fork version | Submission version | Catalogue rating |
 | --- | --- | --- | --- |
-| Hive | 11 | 3 | 0 |
-| Nyx | 10 | 2 | 0 |
-| Vortex | 12 | 4 | 0 |
-| Magus | 11 | 3 | 0 |
-| Eternal | 12 | 3 | 2 |
-| Hijala | 1 | 1 | 0 |
-| Sana | 1 | 1 | 0 |
+| Hive | 14 | 3 | 0 |
+| Nyx | 13 | 2 | 0 |
+| Vortex | 15 | 4 | 0 |
+| Magus | 14 | 3 | 0 |
+| Eternal | 15 | 3 | 2 |
+| Hijala | 5 | 1 | 0 |
+| Sana | 5 | 1 | 0 |
 
 
 ## Nyx reference follow-up
@@ -214,3 +216,34 @@ rather than enlarging favicons. Verified natural sizes on November 12, 2026:
 - [Sana logo](https://media.sanascans.com/upload/2025/08/07/1000301312-836f79641ae0985a.webp): 2354×2564.
 
 Final package icons remain opaque 128×128 PNGs, with the artwork fitted inside 112×112.
+
+
+## November 13 review corrections
+
+All seven inline comments and the review summary were checked individually: Hijala/Sana
+item/method spacing, Hive method spacing, Eternal helper spacing, Eternal isGenre, the optional
+metadata selector simplification and retained standard dev-dependencies. Changes are folded
+into the existing four Iken commits and the separate Eternal migration commit. No review-fix
+commit is appended. The Iken source/template dev scaffolds are restored, their lockfiles are
+synchronized, and main keeps the fork tests.
+
+> ⚠️ Until the independent migration merges, canonical Eternal still consumes Iken. Its old
+> Params initializer needs the new API URL type and its package needs app 0.8.3. These minimal
+> compatibility changes and the normal submission bump remain with Iken; the independent
+> migration does not. Rebase the remaining branch after either PR merges.
+
+Eternal metadata rows now use :has(strong) and an exact label-prefix match, keeping selectors
+inside .col-lg-3. Fixtures cover an unlabelled row, a near-matching label and metadata outside
+the sidebar. The genre resource keeps isGenre; a deterministic test guards that flag.
+Automatic guards cover reviewed spacing, preservation of standard test dependencies, the
+standalone source branch alias and rejection of independent migrations inside template PRs.
+Spacing calibration found merged counterexamples, so unrelated files receive notes rather
+than failures. The standard scaffold rule preserves upstream entries instead of inventing
+an unconditional dependency requirement for all older sources.
+
+
+Review verification: the Eternal selector/genre and existing deterministic fixtures pass;
+the template's deterministic suite and loopback HTTP tests pass. Captured-home tests still
+need their optional evidence directory, so the loopback run does not establish fresh captured
+site rendering. The seven fork source versions advance once for this publication; submission
+versions remain upstream plus one (new Hijala/Sana remain 1).

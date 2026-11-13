@@ -261,6 +261,20 @@ WHOLE_TEXT_ESCAPED = re.compile(r"PageContent::text\(\s*[\w.]+\.escape_markdown\
 REMAPPED_REQUEST = re.compile(r"Request::(?:get|post|put)\([^;]*?\)\s*\.map_err\(", re.S)
 
 
+ITEM_SPACING = re.compile(
+    r"(?m)^(?P<indent>\t*)(?:};?|struct [^{}\n]+;)\n"
+    r"(?=(?P=indent)(?:(?:pub(?:\([^)]*\))? )?(?:async )?fn\b|impl\b|register_source!))"
+)
+
+
+def check_item_spacing(path: Path, text: str) -> None:
+    reviewed = {"en.hijalascans", "en.sanascans", "en.hivescans", "es.eternalmangas", "iken"}
+    report = fail if any(part in reviewed for part in path.relative_to(ROOT).parts) else note
+    for match in ITEM_SPACING.finditer(text):
+        line = text.count("\n", 0, match.start()) + 2
+        report(path, f"line {line} needs a blank line between Rust items or methods")
+
+
 def check_api_use(path: Path, text: str) -> None:
     """aidoku-rs calls that review comments replaced (AGENTS.md / CLAUDE.md sections 3 and 7)."""
     line = lambda match: text.count("\n", 0, match.start()) + 1
@@ -347,6 +361,7 @@ def check_rust(source: Path, single_language: bool) -> None:
         if path.name == "test.rs":
             continue
         check_cards(path, path.read_text())
+        check_item_spacing(path, path.read_text())
         check_api_use(path, path.read_text())
         for number, line in enumerate(path.read_text().splitlines(), 1):
             where = f"line {number}"
@@ -494,6 +509,9 @@ def check_template_http(template: str) -> None:
 
 
 def check_template_review(template: str) -> None:
+    for path in (ROOT / "templates" / template / "src").glob("*.rs"):
+        if path.name not in {"test.rs", "source_test.rs"}:
+            check_item_spacing(path, path.read_text())
     if template != "keyoapp":
         return
     for path in (ROOT / "templates" / template / "src").glob("*.rs"):
@@ -532,6 +550,10 @@ def check_reviewed_consumer(source: Path, info: dict) -> None:
         for item in filters:
             if isinstance(item, dict) and item.get("type") == "multi-select" and item.get("canExclude") is True:
                 fail(filters_path, f"{item.get('id')!r} enables exclusions on a reviewed include-only site")
+    if source_id == "es.eternalmangas":
+        for item in filters:
+            if isinstance(item, dict) and item.get("id") == "genre" and not item.get("isGenre"):
+                fail(filters_path, "reviewed genre filter must retain isGenre")
     if source_id == "multi.mangaball":
         library = source / "src/lib.rs"
         if library.exists() and re.search(r'\.escape_markdown\s*\(', library.read_text()):

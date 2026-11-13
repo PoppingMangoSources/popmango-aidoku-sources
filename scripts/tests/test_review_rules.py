@@ -119,5 +119,23 @@ class ReviewRuleTests(unittest.TestCase):
             self.assertEqual(checks.changed_sources("base"), ["en.example"])
 
 
+    def test_reviewed_rust_items_need_blank_lines(self):
+        source = self.consumer("iken", name="en.hijalascans")
+        path = source / "src/lib.rs"
+        for text, fails in [("struct Example;\nimpl Example {}\n", True), ("struct Example;\n\nimpl Example {}\n", False), ("impl Example {\n\tfn new() {\n\t\tSelf\n\t}\n\tfn params() {}\n}\n", True)]:
+            checks.failures.clear()
+            checks.check_item_spacing(path, text)
+            self.assertEqual(bool(checks.failures), fails)
+
+    def test_reviewed_genre_keeps_is_genre(self):
+        source = self.consumer("iken", name="es.eternalmangas")
+        path = source / "res/filters.json"
+        for enabled, fails in [(False, True), (True, False)]:
+            checks.failures.clear()
+            path.write_text(json.dumps([{"type":"select", "id":"genre", "isGenre":enabled}]))
+            checks.check_reviewed_consumer(source, {})
+            self.assertEqual(bool(checks.failures), fails)
+
+
 if __name__ == "__main__":
     unittest.main()

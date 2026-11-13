@@ -184,3 +184,6 @@ Reviewed every production file/resource against the canonical sources, archived 
 - 2026-11-13: Compared Yomu MangaBall and five merged sources, then added optional chapter deduplication using observed likes/views/date data. Preserve winning-group parts, languages, volumes and original keys; no extra requests.
 
 - 2026-11-13: Corrected the force-push workflow: fold new-source PR fixes into the original commit by default, even after opening. Preserve explicitly requested multi-commit layouts; append a review-fix commit only when requested. MangaBall was squashed without changing its source tree.
+
+
+- 2026-11-13: Addressed Iken review: separate Eternal migration on fix-eternal, restore standard test scaffolds, preserve isGenre and fix Rust item spacing. Added the requested :has metadata selector and parser/guard regressions; retain only necessary legacy Eternal compatibility in the Iken branch.

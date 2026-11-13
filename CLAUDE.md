@@ -474,6 +474,16 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | A Relevance sort the site doesn't have, copied from a reference client that omits `sort_by` (owner's screenshot of the site's Sort By list) | Sorts and filters come from the site's own controls, in the site's order and wording. A reference client shows which parameters work, never which options to offer. When the sandbox can't load the search page, ask for a screenshot of its panel before writing `filters.json`. | R |
 | Extra fix commits remained after the owner asked to force-push (MangaBall correction) | A new-source submission stays one `feat: add <id>` commit, including after the PR opens, unless the owner explicitly requests separate commits. Fold fixes into the requested history, preserve a backup, verify tree equality and use an explicit-SHA force-with-lease. `--fix` adds a commit, so use it only when a separate commit was requested. | R |
 
+### From #900 (Iken and EternalMangas)
+
+| What was flagged | The rule | |
+|---|---|---|
+| Eternal's independent rewrite was bundled with the Iken template update | A rewrite that no longer uses a template belongs in its own PR. Keep only necessary API/minimum-version compatibility changes with the shared template, and test the remaining legacy consumer until its migration merges. | R |
+| `aidoku`/`aidoku-test` development dependencies were removed because tests were excluded | Retain the standard test scaffold even without test files. Removing fork-only tests does not justify deleting these dependencies. Submission normalization may remove genuinely unused test-only serde_json. Scope checks reject removing an upstream scaffold. | F |
+| Genre resource rewrite dropped `isGenre` | Preserve genre capabilities while changing options, IDs or select types. Eternal's genre select must keep `isGenre: true`. | F |
+| Structs, impls, registration and methods ran together | Separate Rust items and methods with blank lines; rustfmt does not insert them. Reviewed Iken/Eternal gaps fail the checker; existing merged counterexamples are advisory elsewhere. | F/N |
+| Metadata label lookup could use `:has`/`:contains` | A scoped selector can simplify the walk. Eternal uses `.col-lg-3 li:has(strong)` and exact label-prefix matching. `:contains` was an optional suggestion, not a general requirement; test host/runner support before using it. | R |
+
 ### From #860 (`en.flamecomics`)
 
 | What was flagged | The rule | |
@@ -1052,6 +1062,8 @@ went in one of these ways, and new ones go in the same way:
   `origin/main`. README/website/workflow edits, other sources, generated files, merge commits,
   wrong ids and wrong submission versions fail. A clean final diff cannot conceal unrelated
   commits that were later reverted.
+- An independent rewrite that leaves a template belongs in its own PR. A template PR may keep
+  only necessary compatibility changes to a consumer still using it.
 - A submission may also change `templates/<name>/` when its source depends on that template,
   and other sources depending on it, each at exactly its upstream version plus one. A source not
   yet upstream may ride along at version 1 only when it uses the changed template, so a template
@@ -1484,11 +1496,9 @@ Sana uses 30 results per page and filename page ordering; other consumers keep t
 
 EternalMangas' catalogue rating is 2, explicitly requested by the owner on November 12,
 superseding the earlier rating-1 instruction; per-title
-NSFW classification is separate. Keep its site-specific migration in its own submission
-commit, with shared template compatibility changes in the template commits.
+NSFW classification is separate. Keep its site-specific migration in its own PR on `fix-eternal`, with only necessary shared-template compatibility changes in the Iken commits.
 
-The owner requested the submission branch name `fix-iken`; it is an explicit exception to
-the usual template branch spelling. Validate restored consumers on fork main with their live suites, then prepare the submission from canonical upstream with fork tests removed.
+The owner requested `fix-iken` for the template and `fix-eternal` for the independent EternalMangas update. Both are explicit branch-name exceptions recognized by scope checks and push gates. Validate restored consumers on fork main with their live suites, then prepare the submission from canonical upstream with fork tests removed.
 
 ## 17. Sources kept off `main` while upstream
 
