@@ -169,3 +169,7 @@ Consumer package verification also found Rage Scans still declaring app 0.7.1 de
 ## 2026-11-13 MangaBall
 
 Added [[mangaball]] with the new `multi.mangaball` source. The site refuses the sandbox, so the page separates what the owner's captures show from what is still unverified.
+
+## 2026-11-13 MangaBall search decoding
+
+Reproduced scalar language metadata and nameless records in ascending searches. Normalize the observed language shapes, reject invalid card identities through fallible conversion, and test every sort direction through the source. See [[mangaball]].

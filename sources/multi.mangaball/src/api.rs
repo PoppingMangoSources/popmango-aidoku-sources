@@ -4,7 +4,7 @@ use crate::{
 	settings,
 };
 use aidoku::{
-	MangaPageResult, Result,
+	Manga, MangaPageResult, Result,
 	alloc::{String, Vec, format, string::ToString},
 	helpers::uri::QueryParameters,
 	imports::net::{Request, Response},
@@ -87,7 +87,11 @@ impl SearchParams {
 	pub fn page(&self, page: i32) -> Result<MangaPageResult> {
 		let response: Paginated<Title> = get(&self.url(page))?;
 		Ok(MangaPageResult {
-			entries: response.data.into_iter().map(Into::into).collect(),
+			entries: response
+				.data
+				.into_iter()
+				.filter_map(|title| Manga::try_from(title).ok())
+				.collect(),
 			has_next_page: response.pagination.page < response.pagination.total_pages,
 		})
 	}

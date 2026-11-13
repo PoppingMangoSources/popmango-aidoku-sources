@@ -12,7 +12,9 @@ sources:
   - code: sources/multi.mangaball/src/settings.rs
   - code: sources/multi.mangaball/res/filters.json
   - code: sources/multi.mangaball/res/settings.json
-verified_at: a32ae46
+  - ext: https://mangaball.com/search-advanced
+  - ext: https://mangaball.com/api/v1/title/search-advanced
+verified_at: cc4a119
 ---
 
 MangaBall (`mangaball.com`, formerly `mangaball.net`) is a Next.js app over a JSON API at
@@ -20,11 +22,10 @@ MangaBall (`mangaball.com`, formerly `mangaball.net`) is a Next.js app over a JS
 own client does. Everything below was read from the owner's captures of the site on
 2026-11-13 (home, search, a title, a chapter, and the site's script bundles) unless marked.
 
-> ⚠️ Cloudflare refuses the sandbox and GitHub's runners outright (403 "Just a moment" for
-> curl, headless and headed Chromium, probed 2026-11-13). The live tests in `src/test.rs` have
-> never run. Every response model was checked by parsing the captured responses with the
-> source's own structs, and `review_` tests cover the rest offline. A parameter marked
-> (unverified) below needs a console probe on the site before it is relied on.
+> ⚠️ Earlier requests were blocked by Cloudflare. A later public API capture on 2026-11-13
+> succeeded for all five sorts in both directions and details. Availability varies by client;
+> a successful external request does not prove the source decoder or device behavior.
+> A parameter marked (unverified) below still needs a positive narrowing probe.
 
 ## Endpoints
 
@@ -135,3 +136,30 @@ The same group can upload a chapter twice; both are kept.
 
 Images need the site as referer (`ImageRequestProvider`); the image host is a separate
 Cloudflare zone.
+
+## Search decoding correction
+
+The ascending `lastupdate` response carries `availableTranslatedLanguages` as a single `"en"`
+string; newer records use arrays. `string_or_vec` accepts those two observed shapes and retains
+errors for other types. Some ascending `views`, `created_at` and `name` responses include an
+incomplete record with no `name`. Title decoding permits that absent field, but `TryFrom<Title>`
+rejects missing/blank titles and blank keys. Lists and every home layout skip invalid cards without
+reordering valid entries or changing server pagination; details propagate the identity error.
+
+> ⚠️ An API 200 and different ascending/descending IDs missed both app failures. Exercise the
+> actual decoder and source entry point for every direction, and keep deterministic regressions
+> for scalar/list languages, incomplete identities, home conversions and meaningful detail errors.
+
+MangaDotNet provides the merged untagged scalar/list pattern; Flame provides fallible card
+conversion. No extra dependency, default empty title or per-card request is needed.
+
+A keyword probe with the single token `zzqxjvnosuchtitlezzqxjv` returns no titles; `hound`
+returns the known series. The older negative fixture contained ordinary words ("no such title")
+and matched real results, so it was not an impossible query. Keep the empty-result assertion with
+an actually impossible token and retain a positive title-search assertion.
+
+Verification after the correction: all 14 source tests pass, including every live sort direction,
+positive/negative search, paging, details, chapters, pages, listings, home and deep links. The
+captured ten sort responses and one detail response also decode through the source models.
+Formatting, warning-failing production/test Clippy, packaging and Aidoku verification pass.
+Device rendering still needs an app check.

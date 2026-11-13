@@ -1,10 +1,11 @@
 use crate::{api::BASE_URL, helpers::title_type};
 use aidoku::{
-	Chapter, ContentRating, Manga, MangaStatus, Viewer,
+	AidokuError, Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, format, string::ToString, vec},
 	imports::std::parse_date,
+	prelude::*,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 const CDN_URL: &str = "https://bulbasaur.poke-black-and-white.net/covers";
 
@@ -28,14 +29,18 @@ pub struct Pagination {
 #[derive(Deserialize)]
 pub struct Title {
 	pub id: String,
-	name: String,
+	name: Option<String>,
 	image: Option<Image>,
 	#[serde(default)]
 	description: Vec<String>,
 	#[serde(default, rename = "originalLanguage")]
 	pub original_language: String,
 	status: Option<String>,
-	#[serde(default, rename = "availableTranslatedLanguages")]
+	#[serde(
+		default,
+		rename = "availableTranslatedLanguages",
+		deserialize_with = "string_or_vec"
+	)]
 	pub translated_languages: Vec<String>,
 	#[serde(default)]
 	pub tags: Vec<Tag>,
@@ -45,6 +50,21 @@ pub struct Title {
 	pub is18plus: bool,
 	#[serde(default)]
 	pub recent_chapters: Vec<ChapterItem>,
+}
+
+fn string_or_vec<'de, D: Deserializer<'de>>(
+	deserializer: D,
+) -> core::result::Result<Vec<String>, D::Error> {
+	#[derive(Deserialize)]
+	#[serde(untagged)]
+	enum StringOrVec {
+		Single(String),
+		Multiple(Vec<String>),
+	}
+	Ok(match StringOrVec::deserialize(deserializer)? {
+		StringOrVec::Single(value) => vec![value],
+		StringOrVec::Multiple(values) => values,
+	})
 }
 
 #[derive(Deserialize)]
@@ -123,7 +143,11 @@ impl Image {
 }
 
 impl Title {
-	fn into_manga(self, detailed: bool) -> Manga {
+	fn into_manga(self, detailed: bool) -> Result<Manga> {
+		let name = self.name.ok_or_else(|| error!("Series has no title"))?;
+		if self.id.trim().is_empty() || name.trim().is_empty() {
+			bail!("Series has no key or title");
+		}
 		let has_tag = |names: &[&str]| {
 			self.tags
 				.iter()
@@ -167,17 +191,19 @@ impl Title {
 			manga.viewer = viewer;
 		}
 		manga.key = self.id;
-		manga.title = self.name;
-		manga
+		manga.title = name;
+		Ok(manga)
 	}
 
-	pub fn into_details(self) -> Manga {
+	pub fn into_details(self) -> Result<Manga> {
 		self.into_manga(true)
 	}
 }
 
-impl From<Title> for Manga {
-	fn from(title: Title) -> Self {
+impl TryFrom<Title> for Manga {
+	type Error = AidokuError;
+
+	fn try_from(title: Title) -> Result<Self> {
 		title.into_manga(false)
 	}
 }

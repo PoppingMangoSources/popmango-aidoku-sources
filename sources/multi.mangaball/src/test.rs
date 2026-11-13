@@ -183,7 +183,7 @@ fn review_home_layout() {
 
 #[aidoku_test]
 fn review_cards_are_compact() {
-	let manga: Manga = title(SERIES, "ja", true).into();
+	let manga = Manga::try_from(title(SERIES, "ja", true)).unwrap();
 	assert_eq!(manga.key, SERIES);
 	assert_eq!(manga.title, "Example Title");
 	assert_eq!(
@@ -193,12 +193,85 @@ fn review_cards_are_compact() {
 	assert_eq!(manga.content_rating, ContentRating::NSFW);
 	assert!(manga.description.is_none() && manga.authors.is_none() && manga.tags.is_none());
 
-	let details = title(SERIES, "ja", false).into_details();
+	let details = title(SERIES, "ja", false).into_details().unwrap();
 	assert_eq!(details.content_rating, ContentRating::Safe);
 	assert_eq!(
 		details.url.as_deref(),
 		Some("https://mangaball.com/title-detail/6851547b702284f834178357")
 	);
+}
+
+#[aidoku_test]
+fn review_search_language_shapes() {
+	for languages in [serde_json::json!("en"), serde_json::json!(["en", "fr"])] {
+		let response: models::Paginated<Title> = serde_json::from_value(serde_json::json!({
+			"data": [{"id": SERIES, "name": "Example", "availableTranslatedLanguages": languages}],
+			"pagination": {"page": 1, "total_pages": 2}
+		}))
+		.unwrap();
+		let parsed = response.data.into_iter().next().unwrap();
+		assert_eq!(parsed.translated_languages[0], "en");
+		assert_eq!(Manga::try_from(parsed).unwrap().title, "Example");
+	}
+	assert!(
+		serde_json::from_value::<Title>(serde_json::json!({
+			"id": SERIES, "name": "Example", "availableTranslatedLanguages": 42
+		}))
+		.is_err()
+	);
+}
+
+#[aidoku_test]
+fn review_missing_titles_do_not_break_valid_cards() {
+	reset();
+	let response: models::Paginated<Title> = serde_json::from_value(serde_json::json!({
+		"data": [
+			{"id": SERIES},
+			{"id": SERIES, "name": null},
+			{"id": SERIES, "name": "  "},
+			{"id": " ", "name": "Example"},
+			{"id": SERIES, "name": "Example"}
+		],
+		"pagination": {"page": 1, "total_pages": 2}
+	}))
+	.unwrap();
+	let entries: Vec<Manga> = response
+		.data
+		.into_iter()
+		.filter_map(|title| title.try_into().ok())
+		.collect();
+	assert_eq!(entries.len(), 1);
+	assert_eq!(entries[0].key, SERIES);
+	for layout in [
+		Layout::Featured,
+		Layout::Ranked,
+		Layout::Row,
+		Layout::Chapters,
+	] {
+		let mut valid = title(SERIES, "ja", false);
+		valid.recent_chapters.remove(0);
+		let missing: Title = serde_json::from_value(serde_json::json!({
+			"id": SERIES, "recent_chapters": [{"id": SERIES, "lang": "en"}]
+		}))
+		.unwrap();
+		let component = fill(
+			"lastupdate",
+			"Latest Chapter Updates",
+			layout,
+			vec![missing, valid],
+			&SearchParams::new(None),
+		);
+		let count = match component {
+			HomeComponentValue::BigScroller { entries, .. } => entries.len(),
+			HomeComponentValue::Scroller { entries, .. }
+			| HomeComponentValue::MangaList { entries, .. } => entries.len(),
+			HomeComponentValue::MangaChapterList { entries, .. } => entries.len(),
+			_ => panic!("unexpected layout"),
+		};
+		assert_eq!(count, 1);
+	}
+	let missing: Title = serde_json::from_value(serde_json::json!({"id": SERIES})).unwrap();
+	assert!(missing.into_details().is_err());
 }
 
 #[aidoku_test]
@@ -355,9 +428,14 @@ fn search_pages_and_filters() {
 	assert_ne!(first.entries[0].key, second.entries[0].key);
 
 	let nothing = source
-		.get_search_manga_list(Some("zzqxjv no such title zzqxjv".into()), 1, Vec::new())
+		.get_search_manga_list(Some("zzqxjvnosuchtitlezzqxjv".into()), 1, Vec::new())
 		.unwrap();
 	assert!(nothing.entries.is_empty());
+
+	let found = source
+		.get_search_manga_list(Some("hound".into()), 1, Vec::new())
+		.unwrap();
+	assert!(found.entries.iter().any(|manga| manga.key == SERIES));
 
 	let adult = source
 		.get_search_manga_list(
@@ -509,4 +587,35 @@ fn deep_links() {
 			key: "6af082f2a91bdf88681d2971".into()
 		})
 	);
+}
+
+#[aidoku_test]
+fn all_sort_directions_load() {
+	reset();
+	let source = MangaBall::new();
+	for (index, sort) in SORTS.iter().enumerate() {
+		let mut first_keys = Vec::new();
+		for ascending in [false, true] {
+			let page = source
+				.get_search_manga_list(
+					None,
+					1,
+					vec![FilterValue::Sort {
+						id: "sort".into(),
+						index: index as i32,
+						ascending,
+					}],
+				)
+				.unwrap_or_else(|error| panic!("{sort}, ascending={ascending}: {error:?}"));
+			assert!(!page.entries.is_empty(), "{sort}, ascending={ascending}");
+			assert!(page.has_next_page);
+			assert!(
+				page.entries
+					.iter()
+					.all(|manga| !manga.key.trim().is_empty() && !manga.title.trim().is_empty())
+			);
+			first_keys.push(page.entries[0].key.clone());
+		}
+		assert_ne!(first_keys[0], first_keys[1], "{sort}");
+	}
 }

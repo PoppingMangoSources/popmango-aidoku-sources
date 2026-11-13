@@ -93,7 +93,8 @@ that shipped:
 - [ ] Toggles and other secondary filters set `"hideFromHeader": true`
 - [ ] The sort filter comes first, untitled unless the site labels it
 - [ ] Every serde rename and every query parameter checked against a captured response; a
-      parameter the endpoint ignores is removed
+      parameter the endpoint ignores is removed. Decode responses for every sort direction through
+      the source, covering observed scalar/list variants and incomplete listing records.
 - [ ] With `contentRating` 1, an adult-hiding switch defaults to hidden (or rate the source 2)
 - [ ] Home sections in the site's order; banners as `LinkValue::Manga` with sizes set when fixed
 - [ ] Every home feed honours the same settings as browse — check what the feed endpoint
