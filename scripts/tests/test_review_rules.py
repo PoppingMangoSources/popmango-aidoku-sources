@@ -35,6 +35,16 @@ class ReviewRuleTests(unittest.TestCase):
         (path / "res/filters.json").write_text(json.dumps(filters or []))
         return path
 
+    def test_reader_import_requires_minimum_app_on_every_consumer(self):
+        source = self.consumer("mangathemesia")
+        template = checks.ROOT / "templates/mangathemesia/src"
+        template.mkdir(parents=True)
+        (template / "markdown.rs").write_text('fn parse() { element.child_nodes(); }\n')
+        for version, fails in [("0.7.1", True), ("0.8.2", True), ("0.8.3", False)]:
+            checks.failures.clear()
+            checks.check_reviewed_consumer(source, {"info": {"minAppVersion": version}})
+            self.assertEqual(bool(checks.failures), fails)
+
     def test_expand_control_only_synopsis_fails(self):
         self.assertTrue(self.template('manga.description = html.select_first("#expand_content").and_then(|el| el.text());\n'))
 

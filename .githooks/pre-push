@@ -28,7 +28,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         echo "Commit source/template changes before validating a push." >&2; exit 1
     fi
     if [ -n "$source" ]; then
-        python3 "$tooling/scripts/check-sources.py" --repo "$root" --upstream "$source"
+        python3 "$tooling/scripts/check-sources.py" --repo "$root" --upstream --base refs/remotes/upstream/main
         "$tooling/scripts/verify-source.sh" "$root/sources/$source"
         python3 "$tooling/scripts/review-contracts.py" --repo "$root" --crate "sources/$source"
     else

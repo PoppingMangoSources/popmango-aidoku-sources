@@ -188,6 +188,19 @@ class ScopeTests(unittest.TestCase):
         self.template_consumer(2)
         self.assertTrue(any('en.other' in e and 'version 3' in e for e in self.inspect()))
 
+    def test_consumer_lock_sync_needs_no_version_bump(self):
+        self.template_consumer(2)
+        self.git('rm', 'sources/en.other/res/filters.json')
+        (self.repo / 'sources/en.other/Cargo.lock').write_text('dependency synchronization\n')
+        self.commit('synchronize consumer lockfile')
+        self.assertEqual(self.inspect(), [])
+
+    def test_source_push_checks_all_changed_template_consumers(self):
+        hook = (SCRIPTS.parent / '.githooks/pre-push').read_text()
+        branch = hook.split('    if [ -n "$source" ]; then', 1)[1].split('    else', 1)[0]
+        self.assertIn('--upstream --base refs/remotes/upstream/main', branch)
+        self.assertNotIn('--upstream "$source"', branch)
+
     def test_former_template_consumer_can_migrate(self):
         self.template_consumer(3)
         (self.repo / 'sources/en.other/Cargo.toml').write_text('independent parser\n')

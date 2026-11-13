@@ -283,3 +283,5 @@ section. Excluded headings still bound their neighbors. Featured carousels use a
 already available from home HTML and existing responses, without per-card requests. True
 banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
 BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.
+
+When a shared template adds a dependency, synchronize its own lockfile and every consumer lockfile. Verify the complete graphs with `cargo metadata --locked --filter-platform wasm32-unknown-unknown`. Upstream peer-consumer changes limited to Cargo.lock may retain their versions; behavior or source/resource changes still require the normal bump. Fork publication rules remain unchanged.

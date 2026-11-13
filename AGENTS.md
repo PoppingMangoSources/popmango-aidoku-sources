@@ -313,6 +313,7 @@ Each of these was a real comment. They generalise.
 | A translated-languages filter | If the app's own languages setting covers it, the filter is redundant. Don't ship both a filter and a setting for the same axis unless the filter **overrides** the setting for that search. kkantan asked for that with content ratings (#815); `en.atsumaru` does it for content types too, since readers filter novels and comics per search. A filter that only repeats a setting, or is silently ANDed with it, is the redundant kind. |
 | Genre filter presentation | Genre multi-selects show as tags. In `filters.json`, `isGenre` already implies `usesTagStyle` (AidokuRunner decodes the default from `isGenre`), so don't set it there; a `MultiSelectFilter` built in Rust defaults to `false` and must set `uses_tag_style: true`. |
 | 14 listings | Listings that are just search sorts don't need to exist. Keep the ones home sections link to. |
+| Adding a template dependency left consumer lockfiles stale (Scythe review) | Refresh every direct and transitive consumer’s `Cargo.lock`, then verify each with `cargo metadata --locked` for its target. Dependency metadata synchronization alone does not require a peer consumer version bump in an upstream submission; code/configuration or behavior changes still do. |
 | A helper sat in `lib.rs` | Key/url helpers belong in `helpers.rs`. |
 | `String::new()` / `Vec::new()` everywhere | `#[derive(Default)]` on the struct, then `..Default::default()`. |
 | Temporary vectors before assigning to params | Assign straight into the params struct. |

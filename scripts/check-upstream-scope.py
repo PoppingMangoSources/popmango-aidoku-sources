@@ -116,7 +116,9 @@ def inspect(repo, base, head, source):
             elif version != 1:
                 errors.add(f"{consumer} is new with the template change, so it must use version 1, found {version}")
         elif version != previous + 1:
-            errors.add(f"{consumer} changes with the template, so it must use version {previous + 1}, found {version}")
+            paths = git(repo, "diff", "--name-only", base + "..." + head, "--", f"sources/{consumer}").decode().splitlines()
+            if version != previous or paths != [f"sources/{consumer}/Cargo.lock"]:
+                errors.add(f"{consumer} changes with the template, so it must use version {previous + 1}, found {version}")
     metadata_path = prefix + "res/source.json"
     metadata = json.loads(git(repo, "show", head + ":" + metadata_path))["info"]
     if metadata.get("id") != source:

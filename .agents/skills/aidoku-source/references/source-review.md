@@ -163,3 +163,5 @@ banner artwork uses ImageScroller and known dimensions; portrait-cover hero slid
 BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.
 
 Home enrichment must keep ranking rows unchanged and preserve available HTML metadata when API fields are absent. Novel labels apply to HTML cards as well as API cards, and featured/detail tag ratings use the same classifier. Deterministic regressions cover these boundaries.
+
+When a shared template adds a dependency, synchronize its own lockfile and every consumer lockfile. Verify the complete graphs with `cargo metadata --locked --filter-platform wasm32-unknown-unknown`. Upstream peer-consumer changes limited to Cargo.lock may retain their versions; behavior or source/resource changes still require the normal bump. Fork publication rules remain unchanged.

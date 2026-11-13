@@ -265,3 +265,5 @@ Raven merged in [882](https://github.com/Aidoku-Community/sources/pull/882); its
 > directory. Main retains the shared template for Scythe. The archive's older
 > KingOfShojo/Rokari metadata minimums move to 0.8.3 for its shared reader imports; archive
 > package versions stay unchanged. Future source updates start from current canonical upstream.
+
+When a shared template adds a dependency, synchronize its own lockfile and every consumer lockfile. Verify the complete graphs with `cargo metadata --locked --filter-platform wasm32-unknown-unknown`. Upstream peer-consumer changes limited to Cargo.lock may retain their versions; behavior or source/resource changes still require the normal bump. Fork publication rules remain unchanged.

@@ -376,9 +376,11 @@ def readme_version(source_id: str) -> int | None:
     return int(next(iter(found))) if found else None
 
 
-def check_version_bump(source: Path, version: int, base: str) -> None:
+def check_version_bump(source: Path, version: int, base: str, lock_sync: bool = False) -> None:
     path = source / "res" / "source.json"
     paths = [str(source.relative_to(ROOT))]
+    if lock_sync and git("diff", "--name-only", base, "--", paths[0]).splitlines() == [paths[0] + "/Cargo.lock"]:
+        return
     manifest = tomllib.loads((source / "Cargo.toml").read_text())
     for dependency in manifest.get("dependencies", {}).values():
         if isinstance(dependency, dict) and "path" in dependency:
@@ -413,6 +415,44 @@ def check_cargo(path: Path) -> None:
 # aidoku-rs commits whose bail! ends in a semicolon; Rust 1.99 rejects that under -Dwarnings
 # wherever bail! is a match arm. Upstream moved every source to ae6485e, which removed it.
 STALE_AIDOKU_RS = ("1a6bb691", "a386ee40")
+
+
+def check_template_locks(source: Path) -> None:
+    lock = source / "Cargo.lock"
+    if not lock.exists():
+        return
+    packages = {item["name"]: item for item in tomllib.loads(lock.read_text()).get("package", [])}
+    pending = [source]
+    seen = set()
+    while pending:
+        crate = pending.pop().resolve()
+        if crate in seen:
+            continue
+        seen.add(crate)
+        manifest = crate / "Cargo.toml"
+        if not manifest.exists():
+            continue
+        for dependency in tomllib.loads(manifest.read_text()).get("dependencies", {}).values():
+            if not isinstance(dependency, dict) or "path" not in dependency:
+                continue
+            folder = (crate / dependency["path"]).resolve()
+            target = folder / "Cargo.toml"
+            if not target.exists():
+                continue
+            info = tomllib.loads(target.read_text())
+            name = info["package"]["name"]
+            node = packages.get(name)
+            if node is None:
+                fail(lock, f"path dependency {name!r} is missing; refresh this consumer's lockfile")
+                continue
+            locked = {entry.split(" ", 1)[0] for entry in node.get("dependencies", [])}
+            for alias, value in info.get("dependencies", {}).items():
+                if isinstance(value, dict) and value.get("optional"):
+                    continue
+                package = value.get("package", alias) if isinstance(value, dict) else alias
+                if package not in locked or package not in packages:
+                    fail(lock, f"template {name!r} lacks dependency {package!r}; refresh every consumer's lockfile")
+            pending.append(folder)
 
 
 def check_lock(path: Path) -> None:
@@ -470,6 +510,14 @@ def check_template_review(template: str) -> None:
 
 def check_reviewed_consumer(source: Path, info: dict) -> None:
     templates = template_dependencies(source)
+    minimum = info.get("info", {}).get("minAppVersion")
+    if isinstance(minimum, str) and re.fullmatch(r"\d+\.\d+\.\d+", minimum) and tuple(map(int, minimum.split("."))) < (0, 8, 3):
+        for template in templates:
+            rust = "\n".join(re.sub(r"(?m)^\s*//.*$", "", path.read_text())
+                             for path in (ROOT / "templates" / template / "src").glob("*.rs")
+                             if path.name not in {"test.rs", "source_test.rs"})
+            if re.search(r"\.\s*child_nodes\s*\(", rust):
+                fail(source / "res/source.json", f"template {template!r} uses child_nodes; every consumer needs minAppVersion 0.8.3")
     source_id = source.name
     include_only = "keyoapp" in templates or ("mangathemesia" in templates and source_id in {
         "en.scythescans", "en.lagoonscans", "en.ravenscans", "en.ragescans",
@@ -514,6 +562,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
             check_text_file(source / name)
     check_cargo(source / "Cargo.toml")
     check_lock(source / "Cargo.lock")
+    check_template_locks(source)
     check_tests(source)
     check_test_dependencies(source)
     info = check_source_json(source / "res" / "source.json", source_id)
@@ -531,7 +580,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
     version = info.get("info", {}).get("version")
     if upstream:
         if base and isinstance(version, int):
-            check_version_bump(source, version, base)
+            check_version_bump(source, version, base, lock_sync=True)
         return
     shown = readme_version(source_id)
     if shown is None:

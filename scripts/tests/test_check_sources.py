@@ -30,6 +30,23 @@ class CardRuleTests(unittest.TestCase):
             checks.check_commercial_control(self.path, item)
             self.assertEqual(checks.failures, [])
 
+    def test_template_lock_requires_all_runtime_dependencies(self):
+        (self.source / "Cargo.toml").write_text('[dependencies]\ntheme = { path = "../../templates/theme" }\n')
+        template = checks.ROOT / "templates/theme"
+        template.mkdir(parents=True)
+        (template / "Cargo.toml").write_text('[package]\nname = "theme"\nversion = "0.1.0"\n[dependencies]\ncodec = { package = "base64", version = "0.22" }\nunused = { version = "1", optional = true }\n')
+        lock = self.source / "Cargo.lock"
+        for dependency, package, fails in [('[]', '', True), ('["base64"]', '', True), ('["base64 0.22.1"]', '[[package]]\nname = "base64"\nversion = "0.22.1"\n', False)]:
+            checks.failures.clear()
+            lock.write_text('version = 4\n[[package]]\nname = "theme"\nversion = "0.1.0"\ndependencies = ' + dependency + '\n' + package)
+            checks.check_template_locks(self.source)
+            self.assertEqual(bool(checks.failures), fails)
+
+    def test_reviewed_lock_sync_keeps_upstream_version(self):
+        with patch.object(checks, "git", return_value="sources/en.example/Cargo.lock\n"):
+            checks.check_version_bump(self.source, 2, "upstream/main", lock_sync=True)
+        self.assertEqual(checks.failures, [])
+
     def test_published_snapshot_needs_no_second_bump(self):
         (self.source / "Cargo.toml").write_text('[dependencies]\niken = { path = "../../templates/iken" }\n')
         with patch.object(checks, "git", return_value="") as git:
