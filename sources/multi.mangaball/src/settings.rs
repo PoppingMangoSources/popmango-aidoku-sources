@@ -42,3 +42,7 @@ pub fn excluded_scanlators() -> Vec<String> {
 		.map(|name| name.trim().to_lowercase())
 		.collect()
 }
+
+pub fn deduplicate_chapters() -> bool {
+	defaults_get::<bool>("deduplicateChapters").unwrap_or_default()
+}

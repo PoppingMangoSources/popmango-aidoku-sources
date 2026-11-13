@@ -9,13 +9,12 @@ use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Listing,
 	ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, vec},
-	helpers::string::PlainText,
 	imports::{net::Request, std::send_partial_result},
 	prelude::*,
 };
 use api::{API_URL, BASE_URL, SORTS, SearchParams, get, parse, site_headers};
 use helpers::{Link, parse_link, site_languages};
-use models::{ApiResponse, ChapterDetail, ChapterItem, Title};
+use models::{ApiResponse, ChapterDetail, ChapterItem, Title, chapter_list};
 
 struct MangaBall;
 
@@ -87,10 +86,7 @@ impl Source for MangaBall {
 	) -> Result<Manga> {
 		if needs_details {
 			let url = format!("{API_URL}/title/detail/{}", manga.key);
-			let mut details = get::<ApiResponse<Title>>(&url)?.data.into_details()?;
-			details.description = details
-				.description
-				.map(|description| description.escape_markdown());
+			let details = get::<ApiResponse<Title>>(&url)?.data.into_details()?;
 			manga.copy_from(details);
 			if needs_chapters {
 				send_partial_result(&manga);
@@ -105,12 +101,13 @@ impl Source for MangaBall {
 			let request = site_headers(Request::post(url)?)
 				.header("Content-Type", "application/json")
 				.body(format!(r#"{{"title_id":"{}"}}"#, manga.key));
-			let chapters = parse::<ApiResponse<Vec<ChapterItem>>>(request.send()?)?
-				.data
-				.into_iter()
-				.filter_map(|chapter| chapter.into_chapter(&languages, &excluded))
-				.collect();
-			manga.chapters = Some(chapters);
+			let chapters = parse::<ApiResponse<Vec<ChapterItem>>>(request.send()?)?.data;
+			manga.chapters = Some(chapter_list(
+				chapters,
+				&languages,
+				&excluded,
+				settings::deduplicate_chapters(),
+			));
 		}
 
 		Ok(manga)
