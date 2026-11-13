@@ -57,20 +57,22 @@ pub fn fill(
 		name: name.into(),
 		kind: ListingKind::Default,
 	});
-	let link = |title: Title| Link::from(Manga::from(title));
+	let link = |title: Title| Manga::try_from(title).ok().map(Link::from);
 	match layout {
 		Layout::Featured => HomeComponentValue::BigScroller {
-			entries: titles.map(Title::into_details).collect(),
+			entries: titles
+				.filter_map(|title| title.into_details().ok())
+				.collect(),
 			auto_scroll_interval: Some(5.0),
 		},
 		Layout::Ranked => HomeComponentValue::MangaList {
 			ranking: true,
 			page_size: Some(3),
-			entries: titles.map(link).collect(),
+			entries: titles.filter_map(link).collect(),
 			listing,
 		},
 		Layout::Row => HomeComponentValue::Scroller {
-			entries: titles.map(link).collect(),
+			entries: titles.filter_map(link).collect(),
 			listing,
 		},
 		Layout::Chapters => HomeComponentValue::MangaChapterList {
@@ -81,7 +83,7 @@ pub fn fill(
 						.into_iter()
 						.find_map(|chapter| chapter.into_chapter(&search.languages))?;
 					Some(MangaWithChapter {
-						manga: title.into(),
+						manga: Manga::try_from(title).ok()?,
 						chapter,
 					})
 				})

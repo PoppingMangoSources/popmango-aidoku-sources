@@ -34,7 +34,7 @@ impl Source for MangaBall {
 			&& let Ok(found) = get::<ApiResponse<Title>>(&format!("{API_URL}/title/detail/{id}"))
 		{
 			return Ok(MangaPageResult {
-				entries: vec![found.data.into()],
+				entries: vec![Manga::try_from(found.data)?],
 				has_next_page: false,
 			});
 		}
@@ -87,7 +87,7 @@ impl Source for MangaBall {
 	) -> Result<Manga> {
 		if needs_details {
 			let url = format!("{API_URL}/title/detail/{}", manga.key);
-			let mut details = get::<ApiResponse<Title>>(&url)?.data.into_details();
+			let mut details = get::<ApiResponse<Title>>(&url)?.data.into_details()?;
 			details.description = details
 				.description
 				.map(|description| description.escape_markdown());
