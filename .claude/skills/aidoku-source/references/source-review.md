@@ -215,3 +215,14 @@ The selector suggestion was explicitly optional, then requested by the owner. Us
 .col-lg-3 li:has(strong), with exact label-prefix matching, to scope metadata and reduce the
 row walk. Do not copy :contains indiscriminately: the app supports it while the runner's
 selector engine may reject it. Test labelled/unlabelled rows and near-matching labels.
+
+
+## VineTheme evidence
+
+Read `docs/subsystems/vinetheme-template.md` before changing Vine consumers. The current
+public JSON catalogue and facets are shared; details use the public JSON API and readers use Next.js Flight.
+The reader metadata object is not the payload with pages. Cover/title links duplicate a
+series identity inside a card. Portable Vine contracts pin these reports and novel text
+references, full chapter paging, settings defaults, compact cards and source paths.
+The merged #888/#884/#882/#860 reviews were reread alongside open #900; its dev-scaffold,
+isGenre, item-spacing and separate-migration rules remain enforced on main.

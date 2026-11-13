@@ -2,11 +2,12 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-11
+updated: 2026-11-13
 sources:
   - code: scripts/check-sources.py
   - code: scripts/test-http.py
   - code: scripts/review-contracts.py
+  - code: scripts/review-contracts/vinetheme.rs
   - code: scripts/review-contracts/keyoapp.rs
   - code: scripts/review-contracts/mangathemesia.rs
   - code: scripts/review-contracts/fixtures.py
@@ -306,3 +307,13 @@ and review stamps; they do not replace live tests or manual review.
 > direct requests, a fresh browser session and the device report. Keep the origin-timeout
 > response distinct from a Cloudflare 403 challenge; changing parsers does not establish
 > that either server-side failure is fixed. HTTP regressions cover 522 alongside other errors.
+
+
+VineTheme public contracts now run for template/consumer changes, including clean `fix-vine`
+worktrees. They cover the reported empty reader and duplicate first home card, byte-length
+novel text, complete chapter paging, locked defaults, live-shaped filter requests, compact
+cards, site row order and timestamps. See [[vinetheme-template]] for the evidence boundary.
+The current upstream Vine implementation is the known failing baseline for these bug fixes;
+merged calibration still runs Keyoapp and MangaThemesia, and candidate CI runs all selected
+contracts. Its spacing and dynamic tag capability rules also have Python guard regressions.
+The Iken review protections remain in place, including standard test scaffolds and isGenre.

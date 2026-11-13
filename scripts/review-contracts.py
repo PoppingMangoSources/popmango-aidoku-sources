@@ -16,7 +16,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTRACTS = ROOT / "scripts/review-contracts"
-TEMPLATES = {"keyoapp", "mangathemesia"}
+TEMPLATES = {"keyoapp", "mangathemesia", "vinetheme"}
 
 
 def select_templates(repo, crates):

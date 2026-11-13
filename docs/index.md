@@ -16,6 +16,7 @@ traps found in them. It grows as work touches new areas.
 - Working on KingOfShojo or RokariComics: [[mangathemesia-consumers]]
 - Working on Genz Toon or another Keyoapp site: [[keyoapp-template]]
 - Working on MangaBall: [[mangaball]]
+- Working on VineTheme, Drake, Elf, Valir, Diva or Kayn: [[vinetheme-template]]
 
 ---
 
@@ -35,6 +36,8 @@ _(none yet)_
 - [[mangathemesia-consumers]] -- KingOfShojo and Rokari on upstream's template unchanged
 - [[keyoapp-template]] -- the Keyoapp template: whole-catalogue search, generic home, which sites fit
 - [[mangaball]] -- MangaBall's API, content modes, language codes, home feeds, what is unverified
+
+- [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing
 
 ## decisions
 

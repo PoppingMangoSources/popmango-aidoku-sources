@@ -39,6 +39,10 @@ class ReviewContractTests(unittest.TestCase):
         self.crate("sources/en.other", '[dependencies]\nother = {path="../../templates/other"}\n')
         self.assertEqual(contracts.select_templates(self.repo, ["sources/en.other"]), [])
 
+    def test_vine_consumers_select_shared_reader_and_home_contracts(self):
+        self.crate("sources/en.example", '[dependencies]\nvinetheme = {path="../../templates/vinetheme"}\n')
+        self.assertEqual(contracts.select_templates(self.repo, ["sources/en.example"]), ["vinetheme"])
+
     def test_compilation_failure_propagates_without_changing_candidate(self):
         candidate = self.crate("templates/keyoapp", '[dependencies]\naidoku = {git="https://example.invalid/sdk", rev="revision"}\n')
         (candidate / "Cargo.lock").write_text("lock snapshot\n")

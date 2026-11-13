@@ -166,7 +166,7 @@ you checked. Passing the scripts isn't the same as following the rules: rows sho
 "Manhwa · ★ 8.3" went to `main` with every gate green.
 
 Run `python3 /path/to/main/scripts/review-contracts.py --repo . --crate sources/<id>`
-for Keyoapp/MangaThemesia consumers, or `--base <upstream-base>` for a template change.
+for Keyoapp/MangaThemesia/VineTheme consumers, or `--base <upstream-base>` for a template change.
 These public-API contracts run even when the submission excludes fork tests. Never skip a
 failure because the template was archived; the candidate is what must pass. Check the
 coverage and manual-evidence boundaries in `docs/operations/source-checks.md` on main.
@@ -300,3 +300,10 @@ banner artwork uses ImageScroller and known dimensions; portrait-cover hero slid
 BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.
 
 When a shared template adds a dependency, synchronize its own lockfile and every consumer lockfile. Verify the complete graphs with `cargo metadata --locked --filter-platform wasm32-unknown-unknown`. Upstream peer-consumer changes limited to Cargo.lock may retain their versions; behavior or source/resource changes still require the normal bump. Fork publication rules remain unchanged.
+
+For VineTheme maintenance, read `docs/subsystems/vinetheme-template.md`. Select the actual
+reader object rather than chapter metadata; resolve byte-length Flight text rows, preserve
+legacy comic keys and typed novel paths, and test home order/deduplication without per-card
+requests. Run the portable Vine contracts against clean submission worktrees as well as main.
+Keep the Iken review rules above: standard test scaffolds, isGenre, separated Rust items,
+scoped selectors and independently scoped migrations.

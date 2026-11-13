@@ -136,6 +136,18 @@ class ReviewRuleTests(unittest.TestCase):
             checks.check_reviewed_consumer(source, {})
             self.assertEqual(bool(checks.failures), fails)
 
+    def test_vine_dynamic_tag_search_requires_host_flag(self):
+        source = self.consumer("vinetheme", name="en.divascans", code="register_source!(Source, DynamicFilters);")
+        checks.check_reviewed_consumer(source, {})
+        self.assertTrue(any("supportsTagSearch" in item for item in checks.failures))
+        checks.failures.clear()
+        checks.check_reviewed_consumer(source, {"config": {"supportsTagSearch": True}})
+        self.assertEqual(checks.failures, [])
+
+    def test_legacy_vine_without_dynamic_filters_needs_no_tag_flag(self):
+        checks.check_reviewed_consumer(self.consumer("vinetheme"), {})
+        self.assertEqual(checks.failures, [])
+
 
 if __name__ == "__main__":
     unittest.main()

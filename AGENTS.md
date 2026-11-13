@@ -484,6 +484,22 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | Structs, impls, registration and methods ran together | Separate Rust items and methods with blank lines; rustfmt does not insert them. Reviewed Iken/Eternal gaps fail the checker; existing merged counterexamples are advisory elsewhere. | F/N |
 | Metadata label lookup could use `:has`/`:contains` | A scoped selector can simplify the walk. Eternal uses `.col-lg-3 li:has(strong)` and exact label-prefix matching. `:contains` was an optional suggestion, not a general requirement; test host/runner support before using it. | R |
 
+### From the Vine reader reports and template audit
+
+| What was flagged | The rule | |
+|---|---|---|
+| A Next.js chapter metadata object was accepted as an empty reader | Match the reader payload by its access fields and chapter content/pages, not the first object named `chapter`. Empty/missing pages fail; never silently drop one malformed image. Test comics and novels from keys only. | R |
+| The first latest-update card appeared twice | Cover and title anchors belong to one card. Preserve the first unique series per row, real chapter numbers/dates, and the site's section order. A section query can include its root; test nested wrappers and sibling rows. | R |
+| Long novel HTML was a Flight reference | Decode the JSON push strings and resolve byte-length text rows. Raw text may contain newlines and may end immediately before the next row. Do not unescape Flight with chained string replacements. | R |
+| Displayed genre names were sent as API slugs | Resolve dynamic tag taps through the fetched genre/tag facets once. A successful response with an ignored or wrong parameter is not a filter test. Static sorts have no ascending arrow when the site has one order. | R |
+
+The owner requested `fix-vine` as an explicit template branch-name exception. Its template,
+Drake/Elf updates, Valir consumer and new Diva/Kayn consumers are submitted from canonical
+upstream. Main publishes every affected source with tests and the normal version bump.
+Vine's regression contracts intentionally reproduce the open upstream reader/home defects;
+pre-existing Keyoapp/MangaThemesia contracts remain the merged calibration baseline.
+See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network evidence.
+
 ### From #860 (`en.flamecomics`)
 
 | What was flagged | The rule | |
@@ -1272,8 +1288,8 @@ impl Impl for ElfToon {
 register_source!(MangaThemesia<ElfToon>, Home, ImageRequestProvider, DeepLinkHandler);
 ```
 
-That, plus a path dependency on the template in `Cargo.toml`, is the whole of
-`en.elftoon` — 28 lines. If a new source starts looking like an existing template
+That, plus a path dependency on the template in `Cargo.toml`, is the consumer wiring;
+current `en.elftoon` uses VineTheme, not MangaThemesia. If a new source starts looking like an existing template
 with different selectors, it should probably be a template consumer, or a new
 template if nothing fits.
 

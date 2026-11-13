@@ -2,10 +2,15 @@
 	"info": {
 		"id": "en.valirscans",
 		"name": "ValirScans",
-		"version": 9,
+		"version": 10,
 		"url": "https://valirscans.org",
 		"contentRating": 1,
-		"languages": ["en"],
-		"minAppVersion": "0.7.1"
+		"languages": [
+			"en"
+		],
+		"minAppVersion": "0.8.3"
+	},
+	"config": {
+		"supportsTagSearch": true
 	}
 }

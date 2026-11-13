@@ -4,68 +4,83 @@
 		"id": "sort",
 		"canAscend": false,
 		"options": [
-			"Default",
+			"Recently Updated",
+			"Most Bookmarked",
+			"Trending",
+			"Most Viewed",
+			"Top Rated",
+			"Longest",
 			"Newest"
-		],
-		"ids": [
-			"",
-			"newest"
 		]
 	},
 	{
 		"type": "multi-select",
 		"id": "type",
 		"title": "Type",
-		"canExclude": true,
+		"canExclude": false,
 		"options": [
 			"Manhwa",
 			"Manhua",
 			"Manga",
-			"Comic",
 			"Webtoon",
-			"Novel"
+			"Novel",
+			"Light Novel",
+			"Web Novel",
+			"Published Novel",
+			"Fanfiction",
+			"Original Fiction",
+			"One Shot"
 		]
 	},
 	{
 		"type": "multi-select",
 		"id": "status",
 		"title": "Status",
-		"canExclude": true,
+		"canExclude": false,
 		"options": [
 			"Ongoing",
 			"Completed",
 			"Hiatus",
-			"Cancelled"
+			"Dropped",
+			"Discontinued",
+			"Upcoming"
 		]
 	},
 	{
 		"type": "multi-select",
 		"id": "origin",
 		"title": "Origin",
-		"canExclude": true,
+		"canExclude": false,
 		"options": [
 			"Korean",
 			"Japanese",
 			"Chinese",
-			"English"
+			"Other"
 		],
 		"ids": [
 			"KOREAN",
 			"JAPANESE",
 			"CHINESE",
-			"ENGLISH"
+			"OTHER"
 		]
 	},
 	{
 		"type": "text",
-		"id": "minChapters",
+		"id": "ch_min",
 		"title": "Chapters From",
 		"placeholder": "e.g. 20"
 	},
 	{
 		"type": "text",
-		"id": "maxChapters",
+		"id": "ch_max",
 		"title": "Chapters To",
 		"placeholder": "e.g. 100"
+	},
+	{
+		"type": "check",
+		"id": "images",
+		"name": "Illustrated",
+		"hideFromHeader": true,
+		"canExclude": false
 	}
 ]

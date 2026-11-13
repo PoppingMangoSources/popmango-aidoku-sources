@@ -77,7 +77,7 @@ jobs:
             if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git rev-parse HEAD~1); fi
             python3 scripts/changed-crates.py --base "$base" > "$RUNNER_TEMP/candidates"
             if git diff --name-only "$base" HEAD -- scripts/review-contracts.py scripts/review-contracts/ | grep -q .; then
-              for template in keyoapp mangathemesia; do
+              for template in keyoapp mangathemesia vinetheme; do
                 [[ ! -f "templates/$template/Cargo.toml" ]] || echo "templates/$template" >> "$RUNNER_TEMP/candidates"
               done
               sort -u -o "$RUNNER_TEMP/candidates" "$RUNNER_TEMP/candidates"
@@ -114,7 +114,8 @@ jobs:
           if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base=$(git rev-parse HEAD~1); fi
           if git diff --name-only "$base" HEAD -- scripts/review-contracts.py scripts/review-contracts/ | grep -q .; then
             git clone --quiet --depth 1 https://github.com/Aidoku-Community/sources.git "$RUNNER_TEMP/review-upstream"
-            python3 scripts/review-contracts.py --repo "$RUNNER_TEMP/review-upstream"
+            # Vine reader regressions reproduce the open upstream bugs until its fix merges.
+            python3 scripts/review-contracts.py --repo "$RUNNER_TEMP/review-upstream" --template keyoapp --template mangathemesia
           fi
 
       - name: Run portable template review contracts

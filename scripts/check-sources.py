@@ -268,7 +268,8 @@ ITEM_SPACING = re.compile(
 
 
 def check_item_spacing(path: Path, text: str) -> None:
-    reviewed = {"en.hijalascans", "en.sanascans", "en.hivescans", "es.eternalmangas", "iken"}
+    reviewed = {"en.hijalascans", "en.sanascans", "en.hivescans", "es.eternalmangas", "iken",
+                "vinetheme", "en.drakescans", "en.elftoon", "en.valirscans", "en.divascans", "en.kaynscans"}
     report = fail if any(part in reviewed for part in path.relative_to(ROOT).parts) else note
     for match in ITEM_SPACING.finditer(text):
         line = text.count("\n", 0, match.start()) + 2
@@ -537,6 +538,9 @@ def check_reviewed_consumer(source: Path, info: dict) -> None:
             if re.search(r"\.\s*child_nodes\s*\(", rust):
                 fail(source / "res/source.json", f"template {template!r} uses child_nodes; every consumer needs minAppVersion 0.8.3")
     source_id = source.name
+    if "vinetheme" in templates and re.search(r"\bDynamicFilters\b", (source / "src/lib.rs").read_text()):
+        if not info.get("config", {}).get("supportsTagSearch"):
+            fail(source / "res/source.json", "Vine dynamic genre/tag taps require supportsTagSearch")
     include_only = "keyoapp" in templates or ("mangathemesia" in templates and source_id in {
         "en.scythescans", "en.lagoonscans", "en.ravenscans", "en.ragescans",
         "en.violetscans", "en.thunderscans", "en.madarascans", "en.evascans",

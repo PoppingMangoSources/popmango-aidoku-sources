@@ -46,6 +46,7 @@ class ScopeTests(unittest.TestCase):
 
     def test_requested_iken_branch_maps_to_template(self):
         self.assertEqual(scope.template_for_branch("fix-iken"), "iken")
+        self.assertEqual(scope.template_for_branch("fix-vine"), "vinetheme")
         self.assertIsNone(scope.template_for_branch("fix-other"))
 
     def test_template_hook_checks_the_submission_checkout(self):

@@ -1,15 +1,19 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, ImageRequestProvider,
-	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContext, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
+	HomeLayout, ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult, Page,
+	PageContext, Result, Source,
 	alloc::{String, Vec, borrow::Cow},
 	imports::net::Request,
 };
 
+mod helpers;
 mod home;
 mod imp;
+mod markdown;
 mod models;
 mod rsc;
+mod settings;
 
 pub use imp::Impl;
 
@@ -68,6 +72,12 @@ impl<T: Impl> ListingProvider for VineTheme<T> {
 	}
 }
 
+impl<T: Impl> DynamicFilters for VineTheme<T> {
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		self.inner.get_dynamic_filters(&self.params)
+	}
+}
+
 impl<T: Impl> Home for VineTheme<T> {
 	fn get_home(&self) -> Result<HomeLayout> {
 		self.inner.get_home(&self.params)
@@ -85,3 +95,6 @@ impl<T: Impl> DeepLinkHandler for VineTheme<T> {
 		self.inner.handle_deep_link(&self.params, url)
 	}
 }
+
+#[cfg(test)]
+mod test;

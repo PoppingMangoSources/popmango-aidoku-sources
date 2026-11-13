@@ -187,3 +187,12 @@ Reviewed every production file/resource against the canonical sources, archived 
 
 
 - 2026-11-13: Addressed Iken review: separate Eternal migration on fix-eternal, restore standard test scaffolds, preserve isGenre and fix Rust item spacing. Added the requested :has metadata selector and parser/guard regressions; retain only necessary legacy Eternal compatibility in the Iken branch.
+
+
+## 2026-11-13 VineTheme maintenance
+
+Updated the shared reader and home parser for Drake/Elf's reports, added formatted novels,
+restored Valir as a thin consumer, and prepared Diva/Kayn consumers. Added portable public-API
+contracts and guidance in [[vinetheme-template]]. Kept the Iken review lessons and source-scope,
+standard scaffold, genre and spacing guards; `fix-vine` is an explicit submission exception.
+Verification and remaining device/network boundaries are recorded on the subsystem page.
