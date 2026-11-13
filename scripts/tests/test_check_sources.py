@@ -129,6 +129,20 @@ class CardRuleTests(unittest.TestCase):
         self.assertEqual(len(checks.notes), 1)
         self.assertIn("'type' leaves canExclude unstated", checks.notes[0])
 
+    def test_reviewed_languages_preserve_an_explicit_empty_selection(self):
+        self.source = self.source.rename(self.source.with_name("multi.mangaball"))
+        (self.source / "src").mkdir()
+        (self.source / "Cargo.toml").write_text("[dependencies]\n")
+        settings = self.source / "src/settings.rs"
+        for expression, fails in [
+            ('defaults_get::<Vec<String>>("languages").filter(|languages| !languages.is_empty()).unwrap_or_else(default)', True),
+            ('defaults_get::<Vec<String>>("languages").unwrap_or_else(default)', False),
+        ]:
+            checks.failures.clear()
+            settings.write_text(expression)
+            checks.check_reviewed_consumer(self.source, {})
+            self.assertEqual(bool(checks.failures), fails)
+
     def test_sort_after_other_filters_is_noted(self):
         checks.notes.clear()
         path = self.source / 'res/filters.json'

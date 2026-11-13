@@ -165,3 +165,16 @@ BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners 
 Home enrichment must keep ranking rows unchanged and preserve available HTML metadata when API fields are absent. Novel labels apply to HTML cards as well as API cards, and featured/detail tag ratings use the same classifier. Deterministic regressions cover these boundaries.
 
 When a shared template adds a dependency, synchronize its own lockfile and every consumer lockfile. Verify the complete graphs with `cargo metadata --locked --filter-platform wasm32-unknown-unknown`. Upstream peer-consumer changes limited to Cargo.lock may retain their versions; behavior or source/resource changes still require the normal bump. Fork publication rules remain unchanged.
+
+## November 13 review follow-up
+
+Read the latest inline feedback and review summaries on 899, 894 and 878 alongside the merged
+888, 860, 843, 850, 853 and 827 decisions. Applicable patterns are accurate propagated failures,
+metadata-scoped parsing, compact listing cards, shared search logic, short comments and static
+filter defaults. Age-gate HTML and auto-discovered mirror recommendations apply to their sites,
+not to every JSON source. Source-specific requests are not universal API restrictions.
+
+The MangaBall audit also verified current SelectFilterView: default values are removed from the
+request. A neutral source-setting entry keeps every explicit override usable. Captured scalar/list
+schemas, safe flags inconsistent with tags, empty language preferences and home chapter group
+exclusions now have deterministic source regressions.

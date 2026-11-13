@@ -173,3 +173,7 @@ Added [[mangaball]] with the new `multi.mangaball` source. The site refuses the 
 ## 2026-11-13 MangaBall search decoding
 
 Reproduced scalar language metadata and nameless records in ascending searches. Normalize the observed language shapes, reject invalid card identities through fallible conversion, and test every sort direction through the source. See [[mangaball]].
+
+## 2026-11-13 MangaBall submission audit
+
+Reviewed every production file/resource against the canonical sources, archived merged consumers, current site API/bundles and relevant new reviews. Fixed setting overrides, cleared languages, shared home/chapter exclusions, adult-tagged safe-mode leaks, credits, numbered chapter titles and all-home failure errors. Added source regressions and a calibrated empty-language guard; see [[mangaball]].

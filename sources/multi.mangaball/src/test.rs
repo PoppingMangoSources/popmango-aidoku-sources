@@ -34,7 +34,6 @@ fn strings(values: &[&str]) -> DefaultValue {
 	DefaultValue::StringArray(values.iter().map(|value| value.to_string()).collect())
 }
 
-// The shape every title list returns, with invented values.
 fn title(id: &str, language: &str, adult: bool) -> Title {
 	serde_json::from_value(serde_json::json!({
 		"id": id,
@@ -167,7 +166,6 @@ fn review_home_layout() {
 			} => {
 				assert!(matches!(layout, Layout::Chapters));
 				assert_eq!(page_size, Some(5));
-				// The newest upload is Vietnamese; English is the selected language.
 				let entry = &entries[0];
 				assert_eq!(entry.chapter.key, "6af075a8c2f1fe0ea088ea68");
 				assert_eq!(entry.chapter.chapter_number, Some(39.5));
@@ -286,7 +284,6 @@ fn review_search_parameters() {
 	assert_eq!(param(&browse, "type"), None);
 	assert_eq!(param(&browse, "excluded_tags"), None);
 
-	// The site keeps its default sort when a keyword is typed.
 	let keyword = SearchParams::new(Some(" hound ".into())).url(1);
 	assert_eq!(param(&keyword, "keyword").as_deref(), Some("hound"));
 	assert_eq!(param(&keyword, "sort_by").as_deref(), Some("lastupdate"));
@@ -348,7 +345,7 @@ fn review_chapters() {
 	let chapter = |value: serde_json::Value| {
 		serde_json::from_value::<ChapterItem>(value)
 			.unwrap()
-			.into_chapter(&languages)
+			.into_chapter(&languages, &[])
 	};
 	let labelled = chapter(serde_json::json!({
 		"id": "a", "name": "Chapter 188", "number": 188, "volume": 0, "lang": "en",
@@ -377,6 +374,7 @@ fn review_chapters() {
 	assert!(
 		chapter(serde_json::json!({ "id": "c", "name": "1", "number": 1, "lang": "id" })).is_none()
 	);
+	assert!(chapter(serde_json::json!({ "id": " ", "lang": "en" })).is_none());
 }
 
 #[aidoku_test]
@@ -421,7 +419,7 @@ fn search_pages_and_filters() {
 	let first = source.get_search_manga_list(None, 1, Vec::new()).unwrap();
 	let second = source.get_search_manga_list(None, 2, Vec::new()).unwrap();
 	assert!(first.has_next_page);
-	assert_eq!(first.entries.len(), 24);
+	assert!(!first.entries.is_empty() && first.entries.len() <= 24);
 	assert!(first.entries.iter().all(|manga| {
 		!manga.key.is_empty() && !manga.title.is_empty() && manga.description.is_none()
 	}));
@@ -553,7 +551,7 @@ fn listings_and_home() {
 			..Default::default()
 		};
 		let page = source.get_manga_list(listing, 1).unwrap();
-		assert_eq!(page.entries.len(), 24, "{id}");
+		assert!(!page.entries.is_empty() && page.entries.len() <= 24, "{id}");
 		assert!(page.has_next_page, "{id}");
 	}
 	let home = source.get_home().unwrap();
@@ -618,4 +616,197 @@ fn all_sort_directions_load() {
 		}
 		assert_ne!(first_keys[0], first_keys[1], "{sort}");
 	}
+}
+
+#[aidoku_test]
+fn review_cleared_languages_do_not_browse_every_language() {
+	reset();
+	defaults_set("languages", strings(&[]));
+	assert!(settings::languages().is_empty());
+	let page = SearchParams::new(None).page(1).unwrap();
+	assert!(page.entries.is_empty() && !page.has_next_page);
+	assert!(MangaBall::new().get_home().unwrap().components.is_empty());
+	reset();
+}
+
+#[aidoku_test]
+fn review_search_defaults_leave_explicit_overrides_selectable() {
+	let filters: serde_json::Value =
+		serde_json::from_str(include_str!("../res/filters.json")).unwrap();
+	for id in ["type", "rating"] {
+		let filter = filters
+			.as_array()
+			.unwrap()
+			.iter()
+			.find(|filter| filter["id"] == id)
+			.unwrap();
+		assert_eq!(filter["ids"][0], "");
+		assert_eq!(filter["options"][0], "Use Source Setting");
+		assert!(filter.get("default").is_none());
+	}
+}
+
+#[aidoku_test]
+fn review_adult_tags_override_an_incorrect_safe_flag() {
+	reset();
+	let post: Title = serde_json::from_value(serde_json::json!({
+		"id": SERIES, "name": "Example", "is18plus": false,
+		"availableTranslatedLanguages": ["en"],
+		"tags": [{"id": "adult", "name": "Hentai"}, {"id": "mature", "name": "Mature"}]
+	}))
+	.unwrap();
+	assert_eq!(post.content_rating(), ContentRating::NSFW);
+	assert!(!SearchParams::new(None).allows_rating(&post));
+	assert!(!SearchParams::new(None).allows(&post));
+	defaults_set("showAdult", DefaultValue::Bool(true));
+	assert!(SearchParams::new(None).allows(&post));
+	defaults_set("adultOnly", DefaultValue::Bool(true));
+	assert!(SearchParams::new(None).allows(&post));
+	reset();
+}
+
+#[aidoku_test]
+fn review_home_skips_blocked_groups_before_picking_a_chapter() {
+	reset();
+	defaults_set("excludedScanlators", strings(&[" GROUP B "]));
+	let mut post = title(SERIES, "ja", false);
+	post.recent_chapters.push(
+		serde_json::from_value(serde_json::json!({
+			"id": "selected", "lang": "en", "number": 38, "group": {"name": "Group C"}
+		}))
+		.unwrap(),
+	);
+	let value = fill(
+		"lastupdate",
+		"Latest Chapter Updates",
+		Layout::Chapters,
+		vec![post],
+		&SearchParams::new(None),
+	);
+	let HomeComponentValue::MangaChapterList { entries, .. } = value else {
+		panic!("wrong layout");
+	};
+	assert_eq!(entries.len(), 1);
+	assert_eq!(entries[0].chapter.key, "selected");
+	let chapter: ChapterItem = serde_json::from_value(serde_json::json!({
+		"id": "blocked", "lang": "en", "group": {"name": "Group B"}
+	}))
+	.unwrap();
+	assert!(
+		chapter
+			.into_chapter(
+				&site_languages(vec!["en".into()]),
+				&settings::excluded_scanlators()
+			)
+			.is_none()
+	);
+	reset();
+}
+
+#[aidoku_test]
+fn review_numbered_prose_is_not_a_repeated_chapter_label() {
+	let languages = site_languages(vec!["en".into()]);
+	for name in [
+		"Chapter 12",
+		"Ch.12",
+		"Vol.5 Ch.12",
+		"12",
+		"12 Heroes",
+		"Chapter 12: A Promise",
+	] {
+		let chapter: ChapterItem = serde_json::from_value(serde_json::json!({
+			"id": "chapter", "lang": "en", "number": 12, "volume": 5, "name": name
+		}))
+		.unwrap();
+		let chapter = chapter.into_chapter(&languages, &[]).unwrap();
+		assert_eq!(
+			chapter.title.as_deref(),
+			name.contains("Heroes")
+				.then_some(name)
+				.or_else(|| name.contains("Promise").then_some(name))
+		);
+	}
+}
+
+#[aidoku_test]
+fn review_credits_and_tags_are_trimmed_and_unique() {
+	let post: Title = serde_json::from_value(serde_json::json!({
+		"id": SERIES, "name": "Example",
+		"author": [{"name": " Writer "}, {"name": ""}, {"name": "Writer"}, {"name": "Studio"}],
+		"tags": [{"id": "a", "name": "Drama"}, {"id": "b", "name": "Action"}, {"id": "c", "name": "Drama"}]
+	})).unwrap();
+	let details = post.into_details().unwrap();
+	assert_eq!(
+		details.authors,
+		Some(vec!["Writer".into(), "Studio".into()])
+	);
+	assert_eq!(details.tags, Some(vec!["Action".into(), "Drama".into()]));
+}
+
+#[aidoku_test]
+fn search_filters_override_settings() {
+	reset();
+	defaults_set("showAdult", DefaultValue::Bool(true));
+	defaults_set("type", DefaultValue::String("manga".into()));
+	let source = MangaBall::new();
+	let overrides = vec![
+		FilterValue::Select {
+			id: "rating".into(),
+			value: "no_18".into(),
+		},
+		FilterValue::Select {
+			id: "type".into(),
+			value: "any".into(),
+		},
+	];
+	let page = source
+		.get_search_manga_list(Some("Baskerville Bloodhound".into()), 1, overrides)
+		.unwrap();
+	assert!(page.entries.iter().any(|manga| manga.key == SERIES));
+	assert!(
+		page.entries
+			.iter()
+			.all(|manga| manga.content_rating != ContentRating::NSFW)
+	);
+	let inherited = source
+		.get_search_manga_list(
+			Some("Baskerville Bloodhound".into()),
+			1,
+			vec![FilterValue::Select {
+				id: "type".into(),
+				value: "".into(),
+			}],
+		)
+		.unwrap();
+	assert!(!inherited.entries.iter().any(|manga| manga.key == SERIES));
+	reset();
+}
+
+#[aidoku_test]
+fn safe_mode_hides_adult_tags_the_api_mislabels() {
+	reset();
+	let source = MangaBall::new();
+	let filter = || {
+		vec![FilterValue::MultiSelect {
+			id: "theme".into(),
+			included: vec!["68bfceaf4dbc442a26519889".into()],
+			excluded: Vec::new(),
+		}]
+	};
+	assert!(
+		source
+			.get_search_manga_list(None, 1, filter())
+			.unwrap()
+			.entries
+			.is_empty()
+	);
+	defaults_set("showAdult", DefaultValue::Bool(true));
+	assert!(
+		!source
+			.get_search_manga_list(None, 1, filter())
+			.unwrap()
+			.entries
+			.is_empty()
+	);
+	reset();
 }

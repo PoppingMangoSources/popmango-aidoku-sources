@@ -36,6 +36,7 @@
 		"id": "type",
 		"title": "Publication Type",
 		"options": [
+			"Use Source Setting",
 			"Any",
 			"Manga",
 			"Manhwa",
@@ -43,6 +44,7 @@
 			"Comics"
 		],
 		"ids": [
+			"",
 			"any",
 			"manga",
 			"manhwa",
@@ -74,16 +76,17 @@
 		"id": "rating",
 		"title": "Content Rating",
 		"options": [
+			"Use Source Setting",
 			"All Content (18+ Incl.)",
 			"Safe Only (No 18+)",
 			"18+ Only"
 		],
 		"ids": [
+			"",
 			"all",
 			"no_18",
 			"only_18"
-		],
-		"default": "no_18"
+		]
 	},
 	{
 		"type": "multi-select",

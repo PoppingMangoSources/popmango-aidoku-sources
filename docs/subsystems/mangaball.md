@@ -14,7 +14,7 @@ sources:
   - code: sources/multi.mangaball/res/settings.json
   - ext: https://mangaball.com/search-advanced
   - ext: https://mangaball.com/api/v1/title/search-advanced
-verified_at: cc4a119
+verified_at: 8c7cc37
 ---
 
 MangaBall (`mangaball.com`, formerly `mangaball.net`) is a Next.js app over a JSON API at
@@ -79,11 +79,11 @@ chapter's `language`.
 
 The API has one axis, `adult_mode`: `no_18`, `all` or `only_18`, and each title carries only
 `is18plus`. Two switches give the three modes (Show 18+ Content, then 18+ Only), and the
-Content Rating filter, the site's own three-option select, overrides them for one search.
+Content Rating filter exposes the site's three modes after a neutral Use Source Setting entry.
 
-> ⚠️ The Content Rating filter's default is Safe Only, and the app does not send a select left
-> on its default. So a reader whose setting shows 18+ titles cannot pick Safe Only for one
-> search; the other two options always override.
+> ⚠️ The app removes a select left on its default. Keep Use Source Setting first, so Safe Only,
+> All Content and 18+ Only are all explicit overrides of the saved preference. Safe mode also
+> checks the shared tag-based rating: the API returned two Hentai-tagged titles with is18plus=false.
 
 > ⚠️ Languages belong in the source's language setting only, never in search as well. kkantan
 > flagged a Translated Languages filter on `multi.xcomic` ("I'm not convinced this filter needs
@@ -92,7 +92,7 @@ Content Rating filter, the site's own three-option select, overrides them for on
 > from a reference client broke that row here and was removed on the owner's correction. The
 > site's panel has no such control either (owner's screenshots, 2026-11-13).
 
-The source is rated 1, not 0: the site has a Hentai theme with about 69,000 titles, and
+The source remains rated 1: the site has a Hentai theme, and
 section 3 of the root guide fails a Hentai genre on a source rated 0.
 
 ## Types
@@ -103,8 +103,8 @@ The Manga, Manhwa, Manhua and Comic genre tags exist but only 3 of 43 captured J
 carried one, so they are not used for this.
 
 > ⚠️ Every reference client sends a single `type`. Whether the API accepts a comma list is
-> unverified, which is why the Type setting is a select and not a multi-select. A Type filter
-> left on Any keeps the setting, so a search cannot widen a narrowed setting.
+> unverified, which is why the Type setting is a select and not a multi-select. Use Source Setting
+> inherits that selection; explicit Any clears the type constraint for one search.
 
 ## Home
 
@@ -128,8 +128,9 @@ source uses the call the keiyoushi extension has in production.
 > ⚠️ The chapter request must send `Content-Type: application/json` with no charset; the API
 > answers 400 to anything else (noted in the keiyoushi extension, unverified here).
 
-Names mostly repeat the number ("Ch.22", "Chapter 188",
-"Vol.5 Ch.22"), so a name containing the number is dropped and only a real title is kept.
+Blank chapter keys are skipped. Only bare numbers and the site's repeated chapter/volume labels are omitted from chapter titles.
+Numbered prose such as "12 Heroes" stays intact. The same chapter conversion applies language
+and scanlator exclusions before selecting a home chapter or returning the full list.
 Timestamps are UTC with microseconds and no zone; the first 19 characters are parsed with the
 `T` replaced by a space, because the test runner drops quoted literals from a date format.
 The same group can upload a chapter twice; both are kept.
@@ -158,8 +159,45 @@ returns the known series. The older negative fixture contained ordinary words ("
 and matched real results, so it was not an impossible query. Keep the empty-result assertion with
 an actually impossible token and retain a positive title-search assertion.
 
-Verification after the correction: all 14 source tests pass, including every live sort direction,
+Verification after the initial decoder correction: all 14 source tests passed, including every live sort direction,
 positive/negative search, paging, details, chapters, pages, listings, home and deep links. The
 captured ten sort responses and one detail response also decode through the source models.
 Formatting, warning-failing production/test Clippy, packaging and Aidoku verification pass.
 Device rendering still needs an app check.
+
+## Final submission audit
+
+Compared the production files and resources against canonical `2924f522`, the fork's
+`merged-sources` archive and current site bundles/API captures. Read the 200 most recently
+updated inline review comments and the relevant open/merged kkantan review summaries; the
+latest applicable feedback concerns propagated errors, metadata scope, compact cards and
+avoiding duplicated search logic. HTML age-gate and mirror discovery suggestions are site-specific.
+
+| Files/area | Merged comparison and decision |
+| --- | --- |
+| lib.rs and API requests | MangaDex, Comix, Toonkotsu and Sumidoku: framework traits, query parameters, owned JSON, partial details and shared request/status helpers. Keep headers/status handling shared across GET, POST and concurrent home requests; no new dependency or cache. |
+| models.rs | Flame and Keyoapp: fallible compact cards, full details only on details/featured, trimmed unique credits, unique alphabetical tags. MangaDotNet provides the observed scalar/list language decoder pattern. Keep real numbered chapter titles and reject missing reader pages. |
+| helpers.rs/settings.rs | Merged Atsumaru/Xcomic: key-only routing, named site differences and centralized defaults. Keep language aliases/type tables because the API uses legacy codes; an explicitly cleared language selection stays empty. Remove narrative comments and unused public metadata fields. |
+| home.rs | Merged Toonkotsu/Atsumaru: declarative section layouts, five concurrent requests, compact links, ranked page size 3 and chapter page size 5. Featured metadata comes from its existing response. Group exclusions now match the full chapter list; all-section failure propagates the underlying error. |
+| filters/settings/resources | Every one of the 96 tag ID/name pairs matches the live grouped-tag endpoint: 40 genres, 42 themes, 12 formats and two content warnings. All four support inclusion/exclusion. The site has five reversible sorts; preserve both directions. Neutral source-setting filter options make all explicit overrides usable. Icons remain opaque 128x128 with margin. |
+| Manifest/lock/submission | Runtime dependencies remain aidoku and serde. Fork test-only serde_json is removed by the submission normalizer. Main publishes version 8; the new-source submission retains version 1. Tests, documentation, guards and workflows remain off the PR branch. |
+
+Live probes verified completed status, Japanese publication type, shounen demographic, AND/OR
+tag inclusion, tag exclusion, each adult mode, page 2 and impossible status/demographic values.
+The safe-mode/tag discrepancy is covered by deterministic and live regressions rather than a
+compensating fetch loop. A focused checker rejects restoration of MangaBall's empty-language
+fallback; its regression test and upstream calibration pass.
+
+The source still makes five home requests, one normal search/listing request, one details
+request, one chapter-list request and one reader request. Combined details/chapters uses two
+requests with partial details first. Pasted-title search adds a detail lookup and falls back to
+ordinary search only on failure; chapter deep links need one lookup. No per-card fan-out was added.
+
+The supplied check-sources.sh is a Python snapshot with a stale rule rejecting explicit
+canExclude=false. Current fork rules and merged feedback require that false for unsupported
+exclusion controls. The host reference also incorrectly described parse_date as local time;
+the current Rust helper explicitly passes UTC, so only the reference needed correcting.
+
+Home order stays Featured Manga, Top Weekly Ranking, Titles Recommended, Latest Chapter Updates
+and Recently Added Titles. The latest request did not include a replacement layout after "like",
+so it does not authorize an invented redesign. App/device rendering remains a manual check.

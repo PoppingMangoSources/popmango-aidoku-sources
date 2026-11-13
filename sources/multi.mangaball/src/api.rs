@@ -4,7 +4,7 @@ use crate::{
 	settings,
 };
 use aidoku::{
-	Manga, MangaPageResult, Result,
+	ContentRating, Manga, MangaPageResult, Result,
 	alloc::{String, Vec, format, string::ToString},
 	helpers::uri::QueryParameters,
 	imports::net::{Request, Response},
@@ -31,6 +31,7 @@ pub struct SearchParams {
 	pub excluded_tags: Vec<String>,
 	pub tag_mode: String,
 	pub languages: Vec<(String, String)>,
+	pub excluded_scanlators: Vec<String>,
 }
 
 impl SearchParams {
@@ -43,6 +44,7 @@ impl SearchParams {
 			excluded_tags: settings::excluded_tags(),
 			tag_mode: "AND".into(),
 			languages: site_languages(settings::languages()),
+			excluded_scanlators: settings::excluded_scanlators(),
 			..Default::default()
 		}
 	}
@@ -85,20 +87,29 @@ impl SearchParams {
 	}
 
 	pub fn page(&self, page: i32) -> Result<MangaPageResult> {
+		if self.languages.is_empty() {
+			return Ok(MangaPageResult::default());
+		}
 		let response: Paginated<Title> = get(&self.url(page))?;
 		Ok(MangaPageResult {
 			entries: response
 				.data
 				.into_iter()
+				.filter(|title| self.allows_rating(title))
 				.filter_map(|title| Manga::try_from(title).ok())
 				.collect(),
 			has_next_page: response.pagination.page < response.pagination.total_pages,
 		})
 	}
 
-	// Feeds other than search take only the content mode, so the settings apply here.
+	// The API's safe mode can include adult-tagged titles.
+	pub fn allows_rating(&self, title: &Title) -> bool {
+		self.adult_mode == "all"
+			|| (title.content_rating() == ContentRating::NSFW) == (self.adult_mode == "only_18")
+	}
+
 	pub fn allows(&self, title: &Title) -> bool {
-		(self.adult_mode == "all" || title.is18plus == (self.adult_mode == "only_18"))
+		self.allows_rating(title)
 			&& (self.kind.is_empty()
 				|| title_type(&title.original_language) == Some(self.kind.as_str()))
 			&& !title

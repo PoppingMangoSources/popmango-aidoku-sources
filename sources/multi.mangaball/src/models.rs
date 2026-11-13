@@ -1,7 +1,7 @@
 use crate::{api::BASE_URL, helpers::title_type};
 use aidoku::{
 	AidokuError, Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
-	alloc::{String, Vec, format, string::ToString, vec},
+	alloc::{String, Vec, format, vec},
 	imports::std::parse_date,
 	prelude::*,
 };
@@ -28,7 +28,7 @@ pub struct Pagination {
 
 #[derive(Deserialize)]
 pub struct Title {
-	pub id: String,
+	id: String,
 	name: Option<String>,
 	image: Option<Image>,
 	#[serde(default)]
@@ -47,7 +47,7 @@ pub struct Title {
 	#[serde(default)]
 	author: Vec<Author>,
 	#[serde(default)]
-	pub is18plus: bool,
+	is18plus: bool,
 	#[serde(default)]
 	pub recent_chapters: Vec<ChapterItem>,
 }
@@ -100,13 +100,13 @@ pub struct ChapterItem {
 	#[serde(default)]
 	volume: f32,
 	lang: String,
-	pub group: Option<Group>,
+	group: Option<Group>,
 	created_at: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct Group {
-	pub name: String,
+struct Group {
+	name: String,
 }
 
 #[derive(Deserialize)]
@@ -143,28 +143,30 @@ impl Image {
 }
 
 impl Title {
-	fn into_manga(self, detailed: bool) -> Result<Manga> {
-		let name = self.name.ok_or_else(|| error!("Series has no title"))?;
-		if self.id.trim().is_empty() || name.trim().is_empty() {
-			bail!("Series has no key or title");
-		}
+	pub fn content_rating(&self) -> ContentRating {
 		let has_tag = |names: &[&str]| {
 			self.tags
 				.iter()
 				.any(|tag| names.contains(&tag.name.as_str()))
 		};
-		// The site only flags 18+ titles; the rest are rated from their tags.
-		let content_rating = if self.is18plus || has_tag(&["Adult", "Hentai", "Manhwa 18+", "Smut"])
-		{
+		if self.is18plus || has_tag(&["Adult", "Hentai", "Manhwa 18+", "Smut"]) {
 			ContentRating::NSFW
 		} else if has_tag(&["Ecchi", "Mature"]) {
 			ContentRating::Suggestive
 		} else {
 			ContentRating::Safe
-		};
+		}
+	}
+
+	fn into_manga(self, detailed: bool) -> Result<Manga> {
+		let content_rating = self.content_rating();
+		let name = self.name.ok_or_else(|| error!("Series has no title"))?;
+		if self.id.trim().is_empty() || name.trim().is_empty() {
+			bail!("Series has no key or title");
+		}
 		let viewer = match title_type(&self.original_language) {
 			Some("manhwa" | "manhua") => Viewer::Webtoon,
-			_ if has_tag(&["Long Strip"]) => Viewer::Webtoon,
+			_ if self.tags.iter().any(|tag| tag.name == "Long Strip") => Viewer::Webtoon,
 			Some("manga") => Viewer::RightToLeft,
 			_ => Viewer::Unknown,
 		};
@@ -184,9 +186,17 @@ impl Title {
 		if detailed {
 			let mut tags: Vec<_> = self.tags.into_iter().map(|tag| tag.name).collect();
 			tags.sort_unstable();
+			tags.dedup();
 			manga.url = Some(format!("{BASE_URL}/title-detail/{}", self.id));
 			manga.description = Some(self.description.join("\n\n")).filter(|text| !text.is_empty());
-			manga.authors = Some(self.author.into_iter().map(|author| author.name).collect());
+			let mut authors = Vec::new();
+			for author in self.author {
+				let name = author.name.trim();
+				if !name.is_empty() && !authors.iter().any(|existing| existing == name) {
+					authors.push(name.into());
+				}
+			}
+			manga.authors = (!authors.is_empty()).then_some(authors);
 			manga.tags = Some(tags);
 			manga.viewer = viewer;
 		}
@@ -209,18 +219,35 @@ impl TryFrom<Title> for Manga {
 }
 
 impl ChapterItem {
-	// A chapter in a language the reader hasn't selected is `None`.
-	pub fn into_chapter(self, languages: &[(String, String)]) -> Option<Chapter> {
+	pub fn into_chapter(
+		self,
+		languages: &[(String, String)],
+		excluded_scanlators: &[String],
+	) -> Option<Chapter> {
+		if self.id.trim().is_empty()
+			|| self.group.as_ref().is_some_and(|group| {
+				excluded_scanlators.contains(&group.name.trim().to_lowercase())
+			}) {
+			return None;
+		}
 		let lang = self.lang.to_lowercase();
 		let language = languages.iter().find(|(code, _)| *code == lang)?.1.clone();
-		// Most names only repeat the number, such as "Ch.22".
 		let title = self.name.filter(|name| {
-			!name.is_empty()
+			let label = name.trim();
+			let label = label
+				.strip_prefix(&format!("Vol.{} ", self.volume))
+				.unwrap_or(label);
+			let label = label
+				.strip_prefix("Chapter ")
+				.or_else(|| label.strip_prefix("Ch."))
+				.unwrap_or(label)
+				.trim();
+			!name.trim().is_empty()
 				&& !self
 					.number
-					.is_some_and(|number| name.contains(&number.to_string()))
+					.is_some_and(|number| label.parse::<f32>() == Ok(number))
 		});
-		// Timestamps are UTC with microseconds; the format avoids a quoted `T`.
+		// Avoid quoted literals, which the runner does not parse.
 		let date_uploaded = self
 			.created_at
 			.as_deref()

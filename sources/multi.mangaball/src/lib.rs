@@ -52,8 +52,8 @@ impl Source for MangaBall {
 					}
 					search.ascending = ascending;
 				}
-				FilterValue::Select { id, value } => match id.as_str() {
-					"type" => search.kind = value,
+				FilterValue::Select { id, value } if !value.is_empty() => match id.as_str() {
+					"type" => search.kind = if value == "any" { String::new() } else { value },
 					"status" => search.status = value,
 					"demographic" => search.demographic = value,
 					"rating" => search.adult_mode = value,
@@ -110,13 +110,7 @@ impl Source for MangaBall {
 			let chapters = parse::<ApiResponse<Vec<ChapterItem>>>(request.send()?)?
 				.data
 				.into_iter()
-				.filter(|chapter| {
-					!chapter
-						.group
-						.as_ref()
-						.is_some_and(|group| excluded.contains(&group.name.trim().to_lowercase()))
-				})
-				.filter_map(|chapter| chapter.into_chapter(&languages))
+				.filter_map(|chapter| chapter.into_chapter(&languages, &excluded))
 				.collect();
 			manga.chapters = Some(chapters);
 		}
@@ -127,8 +121,8 @@ impl Source for MangaBall {
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let url = format!("{API_URL}/chapter-detail?chapter_id={}", chapter.key);
 		let pages = get::<ApiResponse<ChapterDetail>>(&url)?.data.chapter.pages;
-		if pages.is_empty() {
-			bail!("This chapter has no pages");
+		if pages.is_empty() || pages.iter().any(|url| url.trim().is_empty()) {
+			bail!("This chapter has missing pages");
 		}
 		Ok(pages
 			.into_iter()

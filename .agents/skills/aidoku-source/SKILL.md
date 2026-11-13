@@ -63,7 +63,8 @@ that shipped:
       rows, which are `Link::from(compact Manga)` with no subtitle. Only `BigScroller` shows
       details (AGENTS.md / CLAUDE.md §3)
 - [ ] `MangaChapterList` only when the feed names a real chapter
-- [ ] A filter on the same axis as a setting overrides it for that search, never repeats it
+- [ ] A filter on the same axis as a setting overrides it for that search, never repeats it.
+      The default select value is omitted by the app; keep actual override values selectable.
 - [ ] No dead code: nothing silenced with `allow`/`expect`, no sort the API already does, no
       field or helper left over from removed behaviour (AGENTS.md / CLAUDE.md §8)
 - [ ] `src/test.rs` stays on `main`; `pr-branch.sh` keeps it and its unused `serde_json`

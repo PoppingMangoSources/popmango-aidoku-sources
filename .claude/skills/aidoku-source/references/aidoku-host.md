@@ -183,9 +183,9 @@ filter doesn't count.
 ## Std, env and defaults (`Imports/Std.swift`, `Imports/Env.swift`)
 
 - `current_date` is seconds since 1970 as a float; `utc_offset` is the device's offset.
-- **`parse_date` uses `DateFormatter` with the device's locale and time zone unless given
-  one.** English month or day names fail on a device set to another language: pass
-  `en_US_POSIX` as the locale. `current` selects the device's.
+- The Swift import uses `DateFormatter`, but aidoku-rs `parse_date` passes **UTC** explicitly;
+  `parse_local_date` passes `current`. `parse_date_with_options` selects both locale and zone.
+  English month/day names need `en_US_POSIX` for a predictable locale.
 - `print` goes to the log handler (`aidoku logcat` in the app's Log Server setting).
 - `sleep(seconds)` blocks the source.
 - `send_partial_result` delivers a partial home or manga while the call is still running.

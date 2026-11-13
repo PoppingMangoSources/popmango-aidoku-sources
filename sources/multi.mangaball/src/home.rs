@@ -47,11 +47,15 @@ pub fn fill(
 	titles: Vec<Title>,
 	search: &SearchParams,
 ) -> HomeComponentValue {
-	// Search applies the settings itself.
+	// Search already filters types, tags and languages.
 	let sorted = SORTS.contains(&id);
-	let titles = titles
-		.into_iter()
-		.filter(|title| sorted || search.allows(title));
+	let titles = titles.into_iter().filter(|title| {
+		if sorted {
+			search.allows_rating(title)
+		} else {
+			search.allows(title)
+		}
+	});
 	let listing = sorted.then(|| Listing {
 		id: id.into(),
 		name: name.into(),
@@ -81,7 +85,9 @@ pub fn fill(
 				.filter_map(|mut title| {
 					let chapter = core::mem::take(&mut title.recent_chapters)
 						.into_iter()
-						.find_map(|chapter| chapter.into_chapter(&search.languages))?;
+						.find_map(|chapter| {
+							chapter.into_chapter(&search.languages, &search.excluded_scanlators)
+						})?;
 					Some(MangaWithChapter {
 						manga: Manga::try_from(title).ok()?,
 						chapter,
@@ -95,6 +101,10 @@ pub fn fill(
 
 impl Home for MangaBall {
 	fn get_home(&self) -> Result<HomeLayout> {
+		let search = SearchParams::new(None);
+		if search.languages.is_empty() {
+			return Ok(HomeLayout::default());
+		}
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: SECTIONS
 				.iter()
@@ -111,17 +121,26 @@ impl Home for MangaBall {
 				.collect(),
 		}));
 
-		let search = SearchParams::new(None);
 		let requests = SECTIONS
 			.iter()
 			.map(|(id, ..)| request(&section_url(id, &search)))
 			.collect::<Result<Vec<_>>>()?;
-		// Returning the final layout removes failed-section placeholders.
+		// The final layout removes failed-section placeholders.
+		let mut failure = None;
 		let components = SECTIONS
 			.iter()
 			.zip(Request::send_all(requests))
 			.filter_map(|((id, name, layout), response)| {
-				let titles = parse::<ApiResponse<Vec<Title>>>(response.ok()?).ok()?.data;
+				let titles = match response
+					.map_err(Into::into)
+					.and_then(parse::<ApiResponse<Vec<Title>>>)
+				{
+					Ok(response) => response.data,
+					Err(error) => {
+						failure = Some(error);
+						return None;
+					}
+				};
 				Some(HomeComponent {
 					title: Some(String::from(*name)),
 					subtitle: None,
@@ -130,7 +149,7 @@ impl Home for MangaBall {
 			})
 			.collect::<Vec<_>>();
 		if components.is_empty() {
-			bail!("MangaBall didn't answer");
+			return Err(failure.unwrap_or_else(|| error!("No home sections")));
 		}
 		Ok(HomeLayout { components })
 	}

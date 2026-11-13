@@ -532,6 +532,13 @@ def check_reviewed_consumer(source: Path, info: dict) -> None:
         for item in filters:
             if isinstance(item, dict) and item.get("type") == "multi-select" and item.get("canExclude") is True:
                 fail(filters_path, f"{item.get('id')!r} enables exclusions on a reviewed include-only site")
+    if source_id == "multi.mangaball":
+        settings = source / "src/settings.rs"
+        if settings.exists() and re.search(
+            r'defaults_get::<Vec<String>>\("languages"\)\s*\.filter\(\|\w+\|\s*!\w+\.is_empty\(\)\)',
+            settings.read_text(),
+        ):
+            fail(settings, "cleared languages must stay empty; only an unset value uses the fallback")
     if source_id == "en.ragescans" and "mangathemesia" in templates:
         if info.get("config", {}).get("supportsAuthorSearch") or any(isinstance(item, dict) and item.get("id") == "author" for item in filters):
             fail(filters_path, "author search has no verified author metadata on this reviewed site")

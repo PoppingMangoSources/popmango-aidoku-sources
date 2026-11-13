@@ -23,8 +23,7 @@ pub enum Link {
 	Chapter(String),
 }
 
-// A pasted link must be this site's: title paths are `/title-detail/<id>-<slug>`, chapter
-// paths carry the id alone.
+// Title URLs append a slug to the ID.
 pub fn parse_link(url: &str) -> Option<Link> {
 	let path = url.trim().strip_prefix(BASE_URL)?;
 	let id = |prefix| {
@@ -39,7 +38,6 @@ pub fn parse_link(url: &str) -> Option<Link> {
 		.or_else(|| id("/chapter-detail/").map(Link::Chapter))
 }
 
-// Pairs each site language code with the app language that selects it.
 pub fn site_languages(languages: Vec<String>) -> Vec<(String, String)> {
 	let mut codes = Vec::new();
 	for language in languages {
