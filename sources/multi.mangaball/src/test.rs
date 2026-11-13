@@ -19,6 +19,7 @@ fn reset() {
 	defaults_set("showAdult", DefaultValue::Bool(false));
 	defaults_set("adultOnly", DefaultValue::Bool(false));
 	defaults_set("type", DefaultValue::String("any".into()));
+	defaults_set("deduplicateChapters", DefaultValue::Bool(false));
 	for key in [
 		"excludedGenres",
 		"excludedThemes",
@@ -807,6 +808,161 @@ fn safe_mode_hides_adult_tags_the_api_mislabels() {
 			.unwrap()
 			.entries
 			.is_empty()
+	);
+	reset();
+}
+
+#[aidoku_test]
+fn review_descriptions_preserve_api_markdown() {
+	let post: Title = serde_json::from_value(serde_json::json!({
+		"id": SERIES, "name": "Example",
+		"description": ["**Original Webtoon:**\nPublisher", "*Italic*, __bold__, [link](https://example.org/a_b)."]
+	})).unwrap();
+	assert_eq!(
+		post.into_details().unwrap().description.as_deref(),
+		Some(
+			"**Original Webtoon:**\nPublisher\n\n*Italic*, __bold__, [link](https://example.org/a_b)."
+		)
+	);
+}
+
+#[aidoku_test]
+fn markdown_description_survives_updates() {
+	reset();
+	let source = MangaBall::new();
+	let manga = || Manga {
+		key: "6889f391e00aa4d41d07dfeb".into(),
+		..Default::default()
+	};
+	let details = source.get_manga_update(manga(), true, false).unwrap();
+	assert!(
+		details
+			.description
+			.as_ref()
+			.unwrap()
+			.contains("**Original Webtoon:**")
+	);
+	let combined = source.get_manga_update(manga(), true, true).unwrap();
+	assert_eq!(combined.description, details.description);
+	assert!(!combined.chapters.as_ref().unwrap().is_empty());
+	let chapters = source
+		.get_manga_update(details.clone(), false, true)
+		.unwrap();
+	assert_eq!(chapters.description, details.description);
+}
+
+#[aidoku_test]
+fn review_deduplication_keeps_parts_languages_and_volumes() {
+	let languages = site_languages(vec!["en".into(), "fr".into()]);
+	let entries = || {
+		serde_json::from_value::<Vec<ChapterItem>>(serde_json::json!([
+			{"id":"a1","lang":"en","number":10,"group":{"id":"a","name":"Group A"},"likes":1},
+			{"id":"a2","lang":"en","number":10,"group":{"id":"a","name":"Group A"}},
+			{"id":"b","lang":"en","number":10,"group":{"id":"b","name":"Group B"},"views":999},
+			{"id":"blocked","lang":"en","number":10,"group":{"id":"c","name":"Group C"},"likes":99},
+			{"id":"fr","lang":"fr","number":10,"group":{"id":"b","name":"Group B"}},
+			{"id":"v2","lang":"en","number":10,"volume":2,"group":{"id":"b","name":"Group B"}},
+			{"id":"extra-a","lang":"en","group":{"id":"a","name":"Group A"}},
+			{"id":"extra-b","lang":"en","group":{"id":"b","name":"Group B"}},
+			{"id":"few-views","lang":"en","number":11,"group":{"id":"a","name":"Group A"},"views":1},
+			{"id":"many-views","lang":"en","number":11,"group":{"id":"b","name":"Group B"},"views":10},
+			{"id":"older","lang":"en","number":12,"group":{"id":"a","name":"Group A"},"created_at":"2026-01-01T00:00:00"},
+			{"id":"newer","lang":"en","number":12,"group":{"id":"b","name":"Group B"},"created_at":"2026-02-01T00:00:00"},
+			{"id":"aa","lang":"en","number":13,"group":{"id":"a","name":"Group A"}},
+			{"id":"zz","lang":"en","number":13,"group":{"id":"b","name":"Group B"}},
+			{"id":"a-earlier","lang":"en","number":14,"group":{"id":"a","name":"Group A"},"created_at":"2026-01-01T00:00:00.1"},
+			{"id":"z-later","lang":"en","number":14,"group":{"id":"b","name":"Group B"},"created_at":"2026-01-01T00:00:00.2"}
+		])).unwrap()
+	};
+	let keys = |chapters: Vec<Chapter>| {
+		chapters
+			.into_iter()
+			.map(|chapter| chapter.key)
+			.collect::<Vec<_>>()
+	};
+	let excluded = vec!["group c".into()];
+	let all = keys(models::chapter_list(
+		entries(),
+		&languages,
+		&excluded,
+		false,
+	));
+	assert_eq!(all.len(), 15);
+	assert_eq!(&all[..3], &["a1", "a2", "b"]);
+	let kept = keys(models::chapter_list(entries(), &languages, &excluded, true));
+	for key in [
+		"a1",
+		"a2",
+		"fr",
+		"v2",
+		"extra-a",
+		"extra-b",
+		"many-views",
+		"newer",
+		"aa",
+		"z-later",
+	] {
+		assert!(kept.iter().any(|id| id == key), "missing {key}");
+	}
+	assert_eq!(kept.len(), 10);
+	let mut reversed = entries();
+	reversed.reverse();
+	assert_eq!(
+		kept,
+		keys(models::chapter_list(reversed, &languages, &excluded, true))
+	);
+}
+
+#[aidoku_test]
+fn review_deduplication_setting_matches_its_default() {
+	reset();
+	let settings: serde_json::Value =
+		serde_json::from_str(include_str!("../res/settings.json")).unwrap();
+	let chapters = settings
+		.as_array()
+		.unwrap()
+		.iter()
+		.find(|group| group["title"] == "Chapters")
+		.unwrap();
+	assert_eq!(chapters["items"][0]["key"], "deduplicateChapters");
+	assert_eq!(chapters["items"][0]["default"], false);
+	assert!(!settings::deduplicate_chapters());
+	defaults_set("deduplicateChapters", DefaultValue::Bool(true));
+	assert!(settings::deduplicate_chapters());
+	reset();
+}
+
+#[aidoku_test]
+fn deduplication_keeps_existing_upload_keys() {
+	reset();
+	let source = MangaBall::new();
+	let manga = || Manga {
+		key: "6889f391e00aa4d41d07dfeb".into(),
+		..Default::default()
+	};
+	let all = source
+		.get_manga_update(manga(), false, true)
+		.unwrap()
+		.chapters
+		.unwrap();
+	defaults_set("deduplicateChapters", DefaultValue::Bool(true));
+	let kept = source
+		.get_manga_update(manga(), false, true)
+		.unwrap()
+		.chapters
+		.unwrap();
+	assert!(!kept.is_empty() && kept.len() < all.len());
+	assert!(
+		kept.iter()
+			.all(|chapter| all.iter().any(|original| original.key == chapter.key))
+	);
+	assert_eq!(
+		all.iter()
+			.filter(|chapter| chapter.chapter_number.is_none())
+			.count(),
+		kept.iter()
+			.filter(|chapter| chapter.chapter_number.is_none())
+			.count()
 	);
 	reset();
 }

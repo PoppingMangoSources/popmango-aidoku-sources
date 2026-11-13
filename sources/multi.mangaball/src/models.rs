@@ -5,6 +5,7 @@ use aidoku::{
 	imports::std::parse_date,
 	prelude::*,
 };
+use core::cmp::Ordering;
 use serde::{Deserialize, Deserializer};
 
 const CDN_URL: &str = "https://bulbasaur.poke-black-and-white.net/covers";
@@ -102,10 +103,13 @@ pub struct ChapterItem {
 	lang: String,
 	group: Option<Group>,
 	created_at: Option<String>,
+	likes: Option<u64>,
+	views: Option<u64>,
 }
 
 #[derive(Deserialize)]
 struct Group {
+	id: Option<String>,
 	name: String,
 }
 
@@ -265,4 +269,73 @@ impl ChapterItem {
 			..Default::default()
 		})
 	}
+}
+
+pub fn chapter_list(
+	entries: Vec<ChapterItem>,
+	languages: &[(String, String)],
+	excluded: &[String],
+	deduplicate: bool,
+) -> Vec<Chapter> {
+	let mut chapters: Vec<_> = entries
+		.into_iter()
+		.filter_map(|mut entry| {
+			let quality = (
+				entry.likes.unwrap_or_default(),
+				entry.views.unwrap_or_default(),
+				entry.created_at.clone(),
+			);
+			let group = entry.group.as_mut().map(|group| {
+				group
+					.id
+					.take()
+					.filter(|id| !id.is_empty())
+					.unwrap_or_else(|| group.name.trim().to_lowercase())
+			});
+			entry
+				.into_chapter(languages, excluded)
+				.map(|chapter| (quality, group, chapter))
+		})
+		.collect();
+	if deduplicate {
+		chapters.sort_by(|(a_quality, _, a), (b_quality, _, b)| {
+			b.volume_number
+				.partial_cmp(&a.volume_number)
+				.unwrap_or(Ordering::Equal)
+				.then_with(|| {
+					b.chapter_number
+						.partial_cmp(&a.chapter_number)
+						.unwrap_or(Ordering::Equal)
+				})
+				.then_with(|| a.language.cmp(&b.language))
+				.then_with(|| b_quality.cmp(a_quality))
+				.then_with(|| a.key.cmp(&b.key))
+		});
+		// Keep every part from the winning group.
+		let mut selected = None;
+		let mut selected_group = None;
+		chapters.retain(|(_, group, chapter)| {
+			let Some(number) = chapter.chapter_number else {
+				return true;
+			};
+			let same = selected
+				.as_ref()
+				.is_some_and(|(volume, previous, language)| {
+					*volume == chapter.volume_number
+						&& *previous == number
+						&& *language == chapter.language
+				});
+			if same {
+				*group == selected_group
+			} else {
+				selected = Some((chapter.volume_number, number, chapter.language.clone()));
+				selected_group = group.clone();
+				true
+			}
+		});
+	}
+	chapters
+		.into_iter()
+		.map(|(_, _, chapter)| chapter)
+		.collect()
 }

@@ -12,9 +12,11 @@ sources:
   - code: sources/multi.mangaball/src/settings.rs
   - code: sources/multi.mangaball/res/filters.json
   - code: sources/multi.mangaball/res/settings.json
+  - ext: https://api.github.com/repos/Smexhy/yomu-aidoku-sources/git/blobs/76bed84198f3eb07c7f2124faedbe0de7301a7f2
+  - ext: https://github.com/Aidoku-Community/sources/blob/2924f522ba533e2dc8b3c138b3769c0e29e03aba/sources/en.atsumaru/src/helpers.rs
   - ext: https://mangaball.com/search-advanced
   - ext: https://mangaball.com/api/v1/title/search-advanced
-verified_at: 8c7cc37
+verified_at: a9768d3
 ---
 
 MangaBall (`mangaball.com`, formerly `mangaball.net`) is a Next.js app over a JSON API at
@@ -180,7 +182,7 @@ avoiding duplicated search logic. HTML age-gate and mirror discovery suggestions
 | helpers.rs/settings.rs | Merged Atsumaru/Xcomic: key-only routing, named site differences and centralized defaults. Keep language aliases/type tables because the API uses legacy codes; an explicitly cleared language selection stays empty. Remove narrative comments and unused public metadata fields. |
 | home.rs | Merged Toonkotsu/Atsumaru: declarative section layouts, five concurrent requests, compact links, ranked page size 3 and chapter page size 5. Featured metadata comes from its existing response. Group exclusions now match the full chapter list; all-section failure propagates the underlying error. |
 | filters/settings/resources | Every one of the 96 tag ID/name pairs matches the live grouped-tag endpoint: 40 genres, 42 themes, 12 formats and two content warnings. All four support inclusion/exclusion. The site has five reversible sorts; preserve both directions. Neutral source-setting filter options make all explicit overrides usable. Icons remain opaque 128x128 with margin. |
-| Manifest/lock/submission | Runtime dependencies remain aidoku and serde. Fork test-only serde_json is removed by the submission normalizer. Main publishes version 8; the new-source submission retains version 1. Tests, documentation, guards and workflows remain off the PR branch. |
+| Manifest/lock/submission | Runtime dependencies remain aidoku and serde. Fork test-only serde_json is removed by the submission normalizer. The earlier audit published main version 8; the new-source submission retains version 1. Tests, documentation, guards and workflows remain off the PR branch. |
 
 Live probes verified completed status, Japanese publication type, shounen demographic, AND/OR
 tag inclusion, tag exclusion, each adult mode, page 2 and impossible status/demographic values.
@@ -201,3 +203,49 @@ the current Rust helper explicitly passes UTC, so only the reference needed corr
 Home order stays Featured Manga, Top Weekly Ranking, Titles Recommended, Latest Chapter Updates
 and Recently Added Titles. The latest request did not include a replacement layout after "like",
 so it does not authorize an invented redesign. App/device rendering remains a manual check.
+
+
+## Markdown correction
+
+The reported series, I Want to Trick You (6889f391e00aa4d41d07dfeb), has **Original Webtoon:**
+wrapped in Markdown in both its featured and details API responses. Unlike plain-text
+NovelArchive descriptions, this Markdown must pass through unescaped, following merged
+MangaDex (`sources/multi.mangadex/src/models.rs:267`). The app's ExpandableTextView renders
+Markdown; HomeBigScrollerView uses Text. The fix removes the escaping in the details path,
+so partial and final updates retain bold/italics and links. A deterministic fixture covers
+both emphasis styles, paragraphs and link underscores; the live reported-title regression
+compares details-only, combined and chapters-only results.
+
+> ⚠️ Featured descriptions still display Markdown markers literally because Aidoku's
+> BigScroller is plain text. This matches merged MangaDex's direct description path. A source
+> cannot make that component render bold/italics; do not add a general Markdown parser or
+> erase literal punctuation to simulate it. Device verification of the detail correction remains.
+
+The focused checker rejects reintroducing Markdown escaping on MangaBall's details path.
+Submission version stays 1; fork publication advances once for this correction.
+
+
+## Chapter deduplication
+
+Inspected Yomu's published MangaBall v12 AIX (blob 76bed84198f3eb07c7f2124faedbe0de7301a7f2),
+including its settings and compiled field names. Its settings advertise official, likes,
+views, then newest, with deduplication enabled by default. Compiled settings are evidence
+of the advertised contract, not proof of unpublished Rust implementation.
+
+Compared merged Xcomic (server-side unique chapters), Atsumaru (winning group plus parts),
+Toonkotsu (site main upload plus upload-quality selection), MangaDotNet (official/preferred/
+frequent group scoring) and Kagane (edition-specific book index, no deduplication toggle).
+MangaBall's observed full chapter responses supply optional likes and views and created_at,
+but no verified official flag. The implementation ranks by likes, views, the complete UTC upload timestamp
+and chapter key, without inventing an official classification. Group IDs distinguish uploads;
+names are only a fallback. Group exclusions/language filtering happen before ranking.
+
+Deduplicate Chapters defaults off, following Atsumaru/Toonkotsu and preserving current lists.
+When enabled, chapter_list retains the winning group's same-number parts, every unnumbered
+chapter and separate language/volume slots. Chapter keys are unchanged and no extra requests
+are added. The setting footer describes the priority and read-status effect concisely.
+Deterministic tests cover priorities, exclusions, parts, languages, volumes and reversed-input
+tie breaking; a live test ensures the selected uploads retain existing keys.
+
+> ⚠️ Selecting one upload can hide a previously read upload. Switching back restores that
+> original upload's visibility; never rewrite chapter keys to a manufactured chapter number.

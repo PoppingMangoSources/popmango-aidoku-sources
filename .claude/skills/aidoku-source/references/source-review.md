@@ -178,3 +178,18 @@ The MangaBall audit also verified current SelectFilterView: default values are r
 request. A neutral source-setting entry keeps every explicit override usable. Captured scalar/list
 schemas, safe flags inconsistent with tags, empty language preferences and home chapter group
 exclusions now have deterministic source regressions.
+
+
+MangaBall's API already supplies Markdown. Preserve it on details, following merged MangaDex,
+instead of applying the plain-text escaping used by NovelArchive. The owner's screenshots
+showed formatted text before the response and literal markers after it. Test details-only,
+combined and chapters-only updates against the reported title. BigScroller uses Text rather
+than Markdown; its literal markers are an app rendering limitation, not justification for
+escaping detail text or adding a Markdown parser to the source.
+
+
+For MangaBall deduplication, the published Yomu AIX advertises official/likes/views/newest,
+but our observed endpoint has no official flag. Use the observed likes/views/UTC timestamp
+fields, not an invented official classification. Retain the winning group's same-number
+parts, all unnumbered chapters and separate languages/volumes, as Atsumaru's preservation
+rule requires. Optional deduplication must keep original chapter keys and add no requests.

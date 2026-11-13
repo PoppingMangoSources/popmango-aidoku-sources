@@ -533,6 +533,9 @@ def check_reviewed_consumer(source: Path, info: dict) -> None:
             if isinstance(item, dict) and item.get("type") == "multi-select" and item.get("canExclude") is True:
                 fail(filters_path, f"{item.get('id')!r} enables exclusions on a reviewed include-only site")
     if source_id == "multi.mangaball":
+        library = source / "src/lib.rs"
+        if library.exists() and re.search(r'\.escape_markdown\s*\(', library.read_text()):
+            fail(library, "MangaBall descriptions are already Markdown; do not escape their formatting")
         settings = source / "src/settings.rs"
         if settings.exists() and re.search(
             r'defaults_get::<Vec<String>>\("languages"\)\s*\.filter\(\|\w+\|\s*!\w+\.is_empty\(\)\)',

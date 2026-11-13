@@ -310,8 +310,17 @@
 	{
 		"type": "group",
 		"title": "Chapters",
-		"footer": "Chapters from these groups are left out. Group names aren't case-sensitive.",
+		"footer": "Keep the best group per chapter by likes, views, then newest. Preserve parts and extras. Switching may change which uploads show as read.",
 		"items": [
+			{
+				"type": "switch",
+				"key": "deduplicateChapters",
+				"title": "Deduplicate Chapters",
+				"default": false,
+				"refreshes": [
+					"content"
+				]
+			},
 			{
 				"type": "editable-list",
 				"key": "excludedScanlators",

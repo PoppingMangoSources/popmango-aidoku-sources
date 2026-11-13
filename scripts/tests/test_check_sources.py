@@ -143,6 +143,20 @@ class CardRuleTests(unittest.TestCase):
             checks.check_reviewed_consumer(self.source, {})
             self.assertEqual(bool(checks.failures), fails)
 
+    def test_reviewed_markdown_descriptions_are_not_escaped(self):
+        self.source = self.source.rename(self.source.with_name("multi.mangaball"))
+        (self.source / "src").mkdir()
+        (self.source / "Cargo.toml").write_text("[dependencies]\n")
+        library = self.source / "src/lib.rs"
+        for expression, fails in [
+            ('details.description.map(|text| text.escape_markdown())', True),
+            ('manga.copy_from(details)', False),
+        ]:
+            checks.failures.clear()
+            library.write_text(expression)
+            checks.check_reviewed_consumer(self.source, {})
+            self.assertEqual(bool(checks.failures), fails)
+
     def test_sort_after_other_filters_is_noted(self):
         checks.notes.clear()
         path = self.source / 'res/filters.json'
