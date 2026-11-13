@@ -218,7 +218,13 @@ Before opening it, reread the reviews AGENTS.md / CLAUDE.md §13 lists and predi
 
 ## Phase 7 — Review rounds
 
-For each comment: fix it on `main` (with a bump), then add one commit to the PR branch:
+For each comment, fix it on `main` with a bump, then fold the changes into the PR's
+requested commit structure. A new-source submission stays one `feat: add <id>` commit by
+default, including after it opens. Fetch first, preserve the old head, commit through the
+wrapper and verify the resulting source tree and commit count. Force-push with the exact
+expected remote SHA. A force-push alone does not fold an added commit into the original.
+
+Only when the owner explicitly requests a separate review-fix commit:
 
 ```sh
 scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<one or two sentences>" --push

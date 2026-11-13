@@ -51,7 +51,9 @@ rest of this file still applies, so read each section before the work it covers.
   and never a subtitle (sections 3 and 6).
 - Work on `main`; create another branch only when the owner explicitly asks. Requested branches
   are `feat/<id>`, `fix/<id>`, `feat/<template>-template`, `chore/<topic>` or `docs/<topic>`,
-  never `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`.
+  never `claude/`. Pushes to a PR branch use `--force-with-lease=<ref>:<sha>`. Fold updates
+  into the requested commit structure by default; a new-source PR stays one commit unless
+  the owner explicitly requests separate commits. Force-pushing alone does not squash history.
 - Don't open or post on a PR, and don't resolve review threads; draft the text for the person.
 - Refer to kkantan, and anyone whose pronouns aren't stated, as they/them: in chat replies,
   summaries and drafts as well as files.
@@ -470,7 +472,7 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | What was flagged | The rule | |
 |---|---|---|
 | A Relevance sort the site doesn't have, copied from a reference client that omits `sort_by` (owner's screenshot of the site's Sort By list) | Sorts and filters come from the site's own controls, in the site's order and wording. A reference client shows which parameters work, never which options to offer. When the sandbox can't load the search page, ask for a screenshot of its panel before writing `filters.json`. | R |
-| A second commit pushed to a `feat/` branch before any PR was open (owner's correction) | Until a PR is open the submission branch is one `feat: add <id>` commit with a body: rebuild it with `pr-branch.sh <id> --rebuild --body "<bullets>" --push`. `--fix` is only for a review round on an open PR. | R |
+| Extra fix commits remained after the owner asked to force-push (MangaBall correction) | A new-source submission stays one `feat: add <id>` commit, including after the PR opens, unless the owner explicitly requests separate commits. Fold fixes into the requested history, preserve a backup, verify tree equality and use an explicit-SHA force-with-lease. `--fix` adds a commit, so use it only when a separate commit was requested. | R |
 
 ### From #860 (`en.flamecomics`)
 
@@ -1034,9 +1036,11 @@ went in one of these ways, and new ones go in the same way:
   the source or differs from the selected snapshot beyond the version. Our `main` keeps its own
   incrementing version, since our users have it installed and a version going
   backwards means they never get an update.
-- Review rounds: fix on `main` (with a bump), then
-  `scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<body>" --push`
-  adds one commit on top of what origin holds; it keeps whatever version the branch has.
+- Review rounds: fix on `main` (with a bump), then fold the changes into the PR's requested
+  commit structure. New-source PRs stay one `feat: add <id>` commit by default, even after
+  opening. Preserve the prior head, use the commit wrapper and verify the final tree before
+  force-pushing with its expected remote SHA. `pr-branch.sh --fix` appends a commit; use it
+  only when the owner explicitly requests a separate review-fix commit. Keep the submission version.
 - After a merge, a later change to the source is a new PR from the same branch name:
   `scripts/pr-branch.sh <id> --update "feat(<id>): …" "<body>" --push` restarts
   `feat/<id>` from `upstream/main` (it only does so once origin's branch is merged) and
@@ -1536,8 +1540,9 @@ and push gates reject incomplete preservation. Archive branches do not publish p
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a
-bump, then runs `scripts/pr-branch.sh <id> --branch <branch> --fix …`; removing it again
-afterwards keeps `main` to the fork's own sources.
+bump, then folds the update into the PR's requested commit structure with a leased force-push.
+Use `pr-branch.sh --fix` only for an explicitly requested separate commit; removing the crate
+again afterwards keeps `main` to the fork's own sources.
 
 A later change to a merged source starts from **upstream's** crate, not the last copy here:
 `git checkout upstream/main -- sources/<id>`, then take only `src/test.rs` from the last copy and

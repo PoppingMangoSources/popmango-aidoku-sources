@@ -182,3 +182,5 @@ Reviewed every production file/resource against the canonical sources, archived 
 - 2026-11-13: Preserve MangaBall's API Markdown through details and chapter updates, matching merged MangaDex. Added the reported-title regression and a focused escaping guard; recorded the featured scroller's plain-text limitation.
 
 - 2026-11-13: Compared Yomu MangaBall and five merged sources, then added optional chapter deduplication using observed likes/views/date data. Preserve winning-group parts, languages, volumes and original keys; no extra requests.
+
+- 2026-11-13: Corrected the force-push workflow: fold new-source PR fixes into the original commit by default, even after opening. Preserve explicitly requested multi-commit layouts; append a review-fix commit only when requested. MangaBall was squashed without changing its source tree.
