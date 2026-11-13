@@ -12,7 +12,7 @@ sources:
   - code: sources/multi.mangaball/src/settings.rs
   - code: sources/multi.mangaball/res/filters.json
   - code: sources/multi.mangaball/res/settings.json
-verified_at: 54be504
+verified_at: a32ae46
 ---
 
 MangaBall (`mangaball.com`, formerly `mangaball.net`) is a Next.js app over a JSON API at
