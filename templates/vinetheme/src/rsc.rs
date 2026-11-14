@@ -40,33 +40,43 @@ pub fn extract<T: DeserializeOwned>(body: &str, keys: &[&str]) -> Result<T> {
 
 pub fn objects(body: &str, keys: &[&str]) -> Vec<Value> {
 	let mut output = Vec::new();
-	let mut remaining = body;
-	while let Some((id, row)) = remaining.split_once(':') {
-		if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
-			remaining = remaining.split_once('\n').map_or("", |(_, rest)| rest);
-			continue;
-		}
-		if let Some(raw) = row.strip_prefix('T') {
-			let Some((length, text)) = raw.split_once(',') else {
-				break;
-			};
-			let Some(length) = usize::from_str_radix(length, 16).ok() else {
-				break;
-			};
-			// Text rows have a byte length and need not end at a newline.
-			let Some(rest) = text.get(length..) else {
-				break;
-			};
-			remaining = rest.trim_start_matches('\n');
-		} else {
-			let (line, rest) = row.split_once('\n').unwrap_or((row, ""));
-			if let Ok(value) = serde_json::from_str(line) {
-				collect(value, keys, &mut output);
-			}
-			remaining = rest;
+	for (_, row) in rows(body) {
+		if let Row::Json(line) = row
+			&& let Ok(value) = serde_json::from_str(line)
+		{
+			collect(value, keys, &mut output);
 		}
 	}
 	output
+}
+
+enum Row<'a> {
+	Text(&'a str),
+	Json(&'a str),
+}
+
+fn rows(body: &str) -> impl Iterator<Item = (&str, Row<'_>)> {
+	let mut remaining = body;
+	core::iter::from_fn(move || {
+		loop {
+			let (id, row) = remaining.split_once(':')?;
+			if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+				remaining = remaining.split_once('\n').map_or("", |(_, rest)| rest);
+				continue;
+			}
+			if let Some(raw) = row.strip_prefix('T') {
+				let (length, text) = raw.split_once(',')?;
+				let length = usize::from_str_radix(length, 16).ok()?;
+				// Byte-length text rows may contain newlines or touch the next row.
+				let value = text.get(..length)?;
+				remaining = text.get(length..)?.trim_start_matches('\n');
+				return Some((id, Row::Text(value)));
+			}
+			let (line, rest) = row.split_once('\n').unwrap_or((row, ""));
+			remaining = rest;
+			return Some((id, Row::Json(line)));
+		}
+	})
 }
 
 fn collect(value: Value, keys: &[&str], output: &mut Vec<Value>) {
@@ -95,21 +105,11 @@ pub fn text<'a>(body: &'a str, value: &'a str) -> Result<Cow<'a, str>> {
 	else {
 		return Ok(Cow::Borrowed(value));
 	};
-	let marker = format!("\n{id}:");
-	let row = body
-		.split_once(&marker)
-		.map(|(_, row)| row)
-		.or_else(|| body.strip_prefix(&marker[1..]))
+	let (_, row) = rows(body)
+		.find(|(key, _)| *key == id)
 		.ok_or(error!("Missing chapter text"))?;
-	if let Some(raw) = row.strip_prefix('T') {
-		let (length, raw) = raw.split_once(',').ok_or(error!("Invalid chapter text"))?;
-		let length =
-			usize::from_str_radix(length, 16).map_err(|_| error!("Invalid chapter text length"))?;
-		return Ok(Cow::Borrowed(
-			raw.get(..length).ok_or(error!("Incomplete chapter text"))?,
-		));
+	match row {
+		Row::Text(text) => Ok(Cow::Borrowed(text)),
+		Row::Json(json) => Ok(Cow::Owned(serde_json::from_str(json)?)),
 	}
-	Ok(Cow::Owned(serde_json::from_str(
-		row.lines().next().unwrap_or_default(),
-	)?))
 }

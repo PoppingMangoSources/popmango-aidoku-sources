@@ -62,8 +62,9 @@ resolve displayed names to their actual genre/tag slugs. No sort has an ascendin
 Probes checked page 2, positive/impossible genres, genre exclusions, status, novel mode,
 an impossible chapter minimum and query, and Illustrated narrowing. The `nsfw` query
 parameter was ignored on observed endpoints. The owner requested no adult visibility toggle
-or local adult filtering because the sites have no such control. All five sources retain
-contentRating 1 and individual titles keep their ratings. Source settings default Show Locked
+or local adult filtering because the sites have no such control. Drake, Elf, Valir and Kayn retain
+contentRating 1; Diva uses 2 by the owner’s November 14 instruction. Individual titles
+keep their ratings. Source settings default Show Locked
 Chapters off and Label Novels on where a mixed catalogue currently exists. Commercial sale/purchase filters are omitted.
 
 ## Reader and descriptions
@@ -174,5 +175,36 @@ substituted Site Unavailable response and Firecrawl reaches its welcome page. Th
 does not establish a new Diva live pass or device rendering. No session cookies were changed.
 
 > ⚠️ Do not restore showAdult or hide adult-tagged cards locally for these five Vine sites.
-> The owner explicitly requested the site catalogue with source rating 1. Portable fixtures
+> The owner requested the site catalogue with rating 1, except Diva at 2. Portable fixtures
 > include adult-rated search and home cards to prevent silent filtering from returning.
+
+Valir's source implements its own home order: Trending BigScroller, Popular Today,
+Latest Comic Updates (4), Novels, Latest Novel Updates (4), Editor's Pick BigScroller,
+and Top 10 in All (3). Three independent requests run concurrently: home HTML,
+`/api/series?sort=trending&limit=24&page=1&contentMode=all`, and
+`/api/series?type=Web+Novel&limit=24&page=1&contentMode=all`. The novel listing stores
+`type=Web%20Novel` so the shared URI decoder passes a space to QueryParameters.
+The live homepage's featured stack renders only its active slide as links; its Flight
+`series` array supplies every pick, with viewCount and no createdAt/lastChapterAt.
+The generic parser handles that shared widget; site-specific ordering stays in consumers.
+Drake moves Popular Today immediately after Latest Novel Updates via its parse_home override.
+Browser evidence and the Valir runner confirm the current site sections. Deterministic
+regressions cover all stack slides, exact consumer ordering, page sizes and compact novels.
+
+
+Diva uses Featured, Popular Today, Latest Comic Updates (4), Latest Novel Updates (4),
+New Series and Top 10 in All (3). Kayn uses Editor's Pick, Popular Today, Latest Comic
+Updates (4), New Series, Latest Novel Updates (4) and Top 10 in All (3). Kayn's current
+site has only one New Series feed; it is not duplicated. Both discard the untitled popular
+hero and reuse the shared reorder function, as does Valir. No per-card requests were added.
+
+Home descriptions may be Flight text references such as `$99`. Resolve them before plain
+text conversion, and reuse richer embedded records for partial hero slides. The shared
+Flight row iterator honors byte lengths, multibyte content, newlines and adjacent text rows.
+Missing optional references omit the synopsis while keeping the valid card. Regressions
+cover every one of these shapes, including JSON-string references and complete stack picks.
+
+Kayn's icon now uses an opaque white background. Valir's sharper icon comes from its current
+official `/icon-192.png`, normalized to 128px with margin. Final local evidence includes
+passing Valir and Kayn homes and description-reference contracts; Diva's local live suite
+still receives substituted Site Unavailable HTML, so its live rendering remains unverified.

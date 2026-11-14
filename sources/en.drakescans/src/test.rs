@@ -108,3 +108,19 @@ fn novel_chapter_reads_from_keys_only() {
 		matches!(&pages[0].content, aidoku::PageContent::Text(text) if text.len() > 500 && text.contains("\n\n") && !text.starts_with('$'))
 	);
 }
+
+#[aidoku_test]
+fn review_popular_today_follows_latest_novels() {
+	let flight = r#"1:{"all":[{"slug":"title","title":"Title","coverImage":"/cover.webp","type":"WEB_NOVEL","chapters":[{"number":1}]}]}"#;
+	let body = format!(
+		"<html><body><section><h2>Popular Today</h2><a href='/series/novel/title?ref=homepage_popular'><img alt='Title' src='/cover.webp'></a></section><section><h2>Latest Novel Updates</h2><a href='/series/novel/title?ref=homepage_latest'><img alt='Title' src='/cover.webp'></a></section><script>self.__next_f.push([1,{flight:?}])</script></body></html>"
+	);
+	let home = DrakeScans.parse_home(&DrakeScans.params(), &body).unwrap();
+	assert_eq!(
+		home.components
+			.iter()
+			.map(|c| c.title.as_deref().unwrap())
+			.collect::<Vec<_>>(),
+		["Latest Novel Updates", "Popular Today"]
+	);
+}

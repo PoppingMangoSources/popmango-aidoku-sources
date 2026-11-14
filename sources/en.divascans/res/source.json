@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.divascans",
 		"name": "Diva Scans",
-		"version": 5,
+		"version": 6,
 		"url": "https://divascans.org",
-		"contentRating": 1,
+		"contentRating": 2,
 		"languages": [
 			"en"
 		],

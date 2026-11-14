@@ -55,10 +55,14 @@ class Responses(http.server.BaseHTTPRequestHandler):
                 def section(title, marker, novel=False):
                     route = "novel/title" if novel else "comic/title"
                     return f"<section><h2>{title}</h2><div><a href='/series/{route}?ref={marker}'><img src='/cover.webp' alt='Title'></a><a href='/series/{route}?ref={marker}'><h3>Title</h3></a><a href='/series/{route}/chapter/2'><span data-chapter-row-time>1d</span></a></div></section>"
-                comic = dict(series, chapters=chapters([3, 2]))
+                comic = dict(series, description="$99", chapters=chapters([3, 2]))
                 novel = dict(comic, type="WEB_NOVEL")
-                flight = "1:" + json.dumps({"initialSlides": [series], "all": [comic, novel]})
-                body = "<html><body>" + section("New Series", "homepage_new") + section("On Sale Now", "homepage_sale") + section("Latest Novel Updates", "homepage_latest", True) + section("Latest Comic Updates", "homepage_latest") + section("Popular Today", "homepage_popular") + section("Top 10 in All", "homepage_most_popular") + "<script>self.__next_f.push(" + json.dumps([1, flight]) + ")</script></body></html>"
+                picks = [dict(series, slug="pick-1", viewCount=10, description="$9b"), dict(series, slug="pick-2", viewCount=20, description="$9c"), dict(series, slug="pick-3", viewCount=30, description="$9d")]
+                flight = "1:" + json.dumps({"initialSlides": [dict(series, description="$99")], "all": [comic, novel], "featured": {"series": picks}, "new": {"series": [dict(picks[1], createdAt="2026-11-13")]}})
+                text = "<p>First 界</p>\n<p><strong>Second</strong></p>"
+                flight += "\n99:" + json.dumps("<p>Plain description.</p>") + "\n9b:T" + format(len(text.encode()), "x") + "," + text + "9c:" + json.dumps("<p>Third &amp; fourth.</p>")
+                featured = "<section><h2>Editor's Pick</h2><div data-stack-frame><a href='/series/comic/pick-1?ref=homepage_featured'>Read Now</a></div></section>"
+                body = "<html><body>" + section("New Series", "homepage_new") + section("On Sale Now", "homepage_sale") + section("Latest Novel Updates", "homepage_latest", True) + section("Latest Comic Updates", "homepage_latest") + section("Popular Today", "homepage_popular") + section("Top 10 in All", "homepage_most_popular") + featured + "<script>self.__next_f.push(" + json.dumps([1, flight]) + ")</script></body></html>"
             else:
                 status = 404
         elif path.startswith(("/keyoapp/", "/keyoapp-v2/")):

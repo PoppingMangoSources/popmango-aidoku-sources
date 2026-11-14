@@ -108,3 +108,158 @@ fn novel_chapter_reads_from_keys_only() {
 		matches!(&pages[0].content, aidoku::PageContent::Text(text) if text.len() > 500 && text.contains("\n\n") && !text.starts_with('$'))
 	);
 }
+
+#[aidoku_test]
+fn review_home_order_sizes_and_compact_novels() {
+	use aidoku::{HomeComponent, HomeComponentValue as Value, HomeLayout, alloc::vec};
+	let home = HomeLayout {
+		components: [
+			"New Series",
+			"Latest Novel Updates",
+			"Editor's Pick",
+			"Top 10 in All",
+			"Latest Comic Updates",
+			"Popular Today",
+		]
+		.into_iter()
+		.map(|title| HomeComponent {
+			title: Some(title.into()),
+			value: match title {
+				"Latest Novel Updates" | "Latest Comic Updates" => Value::MangaChapterList {
+					entries: vec![],
+					page_size: Some(5),
+					listing: None,
+				},
+				"Top 10 in All" => Value::MangaList {
+					entries: vec![],
+					ranking: true,
+					page_size: Some(5),
+					listing: None,
+				},
+				"Editor's Pick" => Value::BigScroller {
+					entries: vec![Manga {
+						key: "pick".into(),
+						title: "Pick".into(),
+						..Default::default()
+					}],
+					auto_scroll_interval: None,
+				},
+				_ => Value::Scroller {
+					entries: vec![],
+					listing: None,
+				},
+			},
+			..Default::default()
+		})
+		.collect(),
+	};
+	let home = home::layout(
+		home,
+		vec![Manga {
+			key: "trending".into(),
+			title: "Trending title".into(),
+			description: Some("Description".into()),
+			..Default::default()
+		}],
+		vec![Manga {
+			key: "novel/title".into(),
+			title: "Title".into(),
+			description: Some("Details only".into()),
+			..Default::default()
+		}],
+	);
+	assert_eq!(
+		home.components
+			.iter()
+			.map(|c| c.title.as_deref().unwrap())
+			.collect::<Vec<_>>(),
+		[
+			"Trending",
+			"Popular Today",
+			"Latest Comic Updates",
+			"Novels",
+			"Latest Novel Updates",
+			"Editor's Pick",
+			"Top 10 in All"
+		]
+	);
+	assert!(
+		matches!(&home.components[0].value, Value::BigScroller { entries, .. } if entries[0].key == "trending" && entries[0].description.is_some())
+	);
+	for index in [2, 4] {
+		assert!(matches!(
+			&home.components[index].value,
+			Value::MangaChapterList {
+				page_size: Some(4),
+				..
+			}
+		));
+	}
+	assert!(
+		matches!(&home.components[5].value, Value::BigScroller { entries, .. } if entries[0].key == "pick")
+	);
+	assert!(matches!(
+		&home.components[6].value,
+		Value::MangaList {
+			page_size: Some(3),
+			ranking: true,
+			..
+		}
+	));
+	let Value::Scroller { entries, listing } = &home.components[3].value else {
+		panic!()
+	};
+	assert_eq!(listing.as_ref().unwrap().id, "type=Web%20Novel");
+	assert!(
+		matches!(&entries[0].value, Some(aidoku::LinkValue::Manga(manga)) if manga.description.is_none())
+	);
+	assert!(
+		home::layout(HomeLayout::default(), vec![], vec![])
+			.components
+			.is_empty()
+	);
+}
+
+#[aidoku_test]
+fn live_home_has_requested_rows() {
+	let home = VineTheme::<ValirScans>::new().get_home().unwrap();
+	assert_eq!(
+		home.components
+			.iter()
+			.map(|c| c.title.as_deref().unwrap())
+			.collect::<Vec<_>>(),
+		[
+			"Trending",
+			"Popular Today",
+			"Latest Comic Updates",
+			"Novels",
+			"Latest Novel Updates",
+			"Editor's Pick",
+			"Top 10 in All"
+		]
+	);
+	assert!(
+		matches!(&home.components[5].value, aidoku::HomeComponentValue::BigScroller { entries, .. } if entries.len() > 1)
+	);
+}
+
+#[aidoku_test]
+fn live_novel_listing_preserves_type_and_pagination() {
+	use aidoku::{Listing, ListingProvider};
+	let source = VineTheme::<ValirScans>::new();
+	let listing = Listing {
+		id: "type=Web%20Novel".into(),
+		..Default::default()
+	};
+	let first = source.get_manga_list(listing.clone(), 1).unwrap();
+	let second = source.get_manga_list(listing, 2).unwrap();
+	assert!(first.has_next_page && !first.entries.is_empty() && !second.entries.is_empty());
+	assert!(
+		first
+			.entries
+			.iter()
+			.chain(&second.entries)
+			.all(|manga| manga.key.starts_with("novel/"))
+	);
+	assert_ne!(first.entries[0].key, second.entries[0].key);
+}

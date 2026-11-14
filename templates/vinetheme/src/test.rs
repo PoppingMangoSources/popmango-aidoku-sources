@@ -86,3 +86,48 @@ fn review_flight_hints_do_not_hide_reader_objects() {
 	let chapter: ChapterPages = rsc::extract(body, &["pages", "content"]).unwrap();
 	assert_eq!(chapter.content.as_deref(), Some("Text"));
 }
+
+#[aidoku_test]
+fn review_featured_stack_keeps_valid_links_without_array() {
+	let flight = serde_json::json!([
+		1,
+		"1:{\"all\":[{\"slug\":\"pick\",\"title\":\"Pick\",\"coverImage\":\"/cover.webp\"}]}"
+	]);
+	let body = format!(
+		"<html><section><h2>Editor's Pick</h2><div data-stack-frame><a href='/series/comic/pick?ref=homepage_featured'>Read Now</a></div></section><script>self.__next_f.push({flight})</script></html>"
+	);
+	let home = crate::home::parse(
+		&body,
+		&crate::Params {
+			base_url: "https://example.com".into(),
+		},
+	)
+	.unwrap();
+	assert!(
+		matches!(&home.components[0].value, aidoku::HomeComponentValue::BigScroller { entries, .. } if entries.len() == 1 && entries[0].key == "pick")
+	);
+}
+
+#[aidoku_test]
+fn review_home_enriches_partial_hero_and_adjacent_text_rows() {
+	let text = "<p>First 界</p>\n<p><b>Second</b></p>";
+	let flight = format!(
+		"1:{{\"initialSlides\":[{{\"slug\":\"title\",\"title\":\"Title\",\"coverImage\":\"/cover.webp\"}}],\"all\":[{{\"slug\":\"title\",\"title\":\"Title\",\"coverImage\":\"/cover.webp\",\"description\":\"$99\",\"genres\":[\"Drama\"]}}]}}\n2:T3,界99:T{:x},{text}",
+		text.len()
+	);
+	assert_eq!(rsc::text(&flight, "$99").unwrap(), text);
+	let body = format!(
+		"<html><body><script>self.__next_f.push({})</script></body></html>",
+		serde_json::json!([1, flight])
+	);
+	let home = crate::home::parse(
+		&body,
+		&crate::Params {
+			base_url: "https://example.com".into(),
+		},
+	)
+	.unwrap();
+	assert!(
+		matches!(&home.components[0].value, aidoku::HomeComponentValue::BigScroller { entries, .. } if entries[0].description.as_deref() == Some("First 界\nSecond") && entries[0].tags.as_ref().unwrap()[0] == "Drama")
+	);
+}

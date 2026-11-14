@@ -100,7 +100,7 @@ mod contracts {
 	fn review_contract_home_order_unique_cards_and_real_chapters() {
 		defaults_set("showLocked", DefaultValue::Bool(false));
 		let home = Site.get_home(&params()).unwrap();
-		assert_eq!(home.components.iter().map(|c| c.title.as_deref().unwrap_or("Hero")).collect::<Vec<_>>(), ["Hero", "New Series", "Latest Novel Updates", "Latest Comic Updates", "Popular Today", "Top 10 in All"]);
+		assert_eq!(home.components.iter().map(|c| c.title.as_deref().unwrap_or("Hero")).collect::<Vec<_>>(), ["Hero", "New Series", "Latest Novel Updates", "Latest Comic Updates", "Popular Today", "Top 10 in All", "Editor's Pick"]);
 		let HomeComponentValue::BigScroller { entries, .. } = &home.components[0].value else { panic!() };
 		assert_eq!(entries.len(), 1);
 		assert_eq!(entries[0].description.as_deref(), Some("Plain description."));
@@ -115,5 +115,10 @@ mod contracts {
 		}
 		assert_eq!(home.components[2].title.as_deref(), Some("Latest Novel Updates"));
 		assert_eq!(ContentRating::NSFW, entries[0].content_rating);
+		let HomeComponentValue::BigScroller { entries, .. } = &home.components[6].value else { panic!() };
+		assert_eq!(entries.iter().map(|manga| manga.key.as_str()).collect::<Vec<_>>(), ["pick-1", "pick-2", "pick-3"]);
+		assert_eq!(entries[0].description.as_deref(), Some("First 界\nSecond"));
+		assert_eq!(entries[1].description.as_deref(), Some("Third & fourth."));
+		assert!(entries[2].description.is_none());
 	}
 }

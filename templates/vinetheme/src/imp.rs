@@ -198,7 +198,11 @@ pub trait Impl {
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		let body = response(Request::get(&params.base_url)?)?.get_string()?;
-		home::parse(&body, params)
+		self.parse_home(params, &body)
+	}
+
+	fn parse_home(&self, params: &Params, body: &str) -> Result<HomeLayout> {
+		home::parse(body, params)
 	}
 
 	fn handle_deep_link(&self, _params: &Params, url: String) -> Result<Option<DeepLinkResult>> {

@@ -8,7 +8,7 @@ use aidoku::{
 };
 
 mod helpers;
-mod home;
+pub mod home;
 mod imp;
 mod markdown;
 mod models;

@@ -1,7 +1,7 @@
 use crate::{
 	Params,
 	helpers::{absolute_url, link_keys, plain_text, resolve_urls},
-	models::{Series, compact},
+	models::{Series, SeriesResponse, compact},
 	rsc, settings,
 };
 use aidoku::{
@@ -13,6 +13,7 @@ use aidoku::{
 	},
 	imports::{
 		html::{Element, Html},
+		net::Response,
 		std::current_date,
 	},
 	prelude::*,
@@ -33,7 +34,11 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 	for value in rsc::objects(&flight, &["slug", "title", "coverImage"]) {
 		if let Ok(mut series) = serde_json::from_value::<Series>(value) {
 			let chapters = core::mem::take(&mut series.chapters);
-			let description = series.description.take().and_then(|text| plain_text(&text));
+			let description = series.description.take().and_then(|text| {
+				rsc::text(&flight, &text)
+					.ok()
+					.and_then(|text| plain_text(&text))
+			});
 			if let Ok(mut manga) = Manga::try_from(series) {
 				manga.description = description;
 				resolve_urls(&mut manga, &params.base_url);
@@ -70,17 +75,33 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 			}
 		}
 	}
+	let featured_entries: Vec<Manga> = rsc::objects(&flight, &["series"])
+		.into_iter()
+		.filter_map(|mut value| {
+			let series = value.get_mut("series")?.as_array_mut()?;
+			let first = series.first()?;
+			(first.get("viewCount").is_some()
+				&& first.get("createdAt").is_none()
+				&& first.get("lastChapterAt").is_none())
+			.then(|| core::mem::take(series))
+		})
+		.flatten()
+		.filter_map(|value| serde_json::from_value::<Series>(value).ok())
+		.filter_map(|series| {
+			Manga::try_from(series)
+				.ok()
+				.and_then(|manga| metadata.get(&manga.key))
+				.map(|(manga, _)| manga.clone())
+		})
+		.collect();
 	let mut components = Vec::new();
 	if let Ok(slides) = rsc::extract::<Slides>(&flight, &["initialSlides"]) {
 		let entries: Vec<_> = slides
 			.initial_slides
 			.into_iter()
-			.filter_map(|mut series| {
-				let description = series.description.take().and_then(|text| plain_text(&text));
-				let mut manga = Manga::try_from(series).ok()?;
-				resolve_urls(&mut manga, &params.base_url);
-				manga.description = description;
-				Some(manga)
+			.filter_map(|series| {
+				let manga = Manga::try_from(series).ok()?;
+				metadata.get(&manga.key).map(|(manga, _)| manga.clone())
 			})
 			.collect();
 		if !entries.is_empty() {
@@ -170,6 +191,13 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 			} else {
 				manga.push(entry);
 			}
+		}
+		// A card stack renders links for only its active slide.
+		if featured
+			&& !featured_entries.is_empty()
+			&& section.select_first("[data-stack-frame]").is_some()
+		{
+			manga = featured_entries.clone();
 		}
 		let value = if !updates.is_empty() {
 			HomeComponentValue::MangaChapterList {
@@ -287,4 +315,43 @@ fn relative_date(value: &str) -> Option<i64> {
 		_ => return None,
 	};
 	Some(current_date() as i64 - amount * scale)
+}
+
+pub fn parse_catalogue(response: Response, params: &Params) -> Result<Vec<Manga>> {
+	let response: SeriesResponse = response.get_json_owned()?;
+	Ok(response
+		.data
+		.into_iter()
+		.filter_map(|mut series| {
+			let description = series.description.take().and_then(|text| plain_text(&text));
+			let mut manga = Manga::try_from(series).ok()?;
+			resolve_urls(&mut manga, &params.base_url);
+			manga.description = description;
+			Some(manga)
+		})
+		.collect())
+}
+
+pub fn reorder(mut home: HomeLayout, sections: &[(&str, Option<i32>)]) -> HomeLayout {
+	let components = sections
+		.iter()
+		.filter_map(|(title, size)| {
+			let index = home
+				.components
+				.iter()
+				.position(|c| c.title.as_deref() == Some(title))?;
+			let mut component = home.components.remove(index);
+			match &mut component.value {
+				HomeComponentValue::MangaChapterList { page_size, .. }
+				| HomeComponentValue::MangaList { page_size, .. }
+					if size.is_some() =>
+				{
+					*page_size = *size
+				}
+				_ => {}
+			}
+			Some(component)
+		})
+		.collect();
+	HomeLayout { components }
 }

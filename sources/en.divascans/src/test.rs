@@ -108,3 +108,49 @@ fn novel_chapter_reads_from_keys_only() {
 		matches!(&pages[0].content, aidoku::PageContent::Text(text) if text.len() > 500 && text.contains("\n\n") && !text.starts_with('$'))
 	);
 }
+
+#[aidoku_test]
+fn review_home_hero_order_and_page_sizes() {
+	let flight = r#"1:{"initialSlides":[{"slug":"popular","title":"Popular","coverImage":"/cover.webp"}],"all":[{"slug":"title","title":"Title","coverImage":"/cover.webp","chapters":[{"number":1}]},{"slug":"title","title":"Title","coverImage":"/cover.webp","type":"WEB_NOVEL","chapters":[{"number":1}]}]}"#;
+	let mut body = format!("<html><body><script>self.__next_f.push([1,{flight:?}])</script>");
+	for (title, marker, kind) in [
+		("New Series", "new", "comic"),
+		("Latest Novel Updates", "latest", "novel"),
+		("Latest Comic Updates", "latest", "comic"),
+		("Popular Today", "popular", "comic"),
+		("Top 10 in All", "most_popular", "comic"),
+		("Featured", "featured", "comic"),
+	] {
+		body.push_str(&format!("<section><h2>{title}</h2><a href='/series/{kind}/title?ref=homepage_{marker}'><img alt='Title' src='/cover.webp'></a></section>"));
+	}
+	body.push_str("</body></html>");
+	let home = DivaScans.parse_home(&DivaScans.params(), &body).unwrap();
+	assert_eq!(
+		home.components
+			.iter()
+			.map(|c| c.title.as_deref().unwrap())
+			.collect::<Vec<_>>(),
+		[
+			"Featured",
+			"Popular Today",
+			"Latest Comic Updates",
+			"Latest Novel Updates",
+			"New Series",
+			"Top 10 in All"
+		]
+	);
+	assert!(
+		matches!(&home.components[0].value, aidoku::HomeComponentValue::BigScroller { entries, .. } if entries[0].key == "title")
+	);
+	for component in home.components {
+		match component.value {
+			aidoku::HomeComponentValue::MangaChapterList { page_size, .. } => {
+				assert_eq!(page_size, Some(4))
+			}
+			aidoku::HomeComponentValue::MangaList { page_size, .. } => {
+				assert_eq!(page_size, Some(3))
+			}
+			_ => {}
+		}
+	}
+}
