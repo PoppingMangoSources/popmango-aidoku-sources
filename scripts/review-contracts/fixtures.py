@@ -17,6 +17,7 @@ class Responses(http.server.BaseHTTPRequestHandler):
             if "/chapter/" in path:
                 if "/novel/" in path:
                     text = "<p><strong>First<br><em>Second</em></strong></p><p>Third 界.</p>"
+                    if kind == "empty-html": text = "<p>&nbsp;</p>"
                     reader = {"chapter": {"content": "$a"}, "isUnlocked": True, "isLocked": False, "kind": "novel"}
                     body = "1:" + json.dumps(reader) + "\na:T" + format(len(text.encode()), "x") + "," + text
                 else:
@@ -35,14 +36,20 @@ class Responses(http.server.BaseHTTPRequestHandler):
                 if query.get("chapters") == ["all"]: data["chapters"] = chapters([1, 2, 3])
                 if kind == "incomplete": data["chapter_count"] = 4
                 if kind == "duplicate": data["chapters"] = chapters([1, 2, 2])
+                if kind == "empty-description": data["description"] = "<p>&nbsp;</p>"
+                if kind == "missing-title": status = 404
                 body = json.dumps(data)
             elif path.endswith("/api/series/facets"):
                 body = json.dumps({"genres": [{"name": "Action", "slug": "action"}], "tags": []})
             elif path.endswith("/api/series"):
-                if query.get("q") and (query.get("q") != ["word & café"] or query.get("sort") != ["newest"] or query.get("genre") != ["action"] or query.get("exgenre") != ["romance"] or query.get("ch_min") != ["20"] or "order" in query): status = 400
+                pasted = f"http://{self.headers['Host']}/vine/series/comic/missing-title?ref=home"
+                fallback = query.get("q") == [pasted]
+                if query.get("q") and not fallback and (query.get("q") != ["word & café"] or query.get("sort") != ["newest"] or query.get("genre") != ["action"] or query.get("exgenre") != ["romance"] or query.get("ch_min") != ["20"] or "order" in query): status = 400
                 if "genre" in query and query["genre"] != ["action"]: status = 400
                 page_two = query.get("page") == ["2"]
                 entry = dict(series, slug="title-2" if page_two else "title")
+                if fallback: entry["slug"] = "fallback-title"
+                if query.get("page") == ["3"]: entry["description"] = "<p>&nbsp;</p>"
                 body = json.dumps({"data": [entry], "meta": {"hasMore": not page_two}})
             elif path == "/vine":
                 def section(title, marker, novel=False):

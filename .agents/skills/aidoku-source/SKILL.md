@@ -301,7 +301,10 @@ BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners 
 
 When a shared template adds a dependency, synchronize its own lockfile and every consumer lockfile. Verify the complete graphs with `cargo metadata --locked --filter-platform wasm32-unknown-unknown`. Upstream peer-consumer changes limited to Cargo.lock may retain their versions; behavior or source/resource changes still require the normal bump. Fork publication rules remain unchanged.
 
-For VineTheme maintenance, read `docs/subsystems/vinetheme-template.md`. Select the actual
+For VineTheme maintenance, read `docs/subsystems/vinetheme-template.md`. Empty HTML
+synopses remain optional; validate nonempty chapter text at the reader boundary. A failed
+pasted-link lookup falls through to ordinary search. Borrow decoded raw Flight text instead
+of cloning a whole reader body through a single-use wrapper. Select the actual
 reader object rather than chapter metadata; resolve byte-length Flight text rows, preserve
 legacy comic keys and typed novel paths, and test home order/deduplication without per-card
 requests. Run the portable Vine contracts against clean submission worktrees as well as main.

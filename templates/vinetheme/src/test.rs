@@ -1,5 +1,9 @@
-use crate::{helpers, markdown, models::ChapterPages, rsc};
-use aidoku::alloc::format;
+use crate::{
+	helpers, markdown,
+	models::{ChapterPages, Series},
+	rsc,
+};
+use aidoku::{Manga, alloc::format};
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
@@ -38,7 +42,23 @@ fn review_novel_paragraphs_and_nested_emphasis() {
 		markdown::parse("<p><strong>First<br><em>Second</em></strong></p><p>Third.</p>").unwrap(),
 		"**First**\n\n***Second***\n\nThird."
 	);
-	assert!(markdown::parse("<p> </p>").is_err());
+	assert!(markdown::parse("<p> </p>").unwrap().is_empty());
+}
+
+#[aidoku_test]
+fn review_empty_html_synopsis_keeps_valid_series() {
+	for description in ["", " ", "<p></p>", "<p>&nbsp;</p>"] {
+		let series = serde_json::from_value::<Series>(serde_json::json!({
+			"slug": "title",
+			"title": "Title",
+			"description": description,
+		}))
+		.unwrap();
+		let manga = Manga::try_from(series).unwrap();
+		assert_eq!(manga.key, "title");
+		assert_eq!(manga.title, "Title");
+		assert!(manga.description.is_none());
+	}
 }
 
 #[aidoku_test]

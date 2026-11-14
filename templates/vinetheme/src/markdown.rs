@@ -13,11 +13,7 @@ pub fn parse(content: &str) -> Result<String> {
 	let mut markdown = Markdown::default();
 	markdown.element(&root);
 	markdown.end_line();
-	let text = markdown.paragraphs.join("\n\n");
-	if text.is_empty() {
-		bail!("Empty chapter content");
-	}
-	Ok(text)
+	Ok(markdown.paragraphs.join("\n\n"))
 }
 
 #[derive(Default)]

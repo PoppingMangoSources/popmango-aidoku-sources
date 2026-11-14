@@ -84,7 +84,7 @@ pub struct Facet {
 	pub slug: String,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterDto {
 	pub number: f32,
@@ -195,7 +195,8 @@ impl TryFrom<Series> for Manga {
 			.description
 			.filter(|s| !s.trim().is_empty())
 			.map(|s| markdown::parse(&s.replace("\\r\\n", "\n").replace("\\n", "\n")))
-			.transpose()?;
+			.transpose()?
+			.filter(|s| !s.is_empty());
 		Ok(Manga {
 			url: Some(format!("/series/{}", series_path(&key))),
 			key,

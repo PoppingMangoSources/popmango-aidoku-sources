@@ -2,7 +2,7 @@
 title: VineTheme template and consumers
 type: subsystem
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-14
 sources:
   - code: templates/vinetheme/src/lib.rs
   - code: templates/vinetheme/src/imp.rs
@@ -32,7 +32,7 @@ sources:
   - ext: https://valirscans.org/
   - ext: https://divascans.org/
   - ext: https://kaynscans.com/
-verified_at: 5b086ac
+verified_at: 453f52c
 ---
 
 VineTheme serves Drake, Elf, Valir, Diva and Kayn. The owner requested publication on main
@@ -156,3 +156,19 @@ After the correction, the full CI source-test run passed for all five consumers,
 Diva comic pages and key-only novel reading. Seven template regressions and five portable
 contracts also passed. Local Rust is now pinned to CI's 1.99.0 so a newer stable formatter
 cannot silently produce a different template layout. Device rendering remains unverified.
+
+> ⚠️ An HTML synopsis can be nonempty markup but render to no text. The shared converter
+> returns that empty text normally; the series conversion omits it and the reader rejects it.
+> Portable contracts cover valid cards/details with empty synopses and empty novel failures.
+> Failed pasted-series lookups fall through to the original search query, matching merged MangaBall.
+
+The final review removed the one-use reader request wrapper and its unconditional Flight
+body clone, an unused ChapterDto Clone derive, and per-card/per-chapter setting reads. The
+existing template/consumer split and terse parser comments match the merged patterns.
+
+Final review rerun: eight template regressions, five Vine public contracts on both main and
+submission trees, merged Keyoapp/MangaThemesia calibration, all five package baselines and
+151 repository guard tests pass. Drake, Elf, Valir and Kayn full live suites pass. Diva's
+three local live checks fail on HTML instead of JSON/Flight; direct requests show the
+substituted Site Unavailable response and Firecrawl reaches its welcome page. This rerun
+does not establish a new Diva live pass or device rendering. No session cookies were changed.

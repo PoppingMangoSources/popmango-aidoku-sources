@@ -35,6 +35,7 @@ mod contracts {
 		let pages = Site.get_page_list(&params(), manga("novel/title"), Chapter { key: "2".into(), ..Default::default() }).unwrap();
 		assert_eq!(pages.len(), 1);
 		assert!(matches!(&pages[0].content, PageContent::Text(text) if text == "**First**\n\n***Second***\n\nThird 界."));
+		assert!(Site.get_page_list(&params(), manga("novel/title"), Chapter { key: "empty-html".into(), ..Default::default() }).is_err());
 	}
 
 	#[aidoku_test]
@@ -43,6 +44,9 @@ mod contracts {
 		let details = Site.get_manga_update(&params(), manga("comic/title"), true, false).unwrap();
 		assert_eq!(details.key, "comic/title");
 		assert_eq!(details.authors, Some(vec![String::from("First"), String::from("Second")]));
+		let empty = Site.get_manga_update(&params(), manga("empty-description"), true, false).unwrap();
+		assert_eq!(empty.title, "Title");
+		assert!(empty.description.is_none());
 		let combined = Site.get_manga_update(&params(), manga("title"), true, true).unwrap();
 		let chapters = combined.chapters.unwrap();
 		assert_eq!(chapters.iter().map(|c| c.key.as_str()).collect::<Vec<_>>(), ["2", "1"]);
@@ -80,6 +84,15 @@ mod contracts {
 		assert_eq!(tapped.entries.len(), 1);
 		let unknown = Site.get_search_manga_list(&params(), None, 1, vec![FilterValue::Select { id: "genre".into(), value: "Unknown".into() }]).unwrap();
 		assert!(unknown.entries.is_empty());
+		let empty = Site.get_search_manga_list(&params(), None, 3, vec![]).unwrap();
+		assert_eq!(empty.entries.len(), 1);
+		let pasted = format!("{}/series/comic/title?ref=home", params().base_url);
+		let found = Site.get_search_manga_list(&params(), Some(pasted), 1, vec![]).unwrap();
+		assert_eq!(found.entries[0].key, "title");
+		assert!(found.entries[0].description.is_none() && found.entries[0].authors.is_none());
+		let missing = format!("{}/series/comic/missing-title?ref=home", params().base_url);
+		let fallback = Site.get_search_manga_list(&params(), Some(missing), 1, vec![]).unwrap();
+		assert_eq!(fallback.entries[0].key, "fallback-title");
 	}
 
 	#[aidoku_test]

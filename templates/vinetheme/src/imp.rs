@@ -29,8 +29,7 @@ pub trait Impl {
 		if let Some(query) = query.as_deref()
 			&& query.starts_with(&format!("{}/series/", params.base_url))
 			&& let Some((key, _)) = link_keys(query)
-		{
-			let manga = self.get_manga_update(
+			&& let Ok(manga) = self.get_manga_update(
 				params,
 				Manga {
 					key,
@@ -38,7 +37,7 @@ pub trait Impl {
 				},
 				true,
 				false,
-			)?;
+			) {
 			return Ok(MangaPageResult {
 				entries: vec![compact(manga)],
 				has_next_page: false,
@@ -124,10 +123,11 @@ pub trait Impl {
 				}
 			}
 			chapters.reverse();
+			let show_locked = settings::show_locked();
 			manga.chapters = Some(
 				chapters
 					.into_iter()
-					.filter(|chapter| settings::show_locked() || !chapter.locked())
+					.filter(|chapter| show_locked || !chapter.locked())
 					.map(|chapter| chapter.into_chapter(params, &manga.key))
 					.collect(),
 			);
@@ -142,7 +142,8 @@ pub trait Impl {
 			series_path(&manga.key),
 			chapter.key
 		);
-		let body = self.rsc_get(&url)?;
+		let body = response(Request::get(url)?.header("rsc", "1"))?.get_string()?;
+		let body = rsc::decode(&body)?;
 		let reader: Reader = rsc::extract(&body, &["chapter", "isUnlocked", "isLocked"])?;
 		if reader.is_locked && !reader.is_unlocked {
 			bail!("Chapter is locked");
@@ -153,8 +154,12 @@ pub trait Impl {
 			.is_none_or(|config| config.is_protected);
 		let detail = reader.chapter;
 		if let Some(content) = detail.content.as_deref().filter(|c| !c.trim().is_empty()) {
+			let text = markdown::parse(&rsc::text(&body, content)?)?;
+			if text.is_empty() {
+				bail!("Empty chapter content");
+			}
 			return Ok(vec![Page {
-				content: PageContent::text(markdown::parse(&rsc::text(&body, content)?)?),
+				content: PageContent::text(text),
 				..Default::default()
 			}]);
 		}
@@ -282,14 +287,13 @@ pub trait Impl {
 			params.base_url
 		))?)?
 		.get_json_owned()?;
+		let show_adult = settings::show_adult();
 		Ok(MangaPageResult {
 			entries: data
 				.data
 				.into_iter()
 				.filter_map(|series| Manga::try_from(series).ok())
-				.filter(|manga| {
-					settings::show_adult() || manga.content_rating != ContentRating::NSFW
-				})
+				.filter(|manga| show_adult || manga.content_rating != ContentRating::NSFW)
 				.map(|mut manga| {
 					resolve_urls(&mut manga, &params.base_url);
 					compact(manga)
@@ -297,10 +301,5 @@ pub trait Impl {
 				.collect(),
 			has_next_page: data.meta.has_more,
 		})
-	}
-
-	fn rsc_get(&self, url: &str) -> Result<String> {
-		let body = response(Request::get(url)?.header("rsc", "1"))?.get_string()?;
-		Ok(rsc::decode(&body)?.into_owned())
 	}
 }

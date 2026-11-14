@@ -5,7 +5,7 @@ use crate::{
 	rsc, settings,
 };
 use aidoku::{
-	Chapter, ContentRating, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga,
+	Chapter, ContentRating, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing, Manga,
 	MangaWithChapter, Result,
 	alloc::{
 		String, Vec,
@@ -26,6 +26,8 @@ struct Slides {
 }
 
 pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
+	let show_adult = settings::show_adult();
+	let show_locked = settings::show_locked();
 	let html = Html::parse(body)?;
 	let flight = rsc::decode(body)?;
 	let mut metadata = BTreeMap::new();
@@ -79,8 +81,7 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 				let mut manga = Manga::try_from(series).ok()?;
 				resolve_urls(&mut manga, &params.base_url);
 				manga.description = description;
-				(settings::show_adult() || manga.content_rating != ContentRating::NSFW)
-					.then_some(manga)
+				(show_adult || manga.content_rating != ContentRating::NSFW).then_some(manga)
 			})
 			.collect();
 		if !entries.is_empty() {
@@ -129,7 +130,7 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 			.select_first("a[href^='/series?']")
 			.and_then(|link| link.attr("href"))
 			.and_then(|href| {
-				href.split_once('?').map(|(_, query)| aidoku::Listing {
+				href.split_once('?').map(|(_, query)| Listing {
 					id: query.into(),
 					name: title.clone(),
 					..Default::default()
@@ -154,15 +155,14 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 			else {
 				continue;
 			};
-			if !settings::show_adult() && entry.content_rating == ContentRating::NSFW {
+			if !show_adult && entry.content_rating == ContentRating::NSFW {
 				continue;
 			}
 			if href.contains("ref=homepage_latest") {
 				let chapter = match metadata.get(&key) {
-					Some((_, chapters)) if !chapters.is_empty() => chapters
-						.iter()
-						.find(|c| settings::show_locked() || !c.locked)
-						.cloned(),
+					Some((_, chapters)) if !chapters.is_empty() => {
+						chapters.iter().find(|c| show_locked || !c.locked).cloned()
+					}
 					_ => from_card(&link, &key, params),
 				};
 				if let Some(chapter) = chapter {
