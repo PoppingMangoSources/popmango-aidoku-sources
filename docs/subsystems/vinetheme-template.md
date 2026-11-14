@@ -25,6 +25,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/882
   - ext: https://github.com/Aidoku-Community/sources/pull/860
   - ext: https://github.com/Aidoku-Community/sources/pull/900
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/actions/runs/43550746633
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/vinetheme
   - ext: https://drakecomic.net/
   - ext: https://elftoon.net/
@@ -150,3 +151,8 @@ and a valid full-image URL despite its material flags. The shared reader now hon
 configuration; the portable regression covers the exact inactive-protection shape.
 Reference: https://divascans.org/series/comic/my-twin-sister-stole-my-place-as-a-wife/chapter/24
 and the loaded reader bundle /_next/static/chunks/50999.7f63d2af911a0e87.js.
+
+After the correction, the full CI source-test run passed for all five consumers, including
+Diva comic pages and key-only novel reading. Seven template regressions and five portable
+contracts also passed. Local Rust is now pinned to CI's 1.99.0 so a newer stable formatter
+cannot silently produce a different template layout. Device rendering remains unverified.
