@@ -5,7 +5,7 @@ use aidoku::{
 	imports::{
 		html::{Document, Element},
 		net::{Request, Response},
-		std::current_date,
+		std::{current_date, parse_date},
 	},
 	prelude::*,
 };
@@ -102,7 +102,7 @@ pub fn basic(html: &Document, key: String, label_novels: bool) -> Result<Manga> 
 	let title = html
 		.select_first("main h1")
 		.and_then(|title| title.text())
-		.filter(|title| !title.trim().is_empty())
+		.filter(|title| !title.is_empty())
 		.ok_or(error!("Series not found"))?;
 	Ok(Manga {
 		key,
@@ -155,8 +155,7 @@ pub fn details(html: &Document, key: String, label_novels: bool) -> Result<Manga
 		.into_iter()
 		.flatten()
 		.filter_map(|tag| tag.text())
-		.map(|tag| tag.trim().into())
-		.filter(|tag: &String| !tag.is_empty())
+		.filter(|tag| !tag.is_empty())
 		.collect();
 	tags.sort_unstable();
 	tags.dedup();
@@ -199,9 +198,7 @@ pub fn date(element: &Element) -> Option<i64> {
 		.select_first("time")
 		.and_then(|time| time.attr("datetime"))
 	{
-		return chrono::DateTime::parse_from_rfc3339(&date)
-			.ok()
-			.map(|date| date.timestamp());
+		return parse_date(date, "yyyy-MM-dd'T'HH:mm:ssXXX");
 	}
 	let text = element
 		.select_first("time, .em-time-ago, .text-muted.small")?
@@ -247,7 +244,7 @@ pub fn chapter(link: &Element) -> Result<Chapter> {
 	Ok(Chapter {
 		key: key.into(),
 		url: Some(format!("{URL}{key}")),
-		title: chapter_number.is_none().then(|| label.trim().into()),
+		title: chapter_number.is_none().then_some(label),
 		chapter_number,
 		date_uploaded: date(link),
 		..Default::default()
