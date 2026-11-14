@@ -1,26 +1,32 @@
-use aidoku::alloc::{String, Vec};
+use crate::helpers::{content_rating, cover_url, decode_entities, parse_status, strip_html};
+use aidoku::{
+	ContentRating, Manga,
+	alloc::{String, Vec},
+};
 use serde::Deserialize;
 
-pub const DOMAIN: &str = "https://mkissa.to";
+pub const BASE_URL: &str = "https://mkissa.to";
 pub const API_URL: &str = "https://api.mkissa.net/api";
+pub const CDN_URL: &str = "https://wp.youtube-anime.com";
 
 pub const THUMBNAIL_CDN: &str = "https://wp.youtube-anime.com/aln.youtube-anime.com/";
-pub const IMAGE_CDN: &str = "https://wp.youtube-anime.com";
 pub const DEFAULT_IMAGE_SERVER: &str = "https://ytimgf.youtube-anime.com/";
 
-pub const LIMIT: i32 = 20;
+pub const PAGE_SIZE: i32 = 20;
 
-pub const POPULAR_QUERY: &str = "query($type: VaildPopularTypeEnumType!, $size: Int!, $page: Int, $dateRange: Int, $allowAdult: Boolean, $allowUnknown: Boolean) {\n  queryPopular(type: $type, size: $size, dateRange: $dateRange, page: $page, allowAdult: $allowAdult, allowUnknown: $allowUnknown) {\n    recommendations {\n      anyCard { _id name thumbnail englishName nativeName score availableChapters }\n      pageStatus { views }\n    }\n  }\n}";
+pub const POPULAR_QUERY: &str = "query($type: VaildPopularTypeEnumType!, $size: Int!, $page: Int, $dateRange: Int, $allowAdult: Boolean, $allowUnknown: Boolean) { queryPopular(type: $type, size: $size, dateRange: $dateRange, page: $page, allowAdult: $allowAdult, allowUnknown: $allowUnknown) { total recommendations { anyCard { _id name englishName thumbnail isAdult description genres status } } } }";
 
-pub const RANDOM_QUERY: &str = "query($format: String!, $allowAdult: Boolean) {\n  queryRandomRecommendation(format: $format, allowAdult: $allowAdult) {\n    _id name thumbnail englishName\n  }\n}";
+pub const TRENDING_QUERY: &str = "query($pageSearch: queryPageInput!) { queryLatestPageStatus(pageSearch: $pageSearch) { total recommendations { anyCard { _id name englishName thumbnail isAdult } } } }";
 
-pub const SEARCH_QUERY: &str = "query($search: SearchInput, $size: Int, $page: Int, $translationType: VaildTranslationTypeMangaEnumType, $countryOrigin: VaildCountryOriginEnumType) {\n  mangas(search: $search, limit: $size, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) {\n    edges { _id name thumbnail englishName }\n  }\n}";
+pub const RANDOM_QUERY: &str = "query($format: String!, $allowAdult: Boolean, $denyEcchi: Boolean, $slot: Int) { queryRandomRecommendation(format: $format, allowAdult: $allowAdult, denyEcchi: $denyEcchi, slot: $slot) { _id name englishName thumbnail isAdult } }";
 
-pub const LATEST_QUERY: &str = "query($search: SearchInput, $size: Int, $page: Int, $translationType: VaildTranslationTypeMangaEnumType, $countryOrigin: VaildCountryOriginEnumType) {\n  mangas(search: $search, limit: $size, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) {\n    edges { _id name thumbnail englishName availableChapters availableChaptersDetail lastChapterDate }\n  }\n}";
+pub const MANGAS_QUERY: &str = "query($search: SearchInput, $limit: Int, $page: Int, $translationType: VaildTranslationTypeMangaEnumType, $countryOrigin: VaildCountryOriginEnumType) { mangas(search: $search, limit: $limit, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) { pageInfo { total } edges { _id name englishName thumbnail isAdult lastChapterInfo lastChapterDate } } }";
 
-pub const DETAILS_QUERY: &str = "query($id: String!) {\n  manga(_id: $id) { _id name thumbnail description authors genres tags status altNames englishName }\n}";
+pub const ADAPTATIONS_QUERY: &str = "query($page: Int, $limit: Int, $translationType: VaildTranslationTypeMangaEnumType, $allowAdult: Boolean, $allowUnknown: Boolean, $denyEcchi: Boolean) { seasonAdaptationMangas(page: $page, limit: $limit, translationType: $translationType, allowAdult: $allowAdult, allowUnknown: $allowUnknown, denyEcchi: $denyEcchi) { pageInfo { total } edges { _id name englishName thumbnail isAdult } } }";
 
-pub const CHAPTERS_QUERY: &str = "query($id: String!, $showId: String!) {\n  manga(_id: $id) { _id name availableChaptersDetail }\n  episodeInfos(showId: $showId, episodeNumStart: 0, episodeNumEnd: 9999) { episodeIdNum notes uploadDates }\n}";
+pub const DETAILS_QUERY: &str = "query($id: String!) { manga(_id: $id) { _id name thumbnail isAdult description authors genres tags status englishName } }";
+
+pub const CHAPTERS_QUERY: &str = "query($id: String!, $showId: String!) { manga(_id: $id) { _id availableChaptersDetail } episodeInfos(showId: $showId, episodeNumStart: 0, episodeNumEnd: 9999) { episodeIdNum notes uploadDates } }";
 
 #[derive(Deserialize)]
 pub struct GraphQLResponse<T> {
@@ -43,65 +49,122 @@ pub struct DateParts {
 	pub second: Option<i32>,
 }
 
-#[derive(Deserialize, Default)]
-pub struct AvailableChaptersDetail {
-	pub sub: Option<Vec<String>>,
+#[derive(Deserialize)]
+pub struct Translations<T> {
+	pub sub: Option<T>,
 }
 
-#[derive(Deserialize, Default)]
-pub struct LastChapterDate {
-	pub sub: Option<DateParts>,
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LastChapter {
+	pub chapter_string: Option<String>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MangaCard {
 	#[serde(rename = "_id")]
 	pub id: String,
 	#[serde(default)]
 	pub name: String,
-	pub thumbnail: Option<String>,
-	#[serde(rename = "englishName")]
 	pub english_name: Option<String>,
-	#[serde(rename = "availableChaptersDetail")]
-	pub available_chapters_detail: Option<AvailableChaptersDetail>,
-	#[serde(rename = "lastChapterDate")]
-	pub last_chapter_date: Option<LastChapterDate>,
+	pub thumbnail: Option<String>,
+	pub is_adult: Option<bool>,
+	pub description: Option<String>,
+	pub genres: Option<Vec<String>>,
+	pub status: Option<String>,
+	pub last_chapter_info: Option<Translations<LastChapter>>,
+	pub last_chapter_date: Option<Translations<DateParts>>,
 }
 
 impl MangaCard {
-	pub fn display_title(&self) -> &str {
-		match &self.english_name {
-			Some(name) if !name.is_empty() => name,
-			_ => &self.name,
+	fn title(&self) -> String {
+		decode_entities(
+			self.english_name
+				.as_deref()
+				.map(str::trim)
+				.filter(|name| !name.is_empty())
+				.unwrap_or(self.name.trim()),
+		)
+	}
+
+	// The big scroller shows what the popular feed already carries
+	pub fn into_featured(self) -> Manga {
+		let mut tags = self.genres.clone().unwrap_or_default();
+		tags.sort_unstable();
+		tags.dedup();
+		Manga {
+			title: self.title(),
+			cover: cover_url(self.thumbnail.as_deref()),
+			description: self
+				.description
+				.as_deref()
+				.map(strip_html)
+				.filter(|description| !description.is_empty()),
+			status: parse_status(self.status.as_deref()),
+			content_rating: content_rating(&tags, self.is_adult),
+			tags: (!tags.is_empty()).then_some(tags),
+			key: self.id,
+			..Default::default()
+		}
+	}
+}
+
+impl From<MangaCard> for Manga {
+	fn from(card: MangaCard) -> Self {
+		Manga {
+			title: card.title(),
+			cover: cover_url(card.thumbnail.as_deref()),
+			content_rating: if card.is_adult == Some(true) {
+				ContentRating::NSFW
+			} else {
+				ContentRating::Unknown
+			},
+			key: card.id,
+			..Default::default()
 		}
 	}
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Recommendation {
-	#[serde(rename = "anyCard")]
 	pub any_card: Option<MangaCard>,
 }
 
 #[derive(Deserialize)]
-pub struct QueryPopular {
+pub struct Recommendations {
+	pub total: Option<i32>,
 	pub recommendations: Vec<Recommendation>,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PopularData {
-	#[serde(rename = "queryPopular")]
-	pub query_popular: QueryPopular,
+	pub query_popular: Recommendations,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrendingData {
+	pub query_latest_page_status: Recommendations,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RandomData {
-	#[serde(rename = "queryRandomRecommendation")]
 	pub query_random_recommendation: Option<Vec<MangaCard>>,
 }
 
 #[derive(Deserialize)]
+pub struct PageInfo {
+	pub total: Option<i32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MangaEdges {
+	pub page_info: PageInfo,
 	pub edges: Vec<MangaCard>,
 }
 
@@ -110,49 +173,50 @@ pub struct SearchData {
 	pub mangas: MangaEdges,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdaptationsData {
+	pub season_adaptation_mangas: MangaEdges,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MangaDetail {
 	#[serde(default)]
 	pub name: String,
+	pub english_name: Option<String>,
 	pub thumbnail: Option<String>,
+	pub is_adult: Option<bool>,
 	pub description: Option<String>,
 	pub authors: Option<Vec<String>>,
 	pub genres: Option<Vec<String>>,
 	pub tags: Option<Vec<String>>,
 	pub status: Option<String>,
-	#[serde(rename = "englishName")]
-	pub english_name: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct DetailsData {
-	pub manga: MangaDetail,
-}
-
-#[derive(Deserialize, Default)]
-pub struct ChaptersManga {
-	#[serde(rename = "availableChaptersDetail")]
-	pub available_chapters_detail: Option<AvailableChaptersDetail>,
-}
-
-#[derive(Deserialize, Default)]
-pub struct UploadDates {
-	pub sub: Option<String>,
+	pub manga: Option<MangaDetail>,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChaptersManga {
+	pub available_chapters_detail: Option<Translations<Vec<String>>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EpisodeInfo {
-	#[serde(rename = "episodeIdNum")]
 	pub episode_id_num: serde_json::Value,
 	pub notes: Option<String>,
-	#[serde(rename = "uploadDates")]
-	pub upload_dates: Option<UploadDates>,
+	pub upload_dates: Option<Translations<String>>,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChaptersData {
-	pub manga: ChaptersManga,
-	#[serde(rename = "episodeInfos")]
+	pub manga: Option<ChaptersManga>,
 	pub episode_infos: Option<Vec<EpisodeInfo>>,
 }
 
@@ -173,14 +237,11 @@ impl PictureUrl {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChapterPageEdge {
-	// The reader response names the image host `serverUrl`; older payloads used
-	// `pictureUrlHead`, so accept either.
-	#[serde(rename = "serverUrl")]
+	// The reader names the image host `serverUrl`; older payloads used `pictureUrlHead`
 	pub server_url: Option<String>,
-	#[serde(rename = "pictureUrlHead")]
 	pub picture_url_head: Option<String>,
-	#[serde(rename = "pictureUrls")]
 	pub picture_urls: Option<Vec<PictureUrl>>,
 }
 

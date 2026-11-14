@@ -211,7 +211,7 @@ fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 pub fn page_urls_via_webview(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
 	let pages = collect_pages(manga_id, chapter)?;
 	let quality = crate::settings::image_quality();
-	let urls = crate::parsers::parse_page_urls(&pages, &quality);
+	let urls = crate::helpers::parse_page_urls(&pages, &quality);
 	if urls.is_empty() {
 		bail!("The reader did not produce any pages");
 	}
@@ -219,7 +219,7 @@ pub fn page_urls_via_webview(manga_id: &str, chapter: &str) -> Result<Vec<String
 }
 
 fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
-	let manga_url = format!("{DOMAIN}/manga/{manga_id}");
+	let manga_url = format!("{BASE_URL}/manga/{manga_id}");
 	let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
 	// Fetch the manga page over an ordinary request. Aidoku clears Cloudflare
@@ -227,7 +227,7 @@ fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
 	// the clearance cookie. If it still comes back challenged, ask the reader to
 	// retry once the check is solved.
 	let response = Request::get(&manga_url)?
-		.header("Referer", &format!("{DOMAIN}/"))
+		.header("Referer", &format!("{BASE_URL}/"))
 		.header("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
 		.send()?;
 	let status = response.status_code();

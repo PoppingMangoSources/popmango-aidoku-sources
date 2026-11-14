@@ -4,9 +4,12 @@
 		"id": "sort",
 		"canAscend": false,
 		"options": [
+			"Top",
 			"Update",
-			"Name Ascending",
-			"Name Descending"
+			"Release year",
+			"Name Asc",
+			"Name Desc",
+			"Popular"
 		]
 	},
 	{
@@ -30,7 +33,6 @@
 		"type": "multi-select",
 		"id": "genres",
 		"title": "Genres",
-		"usesTagStyle": true,
 		"isGenre": true,
 		"canExclude": true,
 		"options": [
