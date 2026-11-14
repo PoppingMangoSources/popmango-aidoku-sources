@@ -1,6 +1,6 @@
 use crate::{
 	Params,
-	helpers::{credit_names, link_keys, series_path},
+	helpers::{credit_names, link_keys, series_path, title_case},
 	markdown, settings,
 };
 use aidoku::{
@@ -183,9 +183,10 @@ impl TryFrom<Series> for Manga {
 				};
 				(!name.trim().is_empty()).then_some(name)
 			})
+			.map(|name| title_case(name.trim()))
 			.collect();
-		tags.sort_unstable();
-		tags.dedup();
+		tags.sort_unstable_by_key(|tag| tag.to_lowercase());
+		tags.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
 		let adult = series.nsfw
 			|| series.is_mature
 			|| tags

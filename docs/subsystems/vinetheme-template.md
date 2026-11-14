@@ -43,6 +43,9 @@ migration lessons remain in the root rules and [[source-checks]].
 
 ## Current site contracts
 
+Tag labels from series names and slug fallbacks are title-cased for display on home,
+details and dynamic filters. Filter requests retain the site's original facet slugs.
+
 The public catalogue is `/api/series`; `/api/series/facets` returns current genres and tags.
 Details and complete chapters use `/api/ai/series/{canonicalSlug}?chapters=none|all`.
 Readers use `/series/{comic|novel}/{urlSlug}/chapter/{number}` with `rsc: 1`.

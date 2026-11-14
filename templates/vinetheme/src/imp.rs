@@ -1,6 +1,6 @@
 use crate::{
 	Params,
-	helpers::{absolute_url, link_keys, resolve_urls, response, series_path},
+	helpers::{absolute_url, link_keys, resolve_urls, response, series_path, title_case},
 	home, markdown,
 	models::*,
 	rsc, settings,
@@ -71,7 +71,7 @@ pub trait Impl {
 			let (options, ids) = facets
 				.into_iter()
 				.filter(|f| !f.name.trim().is_empty() && !f.slug.trim().is_empty())
-				.map(|f| (f.name.into(), f.slug.into()))
+				.map(|f| (title_case(f.name.trim()), f.slug.into()))
 				.unzip();
 			MultiSelectFilter {
 				id: id.into(),

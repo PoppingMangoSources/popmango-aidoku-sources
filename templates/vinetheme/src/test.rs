@@ -3,7 +3,7 @@ use crate::{
 	models::{ChapterPages, Series},
 	rsc,
 };
-use aidoku::{Manga, alloc::format};
+use aidoku::{Manga, alloc::{String, format, vec}};
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
@@ -130,4 +130,20 @@ fn review_home_enriches_partial_hero_and_adjacent_text_rows() {
 	assert!(
 		matches!(&home.components[0].value, aidoku::HomeComponentValue::BigScroller { entries, .. } if entries[0].description.as_deref() == Some("First 界\nSecond") && entries[0].tags.as_ref().unwrap()[0] == "Drama")
 	);
+}
+
+#[aidoku_test]
+fn review_vine_tag_labels_use_readable_case() {
+	let series: Series = serde_json::from_value(serde_json::json!({
+		"slug": "title",
+		"title": "Title",
+		"genres": ["drama", {"name": "romance", "slug": "romance"}, {"name": "", "slug": "slice-of-life"}],
+		"tags": ["Drama", "josei", {"name": "", "slug": "historical"}, "smut"]
+	})).unwrap();
+	let manga = Manga::try_from(series).unwrap();
+	assert_eq!(manga.tags.unwrap(), vec![
+		String::from("Drama"), String::from("Historical"), String::from("Josei"),
+		String::from("Romance"), String::from("Slice Of Life"), String::from("Smut"),
+	]);
+	assert_eq!(manga.content_rating, aidoku::ContentRating::NSFW);
 }

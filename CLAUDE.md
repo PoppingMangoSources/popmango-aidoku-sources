@@ -497,6 +497,7 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | Vine sources invented a Show 18+ Content setting (owner correction) | Do not add adult visibility controls the sites do not offer. Vine sources use contentRating 1, except Diva at 2 by the owner’s request, with no adult toggle or local adult filtering; per-title ratings still describe the returned content. | R |
 | A failed pasted-series lookup aborted search | A missing/stale pasted URL falls back to the original ordinary search query, as merged MangaBall does. | R |
 | Long novel HTML was a Flight reference | Decode the JSON push strings and resolve byte-length text rows. Raw text may contain newlines and may end immediately before the next row. Do not unescape Flight with chained string replacements. | R |
+| Vine home and detail tags appeared in lowercase | Format display-only names from API genres, tags and slug fallbacks as readable title case, consistently across home, details and dynamic filters. Keep filter ids/slugs untouched and test mixed-case duplicates and content ratings. | R |
 | Displayed genre names were sent as API slugs | Resolve dynamic tag taps through the fetched genre/tag facets once. A successful response with an ignored or wrong parameter is not a filter test. Static sorts have no ascending arrow when the site has one order. | R |
 
 The owner requested `fix-vine` as an explicit template branch-name exception. Its template,

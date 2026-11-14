@@ -87,6 +87,21 @@ pub fn link_keys(url: &str) -> Option<(String, Option<String>)> {
 	Some((key, chapter))
 }
 
+pub fn title_case(value: &str) -> String {
+	let mut output = String::with_capacity(value.len());
+	let mut capitalize = true;
+	for character in value.replace('_', " ").chars() {
+		if capitalize && character.is_alphabetic() {
+			output.extend(character.to_uppercase());
+			capitalize = false;
+		} else {
+			output.push(character);
+			capitalize = character == ' ';
+		}
+	}
+	output
+}
+
 pub fn credit_names(value: Option<String>) -> Option<Vec<String>> {
 	let mut names = Vec::new();
 	for name in value
