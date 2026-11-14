@@ -22,7 +22,8 @@ fn review_script_banners_are_internal_and_sized() {
 	else {
 		panic!("Expected banners");
 	};
-	assert_eq!((*width, *height), (Some(400), Some(150)));
+	// The banners are 2048 by 768; 400 wide overflowed a phone
+	assert_eq!((*width, *height), (Some(340), Some(128)));
 	assert!(matches!(&links[0].value,Some(LinkValue::Manga(m)) if m.key == "/series/title"));
 	assert!(links[0].subtitle.is_none());
 }

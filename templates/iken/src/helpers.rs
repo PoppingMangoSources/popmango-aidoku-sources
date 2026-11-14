@@ -133,20 +133,30 @@ pub fn content_rating(tags: &[String], adult: bool) -> aidoku::ContentRating {
 	}
 }
 
-pub fn viewer(kind: Option<&str>) -> aidoku::Viewer {
-	use aidoku::Viewer;
-	match kind {
-		Some("MANGA") => Viewer::RightToLeft,
-		Some(
-			"MANHWA"
-			| "MANHUA"
-			| "WEBTOON"
-			| "MANHWA_BL"
-			| "MANHUA_BL"
-			| "MANHWA_PLUS_19"
-			| "BL_SIN_CENSURA"
-			| "PLUS_19_SIN_CENSURA",
-		) => Viewer::Webtoon,
-		_ => Viewer::Unknown,
+// An image host url such as `https://i0.wp.com/…?w=1920&quality=85`, with its width replaced
+pub fn sized_banner(url: &str, width: i32) -> String {
+	let Some((path, query)) = url.split_once('?') else {
+		return url.into();
+	};
+	let query: Vec<String> = query
+		.split('&')
+		.map(|pair| {
+			if pair.starts_with("w=") {
+				format!("w={width}")
+			} else {
+				pair.into()
+			}
+		})
+		.collect();
+	format!("{path}?{}", query.join("&"))
+}
+
+// The sites' comics are long strips, those typed "MANGA" included, and some chapters stitch their
+// pages into tall images
+pub fn viewer(novel: bool) -> aidoku::Viewer {
+	if novel {
+		aidoku::Viewer::Unknown
+	} else {
+		aidoku::Viewer::Webtoon
 	}
 }

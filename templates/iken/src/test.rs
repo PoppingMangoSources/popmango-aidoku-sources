@@ -789,3 +789,53 @@ fn review_html_cards_respect_novel_labels() {
 	}
 	defaults_set("labelNovels", DefaultValue::Null);
 }
+
+#[aidoku_test]
+fn review_comics_open_as_webtoons_and_novels_do_not() {
+	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":1,"slug":"manga","postTitle":"Manga","seriesType":"MANGA"},{"id":2,"slug":"untyped","postTitle":"Untyped"},{"id":3,"slug":"novel","postTitle":"Novel","seriesType":"NOVEL"},{"id":4,"slug":"flagged","postTitle":"Flagged","isNovel":true}],"totalCount":4}"#).unwrap();
+	let viewers: Vec<_> = data
+		.posts
+		.iter()
+		.map(|post| {
+			post.to_featured("https://example.com", false)
+				.unwrap()
+				.viewer
+		})
+		.collect();
+	use aidoku::Viewer;
+	assert_eq!(
+		viewers,
+		vec![
+			Viewer::Webtoon,
+			Viewer::Webtoon,
+			Viewer::Unknown,
+			Viewer::Unknown
+		]
+	);
+}
+
+#[aidoku_test]
+fn review_banners_request_their_display_width() {
+	let html = Html::parse("<div class='mainSlider'><div class='swiper-slide'><a href='/series/one' title='One'><img src='https://i0.wp.com/cdn.example.com/banner.png?w=1920&amp;quality=85&amp;ssl=1'></a></div></div>").unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		banner_width: Some(340),
+		banner_height: Some(124),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	let HomeComponentValue::ImageScroller {
+		links,
+		width,
+		height,
+		..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected banners")
+	};
+	assert_eq!((*width, *height), (Some(340), Some(124)));
+	assert_eq!(
+		links[0].image_url.as_deref(),
+		Some("https://i0.wp.com/cdn.example.com/banner.png?w=680&quality=85&ssl=1")
+	);
+}

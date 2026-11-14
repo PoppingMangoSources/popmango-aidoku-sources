@@ -134,9 +134,6 @@ pub(crate) fn update_home_metadata(
 							);
 						}
 					}
-					if updated.viewer == aidoku::Viewer::Unknown {
-						updated.viewer = entry.viewer;
-					}
 					*entry = updated;
 				}
 			}
@@ -244,8 +241,8 @@ fn latest_chapter(link: &Element, params: &Params) -> Option<Chapter> {
 			let text = scope
 				.select("time, span")?
 				.filter_map(|span| span.text())
-				.find(|text| text.trim().ends_with("ago"))?;
-			let (amount, unit) = text.trim().strip_suffix("ago")?.trim().split_once(' ')?;
+				.find(|text| text.ends_with("ago"))?;
+			let (amount, unit) = text.strip_suffix("ago")?.trim().split_once(' ')?;
 			let amount: i64 = amount.parse().ok()?;
 			let seconds = if unit.starts_with("second") {
 				1
@@ -333,33 +330,27 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 			slides
 				.filter_map(|e| {
 					let mut manga = manga(&e, params, label_novels)?;
-					if params.banner_width.zip(params.banner_height).is_some() {
+					if let Some(width) = params.banner_width {
+						// The slider asks the image host for a 1920px copy, far more than a phone shows
 						manga.cover = e
 							.select_first("img")
-							.and_then(|image| image.attr("abs:src"));
+							.and_then(|image| image.attr("abs:src"))
+							.map(|url| helpers::sized_banner(&url, width * 2));
 					}
 					manga.description = e
 						.select_first("h3 + p, .text-lg, .break-words, .em-hero-copy p.d-none")
 						.and_then(|p| p.text())
-						.map(|s| s.trim().into())
-						.filter(|s: &String| !s.is_empty());
+						.filter(|s| !s.is_empty());
 					let mut tags: Vec<String> = e
 						.select("span.capitalize, span.font-light")
 						.into_iter()
 						.flatten()
 						.filter_map(|tag| tag.text())
-						.map(|tag| tag.trim().into())
-						.filter(|tag: &String| !tag.is_empty())
+						.filter(|tag| !tag.is_empty())
 						.collect();
 					tags.sort_unstable();
 					tags.dedup();
-					let kind = e
-						.select_first(".uppercase")
-						.and_then(|kind| kind.text())
-						.map(|kind| kind.trim().to_uppercase());
-
 					manga.content_rating = helpers::content_rating(&tags, false);
-					manga.viewer = helpers::viewer(kind.as_deref());
 					manga.tags = (!tags.is_empty()).then_some(tags);
 					let index = e
 						.attr("data-swiper-slide-index")
@@ -400,8 +391,7 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 		for heading in headings {
 			let Some(title) = heading
 				.text()
-				.map(|s| s.trim().into())
-				.filter(|s: &String| params.home_section_titles.contains(&s.as_str()))
+				.filter(|s| params.home_section_titles.contains(&s.as_str()))
 			else {
 				continue;
 			};
@@ -421,36 +411,41 @@ pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 				if block.tag_name().as_deref() == Some("main") {
 					break;
 				}
-				let neighbors = block.select("h1, h2, h3").is_some_and(|hs| {
-					hs.filter_map(|h| h.text()).any(|t| {
-						t.trim() != title
-							&& (params.home_section_titles.contains(&t.trim())
-								|| t.trim() == "Latest Updates")
+				let neighbors = block.select("h1, h2, h3").is_some_and(|headings| {
+					headings.filter_map(|heading| heading.text()).any(|text| {
+						text != title
+							&& (params.home_section_titles.contains(&text.as_str())
+								|| text == "Latest Updates")
 					})
 				});
 				if neighbors {
 					break;
 				}
-				if let Some(cards) = block.select("a[href*='/series/']") {
-					for card in cards {
-						if card.select_first("img").is_none() {
-							continue;
-						}
-						if let Some(manga) = manga(&card, params, label_novels)
-							&& !entries.iter().any(|entry| {
-								matches!(&entry.value, Some(LinkValue::Manga(existing)) if existing.key == manga.key)
-							})
+				for card in block.select("a[href*='/series/']").into_iter().flatten() {
+					if card.select_first("img").is_none() {
+						continue;
+					}
+					let Some(manga) = manga(&card, params, label_novels) else {
+						continue;
+					};
+					let seen = entries.iter().any(|entry| match &entry.value {
+						Some(LinkValue::Manga(existing)) => existing.key == manga.key,
+						_ => false,
+					});
+					if seen {
+						continue;
+					}
+					if matches!(title.as_str(), "Latest Releases" | "Latest Updates")
+						&& let Some(chapter) = latest_chapter(&card, params)
+					{
+						if !chapters
+							.iter()
+							.any(|entry| entry.chapter.key == chapter.key)
 						{
-							if matches!(title.as_str(), "Latest Releases" | "Latest Updates")
-        && let Some(chapter) = latest_chapter(&card, params)
-       {
-        if !chapters.iter().any(|entry| entry.chapter.key == chapter.key) {
-         chapters.push(MangaWithChapter { manga, chapter });
-        }
-       } else {
-        entries.push(Link::from(manga));
-       }
+							chapters.push(MangaWithChapter { manga, chapter });
 						}
+					} else {
+						entries.push(Link::from(manga));
 					}
 				}
 				if !entries.is_empty() || !chapters.is_empty() {
