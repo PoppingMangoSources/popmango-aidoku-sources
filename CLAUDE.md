@@ -489,6 +489,7 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | What was flagged | The rule | |
 |---|---|---|
 | A Next.js chapter metadata object was accepted as an empty reader | Match the reader payload by its access fields and chapter content/pages, not the first object named `chapter`. Empty/missing pages fail; never silently drop one malformed image. Test comics and novels from keys only. | R |
+| Inactive image material flags rejected readable pages | Check the site's active protection configuration. Tile/strip metadata can remain when protection is disabled and the site renders the normal imageUrl. Preserve that fallback and test it separately from active protection, redacted pages and missing URLs. | R |
 | The first latest-update card appeared twice | Cover and title anchors belong to one card. Preserve the first unique series per row, real chapter numbers/dates, and the site's section order. A section query can include its root; test nested wrappers and sibling rows. | R |
 | Long novel HTML was a Flight reference | Decode the JSON push strings and resolve byte-length text rows. Raw text may contain newlines and may end immediately before the next row. Do not unescape Flight with chained string replacements. | R |
 | Displayed genre names were sent as API slugs | Resolve dynamic tag taps through the fetched genre/tag facets once. A successful response with an ignored or wrong parameter is not a filter test. Static sorts have no ascending arrow when the site has one order. | R |

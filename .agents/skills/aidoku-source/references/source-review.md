@@ -221,8 +221,10 @@ selector engine may reject it. Test labelled/unlabelled rows and near-matching l
 
 Read `docs/subsystems/vinetheme-template.md` before changing Vine consumers. The current
 public JSON catalogue and facets are shared; details use the public JSON API and readers use Next.js Flight.
+Material flags can remain after protection is disabled; test the normal imageUrl fallback
+against protectionConfig rather than rejecting all encrypted/strip metadata.
 The reader metadata object is not the payload with pages. Cover/title links duplicate a
 series identity inside a card. Portable Vine contracts pin these reports and novel text
-references, full chapter paging, settings defaults, compact cards and source paths.
+references, complete chapter counts, settings defaults, compact cards and source paths.
 The merged #888/#884/#882/#860 reviews were reread alongside open #900; its dev-scaffold,
 isGenre, item-spacing and separate-migration rules remain enforced on main.

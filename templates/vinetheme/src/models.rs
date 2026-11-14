@@ -104,6 +104,13 @@ pub struct Reader {
 	pub chapter: ChapterPages,
 	pub is_unlocked: bool,
 	pub is_locked: bool,
+	pub protection_config: Option<ProtectionConfig>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProtectionConfig {
+	pub is_protected: bool,
 }
 
 #[derive(Deserialize)]
@@ -146,15 +153,16 @@ impl TryFrom<Series> for Manga {
 		if slug.trim().is_empty() || title.is_empty() {
 			bail!("Series has no key or title");
 		}
-		let novel =
-			matches!(
-				series.series_type.as_str(),
-				"NOVEL"
-					| "LIGHT_NOVEL" | "WEB_NOVEL"
-					| "PUBLISHED_NOVEL"
-					| "FANFICTION" | "ORIGINAL_FICTION"
-					| "ONE_SHOT"
-			);
+		let novel = matches!(
+			series.series_type.as_str(),
+			"NOVEL"
+				| "LIGHT_NOVEL"
+				| "WEB_NOVEL"
+				| "PUBLISHED_NOVEL"
+				| "FANFICTION"
+				| "ORIGINAL_FICTION"
+				| "ONE_SHOT"
+		);
 		let key = if novel { format!("novel/{slug}") } else { slug };
 		let mut tags: Vec<String> = series
 			.genres

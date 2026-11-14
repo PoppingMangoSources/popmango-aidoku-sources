@@ -24,7 +24,11 @@ class Responses(http.server.BaseHTTPRequestHandler):
                     if kind == "missing": pages[1]["imageUrl"] = " "
                     if kind == "empty": pages = []
                     if kind == "fragments": pages[0]["hasFragments"] = True
+                    if kind in {"inactive-protection", "active-protection"}:
+                        for page in pages: page.update(isEncrypted=True, hasStrips=True)
+                    if kind == "redacted": pages[0]["isRedacted"] = True
                     reader = {"chapter": {"content": "", "pages": pages}, "isUnlocked": kind != "locked", "isLocked": kind == "locked"}
+                    if kind in {"inactive-protection", "active-protection", "redacted"}: reader["protectionConfig"] = {"isProtected": kind == "active-protection"}
                     body = '1:{"chapter":{"id":"metadata","number":2}}\n2:' + json.dumps(reader)
             elif "/api/ai/series/" in path:
                 data = dict(series, chapter_count=3)

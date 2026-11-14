@@ -147,6 +147,10 @@ pub trait Impl {
 		if reader.is_locked && !reader.is_unlocked {
 			bail!("Chapter is locked");
 		}
+		// Page materials can remain after protection is disabled.
+		let protected = reader
+			.protection_config
+			.is_none_or(|config| config.is_protected);
 		let detail = reader.chapter;
 		if let Some(content) = detail.content.as_deref().filter(|c| !c.trim().is_empty()) {
 			return Ok(vec![Page {
@@ -161,7 +165,9 @@ pub trait Impl {
 			.pages
 			.into_iter()
 			.map(|page| {
-				if page.is_encrypted || page.has_strips || page.has_fragments || page.is_redacted {
+				if page.is_redacted
+					|| protected && (page.is_encrypted || page.has_strips || page.has_fragments)
+				{
 					bail!("This chapter uses an unsupported image format");
 				}
 				let url = page

@@ -81,10 +81,10 @@ preserve paragraphs and balanced emphasis, escape syntax rather than ordinary pu
 Featured descriptions are plain text. Details retain formatting. Split credit separators,
 trim and deduplicate per role. Do not replace authors with the site's translation team.
 
-> ⚠️ Image formats requiring fragments, strips or encryption are returned as a meaningful
-> unsupported-format error, not a truncated chapter or an encrypted image pretending to load.
-> Normal unlocked comic pages were observed with these flags false. Device rendering of
-> image/text pages, cookies and any uncommon protected format remains a separate app check.
+> ⚠️ Material flags do not establish that protection is active. Diva retains encrypted tiles
+> and strips while protectionConfig.isProtected is false; the site then uses imageUrl directly.
+> Follow that disabled-protection fallback and keep missing-page/redacted/active-protection
+> errors explicit. Device rendering and uncommon protected formats remain separate app checks.
 
 ## Home
 
@@ -138,3 +138,15 @@ The source reverses that known order for the app and requires the received count
 missing or duplicate chapters are errors. Details-only uses chapters=none. Combined updates
 need one request, so there is no artificial partial result or extra chapter fan-out.
 The reader still requires Flight because image URLs and full novel text are not in this API.
+
+Post-publication CI built and deployed all five packages, and passed source rules, lint,
+portable contracts and upstream calibration. The scope report passed fix-vine; its aggregate
+failure comes from older Raven/Scythe submission refs. Live tests passed Drake, Elf, Valir
+and Kayn. Diva home and novel reading passed in CI, but its comic-reader test encountered
+the explicit unsupported-image-format error. This is a reader limitation, distinct from
+the substituted HTML seen by local native requests, and must not be reported as a passing
+Diva comic check. Browser inspection then confirmed the same chapter has protection disabled
+and a valid full-image URL despite its material flags. The shared reader now honors that
+configuration; the portable regression covers the exact inactive-protection shape.
+Reference: https://divascans.org/series/comic/my-twin-sister-stole-my-place-as-a-wife/chapter/24
+and the loaded reader bundle /_next/static/chunks/50999.7f63d2af911a0e87.js.

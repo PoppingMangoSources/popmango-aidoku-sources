@@ -23,9 +23,11 @@ mod contracts {
 		let pages = Site.get_page_list(&params(), manga("title"), Chapter { key: "2".into(), ..Default::default() }).unwrap();
 		assert_eq!(pages.len(), 2);
 		assert!(matches!(&pages[1].content, PageContent::Url(url, _) if url.ends_with("/2.webp")));
-		for key in ["missing", "empty", "locked", "fragments"] {
+		for key in ["missing", "empty", "locked", "fragments", "active-protection", "redacted"] {
 			assert!(Site.get_page_list(&params(), manga("title"), Chapter { key: key.into(), ..Default::default() }).is_err());
 		}
+		let inactive = Site.get_page_list(&params(), manga("title"), Chapter { key: "inactive-protection".into(), ..Default::default() }).unwrap();
+		assert_eq!(inactive, pages);
 	}
 
 	#[aidoku_test]
