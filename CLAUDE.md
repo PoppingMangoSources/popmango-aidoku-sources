@@ -112,7 +112,8 @@ baseline, not a replacement for this fork's additional review gates):
   `cargo clippy -- -D warnings`; any warning fails.
 - **JSON** — tabs only, final newline, for every file under `res/`.
 
-Rust is pinned (`1.99.0`) and the CLI comes from `.github/actions/install-aidoku-cli`, which
+Rust is pinned (`1.99.0`) locally by `rust-toolchain.toml` and in CI; a newer stable formatter
+can rewrite unchanged code differently. The CLI comes from `.github/actions/install-aidoku-cli`, which
 installs aidoku-rs at its latest commit. This fork keeps packaging/JSON checks in `pr.yaml`, plus a separate `clippy.yaml`
 with formatting, warning failures, inline diagnostics and an aggregate tool-version summary.
 `check.yaml` adds our source rules, mirror checks, workflow linting and guard regression tests.
