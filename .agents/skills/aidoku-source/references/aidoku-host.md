@@ -203,7 +203,13 @@ filter doesn't count.
 - `webview_wait_for_load` waits on a semaphore with **no timeout**: a page that never
   finishes loading blocks the call.
 - `webview_eval_async` wraps the script in an async function and resolves with its value.
-- `aidoku verify` requires `minAppVersion` 0.9.0 for the web view imports.
+- `webview_eval` returns the result as text, and a script whose value is `undefined` is an
+  error (missing result), so return a string sentinel while waiting.
+- `aidoku verify` requires `minAppVersion` 0.9.0 for `webview_eval_async`, `webview_get_cookies`
+  and `webview_delete_cookie`, and 0.8.4 for `webview_set_rule_list`,
+  `webview_add_user_script` and `context_eval_async` (`crates/cli/src/commands/verify.rs`).
+- Merged web view users: `en.comix` (one `WebView` kept in a `RefCell`, `load_html_blocking`
+  then `eval`, 0.8.4) and `en.toonkotsu` (every reader request inside the web view, 0.9.0).
 
 ## HTML and canvas
 

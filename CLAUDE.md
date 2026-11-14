@@ -841,9 +841,12 @@ Sources are single-threaded. Use `RefCell` on the source struct rather than
   when the reader cleared it. Keep those distinct — collapsing them means
   unchecking every box silently re-enables everything.
 - `aidoku verify` computes the minimum app version from the imports the wasm uses and
-  fails if `minAppVersion` is lower. The WebView calls (`delete_all_cookies`,
-  `set_rule_list`, `add_user_script`) need **0.9.0**; without them, kkantan has asked
-  for `"0.7.1"` on other PRs.
+  fails if `minAppVersion` is lower (`crates/cli/src/commands/verify.rs`): `webview_eval_async`
+  and the cookie calls (`get_cookies`, `delete_cookie`, so `delete_all_cookies`) need **0.9.0**;
+  `set_rule_list`, `add_user_script` and `context_eval_async` need **0.8.4**; `child_nodes`,
+  `kind`, `get_url` and `set_timeout` need 0.8.3. A plain `WebView::new`, `load_html` and `eval`
+  date to no later version (`en.comix` ships them at 0.8.4 for its other imports). Without any
+  of these, kkantan has asked for `"0.7.1"` on other PRs.
 
 ---
 
