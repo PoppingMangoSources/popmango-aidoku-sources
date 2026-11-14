@@ -1,0 +1,415 @@
+{
+  "name": "PoppingMango Sources",
+  "sources": [
+    {
+      "id": "en.bunmanga",
+      "name": "BunManga",
+      "version": 10,
+      "iconURL": "icons/en.bunmanga-v10.png",
+      "downloadURL": "sources/en.bunmanga-v10.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 2,
+      "baseURL": "https://bunmanga.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.chikari",
+      "name": "Chikari",
+      "version": 10,
+      "iconURL": "icons/en.chikari-v10.png",
+      "downloadURL": "sources/en.chikari-v10.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://chikari.moe",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.cocomic",
+      "name": "Cocomic",
+      "version": 11,
+      "iconURL": "icons/en.cocomic-v11.png",
+      "downloadURL": "sources/en.cocomic-v11.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 2,
+      "baseURL": "https://cocomic.co",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.divascans",
+      "name": "Diva Scans",
+      "version": 3,
+      "iconURL": "icons/en.divascans-v3.png",
+      "downloadURL": "sources/en.divascans-v3.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://divascans.org",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.drakescans",
+      "name": "Drake Scans",
+      "version": 5,
+      "iconURL": "icons/en.drakescans-v5.png",
+      "downloadURL": "sources/en.drakescans-v5.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://drakecomic.net",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.elftoon",
+      "name": "Elf Toon",
+      "version": 6,
+      "iconURL": "icons/en.elftoon-v6.png",
+      "downloadURL": "sources/en.elftoon-v6.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://elftoon.net",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.hijalascans",
+      "name": "Hijala Scans",
+      "version": 5,
+      "iconURL": "icons/en.hijalascans-v5.png",
+      "downloadURL": "sources/en.hijalascans-v5.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://en-hijala.com",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.hivescans",
+      "name": "Hive Scans",
+      "version": 14,
+      "iconURL": "icons/en.hivescans-v14.png",
+      "downloadURL": "sources/en.hivescans-v14.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://hivetoons.org",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.kaynscans",
+      "name": "Kayn Scans",
+      "version": 3,
+      "iconURL": "icons/en.kaynscans-v3.png",
+      "downloadURL": "sources/en.kaynscans-v3.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://kaynscans.com",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.magusmanga",
+      "name": "Magus Manga",
+      "version": 14,
+      "iconURL": "icons/en.magusmanga-v14.png",
+      "downloadURL": "sources/en.magusmanga-v14.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://magustoon.org",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.mangaberri",
+      "name": "MangaBerri",
+      "version": 6,
+      "iconURL": "icons/en.mangaberri-v6.png",
+      "downloadURL": "sources/en.mangaberri-v6.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 2,
+      "baseURL": "https://mangaberri.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.mangacherri",
+      "name": "MangaCherri",
+      "version": 8,
+      "iconURL": "icons/en.mangacherri-v8.png",
+      "downloadURL": "sources/en.mangacherri-v8.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 2,
+      "baseURL": "https://mangacherri.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.mangahome",
+      "name": "MangaHome",
+      "version": 5,
+      "iconURL": "icons/en.mangahome-v5.png",
+      "downloadURL": "sources/en.mangahome-v5.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 2,
+      "baseURL": "https://www.mangahome.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.mangatown",
+      "name": "MangaTown",
+      "version": 8,
+      "iconURL": "icons/en.mangatown-v8.png",
+      "downloadURL": "sources/en.mangatown-v8.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://www.mangatown.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.mkissa",
+      "name": "Mkissa",
+      "version": 21,
+      "iconURL": "icons/en.mkissa-v21.png",
+      "downloadURL": "sources/en.mkissa-v21.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://mkissa.to",
+      "minAppVersion": "0.8.4"
+    },
+    {
+      "id": "en.mvlempyr",
+      "name": "MVLEMPYR",
+      "version": 7,
+      "iconURL": "icons/en.mvlempyr-v7.png",
+      "downloadURL": "sources/en.mvlempyr-v7.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://www.mvlempyr.io",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.novelcool",
+      "name": "NovelCool",
+      "version": 7,
+      "iconURL": "icons/en.novelcool-v7.png",
+      "downloadURL": "sources/en.novelcool-v7.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://www.novelcool.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.nyxscans",
+      "name": "Nyx Scans",
+      "version": 13,
+      "iconURL": "icons/en.nyxscans-v13.png",
+      "downloadURL": "sources/en.nyxscans-v13.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://nyxscans.com",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.reimanga",
+      "name": "ReiManga",
+      "version": 6,
+      "iconURL": "icons/en.reimanga-v6.png",
+      "downloadURL": "sources/en.reimanga-v6.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 2,
+      "baseURL": "https://reimanga.net",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.rinkocomics",
+      "name": "RinkoComics",
+      "version": 16,
+      "iconURL": "icons/en.rinkocomics-v16.png",
+      "downloadURL": "sources/en.rinkocomics-v16.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://rinkocomics.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.sanascans",
+      "name": "Sana Scans",
+      "version": 5,
+      "iconURL": "icons/en.sanascans-v5.png",
+      "downloadURL": "sources/en.sanascans-v5.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://sanascans.com",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.scansgg",
+      "name": "Scans.GG",
+      "version": 7,
+      "iconURL": "icons/en.scansgg-v7.png",
+      "downloadURL": "sources/en.scansgg-v7.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://scans.gg",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.scythescans",
+      "name": "Scythe Scans",
+      "version": 10,
+      "iconURL": "icons/en.scythescans-v10.png",
+      "downloadURL": "sources/en.scythescans-v10.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://scythescans.com",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.templescan",
+      "name": "Temple Scan",
+      "version": 8,
+      "iconURL": "icons/en.templescan-v8.png",
+      "downloadURL": "sources/en.templescan-v8.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://templetoons.com",
+      "minAppVersion": "0.7.1"
+    },
+    {
+      "id": "en.valirscans",
+      "name": "ValirScans",
+      "version": 12,
+      "iconURL": "icons/en.valirscans-v12.png",
+      "downloadURL": "sources/en.valirscans-v12.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://valirscans.org",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.vortexscans",
+      "name": "Vortex Scans",
+      "version": 15,
+      "iconURL": "icons/en.vortexscans-v15.png",
+      "downloadURL": "sources/en.vortexscans-v15.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 0,
+      "baseURL": "https://vortexscans.org",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "en.vymanga",
+      "name": "VyManga",
+      "version": 9,
+      "iconURL": "icons/en.vymanga-v9.png",
+      "downloadURL": "sources/en.vymanga-v9.aix",
+      "languages": [
+        "en"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://mangavyvy.net",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "es.eternalmangas",
+      "name": "EternalMangas",
+      "version": 15,
+      "iconURL": "icons/es.eternalmangas-v15.png",
+      "downloadURL": "sources/es.eternalmangas-v15.aix",
+      "languages": [
+        "es"
+      ],
+      "contentRating": 2,
+      "baseURL": "https://eternalmangas.org",
+      "minAppVersion": "0.8.3"
+    },
+    {
+      "id": "multi.mangaball",
+      "name": "MangaBall",
+      "version": 9,
+      "iconURL": "icons/multi.mangaball-v9.png",
+      "downloadURL": "sources/multi.mangaball-v9.aix",
+      "languages": [
+        "en",
+        "ar",
+        "bg",
+        "bn",
+        "ca",
+        "cs",
+        "da",
+        "de",
+        "el",
+        "es",
+        "fa",
+        "fi",
+        "fr",
+        "he",
+        "hi",
+        "hu",
+        "id",
+        "it",
+        "ja",
+        "ko",
+        "ms",
+        "nl",
+        "no",
+        "pl",
+        "pt",
+        "pt-BR",
+        "ro",
+        "ru",
+        "sv",
+        "th",
+        "tr",
+        "uk",
+        "vi",
+        "zh"
+      ],
+      "contentRating": 1,
+      "baseURL": "https://mangaball.com",
+      "minAppVersion": "0.7.1"
+    }
+  ]
+}
