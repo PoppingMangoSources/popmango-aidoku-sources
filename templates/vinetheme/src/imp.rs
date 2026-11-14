@@ -6,8 +6,8 @@ use crate::{
 	rsc, settings,
 };
 use aidoku::{
-	Chapter, ContentRating, DeepLinkResult, Filter, FilterValue, HomeLayout, Listing, Manga,
-	MangaPageResult, MultiSelectFilter, Page, PageContent, PageContext, Result,
+	Chapter, DeepLinkResult, Filter, FilterValue, HomeLayout, Listing, Manga, MangaPageResult,
+	MultiSelectFilter, Page, PageContent, PageContext, Result,
 	alloc::{String, Vec, collections::BTreeSet, string::ToString, vec},
 	helpers::uri::{QueryParameters, decode_uri, encode_uri_component},
 	imports::net::Request,
@@ -287,13 +287,11 @@ pub trait Impl {
 			params.base_url
 		))?)?
 		.get_json_owned()?;
-		let show_adult = settings::show_adult();
 		Ok(MangaPageResult {
 			entries: data
 				.data
 				.into_iter()
 				.filter_map(|series| Manga::try_from(series).ok())
-				.filter(|manga| show_adult || manga.content_rating != ContentRating::NSFW)
 				.map(|mut manga| {
 					resolve_urls(&mut manga, &params.base_url);
 					compact(manga)

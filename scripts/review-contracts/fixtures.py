@@ -11,7 +11,7 @@ class Responses(http.server.BaseHTTPRequestHandler):
         body = ""
         if path.startswith("/vine"):
             query = parse_qs(urlsplit(self.path).query)
-            series = {"slug": "title", "title": "Title", "coverImage": "/cover.webp", "type": "MANHWA", "status": "ONGOING", "description": "<p>Plain description.</p>", "author": "First & Second,First"}
+            series = {"slug": "title", "title": "Title", "coverImage": "/cover.webp", "type": "MANHWA", "status": "ONGOING", "description": "<p>Plain description.</p>", "author": "First & Second,First", "nsfw": True}
             def chapters(numbers):
                 return [{"number": n, "isLocked": n == 3, "hasAccess": n != 3, "publishedAt": "2026-11-13T12:00:00.000Z"} for n in numbers]
             if "/chapter/" in path:

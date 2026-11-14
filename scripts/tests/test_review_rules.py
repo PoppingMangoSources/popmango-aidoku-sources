@@ -148,6 +148,23 @@ class ReviewRuleTests(unittest.TestCase):
         checks.check_reviewed_consumer(self.consumer("vinetheme"), {})
         self.assertEqual(checks.failures, [])
 
+    def test_vine_omits_adult_controls_but_other_sites_can_keep_theirs(self):
+        for name, key, rejected in [
+            ("en.divascans", "showAdult", True),
+            ("en.elftoon", "hideNsfw", True),
+            ("en.kaynscans", "showLocked", False),
+            ("en.example", "showAdult", False),
+        ]:
+            with self.subTest(name=name, key=key):
+                checks.failures.clear()
+                source = self.consumer("vinetheme", name=name)
+                path = source / "res/settings.json"
+                path.write_text(json.dumps([{"type": "group", "items": [
+                    {"type": "switch", "key": key, "default": key == "hideNsfw"},
+                ]}]) + "\n")
+                checks.check_settings_json(path, 1)
+                self.assertEqual(bool(checks.failures), rejected)
+
 
 if __name__ == "__main__":
     unittest.main()

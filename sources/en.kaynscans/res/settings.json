@@ -10,12 +10,6 @@
 			},
 			{
 				"type": "switch",
-				"key": "showAdult",
-				"title": "Show 18+ Content",
-				"default": false
-			},
-			{
-				"type": "switch",
 				"key": "labelNovels",
 				"title": "Label Novels",
 				"default": true

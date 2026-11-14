@@ -73,6 +73,7 @@ mod contracts {
 		let page = Site.get_search_manga_list(&params(), Some("word & café".into()), 1, filters).unwrap();
 		assert_eq!(page.entries.len(), 1);
 		let entry = &page.entries[0];
+		assert_eq!(entry.content_rating, ContentRating::NSFW);
 		assert!(entry.description.is_none() && entry.authors.is_none() && entry.tags.is_none());
 		assert!(entry.cover.as_deref().unwrap().ends_with("/cover.webp"));
 		let page_two = Site.get_manga_list(&params(), Listing { id: "sort=newest".into(), name: "New Series".into(), ..Default::default() }, 2).unwrap();
@@ -98,7 +99,6 @@ mod contracts {
 	#[aidoku_test]
 	fn review_contract_home_order_unique_cards_and_real_chapters() {
 		defaults_set("showLocked", DefaultValue::Bool(false));
-		defaults_set("showAdult", DefaultValue::Bool(false));
 		let home = Site.get_home(&params()).unwrap();
 		assert_eq!(home.components.iter().map(|c| c.title.as_deref().unwrap_or("Hero")).collect::<Vec<_>>(), ["Hero", "New Series", "Latest Novel Updates", "Latest Comic Updates", "Popular Today", "Top 10 in All"]);
 		let HomeComponentValue::BigScroller { entries, .. } = &home.components[0].value else { panic!() };
@@ -114,6 +114,6 @@ mod contracts {
 			assert!(page_size.unwrap() <= 5);
 		}
 		assert_eq!(home.components[2].title.as_deref(), Some("Latest Novel Updates"));
-		assert_eq!(ContentRating::Safe, entries[0].content_rating);
+		assert_eq!(ContentRating::NSFW, entries[0].content_rating);
 	}
 }

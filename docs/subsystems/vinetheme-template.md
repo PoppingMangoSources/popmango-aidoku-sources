@@ -61,10 +61,10 @@ resolve displayed names to their actual genre/tag slugs. No sort has an ascendin
 
 Probes checked page 2, positive/impossible genres, genre exclusions, status, novel mode,
 an impossible chapter minimum and query, and Illustrated narrowing. The `nsfw` query
-parameter was ignored on observed endpoints, so adult visibility is applied locally to each
-returned page without extra fetch loops. Source rating 1 keeps adult titles hidden by default.
-Source settings default Show Locked Chapters off, Show 18+ Content off and Label Novels on
-where a mixed catalogue currently exists. Commercial sale/purchase filters are omitted.
+parameter was ignored on observed endpoints. The owner requested no adult visibility toggle
+or local adult filtering because the sites have no such control. All five sources retain
+contentRating 1 and individual titles keep their ratings. Source settings default Show Locked
+Chapters off and Label Novels on where a mixed catalogue currently exists. Commercial sale/purchase filters are omitted.
 
 ## Reader and descriptions
 
@@ -172,3 +172,7 @@ submission trees, merged Keyoapp/MangaThemesia calibration, all five package bas
 three local live checks fail on HTML instead of JSON/Flight; direct requests show the
 substituted Site Unavailable response and Firecrawl reaches its welcome page. This rerun
 does not establish a new Diva live pass or device rendering. No session cookies were changed.
+
+> ⚠️ Do not restore showAdult or hide adult-tagged cards locally for these five Vine sites.
+> The owner explicitly requested the site catalogue with source rating 1. Portable fixtures
+> include adult-rated search and home cards to prevent silent filtering from returning.

@@ -165,6 +165,10 @@ def check_settings_json(path: Path, rating: object) -> None:
             continue
         key = str(item.get("key", ""))
         match = ADULT_SWITCH.match(key)
+        if match and path.parent.parent.name in {
+            "en.drakescans", "en.elftoon", "en.valirscans", "en.divascans", "en.kaynscans",
+        }:
+            fail(path, "Vine sites have no adult visibility control; omit the switch and retain contentRating 1")
         if rating == 1 and match and item.get("default") is (match.group(1).lower() == "show"):
             fail(path, f"switch {key!r} shows adult titles by default with contentRating 1; hide them by default or rate the source 2")
         if not has_login and LOCKED_SWITCH.match(key) and item.get("default") is True:

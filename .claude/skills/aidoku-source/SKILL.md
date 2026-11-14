@@ -310,3 +310,7 @@ legacy comic keys and typed novel paths, and test home order/deduplication witho
 requests. Run the portable Vine contracts against clean submission worktrees as well as main.
 Keep the Iken review rules above: standard test scaffolds, isGenre, separated Rust items,
 scoped selectors and independently scoped migrations.
+
+Vine consumers keep contentRating 1 without an adult visibility switch or local adult filtering,
+matching the sites. Do not invent a Show 18+ Content control when the site has none; retain
+per-title content ratings. The owner explicitly chose this over the general toggle-default policy.

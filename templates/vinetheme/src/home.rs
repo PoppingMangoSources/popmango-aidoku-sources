@@ -26,7 +26,6 @@ struct Slides {
 }
 
 pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
-	let show_adult = settings::show_adult();
 	let show_locked = settings::show_locked();
 	let html = Html::parse(body)?;
 	let flight = rsc::decode(body)?;
@@ -81,7 +80,7 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 				let mut manga = Manga::try_from(series).ok()?;
 				resolve_urls(&mut manga, &params.base_url);
 				manga.description = description;
-				(show_adult || manga.content_rating != ContentRating::NSFW).then_some(manga)
+				Some(manga)
 			})
 			.collect();
 		if !entries.is_empty() {
@@ -155,9 +154,6 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 			else {
 				continue;
 			};
-			if !show_adult && entry.content_rating == ContentRating::NSFW {
-				continue;
-			}
 			if href.contains("ref=homepage_latest") {
 				let chapter = match metadata.get(&key) {
 					Some((_, chapters)) if !chapters.is_empty() => {
