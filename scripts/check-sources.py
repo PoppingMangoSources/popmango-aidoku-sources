@@ -131,6 +131,9 @@ def check_filters_json(path: Path, rating: object = None) -> None:
             fail(path, f"{name!r} sets usesTagStyle, which isGenre already implies")
         if item.get("type") == "check" and not item.get("hideFromHeader"):
             fail(path, f"check {name!r} shows in the filters header; set hideFromHeader")
+        keys = list(item)
+        if "isGenre" in keys and "options" in keys and keys.index("isGenre") > keys.index("options"):
+            note(path, f"{name!r} sets isGenre after its options; reviewers ask for it before the options and ids")
         # Reviewers ask for an explicit false wherever the code sends no excluded values.
         if item.get("type") == "multi-select" and not item.get("isGenre") and "canExclude" not in item:
             note(path, f"multi-select {name!r} leaves canExclude unstated; set false unless the code sends its excluded values")
@@ -228,9 +231,22 @@ def check_cards(path: Path, text: str) -> None:
     for scroller in IMAGE_SCROLLER.finditer(text):
         line = text.count("\n", 0, scroller.start()) + 1
         note(path, f"line {line} leaves an image scroller unsized; set width and height when the banners have one size")
+    for width in BANNER_WIDTH.finditer(text):
+        if int(width.group(1)) > 400:
+            line = text.count("\n", 0, width.start()) + 1
+            fail(path, f"line {line} sizes banners {width.group(1)} wide; keep them within a phone's width, about 400")
+    for trimmed in TRIMMED_TEXT.finditer(text):
+        line = text.count("\n", 0, trimmed.start()) + 1
+        note(path, f"line {line} trims the result of text(), which is already trimmed")
     for selector in BRACKET_SELECTOR.finditer(text):
         line = text.count("\n", 0, selector.start()) + 1
         note(path, f"line {line} quotes a bracket in an attribute selector, which the app may read differently from the runner; compare the attribute in Rust")
+
+
+# Vortex Scans set 1920 (iken review); an image scroller wider than the phone loads oversized images
+BANNER_WIDTH = re.compile(r"\b(?:banner_)?width:\s*Some\((\d+)\)")
+# `text()` returns normalized, trimmed text (es.eternalmangas review)
+TRIMMED_TEXT = re.compile(r"\.text\(\)\)?\s*\.(?:map|filter)\(\|(\w+)(?::[^|]*)?\|\s*!?\1\.trim\(\)")
 
 
 # `[class*='aspect-[2/1]']` matched cover slides in the app but not in the runner (section 3)
@@ -271,11 +287,23 @@ ITEM_SPACING = re.compile(
 )
 
 
+# Top-level items of different kinds, such as the last `mod` and a `const`, or two structs
+# (es.eternalmangas review)
+TOP_LEVEL_SPACING = re.compile(
+    r"(?m)^(?:"
+    r"(?:pub )?mod \w+;\n(?=(?:pub )?(?:const|static|struct|enum|fn|impl|use)\b)"
+    r"|(?:};|(?:pub )?use [^\n]*;)\n(?=(?:pub )?(?:mod|const|static|struct|enum|fn|trait)\b|#\[derive)"
+    r"|(?:pub )?const [^\n]*;\n(?=(?:pub )?(?:struct|enum|fn|impl)\b|#\[derive)"
+    r"|\}\n(?=#\[derive|(?:pub )?(?:struct|enum|const|static|mod)\b)"
+    r")"
+)
+
+
 def check_item_spacing(path: Path, text: str) -> None:
     reviewed = {"en.hijalascans", "en.sanascans", "en.hivescans", "es.eternalmangas", "iken",
                 "vinetheme", "en.drakescans", "en.elftoon", "en.valirscans", "en.divascans", "en.kaynscans"}
     report = fail if any(part in reviewed for part in path.relative_to(ROOT).parts) else note
-    for match in ITEM_SPACING.finditer(text):
+    for match in [*ITEM_SPACING.finditer(text), *TOP_LEVEL_SPACING.finditer(text)]:
         line = text.count("\n", 0, match.start()) + 2
         report(path, f"line {line} needs a blank line between Rust items or methods")
 
@@ -430,6 +458,8 @@ def check_cargo(path: Path) -> None:
     missing = [line for line in RELEASE_PROFILE if line not in release]
     if missing:
         fail(path, f"[profile.release] lacks {', '.join(missing)}, which every upstream source sets")
+    if re.search(r"(?m)^chrono\s*=", text):
+        note(path, "depends on chrono; reviewers favour aidoku's parse_date")
 
 
 # aidoku-rs commits whose bail! ends in a semicolon; Rust 1.99 rejects that under -Dwarnings

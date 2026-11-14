@@ -530,6 +530,19 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | The Keyoapp V1 section ancestor bound was widened from three to five without evidence (owner's correction) | Keep the three-level walk supported by Mist's headings, and test that a heading cannot capture a card only present at a fourth ancestor. (verified on the live Mist homepage, 2026-11-09) | R |
 | Blocked requests looked like missing catalogues or invalid JSON (owner’s CI log) | On fork main, live-tested Keyoapp and MangaThemesia requests use checked fetch helpers before parsing. Image request providers still return unsent requests to the host. Report non-2xx status and log URL, content type and at most 240 body characters. `scripts/test-http.py` checks failures with a loopback fixture; `check-sources.py` rejects direct requests that bypass the helper. | F |
 
+### From #900 and #905 (iken template, `es.eternalmangas`)
+
+| What was flagged | The rule | |
+|---|---|---|
+| `.text()` followed by `.filter(\|t\| !t.trim().is_empty())` ("`text()` trims already") | `Element::text()` returns normalized, trimmed text; trim only attributes, `own_text`, `data` and other raw strings. | N |
+| `"isGenre": true` after a genre filter's `options` and `ids` | Put `isGenre` before the options and ids. | N |
+| `mod settings;` straight above `const URL`, and structs with no line between them ("top level items should have newlines separating them") | One blank line between top-level items of different kinds and between structs; rustfmt doesn't add it. | F |
+| `chrono::DateTime::parse_from_rfc3339` ("the built-in `parse_date` should be favored") | `parse_date(date, "yyyy-MM-dd'T'HH:mm:ssXXX")`. The runner drops quoted literals, so check the date in the app rather than with an assertion (section 1). Upstream's own Iken still uses chrono for API dates. | N |
+| An `if let` chain indented with spaces ("what's happening with the indentation here?") | rustfmt silently leaves an expression it can't fit in 100 columns, here a long `matches!` guard, along with everything around it. Split the long line until `cargo fmt` reformats the block, and read the diff for indentation. | R |
+| Banners sized 1920 by 1080 ("ridiculously large… no higher than a standard phone width, around 400px"), and Hive's 400 by 150 "slightly too wide" | An image scroller is at most about 400 wide (merged sources use 300 to 400; Iken's are 340), with the height from the banners' measured ratio. Ask an image host that resizes (`?w=`) for twice the width. | F |
+| Sana's stitched pages and Nyx, Vortex and Magus series typed "manga" opened in the paged reader | Open a site's "manga" series and long chapters before mapping types to viewers. Every Iken site's comics are long strips, so they all open as Webtoon and only novels are Unknown. | R |
+| The EternalMangas rewrite rode along in the Iken template PR ("completely separate… better put in a separate pr") | A source that left a template goes up in its own PR (section 1, one concern per PR). | R |
+
 ### From #843 (`en.atsumaru`)
 
 - **Filter exclusions:** every multi-select with `canExclude: true` must process both

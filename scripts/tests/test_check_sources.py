@@ -168,6 +168,17 @@ class CardRuleTests(unittest.TestCase):
         checks.check_filters_json(path)
         self.assertEqual(checks.notes, [])
 
+    def test_genre_flag_after_options_is_noted(self):
+        checks.notes.clear()
+        path = self.source / 'res/filters.json'
+        path.write_text('[\n\t{"type": "select", "id": "genre", "options": ["a"], "isGenre": true}\n]\n')
+        checks.check_filters_json(path)
+        self.assertTrue(any('isGenre after its options' in n for n in checks.notes))
+        checks.notes.clear()
+        path.write_text('[\n\t{"type": "select", "id": "genre", "isGenre": true, "options": ["a"]}\n]\n')
+        checks.check_filters_json(path)
+        self.assertEqual(checks.notes, [])
+
     def test_adult_shown_by_default_on_rating_one_fails(self):
         path = self.source / 'res/settings.json'
         for key, default in (('hideAdult', 'false'), ('showNsfw', 'true')):
@@ -206,6 +217,31 @@ class CardRuleTests(unittest.TestCase):
         checks.notes.clear()
         checks.check_cards(self.path, unsized.replace('width: None', 'width: Some(300)'))
         self.assertEqual(checks.notes, [])
+
+    def test_banner_wider_than_a_phone_fails(self):
+        checks.failures.clear()
+        checks.check_cards(self.path, 'Params {\n\tbanner_width: Some(1920),\n\tbanner_height: Some(1080),\n}\n')
+        self.assertEqual(len(checks.failures), 1)
+        checks.failures.clear()
+        checks.check_cards(self.path, 'ImageScroller {\n\tlinks,\n\twidth: Some(340),\n\theight: Some(124),\n}\n')
+        self.assertEqual(checks.failures, [])
+
+    def test_trimmed_text_is_noted(self):
+        checks.notes.clear()
+        checks.check_cards(self.path, '.and_then(|title| title.text())\n\t.filter(|title| !title.trim().is_empty())\n')
+        self.assertEqual(len(checks.notes), 1)
+        checks.notes.clear()
+        checks.check_cards(self.path, '.attr("alt")\n\t.filter(|title| !title.trim().is_empty())\n')
+        self.assertEqual(checks.notes, [])
+
+    def test_top_level_items_need_blank_lines(self):
+        path = checks.ROOT / 'sources/es.eternalmangas/src/models.rs'
+        checks.failures.clear()
+        checks.check_item_spacing(path, 'mod helpers;\nconst URL: &str = "x";\nstruct A;\n#[derive(Deserialize)]\npub struct B {\n}\n#[derive(Deserialize)]\npub struct C {\n}\n')
+        self.assertEqual(len(checks.failures), 3)
+        checks.failures.clear()
+        checks.check_item_spacing(path, 'mod helpers;\nmod home;\n\nconst URL: &str = "x";\n\nstruct A;\n\n#[derive(Deserialize)]\npub struct B {\n}\n')
+        self.assertEqual(checks.failures, [])
 
     def test_bracket_in_attribute_selector_is_noted(self):
         checks.notes.clear()
@@ -277,6 +313,17 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cargo(path)
         self.assertTrue(any('lto = true' in failure for failure in checks.failures))
 
+    def test_chrono_dependency_is_noted(self):
+        checks.notes.clear()
+        path = self.source / 'Cargo.toml'
+        path.write_text('[dependencies]\nchrono = "0.4"\n')
+        checks.check_cargo(path)
+        self.assertTrue(any('parse_date' in n for n in checks.notes))
+        checks.notes.clear()
+        path.write_text('[dependencies]\nserde = "1"\n')
+        checks.check_cargo(path)
+        self.assertEqual(checks.notes, [])
+
     def test_stale_aidoku_lock_fails(self):
         path = self.source / 'Cargo.lock'
         path.write_text('[[package]]\nname = "aidoku"\nsource = "git+https://github.com/Aidoku/aidoku-rs.git#1a6bb691dd67c7151fc76fc852fb5a364d325f72"\n')
@@ -342,7 +389,7 @@ class CardRuleTests(unittest.TestCase):
     def test_page_size_name_is_noted(self):
         _, notes = self.naming('const FEED_LIMIT: i32 = 24;\nfn a() { query.push("limit", Some(&FEED_LIMIT.to_string())); }\n')
         self.assertTrue(any('FEED_LIMIT is sent as a page size' in n for n in notes))
-        _, notes = self.naming('const PAGE_SIZE: i32 = 24;\nfn a() { query.push("limit", Some(&PAGE_SIZE.to_string())); }\n')
+        _, notes = self.naming('const PAGE_SIZE: i32 = 24;\n\nfn a() { query.push("limit", Some(&PAGE_SIZE.to_string())); }\n')
         self.assertEqual(notes, [])
 
     def test_own_field_wrapper_is_noted(self):
@@ -363,7 +410,7 @@ class CardRuleTests(unittest.TestCase):
     def test_full_path_call_is_noted(self):
         _, notes = self.naming('fn new() -> Self {\n\tSelf { seed: aidoku::imports::std::current_date() }\n}\n')
         self.assertTrue(any('by its full path' in n for n in notes))
-        _, notes = self.naming('use aidoku::imports::std::current_date;\nfn d(e: aidoku::imports::html::Element) {}\n')
+        _, notes = self.naming('use aidoku::imports::std::current_date;\n\nfn d(e: aidoku::imports::html::Element) {}\n')
         self.assertEqual(notes, [])
 
     def test_silenced_dead_code_fails(self):
