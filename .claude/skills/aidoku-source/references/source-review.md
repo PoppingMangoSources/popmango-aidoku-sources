@@ -160,7 +160,7 @@ Iken keeps Latest Releases and New Releases, excluding the separate paid Latest 
 section. Excluded headings still bound their neighbors. Featured carousels use all metadata
 already available from home HTML and existing responses, without per-card requests. True
 banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
-BigScroller. Vortex banners are 1920x1080; Hive keeps its custom script banners local.
+BigScroller. Vortex banners show at 340 by 124 (the artwork runs about 2.75:1) and request a 680px image; Hive keeps its custom script banners local, at 340 by 128.
 
 Home enrichment must keep ranking rows unchanged and preserve available HTML metadata when API fields are absent. Novel labels apply to HTML cards as well as API cards, and featured/detail tag ratings use the same classifier. Deterministic regressions cover these boundaries.
 
