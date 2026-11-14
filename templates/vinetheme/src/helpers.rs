@@ -14,7 +14,19 @@ pub fn plain_text(value: &str) -> Option<String> {
 		.ok()?
 		.select_first("#plain")?
 		.text()
-		.filter(|text| !text.trim().is_empty())
+		.filter(|text| !text.is_empty())
+}
+
+// A card as search and every row but the big scroller show it
+pub fn compact(manga: Manga) -> Manga {
+	Manga {
+		key: manga.key,
+		title: manga.title,
+		cover: manga.cover,
+		status: manga.status,
+		content_rating: manga.content_rating,
+		..Default::default()
+	}
 }
 
 pub fn resolve_urls(manga: &mut Manga, base_url: &str) {
@@ -24,7 +36,11 @@ pub fn resolve_urls(manga: &mut Manga, base_url: &str) {
 }
 
 pub fn response(request: Request) -> Result<Response> {
-	let response = request.send()?;
+	checked(request.send()?)
+}
+
+// Reports a non-2xx response with what it held, rather than parsing an error page
+pub fn checked(response: Response) -> Result<Response> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
 		let url = response.get_url().unwrap_or_default();

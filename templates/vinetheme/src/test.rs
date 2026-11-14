@@ -49,6 +49,25 @@ fn review_novel_paragraphs_and_nested_emphasis() {
 }
 
 #[aidoku_test]
+fn review_comics_open_as_webtoons_and_novels_do_not() {
+	use aidoku::Viewer;
+	for (kind, viewer) in [
+		("MANGA", Viewer::Webtoon),
+		("MANHWA", Viewer::Webtoon),
+		("", Viewer::Webtoon),
+		("WEB_NOVEL", Viewer::Unknown),
+	] {
+		let series = serde_json::from_value::<Series>(serde_json::json!({
+			"slug": "title",
+			"title": "Title",
+			"type": kind,
+		}))
+		.unwrap();
+		assert_eq!(Manga::try_from(series).unwrap().viewer, viewer, "{kind}");
+	}
+}
+
+#[aidoku_test]
 fn review_empty_html_synopsis_keeps_valid_series() {
 	for description in ["", " ", "<p></p>", "<p>&nbsp;</p>"] {
 		let series = serde_json::from_value::<Series>(serde_json::json!({

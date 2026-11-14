@@ -15,6 +15,7 @@ mod models;
 mod rsc;
 mod settings;
 
+pub use helpers::{checked, compact};
 pub use imp::Impl;
 
 pub struct Params {

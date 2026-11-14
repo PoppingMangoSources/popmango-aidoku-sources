@@ -223,14 +223,11 @@ impl TryFrom<Series> for Manga {
 			} else {
 				ContentRating::Safe
 			},
+			// The sites' comics are long strips, those typed "MANGA" included
 			viewer: if novel {
 				Viewer::Unknown
 			} else {
-				match series.series_type.as_str() {
-					"MANGA" => Viewer::RightToLeft,
-					"MANHWA" | "MANHUA" | "WEBTOON" => Viewer::Webtoon,
-					_ => Viewer::Unknown,
-				}
+				Viewer::Webtoon
 			},
 			..Default::default()
 		})
@@ -267,16 +264,5 @@ impl ChapterDto {
 			}),
 			..Default::default()
 		}
-	}
-}
-
-pub fn compact(manga: Manga) -> Manga {
-	Manga {
-		key: manga.key,
-		title: manga.title,
-		cover: manga.cover,
-		status: manga.status,
-		content_rating: manga.content_rating,
-		..Default::default()
 	}
 }

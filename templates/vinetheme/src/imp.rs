@@ -1,6 +1,6 @@
 use crate::{
 	Params,
-	helpers::{absolute_url, link_keys, resolve_urls, response, series_path, title_case},
+	helpers::{absolute_url, compact, link_keys, resolve_urls, response, series_path, title_case},
 	home, markdown,
 	models::*,
 	rsc, settings,

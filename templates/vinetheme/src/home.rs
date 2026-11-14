@@ -1,7 +1,7 @@
 use crate::{
 	Params,
-	helpers::{absolute_url, link_keys, plain_text, resolve_urls},
-	models::{Series, SeriesResponse, compact},
+	helpers::{absolute_url, compact, link_keys, plain_text, resolve_urls},
+	models::{Series, SeriesResponse},
 	rsc, settings,
 };
 use aidoku::{
