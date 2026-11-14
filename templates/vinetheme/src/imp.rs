@@ -71,7 +71,7 @@ pub trait Impl {
 			let (options, ids) = facets
 				.into_iter()
 				.filter(|f| !f.name.trim().is_empty() && !f.slug.trim().is_empty())
-				.map(|f| (title_case(f.name.trim()), f.slug.into()))
+				.map(|f| (title_case(f.name.trim()).into(), f.slug.into()))
 				.unzip();
 			MultiSelectFilter {
 				id: id.into(),

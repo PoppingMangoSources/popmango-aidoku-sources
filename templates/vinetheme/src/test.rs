@@ -3,7 +3,10 @@ use crate::{
 	models::{ChapterPages, Series},
 	rsc,
 };
-use aidoku::{Manga, alloc::{String, format, vec}};
+use aidoku::{
+	Manga,
+	alloc::{String, format, vec},
+};
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
@@ -141,9 +144,16 @@ fn review_vine_tag_labels_use_readable_case() {
 		"tags": ["Drama", "josei", {"name": "", "slug": "historical"}, "smut"]
 	})).unwrap();
 	let manga = Manga::try_from(series).unwrap();
-	assert_eq!(manga.tags.unwrap(), vec![
-		String::from("Drama"), String::from("Historical"), String::from("Josei"),
-		String::from("Romance"), String::from("Slice Of Life"), String::from("Smut"),
-	]);
+	assert_eq!(
+		manga.tags.unwrap(),
+		vec![
+			String::from("Drama"),
+			String::from("Historical"),
+			String::from("Josei"),
+			String::from("Romance"),
+			String::from("Slice Of Life"),
+			String::from("Smut"),
+		]
+	);
 	assert_eq!(manga.content_rating, aidoku::ContentRating::NSFW);
 }
