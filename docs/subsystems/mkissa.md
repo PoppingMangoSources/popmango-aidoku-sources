@@ -66,6 +66,13 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > settles a promise that `eval_async` awaits, so pages return as soon as they are captured;
 > `eval_async` puts the minimum app version at 0.9.0.
 
+> ⚠️ The loaded series page stays on the source in a `RefCell`, as merged Comix keeps its web
+> view, and later chapters of any series route inside it (Chromium, 2026-11-15: 3.4-4.2 s for the
+> first chapter, 0.5-0.8 s for each one after). The site answers a chapter that page already showed
+> from its own cache, which parses nothing, so `Reader` loads a fresh page for a chapter it opened
+> before, and for any reuse that fails or times out. A capture only counts when its
+> `chapterString` is the chapter asked for.
+
 Home rows, in the order the owner set: Popular Weekly (big scroller from the popular feed's own
 description, genres and status), Manga {year}, Trending, Random, Latest Updates (newest chapter
 and date), Most Saved, Most Boosted and {Season} {year} Anime, where the season is the calendar

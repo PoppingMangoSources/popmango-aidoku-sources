@@ -132,10 +132,10 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 	None
 }
 
-// Captures the decoded `chapterPages`, then clicks through to the chapter so the site's router fetches it.
-// The promise settles with the pages, the challenge token after five seconds of a check, or empty text.
-fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
-	let chapter_path = serde_json::to_string(chapter_path).unwrap_or_else(|_| String::from("\"\""));
+// Hooks the parsers that see the decoded `chapterPages`. `open` routes the page to a chapter with
+// the site's router and settles with that chapter's pages, the challenge token after five seconds
+// of a check, or empty text.
+fn capture_script(pinned_key: Option<&str>) -> String {
 	let pin = pinned_key
 		.and_then(|key| serde_json::to_string(key).ok())
 		.map(|key| {
@@ -155,32 +155,22 @@ fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 	format!(
 		"(function () {{
 	if (window['{RESULT_TOKEN}']) return;
-	const state = {{ done: false }};
+	const state = {{ done: true }};
 	window['{RESULT_TOKEN}'] = state;
-	state.result = new Promise((resolve) => {{
-		state.resolve = resolve;
-	}});
 	const finish = (payload) => {{
 		if (state.done) return;
 		state.done = true;
 		state.resolve(payload);
 	}};
-	setTimeout(() => finish(''), 30000);
 
-	// The site's own check never clears in a hidden view
-	let challenged = 0;
-	const watch = setInterval(() => {{
-		if (state.done) return clearInterval(watch);
-		const challenge = document.title.includes('Just a moment')
-			|| document.querySelector('.captcha-overlay--visible') != null;
-		challenged = challenge ? challenged + 1 : 0;
-		if (challenged >= 20) finish('{CHALLENGE_TOKEN}');
-	}}, 250);
+	// A live page can also parse other chapters, so only the one asked for counts
 	const capture = (parsed, raw) => {{
 		try {{
-			if (parsed && (parsed.chapterPages || (parsed.data && parsed.data.chapterPages))) {{
-				finish(raw);
-			}}
+			const pages = parsed && (parsed.chapterPages || (parsed.data && parsed.data.chapterPages));
+			if (!pages || state.done) return;
+			const edges = pages.edges || [];
+			if (edges.some((edge) => edge.chapterString != null && String(edge.chapterString) !== state.chapter)) return;
+			finish(raw);
 		}} catch (_) {{}}
 	}};
 
@@ -217,33 +207,50 @@ fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 		}};
 	}}
 
-	function triggerChapterNav() {{
-		const a = document.createElement('a');
-		a.href = a.dataset.href = {chapter_path};
-		document.body.append(a);
-		a.click();
-	}}
+	state.open = (path, chapter, timeout) => {{
+		state.chapter = chapter;
+		state.done = false;
+		const result = new Promise((resolve) => {{
+			state.resolve = resolve;
+		}});
+		setTimeout(() => finish(''), timeout);
 
-	let attempts = 0;
-	function check() {{
-		if (state.done) return;
-		if (document.querySelector('[data-href]')) {{
-			triggerChapterNav();
-		}} else if (attempts < 300) {{
-			attempts++;
-			setTimeout(check, 50);
-		}} else {{
-			triggerChapterNav();
-		}}
-	}}
-	check();
+		// The site's own check never clears in a hidden view
+		let challenged = 0;
+		const watch = setInterval(() => {{
+			if (state.done) return clearInterval(watch);
+			const challenge = document.title.includes('Just a moment')
+				|| document.querySelector('.captcha-overlay--visible') != null;
+			challenged = challenge ? challenged + 1 : 0;
+			if (challenged >= 20) finish('{CHALLENGE_TOKEN}');
+		}}, 250);
+
+		const route = () => {{
+			const a = document.createElement('a');
+			a.href = a.dataset.href = path;
+			document.body.append(a);
+			a.click();
+		}};
+		let attempts = 0;
+		const check = () => {{
+			if (state.done) return;
+			if (document.querySelector('[data-href]') || attempts >= 300) {{
+				route();
+			}} else {{
+				attempts++;
+				setTimeout(check, 50);
+			}}
+		}};
+		check();
+		return result;
+	}};
 }})()"
 	)
 }
 
-pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
+// Loads a series page with the capture hooks; its router then reaches any chapter without a reload
+fn load_series(manga_id: &str) -> Result<WebView> {
 	let manga_url = manga_url(manga_id);
-	let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
 	// A plain request lets the app clear Cloudflare and keep its cookie
 	let response = Request::get(&manga_url)?
@@ -257,30 +264,71 @@ pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
 		bail!("The reader returned HTTP {status}");
 	}
 	let html = response.get_string()?;
-	let parser_key = pinned_parser_key(&html);
 
-	// Navigating client-side from the cleared page avoids a second Cloudflare check
 	let web_view = WebView::new();
 	web_view.set_rule_list(BLOCKED_CONTENT)?;
 	let mut user_script =
-		WebViewUserScript::new(capture_script(&chapter_path, parser_key.as_deref()));
+		WebViewUserScript::new(capture_script(pinned_parser_key(&html).as_deref()));
 	user_script.at_document_end = false;
 	user_script.for_main_frame_only = false;
 	web_view.add_user_script(user_script)?;
 	web_view.load_html_blocking(&html, Some(&manga_url))?;
+	Ok(web_view)
+}
 
-	let result = web_view.eval_async(&format!("return await window['{RESULT_TOKEN}'].result;"))?;
-	if result == CHALLENGE_TOKEN {
-		bail!("Open the series in the web view, solve the site's check, then retry");
-	} else if result.is_empty() {
-		bail!("The reader did not produce any pages");
+fn open(web_view: &WebView, path: &str, chapter: &str, timeout_ms: u32) -> Result<String> {
+	let path = serde_json::to_string(path)?;
+	let chapter = serde_json::to_string(chapter)?;
+	Ok(web_view.eval_async(&format!(
+		"return await window['{RESULT_TOKEN}'].open({path}, {chapter}, {timeout_ms});"
+	))?)
+}
+
+// The chapter route answers Cloudflare's check to a fresh page, so chapters are reached by routing
+// inside a series page, which stays loaded for the next chapter
+#[derive(Default)]
+pub struct Reader {
+	web_view: Option<WebView>,
+	opened: Vec<String>,
+}
+
+impl Reader {
+	pub fn page_urls(&mut self, manga_id: &str, chapter: &str) -> Result<Vec<String>> {
+		let path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
+
+		// The site answers a chapter it already showed from its own cache, which parses nothing
+		let reused = match self.web_view.take() {
+			Some(web_view) if !self.opened.contains(&path) => {
+				open(&web_view, &path, chapter, 10000)
+					.ok()
+					.filter(|result| !result.is_empty())
+					.map(|result| (web_view, result))
+			}
+			_ => None,
+		};
+		let (web_view, result) = match reused {
+			Some(found) => found,
+			None => {
+				self.opened.clear();
+				let web_view = load_series(manga_id)?;
+				let result = open(&web_view, &path, chapter, 30000)?;
+				(web_view, result)
+			}
+		};
+		if result == CHALLENGE_TOKEN {
+			bail!("Open the series in the web view, solve the site's check, then retry");
+		} else if result.is_empty() {
+			bail!("The reader did not produce any pages");
+		}
+		self.web_view = Some(web_view);
+		self.opened.push(path);
+
+		// The page hands back the text it parsed, not a response body
+		let payload: ReaderPayload = serde_json::from_str(&result)?;
+		let pages = payload
+			.chapter_pages
+			.or_else(|| payload.data.and_then(|data| data.chapter_pages))
+			.ok_or(error!("The reader did not produce any pages"))?;
+		parse_page_urls(&pages, &settings::image_quality())
 	}
-
-	// The page hands back the text it parsed, not a response body
-	let payload: ReaderPayload = serde_json::from_str(&result)?;
-	let pages = payload
-		.chapter_pages
-		.or_else(|| payload.data.and_then(|data| data.chapter_pages))
-		.ok_or(error!("The reader did not produce any pages"))?;
-	parse_page_urls(&pages, &settings::image_quality())
 }
