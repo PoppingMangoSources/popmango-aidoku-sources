@@ -75,6 +75,8 @@ impl Source for Mkissa {
 		let mut country = String::from("ALL");
 		let mut genres: Vec<String> = Vec::new();
 		let mut tags: Vec<String> = Vec::new();
+		let mut excluded_genres: Vec<String> = Vec::new();
+		let mut excluded_tags: Vec<String> = Vec::new();
 		if let Some(query) = query {
 			search.insert("query".into(), query.into());
 		}
@@ -87,9 +89,9 @@ impl Source for Mkissa {
 				}
 				FilterValue::Select { id, value } => match id.as_str() {
 					"country" => country = value,
-					// A tapped tag sends its display name; theme tags search by slug
-					"genre" => match tag_slug(&value)? {
-						Some(slug) => tags.push(slug),
+					// A tapped tag sends its display name
+					"genre" => match tag_filter_id(&value)? {
+						Some(tag) => tags.push(tag),
 						None => genres.push(value),
 					},
 					"day" => {
@@ -123,20 +125,46 @@ impl Source for Mkissa {
 					let year: i32 = value.trim().parse().map_err(|_| error!("Enter a year"))?;
 					search.insert("year".into(), year.into());
 				}
-				FilterValue::MultiSelect { id, included, .. } if id == "tags" => {
-					tags.extend(included)
+				// The site's panel only includes; the API also excludes
+				FilterValue::MultiSelect {
+					id,
+					included,
+					excluded,
+				} if id == "tags" => {
+					tags.extend(included);
+					excluded_tags.extend(excluded);
 				}
-				FilterValue::MultiSelect { id, included, .. } if id == "genres" => {
-					genres.extend(included)
+				FilterValue::MultiSelect {
+					included, excluded, ..
+				} => {
+					genres.extend(included);
+					excluded_genres.extend(excluded);
 				}
 				_ => {}
 			}
 		}
-		if !genres.is_empty() {
-			search.insert("genres".into(), genres.into());
+		let (magazines, tags): (Vec<_>, Vec<_>) = tags
+			.into_iter()
+			.partition(|tag| tag.starts_with("magazine:"));
+		match magazines.as_slice() {
+			[] => {}
+			[magazine] => {
+				search.insert("magazine".into(), magazine["magazine:".len()..].into());
+			}
+			_ => bail!("The site searches one magazine at a time"),
 		}
-		if !tags.is_empty() {
-			search.insert("tags".into(), tags.into());
+		if excluded_tags.iter().any(|tag| tag.starts_with("magazine:")) {
+			bail!("Magazines can only be included");
+		}
+		for (field, values) in [
+			("genres", genres),
+			("tags", tags),
+			("excludeGenres", excluded_genres),
+			("excludeTags", excluded_tags),
+		] {
+			if !values.is_empty() {
+				search.insert(field.into(), values.into());
+			}
 		}
 		let data: SearchData =
 			parse(browse_request(Value::Object(search), page, &country)?.send()?)?;
@@ -208,7 +236,7 @@ impl DynamicFilters for Mkissa {
 			.query_tags
 			.edges
 			.into_iter()
-			.map(|tag| (tag.slug.into(), tag.name.into()))
+			.map(|tag| (tag.filter_id().into(), tag.name.into()))
 			.unzip();
 		Ok(vec![
 			MultiSelectFilter {
@@ -216,6 +244,7 @@ impl DynamicFilters for Mkissa {
 				title: Some("Tags".into()),
 				options,
 				ids: Some(ids),
+				can_exclude: true,
 				uses_tag_style: true,
 				hide_from_header: Some(true),
 				..Default::default()

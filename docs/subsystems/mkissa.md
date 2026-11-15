@@ -28,11 +28,16 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > country, after a "Webtoons" genre or a "Long Strip" tag. Tags arrive as slugs such as
 > `format:long_strip`; `tag_names` turns them into display names.
 
-> ⚠️ The search panel's genres and tags only include, so neither filter offers exclusion, though
-> `SearchInput` has `excludeGenres` and `excludeTags`. Its Tags section is the 16 trending tags
+> ⚠️ The search panel's genres and tags only include, but `SearchInput`'s `excludeGenres` and
+> `excludeTags` work (probed: excluding Action left none of 40), so both filters exclude by the
+> owner's choice. Its Tags section is the 16 trending tags
 > (`queryTags` with `queryType: Home`), sent by slug (`theme:family_life`), so it is a dynamic
 > filter. A tapped tag arrives as its display name and is matched back to a slug with a
 > `queryTags` lookup; a name with no matching slug searches as a genre.
+
+> ⚠️ Trending tags include magazines (`ridi_webtoon-magazine`), which match nothing as `tags` or
+> by slug; `SearchInput.magazine` takes one magazine's display name. Magazine options carry
+> `magazine:<name>` ids, a tapped magazine resolves to the same id, and excluding one is an error.
 
 > ⚠️ Update Day sends one local day as `dateRangeStart`/`dateRangeEnd` (midnight to 23:59:59).
 > Chapters ranges go out as `epRangeStart`/`epRangeEnd`, the last (2001+) without an end. The

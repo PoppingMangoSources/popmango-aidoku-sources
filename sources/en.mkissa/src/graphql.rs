@@ -1,6 +1,6 @@
 use crate::{
 	helpers::tag_name,
-	models::{API_URL, BASE_URL, GraphQLResponse, TagsData},
+	models::{API_URL, BASE_URL, GraphQLResponse, Tag, TagsData},
 };
 use aidoku::{
 	Result,
@@ -105,8 +105,8 @@ pub fn fetch<T: DeserializeOwned>(query: &str, variables: Value) -> Result<T> {
 	parse(request(query, variables)?.send()?)
 }
 
-// Details show tag slugs as names, so a tapped name is matched back to its slug
-pub fn tag_slug(name: &str) -> Result<Option<String>> {
+// Details show tag slugs as names, so a tapped name is matched back to its filter id
+pub fn tag_filter_id(name: &str) -> Result<Option<String>> {
 	let data: TagsData = fetch(
 		TAGS_QUERY,
 		json!({ "search": { "query": name, "format": "manga" }, "limit": 5 }),
@@ -114,7 +114,7 @@ pub fn tag_slug(name: &str) -> Result<Option<String>> {
 	Ok(data
 		.query_tags
 		.edges
-		.into_iter()
+		.iter()
 		.find(|tag| tag_name(&tag.slug).eq_ignore_ascii_case(name))
-		.map(|tag| tag.slug))
+		.map(Tag::filter_id))
 }

@@ -4,6 +4,7 @@ use aidoku::{
 	alloc::{String, vec},
 };
 use aidoku_test::aidoku_test;
+use helpers::tag_name;
 use home::{Feed, HomeData, layout};
 
 fn card(id: &str, extra: Value) -> MangaCard {
@@ -325,6 +326,22 @@ fn genre_filter_narrows_results() {
 			.iter()
 			.any(|tag| tag == "Sports")
 	);
+	let without = search(vec![FilterValue::MultiSelect {
+		id: "genres".into(),
+		included: Vec::new(),
+		excluded: vec!["Action".into()],
+	}]);
+	assert_ne!(keys(&without), keys(&search(Vec::new())));
+	for manga in without.entries.into_iter().take(3) {
+		let details = Mkissa::new().get_manga_update(manga, true, false).unwrap();
+		assert!(
+			!details
+				.tags
+				.unwrap_or_default()
+				.iter()
+				.any(|tag| tag == "Action")
+		);
+	}
 }
 
 fn search(filters: Vec<FilterValue>) -> MangaPageResult {
@@ -360,8 +377,8 @@ fn review_filters_follow_the_site_panel() {
 			.unwrap()
 			.clone()
 	};
-	// Genres and tags only include on the site
-	assert_eq!(filter("genres")["canExclude"], false);
+	// The site's panel only includes, but the API excludes too (owner's choice)
+	assert_eq!(filter("genres")["canExclude"], true);
 	let genres = filter("genres")["options"].clone();
 	assert_eq!(genres[45], "Yuri");
 	assert_eq!(genres[46], "Suspense");
@@ -426,21 +443,55 @@ fn trending_tags_filter_and_tag_taps_search_by_slug() {
 	else {
 		panic!("Expected the tags multi-select")
 	};
-	assert!(!options.is_empty() && !*can_exclude);
-	let tagged = search(vec![FilterValue::MultiSelect {
+	assert!(!options.is_empty() && *can_exclude);
+	let tags = |included: &str, excluded: &str| FilterValue::MultiSelect {
 		id: "tags".into(),
-		included: vec![ids[0].clone().into_owned()],
-		excluded: Vec::new(),
-	}]);
-	assert!(!tagged.entries.is_empty());
-	let tapped = search(vec![select("genre", "Long Strip")]);
-	assert!(!tapped.entries.is_empty());
-	let none = search(vec![FilterValue::MultiSelect {
-		id: "tags".into(),
-		included: vec!["theme:zzzz_none".into()],
-		excluded: Vec::new(),
-	}]);
-	assert!(none.entries.is_empty());
+		included: [included]
+			.into_iter()
+			.filter(|t| !t.is_empty())
+			.map(Into::into)
+			.collect(),
+		excluded: [excluded]
+			.into_iter()
+			.filter(|t| !t.is_empty())
+			.map(Into::into)
+			.collect(),
+	};
+	// Trending tags rotate, and some match only adult titles, which are hidden by default
+	assert!(
+		ids.iter()
+			.filter(|id| id.starts_with("theme:"))
+			.any(|theme| !search(vec![tags(theme, "")]).entries.is_empty())
+	);
+	assert!(
+		!search(vec![select("genre", "Long Strip")])
+			.entries
+			.is_empty()
+	);
+	assert!(search(vec![tags("theme:zzzz_none", "")]).entries.is_empty());
+	// Magazines search by name, whether picked or tapped
+	let magazine = search(vec![tags("magazine:Ridi Webtoon", "")]);
+	assert!(!magazine.entries.is_empty());
+	assert_eq!(
+		keys(&search(vec![select("genre", "Ridi Webtoon")])),
+		keys(&magazine)
+	);
+	let source = Mkissa::new();
+	assert!(
+		source
+			.get_search_manga_list(None, 1, vec![tags("", "magazine:Ridi Webtoon")])
+			.is_err()
+	);
+	let with = keys(&search(vec![tags("format:long_strip", "")]));
+	let without = keys(&search(vec![tags("", "format:long_strip")]));
+	assert!(!with.is_empty() && !without.is_empty());
+	assert!(without.iter().all(|key| !with.contains(key)));
+}
+
+#[aidoku_test]
+fn review_magazine_tags_read_as_names() {
+	assert_eq!(tag_name("ridi_webtoon-magazine"), "Ridi Webtoon");
+	assert_eq!(tag_name("format:long_strip"), "Long Strip");
 }
 
 #[aidoku_test]

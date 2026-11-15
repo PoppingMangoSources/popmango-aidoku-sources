@@ -223,6 +223,17 @@ pub struct Tag {
 	pub slug: String,
 }
 
+impl Tag {
+	// Magazines search by name in their own field, themes and formats by slug
+	pub fn filter_id(&self) -> String {
+		if self.slug.ends_with("-magazine") {
+			format!("magazine:{}", self.name)
+		} else {
+			self.slug.clone()
+		}
+	}
+}
+
 #[derive(Deserialize)]
 pub struct TagEdges {
 	pub edges: Vec<Tag>,

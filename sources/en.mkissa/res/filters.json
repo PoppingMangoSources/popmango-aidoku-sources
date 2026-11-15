@@ -107,7 +107,7 @@
 		"id": "genres",
 		"title": "Genres",
 		"isGenre": true,
-		"canExclude": false,
+		"canExclude": true,
 		"options": [
 			"4 Koma",
 			"Action",

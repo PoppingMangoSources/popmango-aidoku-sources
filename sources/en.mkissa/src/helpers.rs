@@ -45,6 +45,7 @@ pub fn tag_name(slug: &str) -> String {
 	slug.rsplit(':')
 		.next()
 		.unwrap_or_default()
+		.trim_end_matches("-magazine")
 		.replace('_', " ")
 		.split_whitespace()
 		.map(|word| {
