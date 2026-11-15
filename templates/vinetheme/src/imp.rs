@@ -107,7 +107,7 @@ pub trait Impl {
 			response(Request::get(url)?)?.get_json_owned()
 		};
 		let mut series = fetch(slug)?;
-		// Older novel keys hold the public slug, which can name the comic of the same title
+		// A novel's public slug can name the comic of the same title; the API needs the novel's own
 		if kind == "novel" && !series.is_novel() {
 			let found: SeriesResponse = response(Request::get(format!(
 				"{}/api/series?limit=24&page=1&contentMode=all&q={}",

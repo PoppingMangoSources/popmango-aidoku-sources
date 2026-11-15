@@ -50,8 +50,9 @@ The public catalogue is `/api/series`; `/api/series/facets` returns current genr
 Details and complete chapters use `/api/ai/series/{canonicalSlug}?chapters=none|all`.
 > ⚠️ Every Valir novel has an API slug different from its public `urlSlug` (`…-novel`, `…-2`),
 > and a novel's `urlSlug` can equal its comic's, where `/api/ai/series/{urlSlug}` answers the comic.
-> Novel keys therefore hold the API slug; home links are mapped from `urlSlug` to that key, and an
-> older public-slug novel key is resolved with one search when the API answers a comic.
+> The reader (`/series/novel/{slug}/chapter/{n}` with `rsc: 1`) answers only on `urlSlug`; the API
+> slug gives a page without reader data ("Missing chapter/isUnlocked/isLocked"). So keys keep
+> `urlSlug`, and details that answer a comic for a novel key find the novel by search.
 
 Readers use `/series/{comic|novel}/{urlSlug}/chapter/{number}` with `rsc: 1`.
 The public routes use `urlSlug` when it differs from the database slug. Bare legacy comic

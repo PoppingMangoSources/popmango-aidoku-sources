@@ -154,19 +154,18 @@ impl TryFrom<Series> for Manga {
 
 	fn try_from(series: Series) -> Result<Self> {
 		let novel = series.is_novel();
-		// A novel's public slug can be its comic's, so novels keep the API slug
-		let slug = if novel {
-			series.slug
-		} else {
-			series
-				.url
-				.as_deref()
-				.and_then(link_keys)
-				.map(|(key, _)| key)
-				.or(series.url_slug)
-				.filter(|s| !s.trim().is_empty())
-				.unwrap_or(series.slug)
-		};
+		// Readers and links use the public slug
+		let slug = series
+			.url
+			.as_deref()
+			.and_then(link_keys)
+			.map(|(key, _)| match key.strip_prefix("novel/") {
+				Some(slug) => slug.into(),
+				None => key,
+			})
+			.or(series.url_slug)
+			.filter(|s| !s.trim().is_empty())
+			.unwrap_or(series.slug);
 		let title = series.title.trim();
 		if slug.trim().is_empty() || title.is_empty() {
 			bail!("Series has no key or title");

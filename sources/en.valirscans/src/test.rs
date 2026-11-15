@@ -102,7 +102,7 @@ fn novel_sharing_a_comic_slug_opens_the_novel() {
 	let novel = source
 		.get_manga_update(
 			Manga {
-				key: card.key,
+				key: card.key.clone(),
 				..Default::default()
 			},
 			true,
@@ -110,7 +110,22 @@ fn novel_sharing_a_comic_slug_opens_the_novel() {
 		)
 		.unwrap();
 	assert_eq!(novel.viewer, aidoku::Viewer::Unknown);
-	assert!(novel.chapters.unwrap().len() > 100);
+	let chapters = novel.chapters.unwrap();
+	assert!(chapters.len() > 100);
+	// The reader answers only on the public slug the key holds
+	let pages = source
+		.get_page_list(
+			Manga {
+				key: card.key,
+				..Default::default()
+			},
+			Chapter {
+				key: chapters.last().unwrap().key.clone(),
+				..Default::default()
+			},
+		)
+		.unwrap();
+	assert!(matches!(&pages[0].content, aidoku::PageContent::Text(text) if text.len() > 500));
 }
 
 #[aidoku_test]
