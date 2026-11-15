@@ -12,6 +12,8 @@ impl Impl for RoliaScan {
 	fn params(&self) -> Params {
 		Params {
 			base_url: "https://roliascan.com".into(),
+			// Its Recently Added grid repeats Latest Updates
+			recently_added: false,
 			novel_home: true,
 		}
 	}

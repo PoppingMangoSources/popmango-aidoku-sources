@@ -1,7 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		checked, date, excluded_slugs, link_keys, rating, request, series_key, site_headers,
+		checked, date, excluded_slugs, link_keys, novel_title, parse, rating, request, series_key,
+		site_headers,
 	},
 	models::{MangaFeed, PopularChapters, Title, Updates, viewer},
 	settings,
@@ -65,7 +66,7 @@ impl Section {
 	}
 }
 
-pub fn sections(novels: bool) -> Vec<Section> {
+pub fn sections(recently_added: bool, novels: bool) -> Vec<Section> {
 	[
 		Section::Featured,
 		Section::Ranking,
@@ -78,7 +79,11 @@ pub fn sections(novels: bool) -> Vec<Section> {
 		Section::HighScore,
 	]
 	.into_iter()
-	.filter(|section| novels || !matches!(section, Section::Novels))
+	.filter(|section| match section {
+		Section::Recent => recently_added,
+		Section::Novels => novels,
+		_ => true,
+	})
 	.collect()
 }
 
@@ -160,15 +165,10 @@ pub fn parse_novels(document: &Document) -> Vec<MangaWithChapter> {
 			let (key, Some(chapter_key)) = link_keys(&chapter_url)? else {
 				return None;
 			};
-			let title = if settings::label_novels() && !title.ends_with("(Novel)") {
-				format!("{title} (Novel)")
-			} else {
-				title
-			};
 			Some(MangaWithChapter {
 				manga: Manga {
 					key,
-					title,
+					title: novel_title(title),
 					cover: image.attr("src"),
 					..Default::default()
 				},
@@ -192,31 +192,30 @@ pub fn parse_novels(document: &Document) -> Vec<MangaWithChapter> {
 		.collect()
 }
 
-fn parse(section: Section, response: Response) -> Result<Data> {
-	let response = checked(response)?;
+fn parse_feed(section: Section, response: Response) -> Result<Data> {
 	match section {
 		Section::Ranking | Section::Followed => {
-			let feed: MangaFeed = response.get_json_owned()?;
+			let feed: MangaFeed = parse(response)?;
 			if !feed.success {
 				bail!("Could not load followed manga");
 			}
 			Ok(Data::Titles(feed.manga))
 		}
 		Section::PopularChapters => {
-			let feed: PopularChapters = response.get_json_owned()?;
+			let feed: PopularChapters = parse(response)?;
 			if !feed.success {
 				bail!("Could not load popular chapters");
 			}
 			Ok(Data::Titles(feed.chapters))
 		}
 		Section::Updates => {
-			let feed: Updates = response.get_json_owned()?;
+			let feed: Updates = parse(response)?;
 			if !feed.success {
 				bail!("Could not load latest updates");
 			}
 			Ok(Data::Titles(feed.data))
 		}
-		_ => Ok(Data::Titles(response.get_json_owned()?)),
+		_ => Ok(Data::Titles(parse(response)?)),
 	}
 }
 
@@ -283,7 +282,7 @@ pub(crate) fn component(
 
 pub fn get_home(params: &Params) -> Result<HomeLayout> {
 	let base_url = params.base_url.as_ref();
-	let sections = sections(params.novel_home);
+	let sections = sections(params.recently_added, params.novel_home);
 	send_partial_result(&HomePartialResult::Layout(HomeLayout {
 		components: sections
 			.iter()
@@ -330,7 +329,7 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 			(Some(_), _) => match responses.next() {
 				Some(response) => response
 					.map_err(AidokuError::from)
-					.and_then(|response| parse(section, response)),
+					.and_then(|response| parse_feed(section, response)),
 				None => continue,
 			},
 			(None, Some(document)) => Ok(match section {

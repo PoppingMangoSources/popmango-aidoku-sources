@@ -12,6 +12,7 @@ impl Impl for MangaTaroSource {
 	fn params(&self) -> Params {
 		Params {
 			base_url: "https://mangataro.org".into(),
+			recently_added: true,
 			novel_home: false,
 		}
 	}

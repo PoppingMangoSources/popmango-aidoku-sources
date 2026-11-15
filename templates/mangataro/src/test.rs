@@ -17,14 +17,14 @@ use aidoku_test::aidoku_test;
 
 #[aidoku_test]
 fn review_home_order_and_sizes() {
-	let names = |novels| {
-		home::sections(novels)
+	let names = |recently_added, novels| {
+		home::sections(recently_added, novels)
 			.into_iter()
 			.map(Section::title)
 			.collect::<Vec<_>>()
 	};
 	assert_eq!(
-		names(false),
+		names(true, false),
 		[
 			None,
 			Some("Most Followed New Manga (1 Month)"),
@@ -36,10 +36,21 @@ fn review_home_order_and_sizes() {
 			Some("High Score Manga")
 		]
 	);
-	assert_eq!(names(true)[7], Some("Recently Added Novels"));
-	assert_eq!(names(true)[8], Some("High Score Manga"));
+	assert_eq!(
+		names(false, true),
+		[
+			None,
+			Some("Most Followed New Manga (1 Month)"),
+			Some("Popular Chapters (This Week)"),
+			Some("Latest Updates"),
+			Some("Most Followed Manga (This Week)"),
+			Some("Popular Manga (This Week)"),
+			Some("Recently Added Novels"),
+			Some("High Score Manga")
+		]
+	);
 	let blocked = aidoku::alloc::collections::BTreeSet::new();
-	for section in home::sections(true) {
+	for section in home::sections(true, true) {
 		let data = match section {
 			Section::Featured => home::Data::Featured(Vec::new()),
 			Section::Novels => home::Data::Chapters(Vec::new()),
@@ -127,8 +138,21 @@ fn review_settings_search_overrides_and_clearing() {
 	assert_eq!(search.genres, "[7]");
 	assert_eq!(search.types, "[\"Novel\"]");
 	assert_eq!(search.sort, "title_asc");
+	// Settings exclusions stay, unless the search includes that tag or type
 	assert_eq!(search.excluded_tags, ["20"]);
 	assert!(search.excluded_types.is_empty());
+	let extended = SearchParams::new(
+		None,
+		1,
+		vec![FilterValue::MultiSelect {
+			id: "genre".into(),
+			included: Vec::new(),
+			excluded: vec!["20".into()],
+		}],
+	)
+	.unwrap();
+	assert_eq!(extended.excluded_tags, ["7", "20"]);
+	assert_eq!(extended.excluded_types, ["Novel"]);
 	let clear = SearchParams::new(
 		None,
 		1,
@@ -140,7 +164,7 @@ fn review_settings_search_overrides_and_clearing() {
 	)
 	.unwrap();
 	assert_eq!(clear.genres, "[]");
-	assert!(clear.excluded_tags.is_empty());
+	assert_eq!(clear.excluded_tags, ["7"]);
 	defaults_set("excludedTags", DefaultValue::StringArray(Vec::new()));
 	defaults_set("excludedTypes", DefaultValue::StringArray(Vec::new()));
 	let clear = SearchParams::new(None, 1, Vec::new()).unwrap();

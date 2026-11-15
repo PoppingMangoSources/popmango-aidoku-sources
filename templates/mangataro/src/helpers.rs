@@ -1,4 +1,4 @@
-use crate::models::Slug;
+use crate::{models::Slug, settings};
 use aidoku::{
 	ContentRating, Result,
 	alloc::{String, Vec, borrow::Cow, collections::BTreeSet},
@@ -10,6 +10,7 @@ use aidoku::{
 	},
 	prelude::*,
 };
+use serde::de::DeserializeOwned;
 
 pub fn request(base_url: &str, url: &str) -> Result<Request> {
 	Ok(site_headers(Request::get(url)?, base_url))
@@ -25,9 +26,43 @@ pub fn site_headers(request: Request, base_url: &str) -> Request {
 pub fn checked(response: Response) -> Result<Response> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
-		bail!("HTTP {status}");
+		bail!("The site returned status {status}");
 	}
 	Ok(response)
+}
+
+pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
+	checked(response)?.get_json_owned()
+}
+
+pub fn get<T: DeserializeOwned>(base_url: &str, url: &str) -> Result<T> {
+	parse(request(base_url, url)?.send()?)
+}
+
+pub fn html(base_url: &str, url: &str) -> Result<Document> {
+	Ok(checked(request(base_url, url)?.send()?)?.get_html()?)
+}
+
+// The browse page lists every type, status, year and tag with its id
+pub fn browse(base_url: &str) -> Result<Document> {
+	html(base_url, &format!("{base_url}/browse"))
+}
+
+// Browse takes tag and year ids as numbers
+pub fn number_list(ids: &[String]) -> Result<String> {
+	let ids = ids
+		.iter()
+		.map(|id| id.parse::<i64>())
+		.collect::<core::result::Result<Vec<_>, _>>()
+		.map_err(|_| error!("Invalid filter id"))?;
+	Ok(serde_json::to_string(&ids)?)
+}
+
+pub fn novel_title(mut title: String) -> String {
+	if settings::label_novels() && !title.ends_with("(Novel)") {
+		title.push_str(" (Novel)");
+	}
+	title
 }
 
 pub fn plain_text(value: &str) -> Result<String> {
@@ -169,12 +204,7 @@ pub fn excluded_slugs<'a>(
 	}
 	let mut blocked = BTreeSet::new();
 	for response in Request::send_all(requests) {
-		blocked.extend(
-			checked(response?)?
-				.get_json_owned::<Vec<Slug>>()?
-				.into_iter()
-				.map(|x| x.slug),
-		);
+		blocked.extend(parse::<Vec<Slug>>(response?)?.into_iter().map(|x| x.slug));
 	}
 	Ok(blocked)
 }

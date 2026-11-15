@@ -1,7 +1,4 @@
-use crate::{
-	helpers::{date, plain_text, series_key},
-	settings,
-};
+use crate::helpers::{date, link_keys, novel_title, plain_text, series_key};
 use aidoku::{
 	Chapter, Manga, MangaStatus, MangaWithChapter, Page, PageContent, Result, Viewer,
 	alloc::{String, Vec, vec},
@@ -38,12 +35,9 @@ impl Title {
 	}
 
 	pub fn into_update(self) -> Result<MangaWithChapter> {
-		let path = self
-			.permalink
-			.split("/read/")
-			.nth(1)
+		let key = link_keys(&self.permalink)
+			.and_then(|(_, chapter)| chapter)
 			.ok_or(error!("Missing update chapter"))?;
-		let key = String::from(path.trim_end_matches('/'));
 		let chapter_number = self.chapter.trim_start_matches("Ch.").trim().parse().ok();
 		let chapter = Chapter {
 			key,
@@ -63,18 +57,16 @@ impl TryFrom<Title> for Manga {
 	type Error = aidoku::AidokuError;
 
 	fn try_from(value: Title) -> Result<Self> {
-		let key = value
-			.key()
-			.filter(|s| !s.is_empty())
-			.ok_or(error!("Missing series key"))?
-			.into();
-		let mut title = plain_text(&value.title)?;
+		let key = value.key().ok_or(error!("Missing series key"))?.into();
+		let title = plain_text(&value.title)?;
 		if title.is_empty() {
 			bail!("Missing series title");
 		}
-		if value.manga_type == "Novel" && settings::label_novels() && !title.ends_with("(Novel)") {
-			title.push_str(" (Novel)");
-		}
+		let title = if value.manga_type == "Novel" {
+			novel_title(title)
+		} else {
+			title
+		};
 		Ok(Manga {
 			key,
 			title,
@@ -161,14 +153,9 @@ impl TryFrom<ChapterItem> for Chapter {
 	type Error = aidoku::AidokuError;
 
 	fn try_from(value: ChapterItem) -> Result<Self> {
-		let key = value
-			.url
-			.split("/read/")
-			.nth(1)
-			.filter(|s| !s.trim_matches('/').is_empty())
-			.ok_or(error!("Missing chapter key"))?
-			.trim_end_matches('/')
-			.into();
+		let key = link_keys(&value.url)
+			.and_then(|(_, chapter)| chapter)
+			.ok_or(error!("Missing chapter key"))?;
 		Ok(Self {
 			key,
 			title: value

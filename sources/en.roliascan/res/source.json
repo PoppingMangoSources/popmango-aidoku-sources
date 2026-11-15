@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.roliascan",
 		"name": "Rolia Scan",
-		"version": 3,
+		"version": 4,
 		"url": "https://roliascan.com",
-		"contentRating": 2,
+		"contentRating": 1,
 		"languages": [
 			"en"
 		],

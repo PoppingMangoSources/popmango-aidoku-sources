@@ -11,13 +11,14 @@ It is based on canonical Aidoku-Community main; fork publication stays on main.
 | --- | --- |
 | Rich featured hero, no per-card requests | home.rs parses `.carousel-slide`, including available plain description, tags, rating and viewer. |
 | New follows, one month, ranking size 3 | `/auth/most-followed-new-manga?period=1m&limit=15`; `MangaList`. `month` and `30d` fall back to seven days. |
-| Recently Added | Actual `#manga-grid` cards from the same home document, in site order. |
+| Recently Added (MangaTaro only) | Actual `#manga-grid` cards from the same home document, in site order. Rolia sets `recently_added: false`, since its grid repeats Latest Updates (owner's call). |
 | Popular chapters this week | `/auth/popular-chapters?period=week&limit=15`, compact unique-series scroller. |
 | Latest Updates, size 4, chapter/time | `/wp-json/manga/v1/latest-chapters?page=1`, real `permalink`, `chapter`, `time`. Browse `/load` lacks these chapter fields. |
 | Weekly follows / popular | `/auth/most-followed-manga?period=week&limit=15` and `/wp-json/manga/v1/popular?period=week&number=15`. |
 | Rolia recently added novels, size 4 | Actual chapter links/numbers/timestamps in `#novels-slider-container` from home HTML. |
 | High Score Manga | `/wp-json/manga/v1/highscore?type=all&number=15`. |
-| Genre/tag and type settings, overridden by search | One taxonomy for genres and tags. Empty exclusion lists exclude nothing. Explicit search controls replace same-axis settings. |
+| Genre/tag and type settings, overridden by search | One taxonomy for genres and tags. Empty exclusion lists exclude nothing. As in MangaBall, search exclusions add to the settings, and a tag or type the search includes lifts its setting exclusion. |
+| Content rating | Both sources are rated 1 (owner's call); per-title ratings come from tags. |
 | All browse controls | Four bidirectional sorts, type/status/year, genres and Any/All matching, read from live `/browse`. |
 | Key-only reading, deep links, novels | Series keys are public slugs; chapter keys are the site's slug/chapter path. Comic pages and paragraph-preserving novel Markdown use chapter-content. |
 

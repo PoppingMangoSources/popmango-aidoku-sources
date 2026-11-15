@@ -18,6 +18,7 @@ pub use imp::Impl;
 
 pub struct Params {
 	pub base_url: Cow<'static, str>,
+	pub recently_added: bool,
 	pub novel_home: bool,
 }
 

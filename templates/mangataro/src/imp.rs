@@ -1,7 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		checked, credits, excluded_slugs, link_keys, options, rating, request, site_headers, tags,
+		browse, credits, excluded_slugs, get, html, link_keys, novel_title, number_list, options,
+		parse, rating, request, site_headers, tags,
 	},
 	home,
 	models::*,
@@ -41,6 +42,8 @@ impl SearchParams {
 			excluded_tags: settings::excluded_tags(),
 			excluded_types: settings::excluded_types(),
 		};
+		// A tag or type the search includes overrides its exclusion in settings
+		let mut overrides = Vec::new();
 		for filter in filters {
 			match filter {
 				FilterValue::Sort {
@@ -56,29 +59,17 @@ impl SearchParams {
 					excluded,
 				} => match id.as_str() {
 					"genre" => {
-						search.genres = serde_json::to_string(
-							&included
-								.iter()
-								.map(|id| id.parse::<i64>())
-								.collect::<core::result::Result<Vec<_>, _>>()
-								.map_err(|_| error!("Invalid tag"))?,
-						)?;
-						search.excluded_tags = excluded;
+						search.genres = number_list(&included)?;
+						search.excluded_tags.extend(excluded);
+						overrides.extend(included);
 					}
 					"type" => {
 						search.types = serde_json::to_string(&included)?;
-						search.excluded_types = excluded;
+						search.excluded_types.extend(excluded);
+						overrides.extend(included);
 					}
 					"status" => search.statuses = serde_json::to_string(&included)?,
-					"year" => {
-						search.years = serde_json::to_string(
-							&included
-								.iter()
-								.map(|id| id.parse::<i64>())
-								.collect::<core::result::Result<Vec<_>, _>>()
-								.map_err(|_| error!("Invalid year"))?,
-						)?
-					}
+					"year" => search.years = number_list(&included)?,
 					_ => {}
 				},
 				FilterValue::Select { id, value } if id == "genreMatchMode" => {
@@ -87,6 +78,10 @@ impl SearchParams {
 				_ => {}
 			}
 		}
+		search.excluded_tags.retain(|id| !overrides.contains(id));
+		search
+			.excluded_types
+			.retain(|kind| !overrides.contains(kind));
 		Ok(search)
 	}
 
@@ -117,11 +112,10 @@ pub trait Impl {
 			url.strip_prefix(base_url)
 				.is_some_and(|path| path.starts_with('/'))
 		}) && let Some((key, _)) = link_keys(url)
-			&& let Ok(document) = request(
+			&& let Ok(document) = html(
 				base_url,
 				&format!("{base_url}/manga/{}", encode_uri_component(&key)),
-			)?
-			.html() && let Some(title) = document
+			) && let Some(title) = document
 			.select_first("h1")
 			.and_then(|el| el.text())
 			.filter(|s| !s.is_empty())
@@ -143,8 +137,7 @@ pub trait Impl {
 			if let FilterValue::Select { id, value } = filter
 				&& id == "genre"
 			{
-				let document = request(base_url, &format!("{base_url}/browse"))?.html()?;
-				let (ids, names) = options(&document, "genre-btn");
+				let (ids, names) = options(&browse(base_url)?, "genre-btn");
 				let index = names
 					.iter()
 					.position(|name| name == value)
@@ -157,7 +150,7 @@ pub trait Impl {
 			}
 		}
 		let search = SearchParams::new(query, page, filters)?;
-		let titles: Vec<Title> = checked(search.request(base_url)?.send()?)?.get_json_owned()?;
+		let titles: Vec<Title> = parse(search.request(base_url)?.send()?)?;
 		if !titles.is_empty() && titles.iter().all(|title| title.key().is_none()) {
 			bail!("The site returned no series links for this page. Try another sort.");
 		}
@@ -181,7 +174,7 @@ pub trait Impl {
 	}
 
 	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
-		let document = request(&params.base_url, &format!("{}/browse", params.base_url))?.html()?;
+		let document = browse(&params.base_url)?;
 		let mut filters = Vec::new();
 		for (id, title, class, can_exclude) in [
 			("type", "Type", "type-btn", true),
@@ -208,8 +201,7 @@ pub trait Impl {
 	}
 
 	fn get_dynamic_settings(&self, params: &Params) -> Result<Vec<Setting>> {
-		let document = request(&params.base_url, &format!("{}/browse", params.base_url))?.html()?;
-		let (values, titles) = options(&document, "genre-btn");
+		let (values, titles) = options(&browse(&params.base_url)?, "genre-btn");
 		Ok(vec![
 			MultiSelectSetting {
 				key: "excludedTags".into(),
@@ -232,9 +224,9 @@ pub trait Impl {
 	) -> Result<Manga> {
 		let base_url = params.base_url.as_ref();
 		let url = format!("{base_url}/manga/{}", encode_uri_component(&manga.key));
-		let document = request(base_url, &url)?.html()?;
+		let document = html(base_url, &url)?;
 		if needs_details {
-			manga.title = document
+			let title = document
 				.select_first("h1")
 				.and_then(|el| el.text())
 				.filter(|s| !s.is_empty())
@@ -253,17 +245,9 @@ pub trait Impl {
 				.map(|c| credits(&c.name))
 				.filter(|names| !names.is_empty());
 			manga.status = status(&metadata.status);
-			manga.viewer = viewer(if metadata.kind == "Book" {
-				"Novel"
-			} else {
-				&metadata.genre
-			});
-			if metadata.kind == "Book"
-				&& settings::label_novels()
-				&& !manga.title.ends_with("(Novel)")
-			{
-				manga.title.push_str(" (Novel)");
-			}
+			let novel = metadata.kind == "Book";
+			manga.viewer = viewer(if novel { "Novel" } else { &metadata.genre });
+			manga.title = if novel { novel_title(title) } else { title };
 			let tags = tags(&document);
 			manga.content_rating = rating(&tags);
 			manga.tags = (!tags.is_empty()).then_some(tags);
@@ -320,7 +304,7 @@ pub trait Impl {
 					timestamp = server_time; // Tokens expire quickly when the device clock is skewed.
 					response = fetch(timestamp)?;
 				}
-				let result: ChapterList = checked(response)?.get_json_owned()?;
+				let result: ChapterList = parse(response)?;
 				if !result.success {
 					bail!("Could not load chapters");
 				}
@@ -352,15 +336,11 @@ pub trait Impl {
 			.map(|(_, id)| id)
 			.filter(|id| id.parse::<u64>().is_ok())
 			.ok_or(error!("Invalid chapter key"))?;
-		let content: ChapterContent = checked(
-			request(
-				&params.base_url,
-				&format!("{}/auth/chapter-content?chapter_id={id}", params.base_url),
-			)?
-			.send()?,
+		get::<ChapterContent>(
+			&params.base_url,
+			&format!("{}/auth/chapter-content?chapter_id={id}", params.base_url),
 		)?
-		.get_json_owned()?;
-		content.try_into()
+		.try_into()
 	}
 
 	fn handle_deep_link(&self, _params: &Params, url: String) -> Result<Option<DeepLinkResult>> {

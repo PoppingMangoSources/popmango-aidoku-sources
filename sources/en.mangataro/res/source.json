@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.mangataro",
 		"name": "MangaTaro",
-		"version": 3,
+		"version": 4,
 		"url": "https://mangataro.org",
-		"contentRating": 2,
+		"contentRating": 1,
 		"languages": [
 			"en"
 		],
