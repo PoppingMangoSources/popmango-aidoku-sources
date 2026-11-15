@@ -26,4 +26,8 @@ fn review_script_banners_are_internal_and_sized() {
 	assert_eq!((*width, *height), (Some(340), Some(128)));
 	assert!(matches!(&links[0].value,Some(LinkValue::Manga(m)) if m.key == "/series/title"));
 	assert!(links[0].subtitle.is_none());
+	assert_eq!(
+		links[0].image_url.as_deref(),
+		Some("https://i0.wp.com/example.com/banner.jpg?w=680&quality=85&strip=all&ssl=1")
+	);
 }

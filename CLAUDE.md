@@ -546,6 +546,8 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | Banners sized 1920 by 1080 ("ridiculously large… no higher than a standard phone width, around 400px"), and Hive's 400 by 150 "slightly too wide" | An image scroller is at most about 400 wide (merged sources use 300 to 400; Iken's are 340), with the height from the banners' measured ratio. Ask an image host that resizes (`?w=`) for twice the width. | F |
 | Sana's stitched pages and Nyx, Vortex and Magus series typed "manga" opened in the paged reader | Open a site's "manga" series and long chapters before mapping types to viewers. Every Iken and VineTheme site's comics are long strips (VineTheme's "MANGA" chapters measured 800 to 900 wide and up to 16,000 tall), so they all open as Webtoon and only novels are Unknown. | R |
 | The EternalMangas rewrite rode along in the Iken template PR ("completely separate… better put in a separate pr") | A source that left a template goes up in its own PR (section 1, one concern per PR). | R |
+| Vortex's banner row showed three slides, one a cropped cover (owner's screenshots) | The slider mixes cover slides with banner art and renders most slides lazily, without an image or a title. Keep a slide only when the page's series data gives it a `banner`, take the image from that and the title from the link's label, and keep requesting twice the row width. Hive's 2048px script banners request 680px the same way. | R |
+| Nyx home tags showed in lowercase (owner's screenshot) | Some sites capitalise tag names only with CSS (`span.capitalize`). Title-case a name that arrives all lowercase, leave cased ones alone, and deduplicate case-insensitively. | R |
 
 ### From #843 (`en.atsumaru`)
 

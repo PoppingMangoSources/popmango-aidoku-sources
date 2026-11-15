@@ -298,7 +298,12 @@ fn manga(element: &Element, params: &Params, label_novels: bool) -> Option<Manga
 				.select_first("h2, h3, p.display-6")
 				.and_then(|e| e.text())
 		})
-		.or_else(|| element.select_first("img").and_then(|e| e.attr("alt")))?;
+		.or_else(|| element.select_first("img").and_then(|e| e.attr("alt")))
+		// A lazy slider slide renders nothing but its link's label until it is shown
+		.or_else(|| {
+			link.attr("aria-label")
+				.map(|label| label.strip_prefix("Open ").map(String::from).unwrap_or(label))
+		})?;
 	if title.trim().is_empty() {
 		return None;
 	}
@@ -324,32 +329,39 @@ fn manga(element: &Element, params: &Params, label_novels: bool) -> Option<Manga
 pub fn parse_home(html: &Document, params: &Params) -> Result<HomeLayout> {
 	let label_novels = settings::label_novels();
 	let mut components = Vec::new();
+	let page_data = params.banner_width.map(|_| {
+		html.select("script")
+			.into_iter()
+			.flatten()
+			.filter_map(|script| script.data().or_else(|| script.html()))
+			.collect::<Vec<_>>()
+			.join("\n")
+	});
 	let mut slides: Vec<_> = html
 		.select(&params.home_slider_selector)
 		.map(|slides| {
 			slides
 				.filter_map(|e| {
 					let mut manga = manga(&e, params, label_novels)?;
-					if let Some(width) = params.banner_width {
-						// The slider asks the image host for a 1920px copy, far more than a phone shows
-						manga.cover = e
-							.select_first("img")
-							.and_then(|image| image.attr("abs:src"))
-							.map(|url| helpers::sized_banner(&url, width * 2));
+					if let (Some(width), Some(page_data)) = (params.banner_width, &page_data) {
+						// Cover slides would be cropped into the banner row, so only banner art stays
+						let slug = manga.key.strip_prefix("/series/")?;
+						let banner = helpers::series_banner(page_data, slug)?;
+						manga.cover = Some(helpers::sized_banner(&banner, width * 2));
 					}
 					manga.description = e
 						.select_first("h3 + p, .text-lg, .break-words, .em-hero-copy p.d-none")
 						.and_then(|p| p.text())
 						.filter(|s| !s.is_empty());
-					let mut tags: Vec<String> = e
-						.select("span.capitalize, span.font-light")
-						.into_iter()
-						.flatten()
-						.filter_map(|tag| tag.text())
-						.filter(|tag| !tag.is_empty())
-						.collect();
-					tags.sort_unstable();
-					tags.dedup();
+					let tags = helpers::sorted_tags(
+						e.select("span.capitalize, span.font-light")
+							.into_iter()
+							.flatten()
+							.filter_map(|tag| tag.text())
+							.filter(|tag| !tag.is_empty())
+							.map(|tag| helpers::tag_name(&tag))
+							.collect(),
+					);
 					manga.content_rating = helpers::content_rating(&tags, false);
 					manga.tags = (!tags.is_empty()).then_some(tags);
 					let index = e

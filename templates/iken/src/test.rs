@@ -672,7 +672,7 @@ fn review_preferences_keep_keys_and_plain_featured_metadata() {
 
 #[aidoku_test]
 fn review_banner_art_and_excluded_updates_boundary() {
-	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/title' title='Title'><img src='https://example.com/banner.jpg' data-fallback-src='https://example.com/cover.jpg'></a></div></div><main><section><h2>Latest Releases</h2><div><h2>Latest Updates</h2><a href='/series/paid' title='Paid'><img src='cover.jpg'></a></div></section><section><h2>Most Popular</h2><a href='/series/other' title='Other'><img src='cover.jpg'></a></section></main>"#).unwrap();
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/title' title='Title'><img src='https://example.com/banner.jpg' data-fallback-src='https://example.com/cover.jpg'></a></div></div><script>$R[1]={id:1,slug:"title",banner:"https://example.com/art.png"}</script><main><section><h2>Latest Releases</h2><div><h2>Latest Updates</h2><a href='/series/paid' title='Paid'><img src='cover.jpg'></a></div></section><section><h2>Most Popular</h2><a href='/series/other' title='Other'><img src='cover.jpg'></a></section></main>"#).unwrap();
 	let params = Params {
 		base_url: "https://example.com".into(),
 		banner_width: Some(1920),
@@ -696,7 +696,7 @@ fn review_banner_art_and_excluded_updates_boundary() {
 	assert_eq!((*width, *height), (Some(1920), Some(1080)));
 	assert_eq!(
 		links[0].image_url.as_deref(),
-		Some("https://example.com/banner.jpg")
+		Some("https://i0.wp.com/example.com/art.png?w=3840&quality=85&strip=all&ssl=1")
 	);
 	assert!(
 		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.key == "/series/title")
@@ -816,7 +816,7 @@ fn review_comics_open_as_webtoons_and_novels_do_not() {
 
 #[aidoku_test]
 fn review_banners_request_their_display_width() {
-	let html = Html::parse("<div class='mainSlider'><div class='swiper-slide'><a href='/series/one' title='One'><img src='https://i0.wp.com/cdn.example.com/banner.png?w=1920&amp;quality=85&amp;ssl=1'></a></div></div>").unwrap();
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/one' title='One'><img src='https://i0.wp.com/cdn.example.com/banner.png?w=1920&amp;quality=85&amp;ssl=1'></a></div></div><script>$R[1]={id:1,slug:"one",banner:"https://cdn.example.com/banner.png"}</script>"#).unwrap();
 	let params = Params {
 		base_url: "https://example.com".into(),
 		banner_width: Some(340),
@@ -836,6 +836,60 @@ fn review_banners_request_their_display_width() {
 	assert_eq!((*width, *height), (Some(340), Some(124)));
 	assert_eq!(
 		links[0].image_url.as_deref(),
-		Some("https://i0.wp.com/cdn.example.com/banner.png?w=680&quality=85&ssl=1")
+		Some("https://i0.wp.com/cdn.example.com/banner.png?w=680&quality=85&strip=all&ssl=1")
+	);
+}
+
+// Some sites lowercase tag names and capitalise them only with CSS
+#[aidoku_test]
+fn review_lowercase_tags_are_title_cased() {
+	let tags = helpers::sorted_tags(
+		["romance", "shoujo", "Drama", "sci-fi", "BL", "Romance"]
+			.map(helpers::tag_name)
+			.into(),
+	);
+	assert_eq!(tags, ["BL", "Drama", "Romance", "Sci-Fi", "Shoujo"]);
+}
+
+// Vortex's slider mixes banner art with cover slides and renders most slides lazily
+#[aidoku_test]
+fn review_banner_row_keeps_only_banner_series() {
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-wrapper'>
+		<div class='swiper-slide'><a href='/series/ballad' aria-label='Open Ballad'><div><img alt='Ballad' src='https://i0.wp.com/cdn.example.com/banner/b.png?w=1920'></div></a></div>
+		<div class='swiper-slide'><a href='/series/quest' aria-label='Open Quest'><div><img alt='Quest' src='https://i0.wp.com/cdn.example.com/2026/q.webp?w=1920'></div></a></div>
+		<div class='swiper-slide'><a href='/series/barbarian&#x27;s-world' aria-label='Open Barbarian’s World'><div aria-hidden='true'></div></a></div>
+		<div class='swiper-slide'><a href='/series/bastard' aria-label='Open Bastard'><div aria-hidden='true'></div></a></div>
+	</div></div>
+	<script>$R[1]=[$R[2]={id:1,slug:"ballad",chapters:$R[3]=[$R[4]={id:9,slug:"chapter-1",title:"a } [ \" b"}],banner:"https://cdn.example.com/banner/b.png",hot:!0},$R[5]={id:2,title:"Quest",slug:"quest",chapters:$R[6]=[],banner:"",hot:!1},$R[7]={id:3,slug:"barbarian's-world",genres:$R[8]=[],banner:"https://cdn.example.com/banner/w.png"},$R[9]={id:4,slug:"bastard",chapters:$R[10]=[]},$R[11]={id:5,slug:"other",banner:"https://cdn.example.com/banner/o.png"}]</script>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		banner_width: Some(340),
+		banner_height: Some(124),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	let HomeComponentValue::ImageScroller { links, .. } = &layout.components[0].value else {
+		panic!("Expected banners")
+	};
+	let shown: Vec<_> = links
+		.iter()
+		.map(|link| (link.title.as_str(), link.image_url.as_deref()))
+		.collect();
+	assert_eq!(
+		shown,
+		[
+			(
+				"Ballad",
+				Some(
+					"https://i0.wp.com/cdn.example.com/banner/b.png?w=680&quality=85&strip=all&ssl=1"
+				)
+			),
+			(
+				"Barbarian’s World",
+				Some(
+					"https://i0.wp.com/cdn.example.com/banner/w.png?w=680&quality=85&strip=all&ssl=1"
+				)
+			),
+		]
 	);
 }

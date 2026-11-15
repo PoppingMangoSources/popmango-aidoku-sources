@@ -205,6 +205,18 @@ already available from home HTML and existing responses, without per-card reques
 banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
 BigScroller. Vortex banners show at 340 by 124 (the artwork runs about 2.75:1) and request a 680px image; Hive keeps its custom script banners local, at 340 by 128.
 
+> ⚠️ Vortex's slider mixes cover slides (Reality Quest, Regressing) with banner art, and renders
+> most slides lazily with no image or title, only `aria-label="Open <title>"`. In banner mode a
+> slide stays only when the page's serialized series data gives it a `banner`; the image comes
+> from that, through the `i0.wp.com` proxy at twice the row width (`templates/iken/src/home.rs`,
+> `templates/iken/src/helpers.rs`). The posts API list stops at 100 and misses most hero series,
+> so it can't replace the page data. Hive's 2048 by 768 script banners go through the same proxy
+> at 680 (`sources/en.hivescans/src/models.rs`).
+
+> ⚠️ Home slide tags come from `span.capitalize`, which the sites capitalise only with CSS, so
+> Nyx showed "josei", "romance". `tag_name` title-cases a name that arrives all lowercase and
+> leaves cased ones; `sorted_tags` dedupes case-insensitively, on home and details alike.
+
 Home enrichment must keep ranking rows unchanged and preserve available HTML metadata when API fields are absent. Novel labels apply to HTML cards as well as API cards, and featured/detail tag ratings use the same classifier. Deterministic regressions cover these boundaries.
 
 ### Icon assets

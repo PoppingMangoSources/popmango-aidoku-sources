@@ -157,15 +157,15 @@ impl Post {
 
 	pub fn to_featured(&self, base_url: &str, label_novels: bool) -> Result<Manga> {
 		let basic = self.to_manga(label_novels)?;
-		let mut tags: Vec<String> = self
-			.genres
-			.iter()
-			.flatten()
-			.map(|g| g.name.trim().into())
-			.filter(|name: &String| !name.is_empty())
-			.collect();
-		tags.sort_unstable();
-		tags.dedup();
+		let tags = helpers::sorted_tags(
+			self.genres
+				.iter()
+				.flatten()
+				.map(|g| g.name.trim())
+				.filter(|name| !name.is_empty())
+				.map(helpers::tag_name)
+				.collect(),
+		);
 		let content_rating = helpers::content_rating(&tags, self.is_18_plus == Some(true));
 		Ok(Manga {
 			authors: self.author.as_deref().and_then(names),
