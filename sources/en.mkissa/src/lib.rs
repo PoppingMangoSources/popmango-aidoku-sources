@@ -16,10 +16,7 @@ mod network;
 mod settings;
 mod webview;
 
-use helpers::{
-	content_rating, cover_url, decode_entities, has_next_page, parse_chapters, parse_status,
-	strip_html,
-};
+use helpers::{cover_url, display_title, has_next_page, parse_chapters};
 use home::{Feed, browse_request};
 use models::*;
 use network::{fetch, parse};
@@ -56,11 +53,12 @@ impl Source for Mkissa {
 			&& let Ok(DetailsData {
 				manga: Some(detail),
 			}) = fetch::<DetailsData>(DETAILS_QUERY, json!({ "id": id }))
+			&& let Ok(title) = display_title(detail.english_name.as_deref(), &detail.name)
 		{
 			return Ok(MangaPageResult {
 				entries: vec![Manga {
 					key: id.into(),
-					title: decode_entities(detail.english_name.as_deref().unwrap_or(&detail.name)),
+					title,
 					cover: cover_url(detail.thumbnail.as_deref()),
 					..Default::default()
 				}],
@@ -106,7 +104,12 @@ impl Source for Mkissa {
 			parse(browse_request(Value::Object(search), page, &country)?.send()?)?;
 		Ok(MangaPageResult {
 			has_next_page: has_next_page(page, data.mangas.page_info.total),
-			entries: data.mangas.edges.into_iter().map(Manga::from).collect(),
+			entries: data
+				.mangas
+				.edges
+				.into_iter()
+				.filter_map(|card| Manga::try_from(card).ok())
+				.collect(),
 		})
 	}
 
@@ -118,45 +121,11 @@ impl Source for Mkissa {
 	) -> Result<Manga> {
 		if needs_details {
 			let data: DetailsData = fetch(DETAILS_QUERY, json!({ "id": manga.key }))?;
-			let detail = data.manga.ok_or(error!("Series not found"))?;
-			let mut tags: Vec<String> = detail
-				.genres
-				.unwrap_or_default()
-				.into_iter()
-				.chain(detail.tags.unwrap_or_default())
-				.map(|tag| tag.trim().into())
-				.filter(|tag: &String| !tag.is_empty())
-				.collect();
-			tags.sort_unstable();
-			tags.dedup();
-			manga.title = decode_entities(
-				detail
-					.english_name
-					.as_deref()
-					.filter(|name| !name.trim().is_empty())
-					.unwrap_or(&detail.name)
-					.trim(),
-			);
-			manga.cover = cover_url(detail.thumbnail.as_deref()).or(manga.cover);
-			manga.description = detail
-				.description
-				.as_deref()
-				.map(strip_html)
-				.filter(|description| !description.is_empty());
-			manga.authors = detail
-				.authors
-				.map(|authors| {
-					authors
-						.into_iter()
-						.map(|author| author.trim().into())
-						.filter(|author: &String| !author.is_empty())
-						.collect::<Vec<_>>()
-				})
-				.filter(|authors| !authors.is_empty());
-			manga.status = parse_status(detail.status.as_deref());
-			manga.content_rating = content_rating(&tags, detail.is_adult);
-			manga.tags = (!tags.is_empty()).then_some(tags);
-			manga.url = Some(format!("{BASE_URL}/manga/{}", manga.key));
+			let details = data
+				.manga
+				.ok_or(error!("Series not found"))?
+				.into_details(&manga.key)?;
+			manga.copy_from(details);
 			if needs_chapters {
 				send_partial_result(&manga);
 			}

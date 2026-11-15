@@ -1,7 +1,10 @@
-use crate::helpers::{content_rating, cover_url, decode_entities, parse_status, strip_html};
+use crate::helpers::{
+	content_rating, cover_url, display_title, parse_status, strip_html, tag_names, viewer,
+};
 use aidoku::{
-	ContentRating, Manga,
+	AidokuError, ContentRating, Manga, Result,
 	alloc::{String, Vec},
+	prelude::*,
 };
 use serde::Deserialize;
 
@@ -24,7 +27,7 @@ pub const MANGAS_QUERY: &str = "query($search: SearchInput, $limit: Int, $page: 
 
 pub const ADAPTATIONS_QUERY: &str = "query($page: Int, $limit: Int, $translationType: VaildTranslationTypeMangaEnumType, $allowAdult: Boolean, $allowUnknown: Boolean, $denyEcchi: Boolean) { seasonAdaptationMangas(page: $page, limit: $limit, translationType: $translationType, allowAdult: $allowAdult, allowUnknown: $allowUnknown, denyEcchi: $denyEcchi) { pageInfo { total } edges { _id name englishName thumbnail isAdult } } }";
 
-pub const DETAILS_QUERY: &str = "query($id: String!) { manga(_id: $id) { _id name thumbnail isAdult description authors genres tags status englishName } }";
+pub const DETAILS_QUERY: &str = "query($id: String!) { manga(_id: $id) { _id name englishName thumbnail isAdult description authors genres tags status type countryOfOrigin } }";
 
 pub const CHAPTERS_QUERY: &str = "query($id: String!, $showId: String!) { manga(_id: $id) { _id availableChaptersDetail } episodeInfos(showId: $showId, episodeNumStart: 0, episodeNumEnd: 9999) { episodeIdNum notes uploadDates } }";
 
@@ -78,24 +81,10 @@ pub struct MangaCard {
 }
 
 impl MangaCard {
-	fn title(&self) -> String {
-		decode_entities(
-			self.english_name
-				.as_deref()
-				.map(str::trim)
-				.filter(|name| !name.is_empty())
-				.unwrap_or(self.name.trim()),
-		)
-	}
-
 	// The big scroller shows what the popular feed already carries
-	pub fn into_featured(self) -> Manga {
-		let mut tags = self.genres.clone().unwrap_or_default();
-		tags.sort_unstable();
-		tags.dedup();
-		Manga {
-			title: self.title(),
-			cover: cover_url(self.thumbnail.as_deref()),
+	pub fn into_featured(self) -> Result<Manga> {
+		let tags = tag_names(self.genres.clone().unwrap_or_default());
+		Ok(Manga {
 			description: self
 				.description
 				.as_deref()
@@ -104,16 +93,21 @@ impl MangaCard {
 			status: parse_status(self.status.as_deref()),
 			content_rating: content_rating(&tags, self.is_adult),
 			tags: (!tags.is_empty()).then_some(tags),
-			key: self.id,
-			..Default::default()
-		}
+			..Manga::try_from(self)?
+		})
 	}
 }
 
-impl From<MangaCard> for Manga {
-	fn from(card: MangaCard) -> Self {
-		Manga {
-			title: card.title(),
+impl TryFrom<MangaCard> for Manga {
+	type Error = AidokuError;
+
+	fn try_from(card: MangaCard) -> Result<Self> {
+		let title = display_title(card.english_name.as_deref(), &card.name)?;
+		if card.id.trim().is_empty() {
+			bail!("Series has no key");
+		}
+		Ok(Manga {
+			title,
 			cover: cover_url(card.thumbnail.as_deref()),
 			content_rating: if card.is_adult == Some(true) {
 				ContentRating::NSFW
@@ -122,7 +116,7 @@ impl From<MangaCard> for Manga {
 			},
 			key: card.id,
 			..Default::default()
-		}
+		})
 	}
 }
 
@@ -192,6 +186,49 @@ pub struct MangaDetail {
 	pub genres: Option<Vec<String>>,
 	pub tags: Option<Vec<String>>,
 	pub status: Option<String>,
+	#[serde(rename = "type")]
+	pub kind: Option<String>,
+	pub country_of_origin: Option<String>,
+}
+
+impl MangaDetail {
+	pub fn into_details(self, key: &str) -> Result<Manga> {
+		let tags = tag_names(
+			self.genres
+				.unwrap_or_default()
+				.into_iter()
+				.chain(self.tags.unwrap_or_default())
+				.collect(),
+		);
+		let mut authors: Vec<String> = Vec::new();
+		for author in self.authors.unwrap_or_default() {
+			let name = author.trim();
+			if !name.is_empty() && !authors.iter().any(|existing| existing == name) {
+				authors.push(name.into());
+			}
+		}
+		Ok(Manga {
+			key: key.into(),
+			title: display_title(self.english_name.as_deref(), &self.name)?,
+			cover: cover_url(self.thumbnail.as_deref()),
+			description: self
+				.description
+				.as_deref()
+				.map(strip_html)
+				.filter(|description| !description.is_empty()),
+			authors: (!authors.is_empty()).then_some(authors),
+			status: parse_status(self.status.as_deref()),
+			content_rating: content_rating(&tags, self.is_adult),
+			viewer: viewer(
+				self.kind.as_deref(),
+				self.country_of_origin.as_deref(),
+				&tags,
+			),
+			url: Some(format!("{BASE_URL}/manga/{key}")),
+			tags: (!tags.is_empty()).then_some(tags),
+			..Default::default()
+		})
+	}
 }
 
 #[derive(Deserialize)]

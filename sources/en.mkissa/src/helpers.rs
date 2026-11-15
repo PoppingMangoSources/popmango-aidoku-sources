@@ -1,6 +1,6 @@
 use crate::models::*;
 use aidoku::{
-	Chapter, ContentRating, MangaStatus,
+	Chapter, ContentRating, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, string::ToString},
 	imports::std::parse_date,
 	prelude::*,
@@ -15,6 +15,60 @@ pub fn decode_entities(input: &str) -> String {
 		.replace("&#39;", "'")
 		.replace("&apos;", "'")
 		.replace("&nbsp;", " ")
+}
+
+// The site shows the English name when a series has one
+pub fn display_title(english: Option<&str>, name: &str) -> Result<String> {
+	let title = english
+		.map(str::trim)
+		.filter(|english| !english.is_empty())
+		.unwrap_or(name.trim());
+	if title.is_empty() {
+		bail!("Series has no title");
+	}
+	Ok(decode_entities(title))
+}
+
+// Tags arrive as slugs such as `format:long_strip`
+pub fn tag_names(tags: Vec<String>) -> Vec<String> {
+	let mut names: Vec<String> = tags
+		.into_iter()
+		.map(|tag| {
+			let name = tag.rsplit(':').next().unwrap_or_default().replace('_', " ");
+			name.split_whitespace()
+				.map(|word| {
+					let mut chars = word.chars();
+					chars
+						.next()
+						.map(|first| first.to_uppercase().chain(chars).collect::<String>())
+						.unwrap_or_default()
+				})
+				.collect::<Vec<_>>()
+				.join(" ")
+		})
+		.filter(|name| !name.is_empty())
+		.collect();
+	names.sort_unstable_by_key(|name| name.to_lowercase());
+	names.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+	names
+}
+
+// Korean and Chinese comics are long strips; a series without a type falls back to its country
+pub fn viewer(kind: Option<&str>, country: Option<&str>, tags: &[String]) -> Viewer {
+	let kind = kind.map(str::to_lowercase);
+	if tags
+		.iter()
+		.any(|tag| tag.eq_ignore_ascii_case("Long Strip") || tag.eq_ignore_ascii_case("Webtoons"))
+	{
+		return Viewer::Webtoon;
+	}
+	match (kind.as_deref(), country) {
+		(Some("manhwa" | "manhua"), _) => Viewer::Webtoon,
+		(Some("manga"), _) => Viewer::RightToLeft,
+		(None, Some("KR" | "CN")) => Viewer::Webtoon,
+		(None, Some("JP")) => Viewer::RightToLeft,
+		_ => Viewer::Unknown,
+	}
 }
 
 // Thumbnails are paths on the image host, or full urls for covers taken from elsewhere

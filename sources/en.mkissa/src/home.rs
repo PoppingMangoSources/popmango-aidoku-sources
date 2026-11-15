@@ -144,7 +144,10 @@ impl Feed {
 		let (cards, has_next_page) =
 			self.page(self.request(page, current_date())?.send()?, page)?;
 		Ok(MangaPageResult {
-			entries: cards.into_iter().map(Manga::from).collect(),
+			entries: cards
+				.into_iter()
+				.filter_map(|card| Manga::try_from(card).ok())
+				.collect(),
 			has_next_page,
 		})
 	}
@@ -257,7 +260,7 @@ pub fn layout(data: HomeData) -> HomeLayout {
 		.map(|cards| {
 			cards
 				.into_iter()
-				.map(MangaCard::into_featured)
+				.filter_map(|card| card.into_featured().ok())
 				.collect::<Vec<_>>()
 		})
 		.filter(|entries| !entries.is_empty())
@@ -276,11 +279,12 @@ pub fn layout(data: HomeData) -> HomeLayout {
 		let component = match row {
 			None => random
 				.take()
-				.filter(|cards| !cards.is_empty())
-				.map(|cards| HomeComponent {
+				.map(links)
+				.filter(|entries| !entries.is_empty())
+				.map(|entries| HomeComponent {
 					title: Some("Random".into()),
 					value: HomeComponentValue::Scroller {
-						entries: cards.into_iter().map(Manga::from).map(Link::from).collect(),
+						entries,
 						listing: None,
 					},
 					..Default::default()
@@ -308,11 +312,12 @@ fn feed_component(feed: Feed, cards: Vec<MangaCard>, now: i64) -> Option<HomeCom
 			listing: Some(feed.listing(now)),
 		}
 	} else {
-		if cards.is_empty() {
+		let entries = links(cards);
+		if entries.is_empty() {
 			return None;
 		}
 		HomeComponentValue::Scroller {
-			entries: cards.into_iter().map(Manga::from).map(Link::from).collect(),
+			entries,
 			listing: Some(feed.listing(now)),
 		}
 	};
@@ -321,6 +326,15 @@ fn feed_component(feed: Feed, cards: Vec<MangaCard>, now: i64) -> Option<HomeCom
 		value,
 		..Default::default()
 	})
+}
+
+// Cards without a key or title are left out
+fn links(cards: Vec<MangaCard>) -> Vec<Link> {
+	cards
+		.into_iter()
+		.filter_map(|card| Manga::try_from(card).ok())
+		.map(Link::from)
+		.collect()
 }
 
 fn latest_chapter(mut card: MangaCard) -> Option<MangaWithChapter> {
@@ -334,7 +348,7 @@ fn latest_chapter(mut card: MangaCard) -> Option<MangaWithChapter> {
 		.take()
 		.and_then(|date| date.sub)
 		.and_then(|date| date_from_parts(&date));
-	let manga = Manga::from(card);
+	let manga = Manga::try_from(card).ok()?;
 	Some(MangaWithChapter {
 		chapter: Chapter {
 			chapter_number: number.parse().ok(),

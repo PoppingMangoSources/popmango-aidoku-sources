@@ -1,6 +1,6 @@
 use super::*;
 use aidoku::{
-	HomeComponentValue, LinkValue, MangaStatus,
+	HomeComponentValue, LinkValue, MangaStatus, Viewer,
 	alloc::{String, vec},
 };
 use aidoku_test::aidoku_test;
@@ -94,6 +94,76 @@ fn review_home_rows_follow_the_requested_order() {
 		assert!(entries[0].subtitle.is_none());
 		assert!(manga.description.is_none() && manga.tags.is_none());
 	}
+}
+
+fn detail(extra: Value) -> MangaDetail {
+	let mut value = json!({ "name": "Series" });
+	if let (Some(object), Value::Object(extra)) = (value.as_object_mut(), extra) {
+		object.extend(extra);
+	}
+	serde_json::from_value(value).unwrap()
+}
+
+#[aidoku_test]
+fn review_viewer_follows_type_country_and_strip_tags() {
+	let viewer_of = |extra: Value| detail(extra).into_details("x").unwrap().viewer;
+	assert_eq!(viewer_of(json!({ "type": "Manhwa" })), Viewer::Webtoon);
+	assert_eq!(viewer_of(json!({ "type": "Manhua" })), Viewer::Webtoon);
+	assert_eq!(viewer_of(json!({ "type": "Manga" })), Viewer::RightToLeft);
+	assert_eq!(
+		viewer_of(json!({ "countryOfOrigin": "KR" })),
+		Viewer::Webtoon
+	);
+	assert_eq!(
+		viewer_of(json!({ "countryOfOrigin": "JP" })),
+		Viewer::RightToLeft
+	);
+	assert_eq!(
+		viewer_of(json!({ "countryOfOrigin": "EN" })),
+		Viewer::Unknown
+	);
+	assert_eq!(
+		viewer_of(json!({ "type": "Manga", "genres": ["Webtoons"] })),
+		Viewer::Webtoon
+	);
+	assert_eq!(
+		viewer_of(json!({ "type": "Manga", "tags": ["format:long_strip"] })),
+		Viewer::Webtoon
+	);
+}
+
+#[aidoku_test]
+fn review_detail_tags_are_readable_and_sorted() {
+	let manga = detail(json!({
+		"genres": ["Romance", "Action", "action"],
+		"tags": ["format:long_strip", "theme:anachronism"],
+	}))
+	.into_details("x")
+	.unwrap();
+	assert_eq!(
+		manga.tags,
+		Some(vec![
+			String::from("Action"),
+			String::from("Anachronism"),
+			String::from("Long Strip"),
+			String::from("Romance"),
+		])
+	);
+	assert_eq!(manga.url.as_deref(), Some("https://mkissa.to/manga/x"));
+}
+
+#[aidoku_test]
+fn review_untitled_cards_are_dropped() {
+	assert!(Manga::try_from(card("", json!({}))).is_err());
+	assert!(Manga::try_from(card("x", json!({ "name": " " }))).is_err());
+	assert!(detail(json!({ "name": "" })).into_details("x").is_err());
+	let rows = layout(HomeData {
+		popular: None,
+		random: Some(vec![card("x", json!({ "name": "" }))]),
+		feeds: Vec::new(),
+		now: NOW,
+	});
+	assert!(rows.components.is_empty());
 }
 
 #[aidoku_test]
@@ -248,6 +318,24 @@ fn details_and_chapters_load() {
 	assert_eq!(manga.title, "Berserk");
 	assert!(manga.description.is_some());
 	assert_eq!(manga.status, MangaStatus::Ongoing);
+	assert_eq!(manga.viewer, Viewer::RightToLeft);
+	assert!(
+		manga
+			.tags
+			.as_ref()
+			.is_some_and(|tags| tags.iter().all(|tag| !tag.contains(':')))
+	);
+	let manhwa = Mkissa::new()
+		.get_manga_update(
+			Manga {
+				key: "MrGT6Smvdm4Dp7t4J".into(),
+				..Default::default()
+			},
+			true,
+			false,
+		)
+		.unwrap();
+	assert_eq!(manhwa.viewer, Viewer::Webtoon);
 	let chapters = manga.chapters.unwrap();
 	assert!(chapters.len() > 300);
 	assert!(chapters[0].chapter_number > chapters[1].chapter_number);
