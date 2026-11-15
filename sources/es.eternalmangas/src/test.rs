@@ -18,6 +18,12 @@ fn review_current_details_keep_synopsis_and_independent_credits() {
 	assert!(!description.contains("\\r") && !description.contains("\\\""));
 }
 #[aidoku_test]
+fn review_lowercase_badges_are_title_cased() {
+	let html = Html::parse("<div id='tab-sinopsis'><span class='em-badge'>omegaverse</span><span class='em-badge'>adulto</span><span class='em-badge'>BL</span><span class='em-badge'>Omegaverse</span><span class='em-badge'>bebé</span></div>").unwrap();
+	let tags = helpers::tags(html.select(".em-badge").into_iter().flatten());
+	assert_eq!(tags, ["Adulto", "Bebé", "BL", "Omegaverse"]);
+}
+#[aidoku_test]
 fn review_current_reader_keeps_original_images_and_novel_paragraphs() {
 	let html=Html::parse("<div id='em-reader-pages'><img class='em-reader-img' src='data:placeholder' data-src='https://example.com/1.webp'><img class='em-reader-img' src='https://example.com/2.webp'></div>").unwrap();
 	let pages = helpers::pages(&html).unwrap();
