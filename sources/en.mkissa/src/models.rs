@@ -1,9 +1,11 @@
 use crate::helpers::{
-	content_rating, cover_url, display_title, parse_status, strip_html, tag_names, viewer,
+	content_rating, cover_url, display_title, manga_url, parse_status, strip_html, tag_names,
+	viewer,
 };
 use aidoku::{
 	AidokuError, ContentRating, Manga, Result,
 	alloc::{String, Vec},
+	helpers::string::PlainText,
 	prelude::*,
 };
 use serde::Deserialize;
@@ -25,7 +27,7 @@ pub struct GraphQLError {
 	pub message: String,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
 pub struct DateParts {
 	pub year: Option<i32>,
 	pub month: Option<i32>,
@@ -57,13 +59,58 @@ pub struct MangaCard {
 	pub thumbnail: Option<String>,
 	pub is_adult: Option<bool>,
 	pub description: Option<String>,
+	pub authors: Option<Vec<String>>,
 	pub genres: Option<Vec<String>>,
+	pub tags: Option<Vec<String>>,
 	pub status: Option<String>,
+	#[serde(rename = "type")]
+	pub kind: Option<String>,
+	pub country_of_origin: Option<String>,
 	pub last_chapter_info: Option<Translations<LastChapter>>,
 	pub last_chapter_date: Option<Translations<DateParts>>,
 }
 
 impl MangaCard {
+	pub fn into_details(self) -> Result<Manga> {
+		let tags = tag_names(
+			self.genres
+				.unwrap_or_default()
+				.into_iter()
+				.chain(self.tags.unwrap_or_default())
+				.collect(),
+		);
+		let mut authors: Vec<String> = Vec::new();
+		for author in self.authors.unwrap_or_default() {
+			let name = author.trim();
+			if !name.is_empty() && !authors.iter().any(|existing| existing == name) {
+				authors.push(name.into());
+			}
+		}
+		Ok(Manga {
+			title: display_title(self.english_name.as_deref(), &self.name)?,
+			cover: cover_url(self.thumbnail.as_deref()),
+			// The details page renders Markdown; the big scroller shows plain text
+			description: self
+				.description
+				.as_deref()
+				.map(strip_html)
+				.filter(|description| !description.is_empty())
+				.map(|description| description.escape_markdown()),
+			authors: (!authors.is_empty()).then_some(authors),
+			status: parse_status(self.status.as_deref()),
+			content_rating: content_rating(&tags, self.is_adult),
+			viewer: viewer(
+				self.kind.as_deref(),
+				self.country_of_origin.as_deref(),
+				&tags,
+			),
+			url: Some(manga_url(&self.id)),
+			tags: (!tags.is_empty()).then_some(tags),
+			key: self.id,
+			..Default::default()
+		})
+	}
+
 	// The big scroller shows what the popular feed already carries
 	pub fn into_featured(mut self) -> Result<Manga> {
 		let tags = tag_names(self.genres.take().unwrap_or_default());
@@ -160,64 +207,6 @@ pub struct AdaptationsData {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MangaDetail {
-	#[serde(default)]
-	pub name: String,
-	pub english_name: Option<String>,
-	pub thumbnail: Option<String>,
-	pub is_adult: Option<bool>,
-	pub description: Option<String>,
-	pub authors: Option<Vec<String>>,
-	pub genres: Option<Vec<String>>,
-	pub tags: Option<Vec<String>>,
-	pub status: Option<String>,
-	#[serde(rename = "type")]
-	pub kind: Option<String>,
-	pub country_of_origin: Option<String>,
-}
-
-impl MangaDetail {
-	pub fn into_details(self, key: &str) -> Result<Manga> {
-		let tags = tag_names(
-			self.genres
-				.unwrap_or_default()
-				.into_iter()
-				.chain(self.tags.unwrap_or_default())
-				.collect(),
-		);
-		let mut authors: Vec<String> = Vec::new();
-		for author in self.authors.unwrap_or_default() {
-			let name = author.trim();
-			if !name.is_empty() && !authors.iter().any(|existing| existing == name) {
-				authors.push(name.into());
-			}
-		}
-		Ok(Manga {
-			key: key.into(),
-			title: display_title(self.english_name.as_deref(), &self.name)?,
-			cover: cover_url(self.thumbnail.as_deref()),
-			description: self
-				.description
-				.as_deref()
-				.map(strip_html)
-				.filter(|description| !description.is_empty()),
-			authors: (!authors.is_empty()).then_some(authors),
-			status: parse_status(self.status.as_deref()),
-			content_rating: content_rating(&tags, self.is_adult),
-			viewer: viewer(
-				self.kind.as_deref(),
-				self.country_of_origin.as_deref(),
-				&tags,
-			),
-			url: Some(format!("{BASE_URL}/manga/{key}")),
-			tags: (!tags.is_empty()).then_some(tags),
-			..Default::default()
-		})
-	}
-}
-
-#[derive(Deserialize)]
 pub struct Tag {
 	pub name: String,
 	pub slug: String,
@@ -236,7 +225,7 @@ pub struct TagsData {
 
 #[derive(Deserialize)]
 pub struct DetailsData {
-	pub manga: Option<MangaDetail>,
+	pub manga: Option<MangaCard>,
 }
 
 #[derive(Deserialize)]
@@ -279,18 +268,8 @@ impl PictureUrl {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterPageEdge {
-	// The reader names the image host `serverUrl`; older payloads used `pictureUrlHead`
-	pub server_url: Option<String>,
 	pub picture_url_head: Option<String>,
 	pub picture_urls: Option<Vec<PictureUrl>>,
-}
-
-impl ChapterPageEdge {
-	pub fn image_host(&self) -> Option<&str> {
-		self.server_url
-			.as_deref()
-			.or(self.picture_url_head.as_deref())
-	}
 }
 
 #[derive(Deserialize)]

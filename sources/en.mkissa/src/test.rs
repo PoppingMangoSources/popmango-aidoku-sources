@@ -1,10 +1,11 @@
 use super::*;
 use aidoku::{
-	HomeComponentValue, LinkValue, MangaStatus, Viewer,
+	ContentRating, HomeComponentValue, LinkValue, MangaStatus, Viewer,
 	alloc::{String, vec},
+	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
-use helpers::tag_name;
+use helpers::{parse_page_urls, tag_name};
 use home::{Feed, HomeData, layout};
 
 fn card(id: &str, extra: Value) -> MangaCard {
@@ -97,17 +98,9 @@ fn review_home_rows_follow_the_requested_order() {
 	}
 }
 
-fn detail(extra: Value) -> MangaDetail {
-	let mut value = json!({ "name": "Series" });
-	if let (Some(object), Value::Object(extra)) = (value.as_object_mut(), extra) {
-		object.extend(extra);
-	}
-	serde_json::from_value(value).unwrap()
-}
-
 #[aidoku_test]
 fn review_viewer_follows_type_country_and_strip_tags() {
-	let viewer_of = |extra: Value| detail(extra).into_details("x").unwrap().viewer;
+	let viewer_of = |extra: Value| card("x", extra).into_details().unwrap().viewer;
 	assert_eq!(viewer_of(json!({ "type": "Manhwa" })), Viewer::Webtoon);
 	assert_eq!(viewer_of(json!({ "type": "Manhua" })), Viewer::Webtoon);
 	assert_eq!(viewer_of(json!({ "type": "Manga" })), Viewer::RightToLeft);
@@ -135,11 +128,14 @@ fn review_viewer_follows_type_country_and_strip_tags() {
 
 #[aidoku_test]
 fn review_detail_tags_are_readable_and_sorted() {
-	let manga = detail(json!({
-		"genres": ["Romance", "Action", "action"],
-		"tags": ["format:long_strip", "theme:anachronism"],
-	}))
-	.into_details("x")
+	let manga = card(
+		"x",
+		json!({
+			"genres": ["Romance", "Action", "action"],
+			"tags": ["format:long_strip", "theme:anachronism"],
+		}),
+	)
+	.into_details()
 	.unwrap();
 	assert_eq!(
 		manga.tags,
@@ -157,7 +153,7 @@ fn review_detail_tags_are_readable_and_sorted() {
 fn review_untitled_cards_are_dropped() {
 	assert!(Manga::try_from(card("", json!({}))).is_err());
 	assert!(Manga::try_from(card("x", json!({ "name": " " }))).is_err());
-	assert!(detail(json!({ "name": "" })).into_details("x").is_err());
+	assert!(card("x", json!({ "name": "" })).into_details().is_err());
 	let rows = layout(HomeData {
 		popular: None,
 		random: Some(vec![card("x", json!({ "name": "" }))]),
@@ -178,7 +174,7 @@ fn review_chapters_match_episode_notes() {
 		],
 	}))
 	.unwrap();
-	let chapters = parse_chapters(data, "x");
+	let chapters = parse_chapters(data, "x").unwrap();
 	let titles: Vec<_> = chapters
 		.iter()
 		.map(|chapter| chapter.title.as_deref())
@@ -188,6 +184,56 @@ fn review_chapters_match_episode_notes() {
 	assert_eq!(
 		chapters[0].url.as_deref(),
 		Some("https://mkissa.to/manga/x/chapter-12.5-sub")
+	);
+}
+
+#[aidoku_test]
+fn review_missing_series_and_pages_fail() {
+	let missing: ChaptersData = serde_json::from_value(json!({ "manga": null })).unwrap();
+	assert!(parse_chapters(missing, "x").is_err());
+	let pages = |edges: Value| -> ChapterPages {
+		serde_json::from_value(json!({ "edges": edges })).unwrap()
+	};
+	assert!(parse_page_urls(&pages(json!([])), "original").is_err());
+	assert!(
+		parse_page_urls(
+			&pages(
+				json!([{ "pictureUrlHead": "img.host", "pictureUrls": [{ "url": "/a.jpg" }, {}] }])
+			),
+			"original",
+		)
+		.is_err()
+	);
+	assert_eq!(
+		parse_page_urls(
+			&pages(
+				json!([{ "pictureUrlHead": "img.host", "pictureUrls": ["/a.jpg", { "url": "b.jpg" }] }])
+			),
+			"original",
+		)
+		.unwrap(),
+		["https://img.host/a.jpg", "https://img.host/b.jpg"]
+	);
+}
+
+#[aidoku_test]
+fn review_only_details_escape_the_description() {
+	let extra = || json!({ "description": "Half *bold*<br>2 + 2" });
+	assert_eq!(
+		card("x", extra())
+			.into_details()
+			.unwrap()
+			.description
+			.as_deref(),
+		Some("Half \\*bold\\*  \n2 \\+ 2")
+	);
+	assert_eq!(
+		card("x", extra())
+			.into_featured()
+			.unwrap()
+			.description
+			.as_deref(),
+		Some("Half *bold*\n2 + 2")
 	);
 }
 
@@ -214,7 +260,7 @@ fn review_season_titles_follow_calendar_quarters() {
 
 #[aidoku_test]
 fn review_deep_links_keep_series_and_chapter_keys() {
-	let source = Mkissa::new();
+	let source = MKissa::new();
 	assert_eq!(
 		source
 			.handle_deep_link("https://mkissa.to/manga/J5aN5NY2Zsrk6DLsX/chapter-12.5-sub".into())
@@ -236,7 +282,7 @@ fn review_deep_links_keep_series_and_chapter_keys() {
 
 #[aidoku_test]
 fn home_loads_every_row() {
-	let rows = Mkissa::new().get_home().unwrap();
+	let rows = MKissa::new().get_home().unwrap();
 	assert_eq!(
 		rows.components.len(),
 		8,
@@ -255,7 +301,7 @@ fn listings_page_through_each_feed() {
 		"most_boosted",
 		"adaptations",
 	] {
-		let first = Mkissa::new()
+		let first = MKissa::new()
 			.get_manga_list(
 				Listing {
 					id: id.into(),
@@ -266,7 +312,7 @@ fn listings_page_through_each_feed() {
 			.unwrap();
 		assert!(!first.entries.is_empty(), "{id}");
 		assert!(first.has_next_page, "{id}");
-		let second = Mkissa::new()
+		let second = MKissa::new()
 			.get_manga_list(
 				Listing {
 					id: id.into(),
@@ -281,7 +327,7 @@ fn listings_page_through_each_feed() {
 
 #[aidoku_test]
 fn search_finds_a_title_and_a_pasted_link() {
-	let source = Mkissa::new();
+	let source = MKissa::new();
 	let results = source
 		.get_search_manga_list(Some("Berserk".into()), 1, Vec::new())
 		.unwrap();
@@ -305,7 +351,7 @@ fn search_finds_a_title_and_a_pasted_link() {
 
 #[aidoku_test]
 fn genre_filter_narrows_results() {
-	let results = Mkissa::new()
+	let results = MKissa::new()
 		.get_search_manga_list(
 			None,
 			1,
@@ -316,7 +362,7 @@ fn genre_filter_narrows_results() {
 			}],
 		)
 		.unwrap();
-	let details = Mkissa::new()
+	let details = MKissa::new()
 		.get_manga_update(results.entries[0].clone(), true, false)
 		.unwrap();
 	assert!(
@@ -333,7 +379,7 @@ fn genre_filter_narrows_results() {
 	}]);
 	assert_ne!(keys(&without), keys(&search(Vec::new())));
 	for manga in without.entries.into_iter().take(3) {
-		let details = Mkissa::new().get_manga_update(manga, true, false).unwrap();
+		let details = MKissa::new().get_manga_update(manga, true, false).unwrap();
 		assert!(
 			!details
 				.tags
@@ -345,7 +391,7 @@ fn genre_filter_narrows_results() {
 }
 
 fn search(filters: Vec<FilterValue>) -> MangaPageResult {
-	Mkissa::new()
+	MKissa::new()
 		.get_search_manga_list(None, 1, filters)
 		.unwrap()
 }
@@ -418,7 +464,7 @@ fn site_filters_narrow_results() {
 	assert_ne!(keys(&dated), keys(&season));
 	assert!(!search(vec![select("day", "1")]).entries.is_empty());
 	assert!(
-		Mkissa::new()
+		MKissa::new()
 			.get_search_manga_list(
 				None,
 				1,
@@ -454,7 +500,7 @@ fn review_magazine_tags_read_as_names() {
 
 #[aidoku_test]
 fn details_and_chapters_load() {
-	let manga = Mkissa::new()
+	let manga = MKissa::new()
 		.get_manga_update(
 			Manga {
 				key: "J5aN5NY2Zsrk6DLsX".into(),
@@ -474,7 +520,7 @@ fn details_and_chapters_load() {
 			.as_ref()
 			.is_some_and(|tags| tags.iter().all(|tag| !tag.contains(':')))
 	);
-	let manhwa = Mkissa::new()
+	let manhwa = MKissa::new()
 		.get_manga_update(
 			Manga {
 				key: "MrGT6Smvdm4Dp7t4J".into(),
@@ -491,17 +537,80 @@ fn details_and_chapters_load() {
 }
 
 #[aidoku_test]
+fn chapters_only_update_keeps_the_details() {
+	let manga = MKissa::new()
+		.get_manga_update(
+			Manga {
+				key: "J5aN5NY2Zsrk6DLsX".into(),
+				title: "Kept".into(),
+				..Default::default()
+			},
+			false,
+			true,
+		)
+		.unwrap();
+	assert_eq!(manga.title, "Kept");
+	assert!(manga.chapters.is_some_and(|chapters| chapters.len() > 300));
+}
+
+#[aidoku_test]
 fn an_unknown_series_fails() {
+	for (details, chapters) in [(true, false), (false, true)] {
+		assert!(
+			MKissa::new()
+				.get_manga_update(
+					Manga {
+						key: "doesnotexist000".into(),
+						..Default::default()
+					},
+					details,
+					chapters,
+				)
+				.is_err()
+		);
+	}
+}
+
+#[aidoku_test]
+fn every_sort_returns_its_own_order() {
+	let pages: Vec<Vec<String>> = (0..SORTS.len() as i32)
+		.map(|index| {
+			keys(&search(vec![FilterValue::Sort {
+				id: "sort".into(),
+				index,
+				ascending: false,
+			}]))
+		})
+		.collect();
+	assert!(pages.iter().all(|page| !page.is_empty()));
+	// Name ascending and descending must not share their first pages
+	assert!(pages[3].iter().all(|key| !pages[4].contains(key)));
+}
+
+#[aidoku_test]
+fn adult_titles_follow_the_setting() {
+	let adult = || {
+		search(vec![FilterValue::MultiSelect {
+			id: "genres".into(),
+			included: vec!["Adult".into()],
+			excluded: Vec::new(),
+		}])
+	};
+	defaults_set("showAdult", DefaultValue::Bool(false));
+	let hidden = adult();
 	assert!(
-		Mkissa::new()
-			.get_manga_update(
-				Manga {
-					key: "doesnotexist000".into(),
-					..Default::default()
-				},
-				true,
-				false,
-			)
-			.is_err()
+		hidden
+			.entries
+			.iter()
+			.all(|manga| manga.content_rating != ContentRating::NSFW)
+	);
+	defaults_set("showAdult", DefaultValue::Bool(true));
+	let shown = adult();
+	defaults_set("showAdult", DefaultValue::Bool(false));
+	assert!(
+		shown
+			.entries
+			.iter()
+			.any(|manga| manga.content_rating == ContentRating::NSFW)
 	);
 }

@@ -48,6 +48,10 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > ⚠️ Episode ids in `episodeInfos` arrive as numbers or strings; compare them by value with the
 > `availableChaptersDetail` strings, which are the chapter keys.
 
+> ⚠️ `chapterPages` edges are the schema's `Chapter` type: `pictureUrlHead` plus `pictureUrls`.
+> There is no `serverUrl` (the API rejects the field), and querying pages directly answers
+> `AA_CRYPTO_MISSING`, which is why pages are captured from the site's own reader.
+
 > ⚠️ The reader decodes pages in the page's script and pins a pristine `JSON.parse` taken from a
 > new iframe under a generated window key. The web view claims that key first and hides iframe
 > windows, then captures `chapterPages`. The site's own human check never clears in a hidden view,

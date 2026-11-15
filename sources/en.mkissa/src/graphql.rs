@@ -55,6 +55,12 @@ query($page: Int, $limit: Int, $translationType: VaildTranslationTypeMangaEnumTy
 }
 "#;
 
+pub const CARD_QUERY: &str = r#"
+query($id: String!) {
+  manga(_id: $id) { _id name englishName thumbnail isAdult }
+}
+"#;
+
 pub const DETAILS_QUERY: &str = r#"
 query($id: String!) {
   manga(_id: $id) {

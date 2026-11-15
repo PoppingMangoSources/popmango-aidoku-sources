@@ -1,6 +1,6 @@
 use crate::{
 	graphql::*,
-	helpers::{date_from_parts, has_next_page, season_and_year},
+	helpers::{chapter_url, date_from_parts, has_next_page, season_and_year},
 	models::*,
 	settings,
 };
@@ -174,8 +174,7 @@ pub fn browse_request(mut search: Value, page: i32, country: &str) -> Result<Req
 	)
 }
 
-// Rows in the order the owner set: the popular hero, the site's two update tabs and its ranked
-// tabs, with the random rail between them
+// Rows below the popular hero, in the owner's order; `None` is the random rail
 const ROWS: [Option<Feed>; 7] = [
 	Some(Feed::Year),
 	Some(Feed::Trending),
@@ -354,10 +353,7 @@ fn latest_chapter(mut card: MangaCard) -> Option<MangaWithChapter> {
 		chapter: Chapter {
 			chapter_number: number.parse().ok(),
 			date_uploaded,
-			url: Some(format!(
-				"{BASE_URL}/manga/{}/chapter-{number}-sub",
-				manga.key
-			)),
+			url: Some(chapter_url(&manga.key, &number)),
 			key: number,
 			..Default::default()
 		},

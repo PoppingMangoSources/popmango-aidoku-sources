@@ -5,6 +5,7 @@ use aidoku::{
 	imports::std::{parse_date, parse_local_date},
 	prelude::*,
 };
+use serde_json::Value;
 
 pub fn decode_entities(input: &str) -> String {
 	input
@@ -77,6 +78,14 @@ pub fn viewer(kind: Option<&str>, country: Option<&str>, tags: &[String]) -> Vie
 	}
 }
 
+pub fn manga_url(key: &str) -> String {
+	format!("{BASE_URL}/manga/{key}")
+}
+
+pub fn chapter_url(manga_key: &str, number: &str) -> String {
+	format!("{BASE_URL}/manga/{manga_key}/chapter-{number}-sub")
+}
+
 // Thumbnails are paths on the image host, or full urls for covers taken from elsewhere
 pub fn cover_url(thumbnail: Option<&str>) -> Option<String> {
 	let thumbnail = thumbnail.map(str::trim).filter(|path| !path.is_empty())?;
@@ -106,7 +115,9 @@ pub fn content_rating(genres: &[String], is_adult: Option<bool>) -> ContentRatin
 }
 
 pub fn parse_status(status: Option<&str>) -> MangaStatus {
-	let status = status.unwrap_or_default().to_lowercase();
+	let Some(status) = status.map(str::to_lowercase) else {
+		return MangaStatus::Unknown;
+	};
 	if status.contains("releasing") || status.contains("ongoing") {
 		MangaStatus::Ongoing
 	} else if status.contains("finished") || status.contains("completed") {
@@ -210,10 +221,10 @@ pub fn has_next_page(page: i32, total: Option<i32>) -> bool {
 }
 
 // Episode numbers arrive as numbers or strings
-fn is_episode(value: &serde_json::Value, number: &str) -> bool {
+fn is_episode(value: &Value, number: &str) -> bool {
 	match value {
-		serde_json::Value::String(value) => value == number,
-		serde_json::Value::Number(value) => value.as_f64() == number.parse().ok(),
+		Value::String(value) => value == number,
+		Value::Number(value) => value.as_f64() == number.parse().ok(),
 		_ => false,
 	}
 }
@@ -256,10 +267,12 @@ fn strip_ep_prefix(input: &str) -> &str {
 }
 
 // The chapter list arrives newest first
-pub fn parse_chapters(data: ChaptersData, manga_key: &str) -> Vec<Chapter> {
+pub fn parse_chapters(data: ChaptersData, manga_key: &str) -> Result<Vec<Chapter>> {
 	let infos = data.episode_infos.unwrap_or_default();
-	data.manga
-		.and_then(|manga| manga.available_chapters_detail)
+	Ok(data
+		.manga
+		.ok_or(error!("Series not found"))?
+		.available_chapters_detail
 		.and_then(|detail| detail.sub)
 		.unwrap_or_default()
 		.into_iter()
@@ -277,27 +290,28 @@ pub fn parse_chapters(data: ChaptersData, manga_key: &str) -> Vec<Chapter> {
 					.and_then(|dates| dates.sub.as_deref())
 					.and_then(|date| date.get(..19))
 					.and_then(|date| parse_date(date, "yyyy-MM-dd'T'HH:mm:ss")),
-				url: Some(format!("{BASE_URL}/manga/{manga_key}/chapter-{number}-sub")),
+				url: Some(chapter_url(manga_key, &number)),
 				key: number,
 				..Default::default()
 			}
 		})
-		.collect()
+		.collect())
 }
 
 fn is_absolute(url: &str) -> bool {
 	url.starts_with("http://") || url.starts_with("https://")
 }
 
-pub fn parse_page_urls(pages: &ChapterPages, quality: &str) -> Vec<String> {
-	let Some(first) = pages.edges.first() else {
-		return Vec::new();
-	};
+pub fn parse_page_urls(pages: &ChapterPages, quality: &str) -> Result<Vec<String>> {
+	let first = pages
+		.edges
+		.first()
+		.ok_or(error!("The reader did not produce any pages"))?;
 	let edge = pages
 		.edges
 		.iter()
 		.find(|edge| {
-			edge.image_host().is_some()
+			edge.picture_url_head.is_some()
 				|| edge
 					.picture_urls
 					.iter()
@@ -305,23 +319,30 @@ pub fn parse_page_urls(pages: &ChapterPages, quality: &str) -> Vec<String> {
 					.any(|picture| picture.url().is_some_and(is_absolute))
 		})
 		.unwrap_or(first);
-	let image_host = match edge.image_host() {
+	let image_host = match edge.picture_url_head.as_deref() {
 		Some(server) if is_absolute(server) => format!("{}/", server.trim_end_matches('/')),
 		Some(server) => format!("https://{}/", server.trim_end_matches('/')),
 		None => "https://ytimgf.youtube-anime.com/".into(),
 	};
-	edge.picture_urls
+	let urls = edge
+		.picture_urls
 		.iter()
 		.flatten()
-		.filter_map(PictureUrl::url)
-		.filter(|url| !url.is_empty())
-		.map(|url| {
+		.map(|picture| {
+			let url = picture
+				.url()
+				.filter(|url| !url.is_empty())
+				.ok_or(error!("A page has no image url"))?;
 			let url = if is_absolute(url) {
 				url.into()
 			} else {
 				format!("{image_host}{}", url.trim_start_matches('/'))
 			};
-			apply_image_quality(&url, quality)
+			Ok(apply_image_quality(&url, quality))
 		})
-		.collect()
+		.collect::<Result<Vec<_>>>()?;
+	if urls.is_empty() {
+		bail!("The reader did not produce any pages");
+	}
+	Ok(urls)
 }

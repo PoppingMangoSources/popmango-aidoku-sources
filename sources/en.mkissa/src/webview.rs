@@ -1,10 +1,16 @@
-use crate::{helpers::parse_page_urls, models::*, settings};
+use crate::{
+	helpers::{manga_url, parse_page_urls},
+	models::*,
+	settings,
+};
 use aidoku::{
 	Result,
 	alloc::{String, Vec},
-	imports::js::{WebView, WebViewUserScript},
-	imports::net::Request,
-	imports::std::sleep,
+	imports::{
+		js::{WebView, WebViewUserScript},
+		net::Request,
+		std::sleep,
+	},
 	prelude::*,
 };
 
@@ -215,7 +221,7 @@ fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 }
 
 pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
-	let manga_url = format!("{BASE_URL}/manga/{manga_id}");
+	let manga_url = manga_url(manga_id);
 	let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
 	// A plain request lets the app clear Cloudflare and keep its cookie
@@ -270,13 +276,9 @@ pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
 
 	// The page hands back the text it parsed, not a response body
 	let payload: ReaderPayload = serde_json::from_str(&result)?;
-	let urls = payload
+	let pages = payload
 		.chapter_pages
 		.or_else(|| payload.data.and_then(|data| data.chapter_pages))
-		.map(|pages| parse_page_urls(&pages, &settings::image_quality()))
-		.unwrap_or_default();
-	if urls.is_empty() {
-		bail!("The reader did not produce any pages");
-	}
-	Ok(urls)
+		.ok_or(error!("The reader did not produce any pages"))?;
+	parse_page_urls(&pages, &settings::image_quality())
 }

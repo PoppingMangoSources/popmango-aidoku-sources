@@ -20,9 +20,7 @@ mod settings;
 mod webview;
 
 use graphql::*;
-use helpers::{
-	cover_url, day_range, display_title, has_next_page, parse_chapters, season_and_year,
-};
+use helpers::{day_range, has_next_page, parse_chapters, season_and_year};
 use home::{Feed, browse_request};
 use models::*;
 
@@ -35,9 +33,9 @@ const SORTS: [&str; 6] = [
 	"Popular",
 ];
 
-struct Mkissa;
+struct MKissa;
 
-impl Source for Mkissa {
+impl Source for MKissa {
 	fn new() -> Self {
 		Self
 	}
@@ -55,18 +53,12 @@ impl Source for Mkissa {
 			.and_then(|path| path.strip_prefix("/manga/"))
 			.and_then(|path| path.split(['/', '?', '#']).next())
 			.filter(|id| !id.is_empty())
-			&& let Ok(DetailsData {
-				manga: Some(detail),
-			}) = fetch::<DetailsData>(DETAILS_QUERY, json!({ "id": id }))
-			&& let Ok(title) = display_title(detail.english_name.as_deref(), &detail.name)
+			&& let Ok(DetailsData { manga: Some(card) }) =
+				fetch::<DetailsData>(CARD_QUERY, json!({ "id": id }))
+			&& let Ok(manga) = Manga::try_from(card)
 		{
 			return Ok(MangaPageResult {
-				entries: vec![Manga {
-					key: id.into(),
-					title,
-					cover: cover_url(detail.thumbnail.as_deref()),
-					..Default::default()
-				}],
+				entries: vec![manga],
 				has_next_page: false,
 			});
 		}
@@ -167,7 +159,7 @@ impl Source for Mkissa {
 			let details = data
 				.manga
 				.ok_or(error!("Series not found"))?
-				.into_details(&manga.key)?;
+				.into_details()?;
 			manga.copy_from(details);
 			if needs_chapters {
 				send_partial_result(&manga);
@@ -179,7 +171,7 @@ impl Source for Mkissa {
 				CHAPTERS_QUERY,
 				json!({ "id": manga.key, "showId": format!("manga@{}", manga.key) }),
 			)?;
-			manga.chapters = Some(parse_chapters(data, &manga.key));
+			manga.chapters = Some(parse_chapters(data, &manga.key)?);
 		}
 
 		Ok(manga)
@@ -196,13 +188,13 @@ impl Source for Mkissa {
 	}
 }
 
-impl Home for Mkissa {
+impl Home for MKissa {
 	fn get_home(&self) -> Result<HomeLayout> {
 		home::get_home()
 	}
 }
 
-impl ListingProvider for Mkissa {
+impl ListingProvider for MKissa {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		Feed::from_id(&listing.id)
 			.ok_or(error!("Unknown listing"))?
@@ -210,7 +202,7 @@ impl ListingProvider for Mkissa {
 	}
 }
 
-impl ImageRequestProvider for Mkissa {
+impl ImageRequestProvider for MKissa {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?
 			.header("Referer", &format!("{BASE_URL}/"))
@@ -218,12 +210,9 @@ impl ImageRequestProvider for Mkissa {
 	}
 }
 
-impl DeepLinkHandler for Mkissa {
+impl DeepLinkHandler for MKissa {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		let Some(path) = url
-			.strip_prefix(BASE_URL)
-			.and_then(|path| path.strip_prefix("/manga/"))
-		else {
+		let Some((_, path)) = url.split_once("/manga/") else {
 			return Ok(None);
 		};
 		let mut segments = path.split(['/', '?', '#']);
@@ -249,7 +238,7 @@ impl DeepLinkHandler for Mkissa {
 }
 
 register_source!(
-	Mkissa,
+	MKissa,
 	Home,
 	ListingProvider,
 	ImageRequestProvider,
