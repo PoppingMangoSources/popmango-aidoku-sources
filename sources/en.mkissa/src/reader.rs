@@ -276,11 +276,12 @@ fn load_series(manga_id: &str) -> Result<WebView> {
 	Ok(web_view)
 }
 
+// The app awaits the script as one expression, `await (script)`, so it holds no statements
 fn open(web_view: &WebView, path: &str, chapter: &str, timeout_ms: u32) -> Result<String> {
 	let path = serde_json::to_string(path)?;
 	let chapter = serde_json::to_string(chapter)?;
 	Ok(web_view.eval_async(&format!(
-		"return await window['{RESULT_TOKEN}'].open({path}, {chapter}, {timeout_ms});"
+		"window['{RESULT_TOKEN}'].open({path}, {chapter}, {timeout_ms})"
 	))?)
 }
 

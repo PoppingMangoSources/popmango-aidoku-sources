@@ -268,6 +268,7 @@ class CardRuleTests(unittest.TestCase):
             'strip_prefix': 'let rest = &url[BASE_URL.len()..];\n',
             'remaps a request': 'Request::get(url)\n\t.map_err(|_| error!("bad"))?;\n',
             'escapes a whole chapter': 'content: PageContent::text(text.escape_markdown()),\n',
+            'statements to eval_async': 'web_view.eval_async(&format!("return await window.state.result;"))?;\n',
         }
         for rule, text in cases.items():
             self.assertTrue(any(rule in message for message in self.api_use(text)), rule)
@@ -286,6 +287,7 @@ class CardRuleTests(unittest.TestCase):
             'Request::get(url)?.send()?;\n'
             'let text = lines.map(|line| line.escape_markdown()).collect::<Vec<_>>().join("\\n\\n");\n'
             'content: PageContent::text(text),\n'
+            'web_view.eval_async(&format!("window.state.open({path})"))?;\n'
         )
         self.assertEqual(self.api_use(text), [])
 

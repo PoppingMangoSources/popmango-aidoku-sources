@@ -202,7 +202,10 @@ filter doesn't count.
   unlock plain requests (`AGENTS.md` / `CLAUDE.md`, Toonkotsu specifics).
 - `webview_wait_for_load` waits on a semaphore with **no timeout**: a page that never
   finishes loading blocks the call.
-- `webview_eval_async` wraps the script in an async function and resolves with its value.
+- `webview_eval_async` awaits the script as one expression, `await (script)`, and posts the value
+  back through a message handler (`Utilities/WebViewHandler.swift`). Statements such as
+  `return await x;` are a syntax error there, which reaches the source as `MissingResult`; pass
+  an expression such as a promise (`window.state.result`). A rejected promise is an error too.
 - `webview_eval` returns the result as text, and a script whose value is `undefined` is an
   error (missing result), so return a string sentinel while waiting.
 - `aidoku verify` requires `minAppVersion` 0.9.0 for `webview_eval_async`, `webview_get_cookies`

@@ -279,6 +279,8 @@ EMPTY_INCLUDED = re.compile(r"!\s*included\.is_empty\(\)")
 LENGTH_SLICE = re.compile(r"\[\s*[\w.]+\.len\(\)\s*\.\.\s*\]")
 WHOLE_TEXT_ESCAPED = re.compile(r"PageContent::text\(\s*[\w.]+\.escape_markdown\(\)\s*\)")
 REMAPPED_REQUEST = re.compile(r"Request::(?:get|post|put)\([^;]*?\)\s*\.map_err\(", re.S)
+# The app awaits eval_async scripts as `await (script)`, so a statement there is a syntax error
+STATEMENT_EVAL_ASYNC = re.compile(r"\.eval_async\(\s*&?(?:format!\(\s*)?r?#*\"\s*(?:return|const|let|var)\b")
 
 
 ITEM_SPACING = re.compile(
@@ -336,6 +338,8 @@ def check_api_use(path: Path, text: str) -> None:
         fail(path, f"line {line(match)} escapes a whole chapter, making one paragraph of hard breaks; escape each line and join them with blank lines")
     for match in REMAPPED_REQUEST.finditer(text):
         fail(path, f"line {line(match)} remaps a request error; Request only fails on a bad url, so use ?")
+    for match in STATEMENT_EVAL_ASYNC.finditer(text):
+        fail(path, f"line {line(match)} passes statements to eval_async; the app awaits one expression, so pass the promise itself")
 
 
 def crate_text(source: Path) -> str:
