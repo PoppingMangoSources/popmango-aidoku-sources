@@ -2,32 +2,52 @@ use crate::models::*;
 use aidoku::{
 	Chapter, ContentRating, MangaStatus, Result, Viewer,
 	alloc::{String, Vec},
-	imports::std::{parse_date, parse_local_date},
+	imports::{
+		html::Html,
+		std::{parse_date, parse_local_date},
+	},
 	prelude::*,
 };
+use chrono::{DateTime, Datelike};
 use serde_json::Value;
 
-pub fn decode_entities(input: &str) -> String {
-	input
-		.replace("&amp;", "&")
-		.replace("&lt;", "<")
-		.replace("&gt;", ">")
-		.replace("&quot;", "\"")
-		.replace("&#39;", "'")
-		.replace("&apos;", "'")
-		.replace("&nbsp;", " ")
+// Text of an HTML fragment with its entities decoded; plain text skips the parse. A wrapper
+// element works in the test runner too, where a fragment has no body to select.
+pub fn html_text(value: &str) -> Option<String> {
+	if value.contains(['&', '<']) {
+		Html::parse(format!("<div id=text>{value}</div>"))
+			.ok()?
+			.select_first("#text")?
+			.text()
+	} else {
+		Some(value.trim().into())
+	}
+	.filter(|text| !text.is_empty())
+}
+
+// Descriptions break lines with `<br>` and paragraphs with `</p>`
+pub fn description_text(html: &str) -> Option<String> {
+	let paragraphs: Vec<String> = html
+		.split("</p>")
+		.filter_map(|paragraph| {
+			let lines: Vec<String> = paragraph
+				.replace("<br />", "<br>")
+				.replace("<br/>", "<br>")
+				.split("<br>")
+				.filter_map(html_text)
+				.collect();
+			(!lines.is_empty()).then(|| lines.join("\n"))
+		})
+		.collect();
+	(!paragraphs.is_empty()).then(|| paragraphs.join("\n\n"))
 }
 
 // The site shows the English name when a series has one
 pub fn display_title(english: Option<&str>, name: &str) -> Result<String> {
-	let title = english
-		.map(str::trim)
-		.filter(|english| !english.is_empty())
-		.unwrap_or(name.trim());
-	if title.is_empty() {
-		bail!("Series has no title");
-	}
-	Ok(decode_entities(title))
+	english
+		.and_then(html_text)
+		.or_else(|| html_text(name))
+		.ok_or(error!("Series has no title"))
 }
 
 // Tags arrive as slugs such as `format:long_strip`
@@ -131,26 +151,6 @@ pub fn parse_status(status: Option<&str>) -> MangaStatus {
 	}
 }
 
-// Descriptions are HTML with `<br>` line breaks
-pub fn strip_html(html: &str) -> String {
-	let mut out = String::with_capacity(html.len());
-	let mut in_tag = false;
-	let normalized = html
-		.replace("<br>", "\n")
-		.replace("<br/>", "\n")
-		.replace("<br />", "\n")
-		.replace("</p>", "\n\n");
-	for ch in normalized.chars() {
-		match ch {
-			'<' => in_tag = true,
-			'>' => in_tag = false,
-			_ if !in_tag => out.push(ch),
-			_ => {}
-		}
-	}
-	decode_entities(out.trim())
-}
-
 pub fn apply_image_quality(url: &str, quality: &str) -> String {
 	if quality == "original" {
 		return url.into();
@@ -182,38 +182,25 @@ pub fn date_from_parts(parts: &DateParts) -> Option<i64> {
 }
 
 // The site names its season rows by calendar quarter: Winter is January to March
-pub fn season_and_year(timestamp: i64) -> (&'static str, i64) {
-	let (year, month, _) = civil_date(timestamp);
-	let season = ["Winter", "Spring", "Summer", "Fall"][((month - 1) / 3) as usize];
-	(season, year)
+pub fn season_and_year(timestamp: i64) -> (&'static str, i32) {
+	let date = DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
+	let season = ["Winter", "Spring", "Summer", "Fall"][date.month0() as usize / 3];
+	(season, date.year())
 }
 
 // The site's update days run from local midnight to the second before the next
 pub fn day_range(days_ago: i64, now: i64) -> Option<(i64, i64)> {
-	let (year, month, day) = civil_date(now);
-	let noon = format!("{year:04}-{month:02}-{day:02} 12:00:00");
+	let date = DateTime::from_timestamp(now, 0)?;
+	let noon = format!(
+		"{:04}-{:02}-{:02} 12:00:00",
+		date.year(),
+		date.month(),
+		date.day()
+	);
 	let offset =
 		parse_date(&noon, "yyyy-MM-dd HH:mm:ss")? - parse_local_date(&noon, "yyyy-MM-dd HH:mm:ss")?;
 	let start = (now + offset).div_euclid(86400) * 86400 - offset - days_ago * 86400;
 	Some((start, start + 86399))
-}
-
-// Days to civil date, after Howard Hinnant's algorithm
-fn civil_date(timestamp: i64) -> (i64, i64, i64) {
-	let days = timestamp.div_euclid(86400) + 719_468;
-	let era = days.div_euclid(146_097);
-	let day_of_era = days - era * 146_097;
-	let year_of_era =
-		(day_of_era - day_of_era / 1460 + day_of_era / 36524 - day_of_era / 146_096) / 365;
-	let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-	let month_index = (5 * day_of_year + 2) / 153;
-	let month = if month_index < 10 {
-		month_index + 3
-	} else {
-		month_index - 9
-	};
-	let day = day_of_year - (153 * month_index + 2) / 5 + 1;
-	(year_of_era + era * 400 + i64::from(month <= 2), month, day)
 }
 
 pub fn has_next_page(page: i32, total: Option<i32>) -> bool {
@@ -239,11 +226,12 @@ fn chapter_title(notes: &str) -> Option<String> {
 		Some((_, rest)) => rest.trim_start(),
 		None => trimmed,
 	};
-	let title = strip_ep_prefix(without_season).trim();
+	let title = strip_ep_prefix(without_season);
 	title
 		.chars()
 		.any(|c| c.is_ascii_alphabetic())
-		.then(|| decode_entities(title))
+		.then(|| html_text(title))
+		.flatten()
 }
 
 fn strip_ep_prefix(input: &str) -> &str {

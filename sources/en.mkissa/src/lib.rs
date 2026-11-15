@@ -16,8 +16,8 @@ mod graphql;
 mod helpers;
 mod home;
 mod models;
+mod reader;
 mod settings;
-mod webview;
 
 use graphql::*;
 use helpers::{day_range, has_next_page, parse_chapters, season_and_year};
@@ -178,7 +178,7 @@ impl Source for MKissa {
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		Ok(webview::page_urls(&manga.key, &chapter.key)?
+		Ok(reader::page_urls(&manga.key, &chapter.key)?
 			.into_iter()
 			.map(|url| Page {
 				content: PageContent::url(url),

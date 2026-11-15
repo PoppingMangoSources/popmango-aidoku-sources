@@ -1,5 +1,5 @@
 use crate::helpers::{
-	content_rating, cover_url, display_title, manga_url, parse_status, strip_html, tag_names,
+	content_rating, cover_url, description_text, display_title, manga_url, parse_status, tag_names,
 	viewer,
 };
 use aidoku::{
@@ -93,8 +93,7 @@ impl MangaCard {
 			description: self
 				.description
 				.as_deref()
-				.map(strip_html)
-				.filter(|description| !description.is_empty())
+				.and_then(description_text)
 				.map(|description| description.escape_markdown()),
 			authors: (!authors.is_empty()).then_some(authors),
 			status: parse_status(self.status.as_deref()),
@@ -117,8 +116,7 @@ impl MangaCard {
 		let description = self
 			.description
 			.take()
-			.map(|description| strip_html(&description))
-			.filter(|description| !description.is_empty());
+			.and_then(|description| description_text(&description));
 		let status = parse_status(self.status.as_deref());
 		let content_rating = content_rating(&tags, self.is_adult);
 		Ok(Manga {

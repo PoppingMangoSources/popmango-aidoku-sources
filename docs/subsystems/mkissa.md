@@ -10,7 +10,7 @@ sources:
   - code: sources/en.mkissa/src/lib.rs
   - code: sources/en.mkissa/src/models.rs
   - code: sources/en.mkissa/src/helpers.rs
-  - code: sources/en.mkissa/src/webview.rs
+  - code: sources/en.mkissa/src/reader.rs
   - code: sources/en.mkissa/res/filters.json
   - ext: https://mkissa.to
 ---

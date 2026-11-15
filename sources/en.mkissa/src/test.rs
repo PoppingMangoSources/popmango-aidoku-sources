@@ -69,7 +69,7 @@ fn review_home_rows_follow_the_requested_order() {
 	};
 	assert_eq!(
 		entries[0].description.as_deref(),
-		Some("Line one\n\nLine two")
+		Some("Line one\nLine two")
 	);
 	assert_eq!(
 		entries[0].tags,
@@ -214,6 +214,17 @@ fn review_missing_series_and_pages_fail() {
 		.unwrap(),
 		["https://img.host/a.jpg", "https://img.host/b.jpg"]
 	);
+}
+
+#[aidoku_test]
+fn review_html_text_decodes_every_entity() {
+	assert_eq!(
+		helpers::description_text("<p>It&#8217;s &amp; <i>more</i></p><p>Next<br/>line</p>")
+			.as_deref(),
+		Some("It\u{2019}s & more\n\nNext\nline")
+	);
+	assert_eq!(helpers::html_text("  plain  ").as_deref(), Some("plain"));
+	assert!(helpers::html_text("<br>").is_none());
 }
 
 #[aidoku_test]
