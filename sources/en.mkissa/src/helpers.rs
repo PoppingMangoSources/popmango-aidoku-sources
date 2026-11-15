@@ -8,6 +8,7 @@ use aidoku::{
 	},
 	prelude::*,
 };
+// parse_date only parses strings, so chrono reads the current year, month and day
 use chrono::{DateTime, Datelike};
 use serde_json::Value;
 
