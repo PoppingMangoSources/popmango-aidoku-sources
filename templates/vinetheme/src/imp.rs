@@ -109,15 +109,14 @@ pub trait Impl {
 		let mut series = fetch(slug)?;
 		// A novel's public slug can name the comic of the same title; the API needs the novel's own
 		if kind == "novel" && !series.is_novel() {
-			let found: SeriesResponse = response(Request::get(format!(
-				"{}/api/series?limit=24&page=1&contentMode=all&q={}",
-				params.base_url,
-				encode_uri_component(slug.replace('-', " "))
-			))?)?
-			.get_json_owned()?;
-			let novel = found
-				.data
+			// The novel's own page names its API slug
+			let page = response(
+				Request::get(format!("{}/series/{path}", params.base_url))?.header("rsc", "1"),
+			)?
+			.get_string()?;
+			let novel = rsc::objects(&rsc::decode(&page)?, &["slug", "urlSlug", "title"])
 				.into_iter()
+				.filter_map(|value| serde_json::from_value::<Series>(value).ok())
 				.find(|found| found.is_novel() && found.url_slug.as_deref() == Some(slug))
 				.ok_or(error!("Novel not found"))?;
 			series = fetch(&novel.slug)?;

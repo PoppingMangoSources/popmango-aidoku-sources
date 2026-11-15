@@ -52,7 +52,8 @@ Details and complete chapters use `/api/ai/series/{canonicalSlug}?chapters=none|
 > and a novel's `urlSlug` can equal its comic's, where `/api/ai/series/{urlSlug}` answers the comic.
 > The reader (`/series/novel/{slug}/chapter/{n}` with `rsc: 1`) answers only on `urlSlug`; the API
 > slug gives a page without reader data ("Missing chapter/isUnlocked/isLocked"). So keys keep
-> `urlSlug`, and details that answer a comic for a novel key find the novel by search.
+> `urlSlug`, and details that answer a comic for a novel key read the API slug from the novel's
+> own page (`/series/novel/{urlSlug}`, whose series object carries both slugs).
 
 Readers use `/series/{comic|novel}/{urlSlug}/chapter/{number}` with `rsc: 1`.
 The public routes use `urlSlug` when it differs from the database slug. Bare legacy comic
