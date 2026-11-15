@@ -11,7 +11,7 @@ sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/test.rs
   - code: .github/workflows/test.yaml
   - code: scripts/tests/test_template_tests.py
-  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/scripts/test-http.py
+  - code: scripts/test-http.py
   - code: scripts/review-contracts.py
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/v2.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/models.rs

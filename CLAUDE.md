@@ -532,7 +532,7 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | V2 Trending Now was overridden with Month despite the site's Today default (owner's correction) | Use Today cards directly for Trending. Fetch Month for Most Reviewed, the owner's explicit choice; do not apply that override to Trending. | R |
 | Newly Added fell back to a document-wide grid (owner's review) | Read its own cards or its immediately adjacent grid, then reuse the normal card conversion. An empty section must not borrow another row's cards. | R |
 | The Keyoapp V1 section ancestor bound was widened from three to five without evidence (owner's correction) | Keep the three-level walk supported by Mist's headings, and test that a heading cannot capture a card only present at a fourth ancestor. (verified on the live Mist homepage, 2026-11-09) | R |
-| Blocked requests looked like missing catalogues or invalid JSON (owner’s CI log) | On fork main, live-tested Keyoapp and MangaThemesia requests use checked fetch helpers before parsing. Image request providers still return unsent requests to the host. Report non-2xx status and log URL, content type and at most 240 body characters. `scripts/test-http.py` checks failures with a loopback fixture; it and the templates it covers now live on `merged-sources`. `check-sources.py` rejects direct requests that bypass the helper. | F |
+| Blocked requests looked like missing catalogues or invalid JSON (owner’s CI log) | On fork main, live-tested Keyoapp and MangaThemesia requests use checked fetch helpers before parsing. Image request providers still return unsent requests to the host. Report non-2xx status and log URL, content type and at most 240 body characters. `scripts/test-http.py` checks MangaThemesia's failures with a loopback fixture; Keyoapp's and Iken's fixtures live on `merged-sources`. `check-sources.py` rejects direct requests that bypass the helper. | F |
 
 ### From #900 and #905 (iken template, `es.eternalmangas`)
 
@@ -1301,8 +1301,9 @@ Most templates track upstream. `madara` and `madtheme` carry additions our sourc
 (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and
 is upstream's copy again; its consumers live upstream only. `mangathemesia` adds shared novel
 reading and an opt-in `child_theme` module for Violet, Thunder, Madara and Eva; their source
-overrides select its home and deep-link handlers. It left `main` with Scythe Scans, its last
-consumer there, and `iken` with its six consumers; both are on `merged-sources` (section 17). The default home and deep-link handlers remain
+overrides select its home and deep-link handlers. It stays on `main` with its loopback fixtures
+for future consumers, though Scythe Scans, its last one, moved to `merged-sources`; `iken` left
+with its six consumers (section 17). The default home and deep-link handlers remain
 upstream's for the other consumers. KingOfShojo and RokariComics merged with the original template
 unchanged (section 17). The `madtheme` additions (a home page and a chapter-list fallback)
 were for Kaliscan, which now sits on

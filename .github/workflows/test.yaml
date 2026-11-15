@@ -122,6 +122,13 @@ jobs:
         run: python3 scripts/review-contracts.py --crates-file "$RUNNER_TEMP/candidates"
 
 
+      - name: Run HTTP response regressions
+        run: |
+          set -euo pipefail
+          if grep -qx "templates/mangathemesia" "$RUNNER_TEMP/tested"; then
+            python3 scripts/test-http.py templates/mangathemesia
+          fi
+
       - name: Run review contract regressions
         run: |
           set -euo pipefail
