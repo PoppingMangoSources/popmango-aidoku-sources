@@ -10,6 +10,7 @@ use aidoku::{
 
 const RESULT_TOKEN: &str = "__AIDOKU_MKISSA_PAGES__";
 const WAIT_TOKEN: &str = "__AIDOKU_MKISSA_WAIT__";
+const CHALLENGE_TOKEN: &str = "__AIDOKU_MKISSA_CHALLENGE__";
 
 fn is_parser_key_byte(byte: u8) -> bool {
 	byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$'
@@ -183,6 +184,20 @@ fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 	JSON.parse = captureParse;
 	{pin}
 
+	// The page takes a pristine JSON.parse from a new iframe; with no frame window it keeps ours
+	const hideFrame = (element) => {{
+		if (element && String(element.tagName).toUpperCase() === 'IFRAME') {{
+			Object.defineProperty(element, 'contentWindow', {{ get: () => null, configurable: false }});
+		}}
+		return element;
+	}};
+	for (const name of ['createElement', 'createElementNS']) {{
+		const create = Document.prototype[name];
+		Document.prototype[name] = function (...args) {{
+			return hideFrame(create.apply(this, args));
+		}};
+	}}
+
 	function triggerChapterNav() {{
 		const a = document.createElement('a');
 		a.href = a.dataset.href = {chapter_path};
@@ -222,10 +237,8 @@ fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
 	let manga_url = format!("{BASE_URL}/manga/{manga_id}");
 	let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
-	// Fetch the manga page over an ordinary request. Aidoku clears Cloudflare
-	// here — silently, or through the captcha sheet the app shows — and stores
-	// the clearance cookie. If it still comes back challenged, ask the reader to
-	// retry once the check is solved.
+	// Fetch the manga page over an ordinary request, where Aidoku clears Cloudflare (silently, or
+	// through its captcha sheet) and keeps the clearance cookie
 	let response = Request::get(&manga_url)?
 		.header("Referer", &format!("{BASE_URL}/"))
 		.header("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
@@ -251,15 +264,25 @@ fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
 	web_view.load_html_blocking(&html, Some(&manga_url))?;
 
 	let mut result = String::new();
-	for _ in 0..60 {
+	let mut challenged = 0;
+	for _ in 0..30 {
 		if let Ok(value) = web_view.eval(&format!(
 			"(() => {{
 				const state = window['{RESULT_TOKEN}'];
-				return state && state.done ? state.data : '{WAIT_TOKEN}';
+				if (state && state.done) return state.data;
+				const challenge = document.title.includes('Just a moment')
+					|| document.querySelector('.captcha-overlay--visible') != null;
+				return challenge ? '{CHALLENGE_TOKEN}' : '{WAIT_TOKEN}';
 			}})()"
 		)) {
-			result = value;
-			if result != WAIT_TOKEN && !result.is_empty() {
+			// The site's own check never clears in a hidden view
+			if value == CHALLENGE_TOKEN {
+				challenged += 1;
+				if challenged >= 5 {
+					bail!("Open the series in the web view, solve the site's check, then retry");
+				}
+			} else if value != WAIT_TOKEN && !value.is_empty() {
+				result = value;
 				break;
 			}
 		}

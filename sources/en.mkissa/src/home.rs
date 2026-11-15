@@ -58,8 +58,8 @@ impl Feed {
 			Self::Latest => "Latest Updates".into(),
 			Self::Year => format!("Manga {year}"),
 			Self::Trending => "Trending".into(),
-			Self::Saved => "Most saved".into(),
-			Self::Boosted => "Most boosted".into(),
+			Self::Saved => "Most Saved".into(),
+			Self::Boosted => "Most Boosted".into(),
 			Self::Adaptations => format!("{season} {year} Anime"),
 		}
 	}

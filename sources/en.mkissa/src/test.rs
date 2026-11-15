@@ -57,8 +57,8 @@ fn review_home_rows_follow_the_requested_order() {
 			"Trending",
 			"Random",
 			"Latest Updates",
-			"Most saved",
-			"Most boosted",
+			"Most Saved",
+			"Most Boosted",
 			"Fall 2026 Anime",
 		]
 	);

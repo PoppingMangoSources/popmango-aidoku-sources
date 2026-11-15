@@ -1,8 +1,8 @@
 {
 	"info": {
 		"id": "en.mkissa",
-		"name": "Mkissa",
-		"version": 22,
+		"name": "MKissa",
+		"version": 23,
 		"url": "https://mkissa.to",
 		"urls": ["https://mkissa.to"],
 		"contentRating": 1,
@@ -23,11 +23,11 @@
 		},
 		{
 			"id": "most_saved",
-			"name": "Most saved"
+			"name": "Most Saved"
 		},
 		{
 			"id": "most_boosted",
-			"name": "Most boosted"
+			"name": "Most Boosted"
 		}
 	]
 }
