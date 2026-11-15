@@ -314,14 +314,13 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 	}
 	let mut responses = Request::send_all(requests).into_iter();
 	let mut failure: Option<AidokuError> = None;
-	let document = match responses.next() {
-		Some(response) => response
+	let document = responses.next().and_then(|response| {
+		response
 			.map_err(AidokuError::from)
 			.and_then(|response| Ok(checked(response)?.get_html()?))
 			.map_err(|error| failure = Some(error))
-			.ok(),
-		None => None,
-	};
+			.ok()
+	});
 	let types = settings::excluded_types();
 	let mut data = Vec::new();
 	for section in sections {
@@ -350,12 +349,9 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 	}
 	let kinds = data
 		.iter()
-		.filter_map(|(_, data)| {
-			if let Data::Titles(titles) = data {
-				Some(titles)
-			} else {
-				None
-			}
+		.filter_map(|(_, data)| match data {
+			Data::Titles(titles) => Some(titles),
+			_ => None,
 		})
 		.flatten()
 		.filter(|t| !t.manga_type.is_empty())
