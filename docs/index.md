@@ -36,6 +36,7 @@ _(none yet)_
 - [[mangathemesia-consumers]] -- KingOfShojo and Rokari on upstream's template unchanged
 - [[keyoapp-template]] -- the Keyoapp template: whole-catalogue search, generic home, which sites fit
 - [[mangaball]] -- MangaBall's API, content modes, language codes, home feeds, what is unverified
+- [[mkissa]] -- MKissa's GraphQL feeds, viewer and tag mapping, and the web view reader
 
 - [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing
 
