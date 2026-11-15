@@ -1,8 +1,8 @@
 use crate::{
+	api::SearchParams,
 	helpers::{credits, date, link_keys, tags},
 	home::{self, Section},
 	markdown,
-	models::SearchParams,
 	models::{ChapterItem, Title, Updates},
 };
 use aidoku::{

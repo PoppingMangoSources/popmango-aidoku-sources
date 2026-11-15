@@ -1,6 +1,6 @@
 use crate::{models::Slug, settings};
 use aidoku::{
-	ContentRating, Result,
+	ContentRating, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, borrow::Cow, collections::BTreeSet},
 	helpers::uri::{QueryParameters, decode_uri},
 	imports::{
@@ -153,6 +153,24 @@ pub fn rating(tags: &[String]) -> ContentRating {
 	}
 }
 
+pub fn status(value: &str) -> MangaStatus {
+	match value.to_ascii_lowercase().as_str() {
+		"ongoing" => MangaStatus::Ongoing,
+		"completed" => MangaStatus::Completed,
+		"cancelled" => MangaStatus::Cancelled,
+		"hiatus" => MangaStatus::Hiatus,
+		_ => MangaStatus::Unknown,
+	}
+}
+
+pub fn viewer(kind: &str) -> Viewer {
+	match kind {
+		"Novel" => Viewer::Unknown,
+		"Manhwa" | "Manhua" | "Webtoon" => Viewer::Webtoon,
+		_ => Viewer::RightToLeft,
+	}
+}
+
 pub fn credits(value: &str) -> Vec<String> {
 	let mut names = Vec::new();
 	for name in value
@@ -220,7 +238,6 @@ pub fn options(
 		.filter_map(|el| {
 			let id = el.attr("data-value").filter(|s| !s.is_empty())?;
 			let name = el.text()?;
-			let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
 			let name = if class == "year-btn" {
 				name
 			} else {

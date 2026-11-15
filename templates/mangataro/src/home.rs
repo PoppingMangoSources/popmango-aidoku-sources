@@ -2,9 +2,9 @@ use crate::{
 	Params,
 	helpers::{
 		checked, date, excluded_slugs, link_keys, novel_title, parse, rating, request, series_key,
-		site_headers,
+		site_headers, viewer,
 	},
-	models::{MangaFeed, PopularChapters, Title, Updates, viewer},
+	models::{MangaFeed, PopularChapters, Title, Updates},
 	settings,
 };
 use aidoku::{

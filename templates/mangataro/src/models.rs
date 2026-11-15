@@ -1,10 +1,13 @@
-use crate::helpers::{date, link_keys, novel_title, plain_text, series_key};
+use crate::{
+	helpers::{date, link_keys, novel_title, plain_text, series_key, status},
+	markdown,
+};
 use aidoku::{
-	Chapter, Manga, MangaStatus, MangaWithChapter, Page, PageContent, Result, Viewer,
+	AidokuError, Chapter, Manga, MangaWithChapter, Page, PageContent, Result,
 	alloc::{String, Vec, vec},
 	prelude::*,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Default, Deserialize)]
 pub struct Title {
@@ -54,7 +57,7 @@ impl Title {
 }
 
 impl TryFrom<Title> for Manga {
-	type Error = aidoku::AidokuError;
+	type Error = AidokuError;
 
 	fn try_from(value: Title) -> Result<Self> {
 		let key = value.key().ok_or(error!("Missing series key"))?.into();
@@ -74,24 +77,6 @@ impl TryFrom<Title> for Manga {
 			status: status(&value.status),
 			..Default::default()
 		})
-	}
-}
-
-pub fn status(value: &str) -> MangaStatus {
-	match value.to_ascii_lowercase().as_str() {
-		"ongoing" => MangaStatus::Ongoing,
-		"completed" => MangaStatus::Completed,
-		"cancelled" => MangaStatus::Cancelled,
-		"hiatus" => MangaStatus::Hiatus,
-		_ => MangaStatus::Unknown,
-	}
-}
-
-pub fn viewer(kind: &str) -> Viewer {
-	match kind {
-		"Novel" => Viewer::Unknown,
-		"Manhwa" | "Manhua" | "Webtoon" => Viewer::Webtoon,
-		_ => Viewer::RightToLeft,
 	}
 }
 
@@ -150,7 +135,7 @@ pub struct ChapterItem {
 }
 
 impl TryFrom<ChapterItem> for Chapter {
-	type Error = aidoku::AidokuError;
+	type Error = AidokuError;
 
 	fn try_from(value: ChapterItem) -> Result<Self> {
 		let key = link_keys(&value.url)
@@ -188,30 +173,8 @@ pub struct ChapterContent {
 	pub content: String,
 }
 
-#[derive(Serialize)]
-pub struct SearchParams {
-	pub page: i32,
-	pub search: String,
-	pub years: String,
-	pub genres: String,
-	pub types: String,
-	pub statuses: String,
-	pub sort: String,
-	#[serde(rename = "genreMatchMode")]
-	pub genre_match_mode: String,
-	#[serde(skip)]
-	pub excluded_tags: Vec<String>,
-	#[serde(skip)]
-	pub excluded_types: Vec<String>,
-}
-
-#[derive(Deserialize)]
-pub struct Slug {
-	pub slug: String,
-}
-
 impl TryFrom<ChapterContent> for Vec<Page> {
-	type Error = aidoku::AidokuError;
+	type Error = AidokuError;
 
 	fn try_from(content: ChapterContent) -> Result<Self> {
 		if !content.success {
@@ -224,7 +187,7 @@ impl TryFrom<ChapterContent> for Vec<Page> {
 			);
 		}
 		if content.chapter_type == "text" {
-			let text = crate::markdown::parse(&content.content)?;
+			let text = markdown::parse(&content.content)?;
 			if text.trim().is_empty() {
 				bail!("Chapter has no text");
 			}
@@ -245,4 +208,9 @@ impl TryFrom<ChapterContent> for Vec<Page> {
 			})
 			.collect())
 	}
+}
+
+#[derive(Deserialize)]
+pub struct Slug {
+	pub slug: String,
 }

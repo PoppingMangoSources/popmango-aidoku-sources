@@ -1,12 +1,12 @@
 use crate::{
 	Params,
+	api::SearchParams,
 	helpers::{
-		browse, credits, excluded_slugs, get, html, link_keys, novel_title, number_list, options,
-		parse, rating, request, site_headers, tags,
+		browse, credits, excluded_slugs, get, html, link_keys, novel_title, options, parse, rating,
+		request, status, tags, viewer,
 	},
 	home,
 	models::*,
-	settings,
 };
 use aidoku::{
 	Chapter, DeepLinkResult, Filter, FilterValue, HomeLayout, Manga, MangaPageResult,
@@ -17,83 +17,12 @@ use aidoku::{
 		string::PlainText,
 		uri::{QueryParameters, encode_uri_component},
 	},
-	imports::{
-		net::Request,
-		std::{current_date, parse_date_with_options, send_partial_result},
-	},
+	imports::std::{current_date, parse_date_with_options, send_partial_result},
 	prelude::*,
 };
 use chrono::{DateTime, Utc};
 
-const SORTS: [&str; 4] = ["post", "release", "title", "popular"];
 const PAGE_SIZE: usize = 24;
-
-impl SearchParams {
-	pub fn new(query: Option<String>, page: i32, filters: Vec<FilterValue>) -> Result<Self> {
-		let mut search = Self {
-			page,
-			search: query.unwrap_or_default(),
-			years: "[]".into(),
-			genres: "[]".into(),
-			types: "[]".into(),
-			statuses: "[]".into(),
-			sort: "post_desc".into(),
-			genre_match_mode: "any".into(),
-			excluded_tags: settings::excluded_tags(),
-			excluded_types: settings::excluded_types(),
-		};
-		// A tag or type the search includes overrides its exclusion in settings
-		let mut overrides = Vec::new();
-		for filter in filters {
-			match filter {
-				FilterValue::Sort {
-					index, ascending, ..
-				} => {
-					if let Some(sort) = SORTS.get(index as usize) {
-						search.sort = format!("{sort}_{}", if ascending { "asc" } else { "desc" });
-					}
-				}
-				FilterValue::MultiSelect {
-					id,
-					included,
-					excluded,
-				} => match id.as_str() {
-					"genre" => {
-						search.genres = number_list(&included)?;
-						search.excluded_tags.extend(excluded);
-						overrides.extend(included);
-					}
-					"type" => {
-						search.types = serde_json::to_string(&included)?;
-						search.excluded_types.extend(excluded);
-						overrides.extend(included);
-					}
-					"status" => search.statuses = serde_json::to_string(&included)?,
-					"year" => search.years = number_list(&included)?,
-					_ => {}
-				},
-				FilterValue::Select { id, value } if id == "genreMatchMode" => {
-					search.genre_match_mode = value
-				}
-				_ => {}
-			}
-		}
-		search.excluded_tags.retain(|id| !overrides.contains(id));
-		search
-			.excluded_types
-			.retain(|kind| !overrides.contains(kind));
-		Ok(search)
-	}
-
-	pub fn request(&self, base_url: &str) -> Result<Request> {
-		Ok(site_headers(
-			Request::post(format!("{base_url}/wp-json/manga/v1/load"))?,
-			base_url,
-		)
-		.header("Content-Type", "application/json")
-		.body(serde_json::to_vec(self)?))
-	}
-}
 
 pub trait Impl {
 	fn new() -> Self;
@@ -180,17 +109,17 @@ pub trait Impl {
 			("type", "Type", "type-btn", true),
 			("status", "Status", "status-btn", false),
 			("year", "Year", "year-btn", false),
-			("genre", "Genres and Tags", "genre-btn", true),
+			("genre", "Tags", "genre-btn", true),
 		] {
 			let (ids, options) = options(&document, class);
 			filters.push(
 				MultiSelectFilter {
 					id: id.into(),
 					title: Some(title.into()),
-					options,
-					ids: Some(ids),
 					is_genre: id == "genre",
 					uses_tag_style: id == "genre",
+					options,
+					ids: Some(ids),
 					can_exclude,
 					..Default::default()
 				}
@@ -205,7 +134,7 @@ pub trait Impl {
 		Ok(vec![
 			MultiSelectSetting {
 				key: "excludedTags".into(),
-				title: "Excluded Genres and Tags".into(),
+				title: "Excluded Tags".into(),
 				values,
 				titles: Some(titles),
 				default: Some(Vec::new()),
@@ -301,7 +230,8 @@ pub trait Impl {
 							"UTC",
 						)
 					}) {
-					timestamp = server_time; // Tokens expire quickly when the device clock is skewed.
+					// Tokens expire quickly when the device clock is skewed
+					timestamp = server_time;
 					response = fetch(timestamp)?;
 				}
 				let result: ChapterList = parse(response)?;

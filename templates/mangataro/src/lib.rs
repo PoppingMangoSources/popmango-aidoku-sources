@@ -7,6 +7,7 @@ use aidoku::{
 	imports::net::Request,
 };
 
+mod api;
 mod helpers;
 mod home;
 mod imp;
