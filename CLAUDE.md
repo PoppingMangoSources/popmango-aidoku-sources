@@ -561,6 +561,7 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | A template update dropped Elf Toon's `"breakingChangeVersion": 3` ("this should not be removed") | Rewriting a consumer's `source.json` keeps every existing `config` key; readers below that version still need the migration prompt. | F |
 | Chapter count as two text filters, "Chapters From" and "Chapters To" ("would it be better to use the range type filter, like the atsumaru source does") | A numeric bound pair is one `range` filter. Probe what the API does with 0: VineTheme answers `ch_max=0` with everything, so its range starts at 1. | R |
 | Valir authors such as The Convenient Empress Resigns joined by `/` | Split credits on every separator the sites use, `/` included, and test a real example from the reviewer. | R |
+| MangaTaro's comma split turned "Oda, Eiichiro" into two authors (our own miss, found checking #908's rule) | Read a page of real credits before choosing separators. Where the site writes names surname first with commas ("Kaneshiro, Muneyuki, Nomura, Yuusuke" is two people), a comma separates nothing reliably, so keep the credit whole as the site prints it. | R |
 
 ### From #843 (`en.atsumaru`)
 

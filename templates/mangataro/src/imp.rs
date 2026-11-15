@@ -2,8 +2,8 @@ use crate::{
 	Params,
 	api::SearchParams,
 	helpers::{
-		browse, credits, excluded_slugs, html, link_keys, novel_title, options, parse, rating,
-		request, status, tags, viewer,
+		browse, excluded_slugs, html, link_keys, novel_title, options, parse, rating, request,
+		status, tags, viewer,
 	},
 	home,
 	models::*,
@@ -20,6 +20,7 @@ use aidoku::{
 	imports::std::{current_date, parse_date_with_options, send_partial_result},
 	prelude::*,
 };
+// parse_date only parses, so chrono formats the hour the chapter token is built from
 use chrono::{DateTime, Utc};
 
 const PAGE_SIZE: usize = 24;
@@ -193,10 +194,12 @@ pub trait Impl {
 				.find(|m| matches!(m.kind.as_str(), "ComicSeries" | "Book"))
 				.ok_or(error!("Missing series metadata"))?;
 			manga.cover = metadata.image;
+			// The site writes names surname first ("Oda, Eiichiro"), so a credit stays whole
 			manga.authors = metadata
 				.author
-				.map(|c| credits(&c.name))
-				.filter(|names| !names.is_empty());
+				.map(|credit| String::from(credit.name.trim()))
+				.filter(|name| !name.is_empty())
+				.map(|name| vec![name]);
 			manga.status = status(&metadata.status);
 			let novel = metadata.kind == "Book";
 			manga.viewer = viewer(if novel { "Novel" } else { &metadata.genre });
@@ -233,12 +236,12 @@ pub trait Impl {
 						md5::compute(format!("{timestamp}mng_ch_{}", date.format("%Y%m%d%H")))
 					);
 					let mut query = QueryParameters::new();
-					query.push("manga_id", Some(&id));
-					query.push("offset", Some(&offset.to_string()));
-					query.push("limit", Some("500"));
-					query.push("order", Some("DESC"));
-					query.push("_t", Some(&token[..16]));
-					query.push("_ts", Some(&timestamp.to_string()));
+					query.push_encoded("manga_id", Some(&id));
+					query.push_encoded("offset", Some(&offset.to_string()));
+					query.push_encoded("limit", Some("500"));
+					query.push_encoded("order", Some("DESC"));
+					query.push_encoded("_t", Some(&token[..16]));
+					query.push_encoded("_ts", Some(&timestamp.to_string()));
 					Ok(
 						request(base_url, &format!("{base_url}/auth/manga-chapters?{query}"))?
 							.send()?,

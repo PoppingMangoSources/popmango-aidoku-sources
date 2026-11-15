@@ -363,3 +363,19 @@ fn review_home_order() {
 		]
 	);
 }
+
+#[aidoku_test]
+fn credits_stay_as_the_site_prints_them() {
+	let source = SourceImpl::new();
+	for (key, credit) in [
+		("one-piece", "Oda, Eiichiro"),
+		("blue-lock", "Kaneshiro, Muneyuki, Nomura, Yuusuke"),
+	] {
+		let manga = Manga {
+			key: key.into(),
+			..Default::default()
+		};
+		let authors = source.get_manga_update(manga, true, false).unwrap().authors;
+		assert_eq!(authors, Some(aidoku::alloc::vec![credit.into()]), "{key}");
+	}
+}

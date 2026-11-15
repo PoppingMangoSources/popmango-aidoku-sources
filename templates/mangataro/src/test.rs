@@ -1,6 +1,6 @@
 use crate::{
 	api::SearchParams,
-	helpers::{credits, date, link_keys, tags},
+	helpers::{date, link_keys, tags},
 	home::{self, Section},
 	markdown,
 	models::{ChapterItem, Title, Updates},
@@ -205,14 +205,13 @@ fn review_novel_rows_use_real_chapters_and_dates() {
 }
 
 #[aidoku_test]
-fn review_novel_paragraphs_emphasis_and_credits() {
+fn review_novel_paragraphs_emphasis_and_tags() {
 	assert_eq!(
 		markdown::parse("<p>One <strong>bold</strong> line.</p><p><em>Another</em><br>line.</p>")
 			.unwrap(),
 		"One **bold** line.\n\n*Another*\n\nline."
 	);
 	assert!(markdown::parse("<div></div>").unwrap().is_empty());
-	assert_eq!(credits("A, B & A, , C"), ["A", "B", "C"]);
 	let html = Html::parse("<div class=manga-page-wrapper><a href='/tag/z'>Z</a><a href='/tag/a'>A</a><a href='/tag/z'>Z</a></div><a href='/tag/comment'>Comment</a>").unwrap();
 	assert_eq!(tags(&html), ["A", "Z"]);
 }

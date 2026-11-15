@@ -167,20 +167,6 @@ pub fn viewer(kind: &str) -> Viewer {
 	}
 }
 
-pub fn credits(value: &str) -> Vec<String> {
-	let mut names = Vec::new();
-	for name in value
-		.split([',', '&'])
-		.map(str::trim)
-		.filter(|s| !s.is_empty())
-	{
-		if !names.iter().any(|s| s == name) {
-			names.push(name.into());
-		}
-	}
-	names
-}
-
 pub fn link_keys(url: &str) -> Option<(String, Option<String>)> {
 	let key = series_key(url)?;
 	let chapter = url.split("/read/").nth(1).and_then(|path| {
@@ -208,9 +194,9 @@ pub fn excluded_slugs<'a>(
 	for chunk in keys.chunks(100) {
 		let mut query = QueryParameters::new();
 		query.push("slug", Some(&chunk.join(",")));
-		query.push("tags", Some(&excluded.join(",")));
-		query.push("per_page", Some("100"));
-		query.push("_fields", Some("slug"));
+		query.push_encoded("tags", Some(&excluded.join(",")));
+		query.push_encoded("per_page", Some("100"));
+		query.push_encoded("_fields", Some("slug"));
 		requests.push(request(
 			base_url,
 			&format!("{base_url}/wp-json/wp/v2/manga?{query}"),
