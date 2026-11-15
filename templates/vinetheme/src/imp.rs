@@ -14,6 +14,10 @@ use aidoku::{
 	prelude::*,
 };
 
+const SORTS: [&str; 7] = [
+	"updated", "popular", "trending", "views", "rating", "longest", "newest",
+];
+
 pub trait Impl {
 	fn new() -> Self;
 
@@ -251,18 +255,11 @@ pub trait Impl {
 		}
 		for filter in filters {
 			match filter {
-				FilterValue::Sort { index, .. } => qs.set(
-					"sort",
-					Some(
-						[
-							"updated", "popular", "trending", "views", "rating", "longest",
-							"newest",
-						]
-						.get(*index as usize)
-						.copied()
-						.unwrap_or("updated"),
-					),
-				),
+				FilterValue::Sort { index, .. } => {
+					if let Some(sort) = SORTS.get(*index as usize) {
+						qs.set("sort", Some(sort));
+					}
+				}
 				FilterValue::Select { id, value } if id == "genre" => {
 					let facets: Facets = response(Request::get(format!(
 						"{}/api/series/facets",
@@ -295,8 +292,10 @@ pub trait Impl {
 					excluded,
 					..
 				} => {
-					qs.set(id, Some(&included.join(",")));
-					if matches!(id.as_str(), "genre" | "tag") {
+					if !included.is_empty() {
+						qs.set(id, Some(&included.join(",")));
+					}
+					if !excluded.is_empty() && matches!(id.as_str(), "genre" | "tag") {
 						qs.set(&format!("ex{id}"), Some(&excluded.join(",")));
 					}
 				}

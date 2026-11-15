@@ -16,27 +16,23 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 	let [home, trending, novels] = <[_; 3]>::try_from(Request::send_all(requests))
 		.map_err(|_| error!("Missing home responses"))?
 		.map(|response| checked(response?));
-	let home = home.and_then(|response| home::parse(&response.get_string()?, params));
-	let trending = trending.and_then(|response| home::parse_catalogue(response, params));
-	let novels = novels.and_then(|response| home::parse_catalogue(response, params));
-	for result in [
-		&home.as_ref().map(|_| ()),
-		&trending.as_ref().map(|_| ()),
-		&novels.as_ref().map(|_| ()),
-	] {
-		if let Err(error) = result {
-			println!("Home section failed: {error:?}");
-		}
-	}
 	let layout = layout(
-		home.unwrap_or_default(),
-		trending.unwrap_or_default(),
-		novels.unwrap_or_default(),
+		loaded(home.and_then(|response| home::parse(&response.get_string()?, params))),
+		loaded(trending.and_then(|response| home::parse_catalogue(response, params))),
+		loaded(novels.and_then(|response| home::parse_catalogue(response, params))),
 	);
 	if layout.components.is_empty() {
 		bail!("No home content found");
 	}
 	Ok(layout)
+}
+
+// A failed section drops out rather than failing the whole page
+fn loaded<T: Default>(result: Result<T>) -> T {
+	result.unwrap_or_else(|error| {
+		println!("Home section failed: {error:?}");
+		T::default()
+	})
 }
 
 pub(super) fn layout(mut home: HomeLayout, trending: Vec<Manga>, novels: Vec<Manga>) -> HomeLayout {

@@ -1,3 +1,4 @@
+use crate::settings;
 use aidoku::{
 	Manga, Result,
 	alloc::{String, Vec},
@@ -26,6 +27,14 @@ pub fn compact(manga: Manga) -> Manga {
 		status: manga.status,
 		content_rating: manga.content_rating,
 		..Default::default()
+	}
+}
+
+pub fn novel_title(title: String, novel: bool) -> String {
+	if novel && settings::label_novels() {
+		format!("{title} (Novel)")
+	} else {
+		title
 	}
 }
 

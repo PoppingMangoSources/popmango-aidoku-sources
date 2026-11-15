@@ -1,7 +1,7 @@
 use crate::{
 	Params,
-	helpers::{credit_names, link_keys, series_path, title_case},
-	markdown, settings,
+	helpers::{credit_names, link_keys, novel_title, series_path, title_case},
+	markdown,
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
@@ -209,11 +209,7 @@ impl TryFrom<Series> for Manga {
 		Ok(Manga {
 			url: Some(format!("/series/{}", series_path(&key))),
 			key,
-			title: if novel && settings::label_novels() {
-				format!("{title} (Novel)")
-			} else {
-				title.into()
-			},
+			title: novel_title(title.into(), novel),
 			cover: series.cover_image.filter(|s| !s.trim().is_empty()),
 			authors: credit_names(series.author),
 			artists: credit_names(series.artist),

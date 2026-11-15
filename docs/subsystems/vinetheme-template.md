@@ -114,7 +114,8 @@ Elf currently orders Popular Today, Latest Comic Updates, Top 10 Comics after it
 Drake has Latest Novel Updates, Latest Comic Updates, Popular Today, Top 10 in All.
 Valir and Kayn include New Series and Editor's Pick before those update/ranking rows.
 Diva's current DOM puts its Featured band before New Series; older browser snapshots showed
-a different order. Follow document order and current data attributes, not a hard-coded list.
+a different order. The shared parser follows document order; Valir, Diva and Kayn then apply
+the owner's row order with `home::reorder`, which drops any row it does not list.
 
 ## Evidence and gates
 

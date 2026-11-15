@@ -1,6 +1,6 @@
 use crate::{
 	Params,
-	helpers::{absolute_url, compact, link_keys, plain_text, resolve_urls},
+	helpers::{absolute_url, compact, link_keys, novel_title, plain_text, resolve_urls},
 	models::{Series, SeriesResponse},
 	rsc, settings,
 };
@@ -180,7 +180,7 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 					Some((_, chapters)) if !chapters.is_empty() => {
 						chapters.iter().find(|c| show_locked || !c.locked).cloned()
 					}
-					_ => from_card(&link, &key, params),
+					_ => from_card(&link, &key, params, show_locked),
 				};
 				if let Some(chapter) = chapter {
 					updates.push(MangaWithChapter {
@@ -256,17 +256,18 @@ fn from_link(link: &Element, key: &str, params: &Params) -> Option<Manga> {
 		.map(|path| absolute_url(&params.base_url, &path));
 	Some(Manga {
 		key: key.into(),
-		title: if key.starts_with("novel/") && settings::label_novels() {
-			format!("{title} (Novel)")
-		} else {
-			title
-		},
+		title: novel_title(title, key.starts_with("novel/")),
 		cover,
 		..Default::default()
 	})
 }
 
-fn from_card(link: &Element, manga_key: &str, params: &Params) -> Option<Chapter> {
+fn from_card(
+	link: &Element,
+	manga_key: &str,
+	params: &Params,
+	show_locked: bool,
+) -> Option<Chapter> {
 	let mut card = link.parent()?;
 	for _ in 0..3 {
 		if let Some(chapters) = card.select("a[href*='/chapter/']") {
@@ -274,11 +275,13 @@ fn from_card(link: &Element, manga_key: &str, params: &Params) -> Option<Chapter
 				let locked = link
 					.select_first("[data-art='M-ch-locked'], [data-art='M-coin']")
 					.is_some();
-				if locked && !settings::show_locked() {
+				if locked && !show_locked {
 					continue;
 				}
-				let href = link.attr("href")?;
-				let (series, Some(key)) = link_keys(&href)? else {
+				let Some(href) = link.attr("href") else {
+					continue;
+				};
+				let Some((series, Some(key))) = link_keys(&href) else {
 					continue;
 				};
 				if series != manga_key {
@@ -303,9 +306,9 @@ fn from_card(link: &Element, manga_key: &str, params: &Params) -> Option<Chapter
 	None
 }
 
-fn relative_date(value: &str) -> Option<i64> {
-	let digits: String = value.chars().take_while(char::is_ascii_digit).collect();
+pub(crate) fn relative_date(value: &str) -> Option<i64> {
 	let value = value.trim();
+	let digits: String = value.chars().take_while(char::is_ascii_digit).collect();
 	let amount: i64 = digits.parse().ok()?;
 	let scale = match value.get(digits.len()..)? {
 		"m" => 60,
@@ -314,7 +317,7 @@ fn relative_date(value: &str) -> Option<i64> {
 		"w" => 604800,
 		_ => return None,
 	};
-	Some(current_date() as i64 - amount * scale)
+	Some(current_date() - amount * scale)
 }
 
 pub fn parse_catalogue(response: Response, params: &Params) -> Result<Vec<Manga>> {

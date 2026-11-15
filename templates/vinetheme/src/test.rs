@@ -10,6 +10,14 @@ use aidoku::{
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
+fn review_relative_dates_allow_surrounding_space() {
+	let now = aidoku::imports::std::current_date();
+	let hours = crate::home::relative_date(" 6h ").unwrap();
+	assert!((now - hours - 6 * 3600).abs() < 5);
+	assert!(crate::home::relative_date("soon").is_none());
+}
+
+#[aidoku_test]
 fn review_reader_skips_chapter_metadata() {
 	let body = "1:[\"$\",{\"chapter\":{\"id\":\"entry\",\"number\":1}}]\n2:[\"$\",{\"chapter\":{\"content\":\"\",\"pages\":[{\"imageUrl\":\"/page.webp\"}]}}]";
 	let reader: ChapterPages = rsc::extract(body, &["pages", "content"]).unwrap();
