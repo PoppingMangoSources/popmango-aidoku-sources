@@ -16,10 +16,10 @@ impl Impl for MangaTaroSource {
 			base_url: BASE_URL.into(),
 			sections: &[
 				Featured,
+				Recent,
 				Updates,
 				Popular,
 				Ranking,
-				Recent,
 				PopularChapters,
 				Followed,
 				LatestNovels,

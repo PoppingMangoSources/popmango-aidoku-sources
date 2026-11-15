@@ -70,9 +70,10 @@ fn details_chapters_and_key_only_reader() {
 fn home_has_ranking_and_dated_updates() {
 	let home = SourceImpl::new().get_home().unwrap();
 	assert!(home.components.len() >= 7);
-	assert_eq!(home.components[1].title.as_deref(), Some("Latest Updates"));
+	assert_eq!(home.components[1].title.as_deref(), Some("Recently Added"));
+	assert_eq!(home.components[2].title.as_deref(), Some("Latest Updates"));
 	assert_eq!(
-		home.components[2].title.as_deref(),
+		home.components[3].title.as_deref(),
 		Some("Popular Manga (This Week)")
 	);
 	assert!(
@@ -351,10 +352,10 @@ fn review_home_order() {
 		titles,
 		[
 			None,
+			Some("Recently Added"),
 			Some("Latest Updates"),
 			Some("Popular Manga (This Week)"),
 			Some("Most Followed New Manga (1 Month)"),
-			Some("Recently Added"),
 			Some("Popular Chapters (This Week)"),
 			Some("Most Followed Manga (This Week)"),
 			Some("Latest Novels"),
