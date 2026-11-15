@@ -9,17 +9,17 @@ use aidoku::{
 };
 use serde_json::{Map, Value, json};
 
+mod graphql;
 mod helpers;
 mod home;
 mod models;
-mod network;
 mod settings;
 mod webview;
 
+use graphql::*;
 use helpers::{cover_url, display_title, has_next_page, parse_chapters};
 use home::{Feed, browse_request};
 use models::*;
-use network::{fetch, parse};
 
 const SORTS: [&str; 6] = [
 	"Top",
@@ -143,7 +143,7 @@ impl Source for Mkissa {
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		Ok(webview::page_urls_via_webview(&manga.key, &chapter.key)?
+		Ok(webview::page_urls(&manga.key, &chapter.key)?
 			.into_iter()
 			.map(|url| Page {
 				content: PageContent::url(url),

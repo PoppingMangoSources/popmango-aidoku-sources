@@ -167,6 +167,30 @@ fn review_untitled_cards_are_dropped() {
 }
 
 #[aidoku_test]
+fn review_chapters_match_episode_notes() {
+	let data: ChaptersData = serde_json::from_value(json!({
+		"manga": { "availableChaptersDetail": { "sub": ["12.5", "12", "3"] } },
+		"episodeInfos": [
+			{ "episodeIdNum": 3, "notes": "Ep 3" },
+			{ "episodeIdNum": 12, "notes": "[S2] ep. 12 - The Return" },
+			{ "episodeIdNum": "12.5", "notes": "EP12.5 - Extra &amp; Notes" },
+		],
+	}))
+	.unwrap();
+	let chapters = parse_chapters(data, "x");
+	let titles: Vec<_> = chapters
+		.iter()
+		.map(|chapter| chapter.title.as_deref())
+		.collect();
+	assert_eq!(titles, [Some("Extra & Notes"), Some("The Return"), None]);
+	assert_eq!(chapters[1].chapter_number, Some(12.));
+	assert_eq!(
+		chapters[0].url.as_deref(),
+		Some("https://mkissa.to/manga/x/chapter-12.5-sub")
+	);
+}
+
+#[aidoku_test]
 fn review_missing_rows_drop_out() {
 	let rows = layout(HomeData {
 		popular: None,

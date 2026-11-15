@@ -1,4 +1,4 @@
-use crate::models::*;
+use crate::{helpers::parse_page_urls, models::*, settings};
 use aidoku::{
 	Result,
 	alloc::{String, Vec},
@@ -73,9 +73,7 @@ fn resolve_parser_key_assignment(script: &str, target: &str) -> Option<String> {
 	None
 }
 
-/// Finds the generated window property that the reader uses to pin an untouched
-/// `JSON.parse`. The key may be written directly or assembled from string
-/// literals in a nearby variable assignment.
+// The reader pins an untouched JSON.parse under a generated window key, written whole or built from literals
 fn pinned_parser_key(html: &str) -> Option<String> {
 	let mut offset = 0;
 	while let Some(relative) = html[offset..].find("defineProperty") {
@@ -122,13 +120,7 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 	None
 }
 
-/// Hooks the reader's own decode and drives the app to the chapter.
-///
-/// The manga page is loaded first, then a link to the chapter is clicked so the
-/// site's router navigates to the reader client-side and fetches its pages. The
-/// generated pinned-parser key is claimed before the site's scripts run, while
-/// `chapterPages` is still captured from `Response.json` / `JSON.parse` as a
-/// fallback.
+// Captures the decoded `chapterPages`, then clicks through to the chapter so the site's router fetches it
 fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 	let chapter_path = serde_json::to_string(chapter_path).unwrap_or_else(|_| String::from("\"\""));
 	let pin = pinned_key
@@ -222,23 +214,11 @@ fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 	)
 }
 
-/// Loads a chapter through the reader and returns its page urls.
-pub fn page_urls_via_webview(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
-	let pages = collect_pages(manga_id, chapter)?;
-	let quality = crate::settings::image_quality();
-	let urls = crate::helpers::parse_page_urls(&pages, &quality);
-	if urls.is_empty() {
-		bail!("The reader did not produce any pages");
-	}
-	Ok(urls)
-}
-
-fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
+pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
 	let manga_url = format!("{BASE_URL}/manga/{manga_id}");
 	let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
-	// Fetch the manga page over an ordinary request, where Aidoku clears Cloudflare (silently, or
-	// through its captcha sheet) and keeps the clearance cookie
+	// A plain request lets the app clear Cloudflare and keep its cookie
 	let response = Request::get(&manga_url)?
 		.header("Referer", &format!("{BASE_URL}/"))
 		.header("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
@@ -252,9 +232,7 @@ fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
 	let html = response.get_string()?;
 	let parser_key = pinned_parser_key(&html);
 
-	// Load the cleared manga page, then navigate to the chapter client-side. The
-	// site's router fetches the pages from its api without another page load, so
-	// Cloudflare is not asked a second time.
+	// Navigating client-side from the cleared page avoids a second Cloudflare check
 	let web_view = WebView::new();
 	let mut user_script =
 		WebViewUserScript::new(capture_script(&chapter_path, parser_key.as_deref()));
@@ -263,7 +241,7 @@ fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
 	web_view.add_user_script(user_script)?;
 	web_view.load_html_blocking(&html, Some(&manga_url))?;
 
-	let mut result = String::new();
+	let mut result = None;
 	let mut challenged = 0;
 	for _ in 0..30 {
 		if let Ok(value) = web_view.eval(&format!(
@@ -282,33 +260,23 @@ fn collect_pages(manga_id: &str, chapter: &str) -> Result<ChapterPages> {
 					bail!("Open the series in the web view, solve the site's check, then retry");
 				}
 			} else if value != WAIT_TOKEN && !value.is_empty() {
-				result = value;
+				result = Some(value);
 				break;
 			}
 		}
 		sleep(1);
 	}
-	if result == WAIT_TOKEN || result.is_empty() {
+	let result = result.ok_or(error!("The reader did not produce any pages"))?;
+
+	// The page hands back the text it parsed, not a response body
+	let payload: ReaderPayload = serde_json::from_str(&result)?;
+	let urls = payload
+		.chapter_pages
+		.or_else(|| payload.data.and_then(|data| data.chapter_pages))
+		.map(|pages| parse_page_urls(&pages, &settings::image_quality()))
+		.unwrap_or_default();
+	if urls.is_empty() {
 		bail!("The reader did not produce any pages");
 	}
-
-	let parsed: ApiPagesResponse =
-		serde_json::from_str(&result).or_else(|_| bail!("Failed to read the reader pages"))?;
-	parsed
-		.chapter_pages
-		.or_else(|| parsed.data.and_then(|data| data.chapter_pages))
-		.ok_or_else(|| error!("The reader did not produce any pages"))
-}
-
-#[derive(serde::Deserialize)]
-struct ApiPagesData {
-	#[serde(rename = "chapterPages")]
-	chapter_pages: Option<ChapterPages>,
-}
-
-#[derive(serde::Deserialize)]
-struct ApiPagesResponse {
-	#[serde(rename = "chapterPages")]
-	chapter_pages: Option<ChapterPages>,
-	data: Option<ApiPagesData>,
+	Ok(urls)
 }

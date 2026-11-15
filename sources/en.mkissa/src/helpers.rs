@@ -1,7 +1,7 @@
 use crate::models::*;
 use aidoku::{
 	Chapter, ContentRating, MangaStatus, Result, Viewer,
-	alloc::{String, Vec, string::ToString},
+	alloc::{String, Vec},
 	imports::std::parse_date,
 	prelude::*,
 };
@@ -74,11 +74,11 @@ pub fn viewer(kind: Option<&str>, country: Option<&str>, tags: &[String]) -> Vie
 // Thumbnails are paths on the image host, or full urls for covers taken from elsewhere
 pub fn cover_url(thumbnail: Option<&str>) -> Option<String> {
 	let thumbnail = thumbnail.map(str::trim).filter(|path| !path.is_empty())?;
-	if thumbnail.starts_with("http://") || thumbnail.starts_with("https://") {
+	if is_absolute(thumbnail) {
 		Some(thumbnail.into())
 	} else {
 		Some(format!(
-			"{THUMBNAIL_CDN}{}?w=250",
+			"{CDN_URL}/aln.youtube-anime.com/{}?w=250",
 			thumbnail.trim_start_matches('/')
 		))
 	}
@@ -188,11 +188,12 @@ pub fn has_next_page(page: i32, total: Option<i32>) -> bool {
 	total.is_some_and(|total| page * PAGE_SIZE < total)
 }
 
-fn value_to_string(value: &serde_json::Value) -> Option<String> {
+// Episode numbers arrive as numbers or strings
+fn is_episode(value: &serde_json::Value, number: &str) -> bool {
 	match value {
-		serde_json::Value::String(s) => Some(s.clone()),
-		serde_json::Value::Number(n) => Some(n.to_string()),
-		_ => None,
+		serde_json::Value::String(value) => value == number,
+		serde_json::Value::Number(value) => value.as_f64() == number.parse().ok(),
+		_ => false,
 	}
 }
 
@@ -214,7 +215,10 @@ fn chapter_title(notes: &str) -> Option<String> {
 }
 
 fn strip_ep_prefix(input: &str) -> &str {
-	if !input.to_lowercase().starts_with("ep") {
+	if !input
+		.get(..2)
+		.is_some_and(|prefix| prefix.eq_ignore_ascii_case("ep"))
+	{
 		return input;
 	}
 	let rest = input[2..].trim_start_matches('.').trim_start();
@@ -241,7 +245,7 @@ pub fn parse_chapters(data: ChaptersData, manga_key: &str) -> Vec<Chapter> {
 		.map(|number| {
 			let info = infos
 				.iter()
-				.find(|info| value_to_string(&info.episode_id_num).as_deref() == Some(&number));
+				.find(|info| is_episode(&info.episode_id_num, &number));
 			Chapter {
 				title: info
 					.and_then(|info| info.notes.as_deref())
@@ -283,7 +287,7 @@ pub fn parse_page_urls(pages: &ChapterPages, quality: &str) -> Vec<String> {
 	let image_host = match edge.image_host() {
 		Some(server) if is_absolute(server) => format!("{}/", server.trim_end_matches('/')),
 		Some(server) => format!("https://{}/", server.trim_end_matches('/')),
-		None => DEFAULT_IMAGE_SERVER.into(),
+		None => "https://ytimgf.youtube-anime.com/".into(),
 	};
 	edge.picture_urls
 		.iter()

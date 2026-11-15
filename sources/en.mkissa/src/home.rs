@@ -1,7 +1,7 @@
 use crate::{
+	graphql::*,
 	helpers::{date_from_parts, has_next_page, season_and_year},
 	models::*,
-	network::{parse, request},
 	settings,
 };
 use aidoku::{
@@ -27,17 +27,18 @@ pub enum Feed {
 	Adaptations,
 }
 
+const FEEDS: [Feed; 6] = [
+	Feed::Latest,
+	Feed::Year,
+	Feed::Trending,
+	Feed::Saved,
+	Feed::Boosted,
+	Feed::Adaptations,
+];
+
 impl Feed {
 	pub fn from_id(id: &str) -> Option<Self> {
-		Some(match id {
-			"latest" => Self::Latest,
-			"manga_year" => Self::Year,
-			"trending" => Self::Trending,
-			"most_saved" => Self::Saved,
-			"most_boosted" => Self::Boosted,
-			"adaptations" => Self::Adaptations,
-			_ => return None,
-		})
+		FEEDS.into_iter().find(|feed| feed.id() == id)
 	}
 
 	fn id(self) -> &'static str {

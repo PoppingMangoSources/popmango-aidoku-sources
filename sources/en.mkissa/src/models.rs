@@ -12,24 +12,7 @@ pub const BASE_URL: &str = "https://mkissa.to";
 pub const API_URL: &str = "https://api.mkissa.net/api";
 pub const CDN_URL: &str = "https://wp.youtube-anime.com";
 
-pub const THUMBNAIL_CDN: &str = "https://wp.youtube-anime.com/aln.youtube-anime.com/";
-pub const DEFAULT_IMAGE_SERVER: &str = "https://ytimgf.youtube-anime.com/";
-
 pub const PAGE_SIZE: i32 = 20;
-
-pub const POPULAR_QUERY: &str = "query($type: VaildPopularTypeEnumType!, $size: Int!, $page: Int, $dateRange: Int, $allowAdult: Boolean, $allowUnknown: Boolean) { queryPopular(type: $type, size: $size, dateRange: $dateRange, page: $page, allowAdult: $allowAdult, allowUnknown: $allowUnknown) { total recommendations { anyCard { _id name englishName thumbnail isAdult description genres status } } } }";
-
-pub const TRENDING_QUERY: &str = "query($pageSearch: queryPageInput!) { queryLatestPageStatus(pageSearch: $pageSearch) { total recommendations { anyCard { _id name englishName thumbnail isAdult } } } }";
-
-pub const RANDOM_QUERY: &str = "query($format: String!, $allowAdult: Boolean, $denyEcchi: Boolean, $slot: Int) { queryRandomRecommendation(format: $format, allowAdult: $allowAdult, denyEcchi: $denyEcchi, slot: $slot) { _id name englishName thumbnail isAdult } }";
-
-pub const MANGAS_QUERY: &str = "query($search: SearchInput, $limit: Int, $page: Int, $translationType: VaildTranslationTypeMangaEnumType, $countryOrigin: VaildCountryOriginEnumType) { mangas(search: $search, limit: $limit, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) { pageInfo { total } edges { _id name englishName thumbnail isAdult lastChapterInfo lastChapterDate } } }";
-
-pub const ADAPTATIONS_QUERY: &str = "query($page: Int, $limit: Int, $translationType: VaildTranslationTypeMangaEnumType, $allowAdult: Boolean, $allowUnknown: Boolean, $denyEcchi: Boolean) { seasonAdaptationMangas(page: $page, limit: $limit, translationType: $translationType, allowAdult: $allowAdult, allowUnknown: $allowUnknown, denyEcchi: $denyEcchi) { pageInfo { total } edges { _id name englishName thumbnail isAdult } } }";
-
-pub const DETAILS_QUERY: &str = "query($id: String!) { manga(_id: $id) { _id name englishName thumbnail isAdult description authors genres tags status type countryOfOrigin } }";
-
-pub const CHAPTERS_QUERY: &str = "query($id: String!, $showId: String!) { manga(_id: $id) { _id availableChaptersDetail } episodeInfos(showId: $showId, episodeNumStart: 0, episodeNumEnd: 9999) { episodeIdNum notes uploadDates } }";
 
 #[derive(Deserialize)]
 pub struct GraphQLResponse<T> {
@@ -82,16 +65,19 @@ pub struct MangaCard {
 
 impl MangaCard {
 	// The big scroller shows what the popular feed already carries
-	pub fn into_featured(self) -> Result<Manga> {
-		let tags = tag_names(self.genres.clone().unwrap_or_default());
+	pub fn into_featured(mut self) -> Result<Manga> {
+		let tags = tag_names(self.genres.take().unwrap_or_default());
+		let description = self
+			.description
+			.take()
+			.map(|description| strip_html(&description))
+			.filter(|description| !description.is_empty());
+		let status = parse_status(self.status.as_deref());
+		let content_rating = content_rating(&tags, self.is_adult);
 		Ok(Manga {
-			description: self
-				.description
-				.as_deref()
-				.map(strip_html)
-				.filter(|description| !description.is_empty()),
-			status: parse_status(self.status.as_deref()),
-			content_rating: content_rating(&tags, self.is_adult),
+			description,
+			status,
+			content_rating,
 			tags: (!tags.is_empty()).then_some(tags),
 			..Manga::try_from(self)?
 		})
@@ -293,4 +279,18 @@ impl ChapterPageEdge {
 #[derive(Deserialize)]
 pub struct ChapterPages {
 	pub edges: Vec<ChapterPageEdge>,
+}
+
+// The reader's payload, captured with or without its GraphQL `data` wrapper
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderPayload {
+	pub chapter_pages: Option<ChapterPages>,
+	pub data: Option<ReaderData>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderData {
+	pub chapter_pages: Option<ChapterPages>,
 }
