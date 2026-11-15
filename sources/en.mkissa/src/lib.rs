@@ -10,6 +10,7 @@ use aidoku::{
 	},
 	prelude::*,
 };
+use core::cell::RefCell;
 use serde_json::{Map, Value, json};
 
 mod graphql;
@@ -33,11 +34,15 @@ const SORTS: [&str; 6] = [
 	"Popular",
 ];
 
-struct MKissa;
+struct MKissa {
+	reader: RefCell<reader::Reader>,
+}
 
 impl Source for MKissa {
 	fn new() -> Self {
-		Self
+		Self {
+			reader: RefCell::new(reader::Reader::default()),
+		}
 	}
 
 	fn get_search_manga_list(
@@ -178,7 +183,10 @@ impl Source for MKissa {
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		Ok(reader::page_urls(&manga.key, &chapter.key)?
+		Ok(self
+			.reader
+			.borrow_mut()
+			.page_urls(&manga.key, &chapter.key)?
 			.into_iter()
 			.map(|url| Page {
 				content: PageContent::url(url),

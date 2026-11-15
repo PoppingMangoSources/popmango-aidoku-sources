@@ -62,12 +62,18 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > so the reader opens the series page and routes to the chapter inside it
 > (`sources/en.mkissa/src/reader.rs`).
 
-> ⚠️ The reader is v31's again, at the owner's request. v32 to v35 tried a content rule list
-> (images, stylesheets, fonts, media, analytics), `WebView::eval_async`, and one series page kept
-> in a `RefCell` across chapters. Chromium showed every one working (about 1 s per later chapter),
-> but in the app every chapter failed with `JsError(MissingResult)`, v35 included with plain `eval`
-> polling, ending in the check message (owner's logs, 2026-11-15). Which part breaks the app was
-> not isolated; change one thing at a time and try it in the app before building on it.
+> ⚠️ v32 to v35 tried a content rule list (images, stylesheets, fonts, media, analytics),
+> `WebView::eval_async`, and a kept series page together. Chromium passed all of it, but in the app
+> every chapter failed with `JsError(MissingResult)` and then the check message (owner's logs,
+> 2026-11-15), so v36 restored v31. Those versions also returned any failed `eval` as an error,
+> while v31 skips one that fails while the page is busy; `wait_for_pages` keeps v31's loop.
+
+> ⚠️ v37 adds only the kept page to v31: `Reader` holds the last series page in a `RefCell`, as
+> merged Comix keeps its web view, and `open` routes it to the next chapter of any series
+> (Chromium: about 1 s per later chapter instead of 3.7-5.6 s). The site answers a chapter that
+> page already showed from its own cache, which parses nothing, so a repeat chapter or a failed
+> reuse loads a fresh page as v31 did. A capture counts only when its `chapterString` is the
+> chapter asked for. Try one change per release in the app.
 
 Home rows, in the order the owner set: Popular Weekly (big scroller from the popular feed's own
 description, genres and status), Manga {year}, Trending, Random, Latest Updates (newest chapter
