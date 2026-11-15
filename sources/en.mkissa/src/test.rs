@@ -1,6 +1,6 @@
 use super::*;
 use aidoku::{
-	HomeComponentValue, LinkValue, MangaStatus, Viewer,
+	FilterKind, HomeComponentValue, LinkValue, MangaStatus, Viewer,
 	alloc::{String, vec},
 };
 use aidoku_test::aidoku_test;
@@ -325,6 +325,122 @@ fn genre_filter_narrows_results() {
 			.iter()
 			.any(|tag| tag == "Sports")
 	);
+}
+
+fn search(filters: Vec<FilterValue>) -> MangaPageResult {
+	Mkissa::new()
+		.get_search_manga_list(None, 1, filters)
+		.unwrap()
+}
+
+fn select(id: &str, value: &str) -> FilterValue {
+	FilterValue::Select {
+		id: id.into(),
+		value: value.into(),
+	}
+}
+
+fn keys(result: &MangaPageResult) -> Vec<String> {
+	result
+		.entries
+		.iter()
+		.map(|manga| manga.key.clone())
+		.collect()
+}
+
+#[aidoku_test]
+fn review_filters_follow_the_site_panel() {
+	let filters: Value = serde_json::from_str(include_str!("../res/filters.json")).unwrap();
+	let filter = |id: &str| {
+		filters
+			.as_array()
+			.unwrap()
+			.iter()
+			.find(|filter| filter["id"] == id)
+			.unwrap()
+			.clone()
+	};
+	// Genres and tags only include on the site
+	assert_eq!(filter("genres")["canExclude"], false);
+	let genres = filter("genres")["options"].clone();
+	assert_eq!(genres[45], "Yuri");
+	assert_eq!(genres[46], "Suspense");
+	assert_eq!(filter("chapters")["ids"][8], "2001");
+	assert_eq!(
+		filter("season")["options"],
+		json!(["Any", "Winter", "Spring", "Summer", "Fall"])
+	);
+}
+
+#[aidoku_test]
+fn review_update_days_are_whole_days() {
+	let (today, today_end) = day_range(0, NOW).unwrap();
+	let (yesterday, yesterday_end) = day_range(1, NOW).unwrap();
+	assert!(today <= NOW && NOW <= today_end);
+	assert_eq!(today_end - today, 86399);
+	assert_eq!(today - yesterday, 86400);
+	assert_eq!(yesterday_end + 1, today);
+}
+
+#[aidoku_test]
+fn site_filters_narrow_results() {
+	let unfiltered = keys(&search(Vec::new()));
+	let long = search(vec![select("chapters", "2001")]);
+	assert!(!long.entries.is_empty() && !long.has_next_page);
+	let short = search(vec![select("chapters", "1-10")]);
+	assert_ne!(keys(&short), unfiltered);
+	let season = search(vec![select("season", "Fall")]);
+	assert_ne!(keys(&season), unfiltered);
+	let dated = search(vec![
+		select("season", "Spring"),
+		FilterValue::Text {
+			id: "year".into(),
+			value: "2015".into(),
+		},
+	]);
+	assert_ne!(keys(&dated), keys(&season));
+	assert!(!search(vec![select("day", "1")]).entries.is_empty());
+	assert!(
+		Mkissa::new()
+			.get_search_manga_list(
+				None,
+				1,
+				vec![FilterValue::Text {
+					id: "year".into(),
+					value: "soon".into(),
+				}],
+			)
+			.is_err()
+	);
+}
+
+#[aidoku_test]
+fn trending_tags_filter_and_tag_taps_search_by_slug() {
+	let filters = Mkissa::new().get_dynamic_filters().unwrap();
+	let FilterKind::MultiSelect {
+		ids: Some(ids),
+		options,
+		can_exclude,
+		..
+	} = &filters[0].kind
+	else {
+		panic!("Expected the tags multi-select")
+	};
+	assert!(!options.is_empty() && !*can_exclude);
+	let tagged = search(vec![FilterValue::MultiSelect {
+		id: "tags".into(),
+		included: vec![ids[0].clone().into_owned()],
+		excluded: Vec::new(),
+	}]);
+	assert!(!tagged.entries.is_empty());
+	let tapped = search(vec![select("genre", "Long Strip")]);
+	assert!(!tapped.entries.is_empty());
+	let none = search(vec![FilterValue::MultiSelect {
+		id: "tags".into(),
+		included: vec!["theme:zzzz_none".into()],
+		excluded: Vec::new(),
+	}]);
+	assert!(none.entries.is_empty());
 }
 
 #[aidoku_test]

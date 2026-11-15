@@ -1,10 +1,13 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, ImageRequestProvider,
-	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result,
-	Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
+	HomeLayout, ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult,
+	MultiSelectFilter, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, vec},
-	imports::{net::Request, std::send_partial_result},
+	imports::{
+		net::Request,
+		std::{current_date, send_partial_result},
+	},
 	prelude::*,
 };
 use serde_json::{Map, Value, json};
@@ -17,7 +20,9 @@ mod settings;
 mod webview;
 
 use graphql::*;
-use helpers::{cover_url, display_title, has_next_page, parse_chapters};
+use helpers::{
+	cover_url, day_range, display_title, has_next_page, parse_chapters, season_and_year,
+};
 use home::{Feed, browse_request};
 use models::*;
 
@@ -68,8 +73,8 @@ impl Source for Mkissa {
 
 		let mut search = Map::new();
 		let mut country = String::from("ALL");
-		let mut included: Vec<String> = Vec::new();
-		let mut excluded: Vec<String> = Vec::new();
+		let mut genres: Vec<String> = Vec::new();
+		let mut tags: Vec<String> = Vec::new();
 		if let Some(query) = query {
 			search.insert("query".into(), query.into());
 		}
@@ -80,25 +85,58 @@ impl Source for Mkissa {
 						search.insert("sortBy".into(), (*sort).into());
 					}
 				}
-				FilterValue::Select { id, value } if id == "country" => country = value,
-				// A tapped tag sends its name
-				FilterValue::Select { id, value } if id == "genre" => included.push(value),
-				FilterValue::MultiSelect {
-					included: chosen,
-					excluded: left_out,
-					..
-				} => {
-					included.extend(chosen);
-					excluded.extend(left_out);
+				FilterValue::Select { id, value } => match id.as_str() {
+					"country" => country = value,
+					// A tapped tag sends its display name; theme tags search by slug
+					"genre" => match tag_slug(&value)? {
+						Some(slug) => tags.push(slug),
+						None => genres.push(value),
+					},
+					"day" => {
+						let (start, end) = value
+							.parse()
+							.ok()
+							.and_then(|days_ago| day_range(days_ago, current_date()))
+							.ok_or(error!("Unknown update day"))?;
+						search.insert("dateRangeStart".into(), start.into());
+						search.insert("dateRangeEnd".into(), end.into());
+					}
+					"season" => {
+						search.insert("season".into(), value.into());
+						// The site's season picker always carries a year, the current one by default
+						search
+							.entry("year")
+							.or_insert_with(|| season_and_year(current_date()).1.into());
+					}
+					"chapters" => {
+						// Ranges read `11-50`; the last, `2001`, has no end
+						let (start, end) = value.split_once('-').unwrap_or((&value, ""));
+						for (key, bound) in [("epRangeStart", start), ("epRangeEnd", end)] {
+							if let Ok(bound) = bound.parse::<i32>() {
+								search.insert(key.into(), bound.into());
+							}
+						}
+					}
+					_ => {}
+				},
+				FilterValue::Text { id, value } if id == "year" => {
+					let year: i32 = value.trim().parse().map_err(|_| error!("Enter a year"))?;
+					search.insert("year".into(), year.into());
+				}
+				FilterValue::MultiSelect { id, included, .. } if id == "tags" => {
+					tags.extend(included)
+				}
+				FilterValue::MultiSelect { id, included, .. } if id == "genres" => {
+					genres.extend(included)
 				}
 				_ => {}
 			}
 		}
-		if !included.is_empty() {
-			search.insert("genres".into(), included.into());
+		if !genres.is_empty() {
+			search.insert("genres".into(), genres.into());
 		}
-		if !excluded.is_empty() {
-			search.insert("excludeGenres".into(), excluded.into());
+		if !tags.is_empty() {
+			search.insert("tags".into(), tags.into());
 		}
 		let data: SearchData =
 			parse(browse_request(Value::Object(search), page, &country)?.send()?)?;
@@ -159,6 +197,34 @@ impl Home for Mkissa {
 	}
 }
 
+impl DynamicFilters for Mkissa {
+	// The site's Tags section offers whichever tags are trending
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		let data: TagsData = fetch(
+			TAGS_QUERY,
+			json!({ "search": { "queryType": "Home", "format": "manga" }, "limit": 16 }),
+		)?;
+		let (ids, options) = data
+			.query_tags
+			.edges
+			.into_iter()
+			.map(|tag| (tag.slug.into(), tag.name.into()))
+			.unzip();
+		Ok(vec![
+			MultiSelectFilter {
+				id: "tags".into(),
+				title: Some("Tags".into()),
+				options,
+				ids: Some(ids),
+				uses_tag_style: true,
+				hide_from_header: Some(true),
+				..Default::default()
+			}
+			.into(),
+		])
+	}
+}
+
 impl ListingProvider for Mkissa {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		Feed::from_id(&listing.id)
@@ -208,6 +274,7 @@ impl DeepLinkHandler for Mkissa {
 register_source!(
 	Mkissa,
 	Home,
+	DynamicFilters,
 	ListingProvider,
 	ImageRequestProvider,
 	DeepLinkHandler

@@ -1,7 +1,10 @@
-use crate::models::{API_URL, BASE_URL, GraphQLResponse};
+use crate::{
+	helpers::tag_name,
+	models::{API_URL, BASE_URL, GraphQLResponse, TagsData},
+};
 use aidoku::{
 	Result,
-	alloc::{Vec, string::ToString},
+	alloc::{String, Vec, string::ToString},
 	imports::net::{Request, Response},
 	prelude::*,
 };
@@ -67,6 +70,12 @@ query($id: String!, $showId: String!) {
 }
 "#;
 
+pub const TAGS_QUERY: &str = r#"
+query($search: TagSearchInput, $limit: Int) {
+  queryTags(search: $search, limit: $limit, page: 1) { edges { name slug } }
+}
+"#;
+
 pub fn request(query: &str, variables: Value) -> Result<Request> {
 	let mut body = json!({ "query": query.trim() });
 	body["variables"] = variables;
@@ -94,4 +103,18 @@ pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 
 pub fn fetch<T: DeserializeOwned>(query: &str, variables: Value) -> Result<T> {
 	parse(request(query, variables)?.send()?)
+}
+
+// Details show tag slugs as names, so a tapped name is matched back to its slug
+pub fn tag_slug(name: &str) -> Result<Option<String>> {
+	let data: TagsData = fetch(
+		TAGS_QUERY,
+		json!({ "search": { "query": name, "format": "manga" }, "limit": 5 }),
+	)?;
+	Ok(data
+		.query_tags
+		.edges
+		.into_iter()
+		.find(|tag| tag_name(&tag.slug).eq_ignore_ascii_case(name))
+		.map(|tag| tag.slug))
 }

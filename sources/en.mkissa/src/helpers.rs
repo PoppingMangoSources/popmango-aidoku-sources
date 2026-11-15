@@ -2,7 +2,7 @@ use crate::models::*;
 use aidoku::{
 	Chapter, ContentRating, MangaStatus, Result, Viewer,
 	alloc::{String, Vec},
-	imports::std::parse_date,
+	imports::std::{parse_date, parse_local_date},
 	prelude::*,
 };
 
@@ -33,24 +33,29 @@ pub fn display_title(english: Option<&str>, name: &str) -> Result<String> {
 pub fn tag_names(tags: Vec<String>) -> Vec<String> {
 	let mut names: Vec<String> = tags
 		.into_iter()
-		.map(|tag| {
-			let name = tag.rsplit(':').next().unwrap_or_default().replace('_', " ");
-			name.split_whitespace()
-				.map(|word| {
-					let mut chars = word.chars();
-					chars
-						.next()
-						.map(|first| first.to_uppercase().chain(chars).collect::<String>())
-						.unwrap_or_default()
-				})
-				.collect::<Vec<_>>()
-				.join(" ")
-		})
+		.map(|tag| tag_name(&tag))
 		.filter(|name| !name.is_empty())
 		.collect();
 	names.sort_unstable_by_key(|name| name.to_lowercase());
 	names.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
 	names
+}
+
+pub fn tag_name(slug: &str) -> String {
+	slug.rsplit(':')
+		.next()
+		.unwrap_or_default()
+		.replace('_', " ")
+		.split_whitespace()
+		.map(|word| {
+			let mut chars = word.chars();
+			chars
+				.next()
+				.map(|first| first.to_uppercase().chain(chars).collect::<String>())
+				.unwrap_or_default()
+		})
+		.collect::<Vec<_>>()
+		.join(" ")
 }
 
 // Korean and Chinese comics are long strips; a series without a type falls back to its country
@@ -166,7 +171,23 @@ pub fn date_from_parts(parts: &DateParts) -> Option<i64> {
 
 // The site names its season rows by calendar quarter: Winter is January to March
 pub fn season_and_year(timestamp: i64) -> (&'static str, i64) {
-	// Days to civil date, after Howard Hinnant's algorithm
+	let (year, month, _) = civil_date(timestamp);
+	let season = ["Winter", "Spring", "Summer", "Fall"][((month - 1) / 3) as usize];
+	(season, year)
+}
+
+// The site's update days run from local midnight to the second before the next
+pub fn day_range(days_ago: i64, now: i64) -> Option<(i64, i64)> {
+	let (year, month, day) = civil_date(now);
+	let noon = format!("{year:04}-{month:02}-{day:02} 12:00:00");
+	let offset =
+		parse_date(&noon, "yyyy-MM-dd HH:mm:ss")? - parse_local_date(&noon, "yyyy-MM-dd HH:mm:ss")?;
+	let start = (now + offset).div_euclid(86400) * 86400 - offset - days_ago * 86400;
+	Some((start, start + 86399))
+}
+
+// Days to civil date, after Howard Hinnant's algorithm
+fn civil_date(timestamp: i64) -> (i64, i64, i64) {
 	let days = timestamp.div_euclid(86400) + 719_468;
 	let era = days.div_euclid(146_097);
 	let day_of_era = days - era * 146_097;
@@ -179,9 +200,8 @@ pub fn season_and_year(timestamp: i64) -> (&'static str, i64) {
 	} else {
 		month_index - 9
 	};
-	let year = year_of_era + era * 400 + i64::from(month <= 2);
-	let season = ["Winter", "Spring", "Summer", "Fall"][((month - 1) / 3) as usize];
-	(season, year)
+	let day = day_of_year - (153 * month_index + 2) / 5 + 1;
+	(year_of_era + era * 400 + i64::from(month <= 2), month, day)
 }
 
 pub fn has_next_page(page: i32, total: Option<i32>) -> bool {

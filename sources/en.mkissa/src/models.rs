@@ -218,6 +218,23 @@ impl MangaDetail {
 }
 
 #[derive(Deserialize)]
+pub struct Tag {
+	pub name: String,
+	pub slug: String,
+}
+
+#[derive(Deserialize)]
+pub struct TagEdges {
+	pub edges: Vec<Tag>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagsData {
+	pub query_tags: TagEdges,
+}
+
+#[derive(Deserialize)]
 pub struct DetailsData {
 	pub manga: Option<MangaDetail>,
 }
