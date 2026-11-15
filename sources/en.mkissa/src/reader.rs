@@ -18,14 +18,6 @@ const RESULT_TOKEN: &str = "__AIDOKU_MKISSA_PAGES__";
 const WAIT_TOKEN: &str = "__AIDOKU_MKISSA_WAIT__";
 const CHALLENGE_TOKEN: &str = "__AIDOKU_MKISSA_CHALLENGE__";
 
-// The hidden page only has to route to the chapter, so its images, styles and trackers are skipped
-const BLOCKED_CONTENT: &str = r#"[
-	{"trigger": {"url-filter": ".*", "resource-type": ["image", "style-sheet", "font", "media"]}, "action": {"type": "block"}},
-	{"trigger": {"url-filter": "^https?://[^/]*google-analytics\\.com"}, "action": {"type": "block"}},
-	{"trigger": {"url-filter": "^https?://[^/]*googletagmanager\\.com"}, "action": {"type": "block"}},
-	{"trigger": {"url-filter": "^https?://[^/]*cloudflareinsights\\.com"}, "action": {"type": "block"}}
-]"#;
-
 fn is_parser_key_byte(byte: u8) -> bool {
 	byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$'
 }
@@ -134,10 +126,9 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 	None
 }
 
-// Hooks the parsers that see the decoded `chapterPages`. `open` routes the page to a chapter with
-// the site's router; `poll` then answers the wait token until it holds that chapter's pages, the
-// challenge token after five seconds of a check, or empty text.
-fn capture_script(pinned_key: Option<&str>) -> String {
+// Captures the decoded `chapterPages`, then clicks through to the chapter so the site's router fetches it
+fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
+	let chapter_path = serde_json::to_string(chapter_path).unwrap_or_else(|_| String::from("\"\""));
 	let pin = pinned_key
 		.and_then(|key| serde_json::to_string(key).ok())
 		.map(|key| {
@@ -157,23 +148,18 @@ fn capture_script(pinned_key: Option<&str>) -> String {
 	format!(
 		"(function () {{
 	if (window['{RESULT_TOKEN}']) return;
-	const state = {{ done: true, result: '' }};
-	window['{RESULT_TOKEN}'] = state;
+	window['{RESULT_TOKEN}'] = {{ data: '', done: false }};
+	const state = window['{RESULT_TOKEN}'];
 	const finish = (payload) => {{
 		if (state.done) return;
+		state.data = payload;
 		state.done = true;
-		state.result = payload;
 	}};
-	state.poll = () => (state.done ? state.result : '{WAIT_TOKEN}');
-
-	// A live page can also parse other chapters, so only the one asked for counts
 	const capture = (parsed, raw) => {{
 		try {{
-			const pages = parsed && (parsed.chapterPages || (parsed.data && parsed.data.chapterPages));
-			if (!pages || state.done) return;
-			const edges = pages.edges || [];
-			if (edges.some((edge) => edge.chapterString != null && String(edge.chapterString) !== state.chapter)) return;
-			finish(raw);
+			if (parsed && (parsed.chapterPages || (parsed.data && parsed.data.chapterPages))) {{
+				finish(raw);
+			}}
 		}} catch (_) {{}}
 	}};
 
@@ -210,48 +196,33 @@ fn capture_script(pinned_key: Option<&str>) -> String {
 		}};
 	}}
 
-	state.open = (path, chapter, timeout) => {{
-		state.chapter = chapter;
-		state.done = false;
-		state.result = '';
-		setTimeout(() => finish(''), timeout);
+	function triggerChapterNav() {{
+		const a = document.createElement('a');
+		a.href = a.dataset.href = {chapter_path};
+		document.body.append(a);
+		a.click();
+	}}
 
-		// The site's own check never clears in a hidden view
-		let challenged = 0;
-		const watch = setInterval(() => {{
-			if (state.done) return clearInterval(watch);
-			const challenge = document.title.includes('Just a moment')
-				|| document.querySelector('.captcha-overlay--visible') != null;
-			challenged = challenge ? challenged + 1 : 0;
-			if (challenged >= 20) finish('{CHALLENGE_TOKEN}');
-		}}, 250);
-
-		const route = () => {{
-			const a = document.createElement('a');
-			a.href = a.dataset.href = path;
-			document.body.append(a);
-			a.click();
-		}};
-		let attempts = 0;
-		const check = () => {{
-			if (state.done) return;
-			if (document.querySelector('[data-href]') || attempts >= 300) {{
-				route();
-			}} else {{
-				attempts++;
-				setTimeout(check, 50);
-			}}
-		}};
-		check();
-		return 'opened';
-	}};
+	let attempts = 0;
+	function check() {{
+		if (state.done) return;
+		if (document.querySelector('[data-href]')) {{
+			triggerChapterNav();
+		}} else if (attempts < 300) {{
+			attempts++;
+			setTimeout(check, 50);
+		}} else {{
+			triggerChapterNav();
+		}}
+	}}
+	check();
 }})()"
 	)
 }
 
-// Loads a series page with the capture hooks; its router then reaches any chapter without a reload
-fn load_series(manga_id: &str) -> Result<WebView> {
+pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
 	let manga_url = manga_url(manga_id);
+	let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
 	// A plain request lets the app clear Cloudflare and keep its cookie
 	let response = Request::get(&manga_url)?
@@ -265,79 +236,49 @@ fn load_series(manga_id: &str) -> Result<WebView> {
 		bail!("The reader returned HTTP {status}");
 	}
 	let html = response.get_string()?;
+	let parser_key = pinned_parser_key(&html);
 
+	// Navigating client-side from the cleared page avoids a second Cloudflare check
 	let web_view = WebView::new();
-	web_view.set_rule_list(BLOCKED_CONTENT)?;
 	let mut user_script =
-		WebViewUserScript::new(capture_script(pinned_parser_key(&html).as_deref()));
+		WebViewUserScript::new(capture_script(&chapter_path, parser_key.as_deref()));
 	user_script.at_document_end = false;
 	user_script.for_main_frame_only = false;
 	web_view.add_user_script(user_script)?;
 	web_view.load_html_blocking(&html, Some(&manga_url))?;
-	Ok(web_view)
-}
 
-// The app's eval_async never answers (its wrapper evaluates to a promise), so this polls with eval
-fn open(web_view: &WebView, path: &str, chapter: &str, timeout_seconds: i32) -> Result<String> {
-	let path = serde_json::to_string(path)?;
-	let chapter = serde_json::to_string(chapter)?;
-	web_view.eval(&format!(
-		"window['{RESULT_TOKEN}'].open({path}, {chapter}, {})",
-		timeout_seconds * 1000
-	))?;
-	for _ in 0..=timeout_seconds {
-		sleep(1);
-		let result = web_view.eval(&format!("window['{RESULT_TOKEN}'].poll()"))?;
-		if result != WAIT_TOKEN {
-			return Ok(result);
-		}
-	}
-	Ok(String::new())
-}
-
-// The chapter route answers Cloudflare's check to a fresh page, so chapters are reached by routing
-// inside a series page, which stays loaded for the next chapter
-#[derive(Default)]
-pub struct Reader {
-	web_view: Option<WebView>,
-	opened: Vec<String>,
-}
-
-impl Reader {
-	pub fn page_urls(&mut self, manga_id: &str, chapter: &str) -> Result<Vec<String>> {
-		let path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
-
-		// The site answers a chapter it already showed from its own cache, which parses nothing
-		let reused = match self.web_view.take() {
-			Some(web_view) if !self.opened.contains(&path) => open(&web_view, &path, chapter, 10)
-				.ok()
-				.filter(|result| !result.is_empty())
-				.map(|result| (web_view, result)),
-			_ => None,
-		};
-		let (web_view, result) = match reused {
-			Some(found) => found,
-			None => {
-				self.opened.clear();
-				let web_view = load_series(manga_id)?;
-				let result = open(&web_view, &path, chapter, 30)?;
-				(web_view, result)
+	let mut result = None;
+	let mut challenged = 0;
+	for _ in 0..30 {
+		if let Ok(value) = web_view.eval(&format!(
+			"(() => {{
+				const state = window['{RESULT_TOKEN}'];
+				if (state && state.done) return state.data;
+				const challenge = document.title.includes('Just a moment')
+					|| document.querySelector('.captcha-overlay--visible') != null;
+				return challenge ? '{CHALLENGE_TOKEN}' : '{WAIT_TOKEN}';
+			}})()"
+		)) {
+			// The site's own check never clears in a hidden view
+			if value == CHALLENGE_TOKEN {
+				challenged += 1;
+				if challenged >= 5 {
+					bail!("Open the series in the web view, solve the site's check, then retry");
+				}
+			} else if value != WAIT_TOKEN && !value.is_empty() {
+				result = Some(value);
+				break;
 			}
-		};
-		if result == CHALLENGE_TOKEN {
-			bail!("Open the series in the web view, solve the site's check, then retry");
-		} else if result.is_empty() {
-			bail!("The reader did not produce any pages");
 		}
-		self.web_view = Some(web_view);
-		self.opened.push(path);
-
-		// The page hands back the text it parsed, not a response body
-		let payload: ReaderPayload = serde_json::from_str(&result)?;
-		let pages = payload
-			.chapter_pages
-			.or_else(|| payload.data.and_then(|data| data.chapter_pages))
-			.ok_or(error!("The reader did not produce any pages"))?;
-		parse_page_urls(&pages, &settings::image_quality())
+		sleep(1);
 	}
+	let result = result.ok_or(error!("The reader did not produce any pages"))?;
+
+	// The page hands back the text it parsed, not a response body
+	let payload: ReaderPayload = serde_json::from_str(&result)?;
+	let pages = payload
+		.chapter_pages
+		.or_else(|| payload.data.and_then(|data| data.chapter_pages))
+		.ok_or(error!("The reader did not produce any pages"))?;
+	parse_page_urls(&pages, &settings::image_quality())
 }
