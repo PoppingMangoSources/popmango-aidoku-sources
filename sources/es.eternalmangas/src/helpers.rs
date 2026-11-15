@@ -222,7 +222,7 @@ pub fn date(element: &Element) -> Option<i64> {
 	let text = element
 		.select_first("time, .em-time-ago, .text-muted.small")?
 		.text()?;
-	let (amount, unit) = text.trim().strip_prefix("hace ")?.split_once(' ')?;
+	let (amount, unit) = text.strip_prefix("hace ")?.split_once(' ')?;
 	let amount: i64 = amount.parse().ok()?;
 	let seconds = match unit {
 		"segundo" | "segundos" => 1,
