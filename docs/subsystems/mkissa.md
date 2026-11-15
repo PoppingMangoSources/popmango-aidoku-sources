@@ -62,13 +62,16 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > so the reader opens the series page and routes to the chapter inside it
 > (`sources/en.mkissa/src/reader.rs`). The hidden view blocks images, stylesheets, fonts, media
 > and analytics (Chromium, 2026-11-15: load event 0.3-0.5 s instead of 0.8-1.4 s, about 9.6 MB
-> fewer bytes, routing unchanged). It must not block `challenges.cloudflare.com`. The capture
-> settles a promise that `eval_async` awaits, so pages return as soon as they are captured;
-> `eval_async` puts the minimum app version at 0.9.0.
+> fewer bytes, routing unchanged). It must not block `challenges.cloudflare.com`.
+
+> ⚠️ `open` starts the route with `eval` and Rust polls `poll()` once a second. v32 to v34 awaited
+> a promise with `WebView::eval_async`, and every chapter failed in the app with
+> `JsError(MissingResult)` (owner's logs), so don't go back to it; see
+> [[source-checks]] and the host notes in the aidoku-source skill.
 
 > ⚠️ The loaded series page stays on the source in a `RefCell`, as merged Comix keeps its web
-> view, and later chapters of any series route inside it (Chromium, 2026-11-15: 3.4-4.2 s for the
-> first chapter, 0.5-0.8 s for each one after). The site answers a chapter that page already showed
+> view, and later chapters of any series route inside it (Chromium, 2026-11-15: 3.2-4.2 s for the
+> first chapter, about 1 s for each one after with polling). The site answers a chapter that page already showed
 > from its own cache, which parses nothing, so `Reader` loads a fresh page for a chapter it opened
 > before, and for any reuse that fails or times out. A capture only counts when its
 > `chapterString` is the chapter asked for.

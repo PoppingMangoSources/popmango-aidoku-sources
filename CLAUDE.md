@@ -333,7 +333,7 @@ Each of these was a real comment. They generalise.
 | `page_size: Some(10)` on home components | **5 max**, for all components — 10 means a lot of scrolling on a phone. |
 | Latest Comics used `page_size: None` when it was meant to show five rows (owner's correction) | Use `Some(5)` for a five-row paged list. `None` renders every row vertically; it is not a five-row default (`HomeChapterListView.swift`). |
 | Web view urls 404'd | Series and chapter urls need to resolve. Have a fallback if the API's path field can be absent. |
-| MKissa v32 failed every chapter with `JsError(MissingResult)` (owner's logs) | The app awaits an `eval_async` script as one expression, `await (script)` (AidokuRunner `WebViewHandler.swift`). Pass the promise itself, never `return await …;`. The runner stubs web views, so read the host code before using a web view import for the first time. `check-sources.py` fails statements passed to `eval_async`. |
+| MKissa v32 and v34 failed every chapter with `JsError(MissingResult)` (owner's logs) | Don't use `WebView::eval_async`: the app wraps it as `await (script)` in an async arrow run by `evaluateJavaScript` (AidokuRunner `WebViewHandler.swift`), and it answered nothing even with an expression (inferred: the wrapper's value is a promise WebKit rejects). Start work with `eval` and poll a string state, as merged Comix and Toonkotsu do. The runner stubs web views, so read the host code and try one chapter in the app before building on a web view import. `check-sources.py` fails statements passed to `eval_async`. |
 
 Also from the wider repo: **excessive `clone` is the single most common review
 comment.** Take `&str` parameters, iterate by reference, and remember `format!`

@@ -9,11 +9,13 @@ use aidoku::{
 	imports::{
 		js::{WebView, WebViewUserScript},
 		net::Request,
+		std::sleep,
 	},
 	prelude::*,
 };
 
 const RESULT_TOKEN: &str = "__AIDOKU_MKISSA_PAGES__";
+const WAIT_TOKEN: &str = "__AIDOKU_MKISSA_WAIT__";
 const CHALLENGE_TOKEN: &str = "__AIDOKU_MKISSA_CHALLENGE__";
 
 // The hidden page only has to route to the chapter, so its images, styles and trackers are skipped
@@ -133,8 +135,8 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 }
 
 // Hooks the parsers that see the decoded `chapterPages`. `open` routes the page to a chapter with
-// the site's router and settles with that chapter's pages, the challenge token after five seconds
-// of a check, or empty text.
+// the site's router; `poll` then answers the wait token until it holds that chapter's pages, the
+// challenge token after five seconds of a check, or empty text.
 fn capture_script(pinned_key: Option<&str>) -> String {
 	let pin = pinned_key
 		.and_then(|key| serde_json::to_string(key).ok())
@@ -155,13 +157,14 @@ fn capture_script(pinned_key: Option<&str>) -> String {
 	format!(
 		"(function () {{
 	if (window['{RESULT_TOKEN}']) return;
-	const state = {{ done: true }};
+	const state = {{ done: true, result: '' }};
 	window['{RESULT_TOKEN}'] = state;
 	const finish = (payload) => {{
 		if (state.done) return;
 		state.done = true;
-		state.resolve(payload);
+		state.result = payload;
 	}};
+	state.poll = () => (state.done ? state.result : '{WAIT_TOKEN}');
 
 	// A live page can also parse other chapters, so only the one asked for counts
 	const capture = (parsed, raw) => {{
@@ -210,9 +213,7 @@ fn capture_script(pinned_key: Option<&str>) -> String {
 	state.open = (path, chapter, timeout) => {{
 		state.chapter = chapter;
 		state.done = false;
-		const result = new Promise((resolve) => {{
-			state.resolve = resolve;
-		}});
+		state.result = '';
 		setTimeout(() => finish(''), timeout);
 
 		// The site's own check never clears in a hidden view
@@ -242,7 +243,7 @@ fn capture_script(pinned_key: Option<&str>) -> String {
 			}}
 		}};
 		check();
-		return result;
+		return 'opened';
 	}};
 }})()"
 	)
@@ -276,13 +277,22 @@ fn load_series(manga_id: &str) -> Result<WebView> {
 	Ok(web_view)
 }
 
-// The app awaits the script as one expression, `await (script)`, so it holds no statements
-fn open(web_view: &WebView, path: &str, chapter: &str, timeout_ms: u32) -> Result<String> {
+// The app's eval_async never answers (its wrapper evaluates to a promise), so this polls with eval
+fn open(web_view: &WebView, path: &str, chapter: &str, timeout_seconds: i32) -> Result<String> {
 	let path = serde_json::to_string(path)?;
 	let chapter = serde_json::to_string(chapter)?;
-	Ok(web_view.eval_async(&format!(
-		"window['{RESULT_TOKEN}'].open({path}, {chapter}, {timeout_ms})"
-	))?)
+	web_view.eval(&format!(
+		"window['{RESULT_TOKEN}'].open({path}, {chapter}, {})",
+		timeout_seconds * 1000
+	))?;
+	for _ in 0..=timeout_seconds {
+		sleep(1);
+		let result = web_view.eval(&format!("window['{RESULT_TOKEN}'].poll()"))?;
+		if result != WAIT_TOKEN {
+			return Ok(result);
+		}
+	}
+	Ok(String::new())
 }
 
 // The chapter route answers Cloudflare's check to a fresh page, so chapters are reached by routing
@@ -299,12 +309,10 @@ impl Reader {
 
 		// The site answers a chapter it already showed from its own cache, which parses nothing
 		let reused = match self.web_view.take() {
-			Some(web_view) if !self.opened.contains(&path) => {
-				open(&web_view, &path, chapter, 10000)
-					.ok()
-					.filter(|result| !result.is_empty())
-					.map(|result| (web_view, result))
-			}
+			Some(web_view) if !self.opened.contains(&path) => open(&web_view, &path, chapter, 10)
+				.ok()
+				.filter(|result| !result.is_empty())
+				.map(|result| (web_view, result)),
 			_ => None,
 		};
 		let (web_view, result) = match reused {
@@ -312,7 +320,7 @@ impl Reader {
 			None => {
 				self.opened.clear();
 				let web_view = load_series(manga_id)?;
-				let result = open(&web_view, &path, chapter, 30000)?;
+				let result = open(&web_view, &path, chapter, 30)?;
 				(web_view, result)
 			}
 		};
