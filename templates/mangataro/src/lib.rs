@@ -15,12 +15,12 @@ mod markdown;
 mod models;
 mod settings;
 
+pub use home::Section;
 pub use imp::Impl;
 
 pub struct Params {
 	pub base_url: Cow<'static, str>,
-	pub recently_added: bool,
-	pub novel_home: bool,
+	pub sections: &'static [Section],
 }
 
 pub struct MangaTaro<T: Impl> {

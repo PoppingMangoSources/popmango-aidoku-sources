@@ -70,6 +70,17 @@ fn details_chapters_and_key_only_reader() {
 fn home_has_ranking_and_dated_updates() {
 	let home = SourceImpl::new().get_home().unwrap();
 	assert!(home.components.len() >= 7);
+	assert_eq!(
+		home.components[1].title.as_deref(),
+		Some("Popular Manga (This Week)")
+	);
+	assert!(
+		home.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some("Latest Novels")
+				&& matches!(&c.value, HomeComponentValue::Scroller { entries, .. }
+			if !entries.is_empty() && entries.iter().all(|link| link.title.ends_with("(Novel)"))))
+	);
 	assert!(home.components.iter().any(|c| matches!(
 		&c.value,
 		HomeComponentValue::MangaList {
@@ -325,4 +336,28 @@ fn deep_links_unknown_key_and_each_filter() {
 	let no_novels = search("type", Vec::new(), vec!["Novel".into()]);
 	assert!(!no_novels.is_empty());
 	assert!(no_novels.iter().all(|m| !m.title.ends_with("(Novel)")));
+}
+
+#[aidoku_test]
+fn review_home_order() {
+	let titles = MangaTaroSource
+		.params()
+		.sections
+		.iter()
+		.map(|section| section.title())
+		.collect::<Vec<_>>();
+	assert_eq!(
+		titles,
+		[
+			None,
+			Some("Popular Manga (This Week)"),
+			Some("Most Followed New Manga (1 Month)"),
+			Some("Recently Added"),
+			Some("Popular Chapters (This Week)"),
+			Some("Latest Updates"),
+			Some("Most Followed Manga (This Week)"),
+			Some("Latest Novels"),
+			Some("High Score Manga"),
+		]
+	);
 }

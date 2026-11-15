@@ -1,5 +1,6 @@
 use crate::{
 	Params,
+	api::SearchParams,
 	helpers::{
 		checked, date, excluded_slugs, link_keys, novel_title, parse, rating, request, series_key,
 		site_headers, viewer,
@@ -8,8 +9,8 @@ use crate::{
 	settings,
 };
 use aidoku::{
-	AidokuError, Chapter, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
-	Manga, MangaWithChapter, Result,
+	AidokuError, Chapter, FilterValue, HomeComponent, HomeComponentValue, HomeLayout,
+	HomePartialResult, Link, Manga, MangaWithChapter, Result,
 	alloc::{
 		String, Vec,
 		collections::{BTreeMap, BTreeSet},
@@ -33,6 +34,7 @@ pub enum Section {
 	Followed,
 	Popular,
 	Novels,
+	LatestNovels,
 	HighScore,
 }
 
@@ -48,6 +50,7 @@ impl Section {
 			Self::Followed => "Most Followed Manga (This Week)",
 			Self::Popular => "Popular Manga (This Week)",
 			Self::Novels => "Recently Added Novels",
+			Self::LatestNovels => "Latest Novels",
 			Self::HighScore => "High Score Manga",
 		})
 	}
@@ -61,30 +64,10 @@ impl Section {
 			Self::Followed => Some("/auth/most-followed-manga?period=week&limit=15"),
 			Self::Popular => Some("/wp-json/manga/v1/popular?period=week&number=15"),
 			Self::HighScore => Some("/wp-json/manga/v1/highscore?type=all&number=15"),
+			Self::LatestNovels => Some("/wp-json/manga/v1/load"),
 			Self::Featured | Self::Recent | Self::Novels => None,
 		}
 	}
-}
-
-pub fn sections(recently_added: bool, novels: bool) -> Vec<Section> {
-	[
-		Section::Featured,
-		Section::Ranking,
-		Section::Recent,
-		Section::PopularChapters,
-		Section::Updates,
-		Section::Followed,
-		Section::Popular,
-		Section::Novels,
-		Section::HighScore,
-	]
-	.into_iter()
-	.filter(|section| match section {
-		Section::Recent => recently_added,
-		Section::Novels => novels,
-		_ => true,
-	})
-	.collect()
 }
 
 pub(crate) enum Data {
@@ -282,7 +265,14 @@ pub(crate) fn component(
 
 pub fn get_home(params: &Params) -> Result<HomeLayout> {
 	let base_url = params.base_url.as_ref();
-	let sections = sections(params.recently_added, params.novel_home);
+	let types = settings::excluded_types();
+	let novels = !types.iter().any(|kind| kind == "Novel");
+	let sections = params
+		.sections
+		.iter()
+		.copied()
+		.filter(|section| novels || !matches!(section, Section::Novels | Section::LatestNovels))
+		.collect::<Vec<_>>();
 	send_partial_result(&HomePartialResult::Layout(HomeLayout {
 		components: sections
 			.iter()
@@ -304,11 +294,20 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 	for section in &sections {
 		if let Some(path) = section.path() {
 			let url = format!("{base_url}{path}");
-			requests.push(if matches!(section, Section::Updates) {
-				site_headers(Request::post(url)?, base_url)
-					.header("Content-Type", "application/json")
-			} else {
-				request(base_url, &url)?
+			requests.push(match section {
+				Section::Updates => site_headers(Request::post(url)?, base_url)
+					.header("Content-Type", "application/json"),
+				Section::LatestNovels => SearchParams::new(
+					None,
+					1,
+					vec![FilterValue::MultiSelect {
+						id: "type".into(),
+						included: vec!["Novel".into()],
+						excluded: Vec::new(),
+					}],
+				)?
+				.request(base_url)?,
+				_ => request(base_url, &url)?,
 			});
 		}
 	}
@@ -321,7 +320,6 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 			.map_err(|error| failure = Some(error))
 			.ok()
 	});
-	let types = settings::excluded_types();
 	let mut data = Vec::new();
 	for section in sections {
 		let result = match (section.path(), &document) {
@@ -334,7 +332,6 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 			(None, Some(document)) => Ok(match section {
 				Section::Featured => Data::Featured(parse_featured(document, &types)),
 				Section::Recent => Data::Titles(parse_recent(document)),
-				_ if types.iter().any(|kind| kind == "Novel") => Data::Chapters(Vec::new()),
 				_ => Data::Chapters(parse_novels(document)),
 			}),
 			(None, None) => continue,

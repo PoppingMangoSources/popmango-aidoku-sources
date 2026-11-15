@@ -1,6 +1,6 @@
 #![no_std]
 use aidoku::{Source, prelude::*};
-use mangataro::{Impl, MangaTaro, Params};
+use mangataro::{Impl, MangaTaro, Params, Section::*};
 
 const BASE_URL: &str = "https://roliascan.com";
 
@@ -14,9 +14,17 @@ impl Impl for RoliaScan {
 	fn params(&self) -> Params {
 		Params {
 			base_url: BASE_URL.into(),
-			// Its Recently Added grid repeats Latest Updates
-			recently_added: false,
-			novel_home: true,
+			// No Recently Added: its grid repeats Latest Updates
+			sections: &[
+				Featured,
+				Ranking,
+				PopularChapters,
+				Updates,
+				Followed,
+				Popular,
+				Novels,
+				HighScore,
+			],
 		}
 	}
 }

@@ -11,7 +11,9 @@ It is based on canonical Aidoku-Community main; fork publication stays on main.
 | --- | --- |
 | Rich featured hero, no per-card requests | home.rs parses `.carousel-slide`, including available plain description, tags, rating and viewer. |
 | New follows, one month, ranking size 3 | `/auth/most-followed-new-manga?period=1m&limit=15`; `MangaList`. `month` and `30d` fall back to seven days. |
-| Recently Added (MangaTaro only) | Actual `#manga-grid` cards from the same home document, in site order. Rolia sets `recently_added: false`, since its grid repeats Latest Updates (owner's call). |
+| Row order per source | Each source lists its rows in `Params::sections`. MangaTaro puts Popular Manga (This Week) right under the hero and Latest Novels where Popular was (owner's order, not the site's); Rolia keeps the site's order. Both novel rows drop out when Novel is an excluded type. |
+| Recently Added (MangaTaro only) | Actual `#manga-grid` cards from the same home document, in site order. Rolia leaves the row out, since its grid repeats Latest Updates (owner's call). |
+| Latest Novels (MangaTaro only) | The browse search with type Novel in its Latest Updates sort, one POST to `/load`, shown as cards because it names no chapter. |
 | Popular chapters this week | `/auth/popular-chapters?period=week&limit=15`, compact unique-series scroller. |
 | Latest Updates, size 4, chapter/time | `/wp-json/manga/v1/latest-chapters?page=1`, real `permalink`, `chapter`, `time`. Browse `/load` lacks these chapter fields. |
 | Weekly follows / popular | `/auth/most-followed-manga?period=week&limit=15` and `/wp-json/manga/v1/popular?period=week&number=15`. |

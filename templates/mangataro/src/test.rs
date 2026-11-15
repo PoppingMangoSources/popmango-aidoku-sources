@@ -16,41 +16,20 @@ use aidoku::{
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
-fn review_home_order_and_sizes() {
-	let names = |recently_added, novels| {
-		home::sections(recently_added, novels)
-			.into_iter()
-			.map(Section::title)
-			.collect::<Vec<_>>()
-	};
-	assert_eq!(
-		names(true, false),
-		[
-			None,
-			Some("Most Followed New Manga (1 Month)"),
-			Some("Recently Added"),
-			Some("Popular Chapters (This Week)"),
-			Some("Latest Updates"),
-			Some("Most Followed Manga (This Week)"),
-			Some("Popular Manga (This Week)"),
-			Some("High Score Manga")
-		]
-	);
-	assert_eq!(
-		names(false, true),
-		[
-			None,
-			Some("Most Followed New Manga (1 Month)"),
-			Some("Popular Chapters (This Week)"),
-			Some("Latest Updates"),
-			Some("Most Followed Manga (This Week)"),
-			Some("Popular Manga (This Week)"),
-			Some("Recently Added Novels"),
-			Some("High Score Manga")
-		]
-	);
+fn review_home_component_kinds_and_sizes() {
 	let blocked = aidoku::alloc::collections::BTreeSet::new();
-	for section in home::sections(true, true) {
+	for section in [
+		Section::Featured,
+		Section::Ranking,
+		Section::Recent,
+		Section::PopularChapters,
+		Section::Updates,
+		Section::Followed,
+		Section::Popular,
+		Section::Novels,
+		Section::LatestNovels,
+		Section::HighScore,
+	] {
 		let data = match section {
 			Section::Featured => home::Data::Featured(Vec::new()),
 			Section::Novels => home::Data::Chapters(Vec::new()),

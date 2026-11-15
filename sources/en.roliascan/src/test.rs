@@ -329,3 +329,26 @@ fn deep_links_unknown_key_and_each_filter() {
 	assert!(!no_novels.is_empty());
 	assert!(no_novels.iter().all(|m| !m.title.ends_with("(Novel)")));
 }
+
+#[aidoku_test]
+fn review_home_order() {
+	let titles = RoliaScan
+		.params()
+		.sections
+		.iter()
+		.map(|section| section.title())
+		.collect::<Vec<_>>();
+	assert_eq!(
+		titles,
+		[
+			None,
+			Some("Most Followed New Manga (1 Month)"),
+			Some("Popular Chapters (This Week)"),
+			Some("Latest Updates"),
+			Some("Most Followed Manga (This Week)"),
+			Some("Popular Manga (This Week)"),
+			Some("Recently Added Novels"),
+			Some("High Score Manga"),
+		]
+	);
+}
