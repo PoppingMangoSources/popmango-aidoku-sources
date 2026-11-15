@@ -1,7 +1,7 @@
 use crate::models::Slug;
 use aidoku::{
 	ContentRating, Result,
-	alloc::{String, Vec, collections::BTreeSet},
+	alloc::{String, Vec, borrow::Cow, collections::BTreeSet},
 	helpers::uri::{QueryParameters, decode_uri},
 	imports::{
 		html::{Document, Html},
@@ -182,10 +182,7 @@ pub fn excluded_slugs<'a>(
 pub fn options(
 	document: &Document,
 	class: &str,
-) -> (
-	Vec<aidoku::alloc::borrow::Cow<'static, str>>,
-	Vec<aidoku::alloc::borrow::Cow<'static, str>>,
-) {
+) -> (Vec<Cow<'static, str>>, Vec<Cow<'static, str>>) {
 	document
 		.select(format!(".{class}[data-value]"))
 		.into_iter()

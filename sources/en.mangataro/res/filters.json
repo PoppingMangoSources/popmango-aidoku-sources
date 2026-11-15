@@ -14,6 +14,7 @@
 		"type": "select",
 		"id": "genreMatchMode",
 		"title": "Tag Match",
+		"hideFromHeader": true,
 		"options": [
 			"Any",
 			"All"

@@ -26,18 +26,18 @@ fn review_home_order_and_sizes() {
 	assert_eq!(
 		names(false),
 		[
-			"Featured",
-			"Most Followed New Manga (1 Month)",
-			"Recently Added",
-			"Popular Chapters (This Week)",
-			"Latest Updates",
-			"Most Followed Manga (This Week)",
-			"Popular Manga (This Week)",
-			"High Score Manga"
+			None,
+			Some("Most Followed New Manga (1 Month)"),
+			Some("Recently Added"),
+			Some("Popular Chapters (This Week)"),
+			Some("Latest Updates"),
+			Some("Most Followed Manga (This Week)"),
+			Some("Popular Manga (This Week)"),
+			Some("High Score Manga")
 		]
 	);
-	assert_eq!(names(true)[7], "Recently Added Novels");
-	assert_eq!(names(true)[8], "High Score Manga");
+	assert_eq!(names(true)[7], Some("Recently Added Novels"));
+	assert_eq!(names(true)[8], Some("High Score Manga"));
 	let blocked = aidoku::alloc::collections::BTreeSet::new();
 	for section in home::sections(true) {
 		let data = match section {

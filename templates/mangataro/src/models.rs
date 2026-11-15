@@ -181,7 +181,7 @@ impl TryFrom<ChapterItem> for Chapter {
 			scanlators: value
 				.group_name
 				.filter(|s| !s.trim().is_empty())
-				.map(|s| aidoku::alloc::vec![s]),
+				.map(|s| vec![s]),
 			url: Some(value.url),
 			..Default::default()
 		})

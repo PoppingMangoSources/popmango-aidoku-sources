@@ -12,6 +12,7 @@ use aidoku::{
 	MultiSelectFilter, MultiSelectSetting, Page, Result, Setting,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{
+		element::ElementHelpers,
 		string::PlainText,
 		uri::{QueryParameters, encode_uri_component},
 	},
@@ -137,34 +138,23 @@ pub trait Impl {
 				has_next_page: false,
 			});
 		}
-		if let Some(index) = filters
-			.iter()
-			.position(|f| matches!(f, FilterValue::Select { id, .. } if id == "genre"))
-		{
-			let FilterValue::Select { value, .. } = filters.remove(index) else {
-				unreachable!()
-			};
-			let document = request(base_url, &format!("{base_url}/browse"))?.html()?;
-			let id = document
-				.select(".genre-btn[data-value]")
-				.into_iter()
-				.flatten()
-				.find(|el| {
-					el.text().is_some_and(|text| {
-						text.split_whitespace()
-							.collect::<Vec<_>>()
-							.join(" ")
-							.trim_end_matches(|c: char| c.is_ascii_digit())
-							.trim() == value
-					})
-				})
-				.and_then(|el| el.attr("data-value"))
-				.ok_or(error!("Tag not found"))?;
-			filters.push(FilterValue::MultiSelect {
-				id: "genre".into(),
-				included: vec![id],
-				excluded: Vec::new(),
-			});
+		// A tapped tag arrives by name, while browse takes its id
+		for filter in &mut filters {
+			if let FilterValue::Select { id, value } = filter
+				&& id == "genre"
+			{
+				let document = request(base_url, &format!("{base_url}/browse"))?.html()?;
+				let (ids, names) = options(&document, "genre-btn");
+				let index = names
+					.iter()
+					.position(|name| name == value)
+					.ok_or(error!("Tag not found"))?;
+				*filter = FilterValue::MultiSelect {
+					id: "genre".into(),
+					included: vec![ids[index].to_string()],
+					excluded: Vec::new(),
+				};
+			}
 		}
 		let search = SearchParams::new(query, page, filters)?;
 		let titles: Vec<Title> = checked(search.request(base_url)?.send()?)?.get_json_owned()?;
@@ -258,7 +248,10 @@ pub trait Impl {
 				.find(|m| matches!(m.kind.as_str(), "ComicSeries" | "Book"))
 				.ok_or(error!("Missing series metadata"))?;
 			manga.cover = metadata.image;
-			manga.authors = metadata.author.map(|c| credits(&c.name));
+			manga.authors = metadata
+				.author
+				.map(|c| credits(&c.name))
+				.filter(|names| !names.is_empty());
 			manga.status = status(&metadata.status);
 			manga.viewer = viewer(if metadata.kind == "Book" {
 				"Novel"
@@ -273,10 +266,11 @@ pub trait Impl {
 			}
 			let tags = tags(&document);
 			manga.content_rating = rating(&tags);
-			manga.tags = Some(tags);
+			manga.tags = (!tags.is_empty()).then_some(tags);
 			manga.description = document
 				.select_first("#description-content-tab")
-				.and_then(|el| el.text())
+				.and_then(|el| el.text_with_newlines().or_else(|| el.text()))
+				.map(|text| String::from(text.trim()))
 				.filter(|s| !s.is_empty())
 				.map(|text| text.escape_markdown());
 			manga.url = Some(url);

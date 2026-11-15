@@ -7,9 +7,13 @@ use crate::{
 	settings,
 };
 use aidoku::{
-	Chapter, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link, Manga,
-	MangaWithChapter, Result,
-	alloc::{String, Vec, collections::BTreeSet},
+	AidokuError, Chapter, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
+	Manga, MangaWithChapter, Result,
+	alloc::{
+		String, Vec,
+		collections::{BTreeMap, BTreeSet},
+		vec,
+	},
 	imports::{
 		html::Document,
 		net::{Request, Response},
@@ -32,9 +36,10 @@ pub enum Section {
 }
 
 impl Section {
-	pub fn title(self) -> &'static str {
-		match self {
-			Self::Featured => "Featured",
+	// The site's hero has no heading
+	pub fn title(self) -> Option<&'static str> {
+		Some(match self {
+			Self::Featured => return None,
 			Self::Ranking => "Most Followed New Manga (1 Month)",
 			Self::Recent => "Recently Added",
 			Self::PopularChapters => "Popular Chapters (This Week)",
@@ -43,6 +48,19 @@ impl Section {
 			Self::Popular => "Popular Manga (This Week)",
 			Self::Novels => "Recently Added Novels",
 			Self::HighScore => "High Score Manga",
+		})
+	}
+
+	// Rows without a feed are read from the home page itself
+	fn path(self) -> Option<&'static str> {
+		match self {
+			Self::Ranking => Some("/auth/most-followed-new-manga?period=1m&limit=15"),
+			Self::PopularChapters => Some("/auth/popular-chapters?period=week&limit=15"),
+			Self::Updates => Some("/wp-json/manga/v1/latest-chapters?page=1"),
+			Self::Followed => Some("/auth/most-followed-manga?period=week&limit=15"),
+			Self::Popular => Some("/wp-json/manga/v1/popular?period=week&number=15"),
+			Self::HighScore => Some("/wp-json/manga/v1/highscore?type=all&number=15"),
+			Self::Featured | Self::Recent | Self::Novels => None,
 		}
 	}
 }
@@ -103,7 +121,7 @@ pub fn parse_featured(document: &Document, excluded_types: &[String]) -> Vec<Man
 				cover: slide.select_first("a img").and_then(|el| el.attr("src")),
 				description: slide.select_first("p").and_then(|el| el.text()),
 				content_rating: rating(&tags),
-				tags: Some(tags),
+				tags: (!tags.is_empty()).then_some(tags),
 				viewer: kind.as_deref().map(viewer).unwrap_or_default(),
 				..Default::default()
 			})
@@ -257,7 +275,7 @@ pub(crate) fn component(
 		}
 	};
 	HomeComponent {
-		title: Some(section.title().into()),
+		title: section.title().map(Into::into),
 		value,
 		..Default::default()
 	}
@@ -270,7 +288,7 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 		components: sections
 			.iter()
 			.map(|section| HomeComponent {
-				title: Some(section.title().into()),
+				title: section.title().map(Into::into),
 				value: match section {
 					Section::Featured => HomeComponentValue::empty_big_scroller(),
 					Section::Ranking => HomeComponentValue::empty_manga_list(),
@@ -283,78 +301,50 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 			})
 			.collect(),
 	}));
-	let requests = sections
-		.iter()
-		.filter(|section| !matches!(section, Section::Novels | Section::Recent))
-		.map(|section| {
-			let path = match section {
-				Section::Featured => "/home",
-				Section::Ranking => "/auth/most-followed-new-manga?period=1m&limit=15",
-				Section::PopularChapters => "/auth/popular-chapters?period=week&limit=15",
-				Section::Updates => "/wp-json/manga/v1/latest-chapters?page=1",
-				Section::Followed => "/auth/most-followed-manga?period=week&limit=15",
-				Section::Popular => "/wp-json/manga/v1/popular?period=week&number=15",
-				Section::HighScore => "/wp-json/manga/v1/highscore?type=all&number=15",
-				_ => unreachable!(),
-			};
-			if matches!(section, Section::Updates) {
-				Ok(
-					site_headers(Request::post(format!("{base_url}{path}"))?, base_url)
-						.header("Content-Type", "application/json"),
-				)
+	let mut requests = vec![request(base_url, &format!("{base_url}/home"))?];
+	for section in &sections {
+		if let Some(path) = section.path() {
+			let url = format!("{base_url}{path}");
+			requests.push(if matches!(section, Section::Updates) {
+				site_headers(Request::post(url)?, base_url)
+					.header("Content-Type", "application/json")
 			} else {
-				request(base_url, &format!("{base_url}{path}"))
-			}
-		})
-		.collect::<Result<Vec<_>>>()?;
-	let mut data = Vec::new();
-	let mut novels = None;
-	let mut recent = None;
-	let mut failure = None;
-	for (section, response) in sections
-		.iter()
-		.filter(|section| !matches!(section, Section::Novels | Section::Recent))
-		.zip(Request::send_all(requests))
-	{
-		let result = response.map_err(Into::into).and_then(|response| {
-			if matches!(section, Section::Featured) {
-				let document = checked(response)?.get_html()?;
-				recent = Some(Data::Titles(parse_recent(&document)));
-				if params.novel_home {
-					novels = Some(Data::Chapters(
-						if settings::excluded_types().iter().any(|t| t == "Novel") {
-							Vec::new()
-						} else {
-							parse_novels(&document)
-						},
-					));
-				}
-				Ok(Data::Featured(parse_featured(
-					&document,
-					&settings::excluded_types(),
-				)))
-			} else {
-				parse(*section, response)
-			}
-		});
-		match result {
-			Ok(value) => data.push((*section, value)),
-			Err(error) => failure = Some(error),
+				request(base_url, &url)?
+			});
 		}
 	}
-	if let Some(recent) = recent {
-		let index = data
-			.iter()
-			.position(|(section, _)| !matches!(section, Section::Featured | Section::Ranking))
-			.unwrap_or(data.len());
-		data.insert(index, (Section::Recent, recent));
-	}
-	if let Some(novels) = novels {
-		let index = data
-			.iter()
-			.position(|(section, _)| matches!(section, Section::HighScore))
-			.unwrap_or(data.len());
-		data.insert(index, (Section::Novels, novels));
+	let mut responses = Request::send_all(requests).into_iter();
+	let mut failure: Option<AidokuError> = None;
+	let document = match responses.next() {
+		Some(response) => response
+			.map_err(AidokuError::from)
+			.and_then(|response| Ok(checked(response)?.get_html()?))
+			.map_err(|error| failure = Some(error))
+			.ok(),
+		None => None,
+	};
+	let types = settings::excluded_types();
+	let mut data = Vec::new();
+	for section in sections {
+		let result = match (section.path(), &document) {
+			(Some(_), _) => match responses.next() {
+				Some(response) => response
+					.map_err(AidokuError::from)
+					.and_then(|response| parse(section, response)),
+				None => continue,
+			},
+			(None, Some(document)) => Ok(match section {
+				Section::Featured => Data::Featured(parse_featured(document, &types)),
+				Section::Recent => Data::Titles(parse_recent(document)),
+				_ if types.iter().any(|kind| kind == "Novel") => Data::Chapters(Vec::new()),
+				_ => Data::Chapters(parse_novels(document)),
+			}),
+			(None, None) => continue,
+		};
+		match result {
+			Ok(value) => data.push((section, value)),
+			Err(error) => failure = Some(error),
+		}
 	}
 	if data.is_empty() {
 		return Err(failure.unwrap_or_else(|| error!("No home sections")));
@@ -371,7 +361,7 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 		.flatten()
 		.filter(|t| !t.manga_type.is_empty())
 		.filter_map(|t| Some((String::from(t.key()?), t.manga_type.clone())))
-		.collect::<aidoku::alloc::collections::BTreeMap<_, _>>();
+		.collect::<BTreeMap<_, _>>();
 	for (_, row) in &mut data {
 		if let Data::Titles(titles) = row {
 			for title in titles {
@@ -389,7 +379,6 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 		Data::Chapters(entries) => entries.iter().map(|m| m.manga.key.as_str()).collect(),
 	});
 	let blocked = excluded_slugs(base_url, keys, &settings::excluded_tags())?;
-	let types = settings::excluded_types();
 	Ok(HomeLayout {
 		components: data
 			.into_iter()
