@@ -2,27 +2,27 @@
 title: Iken template and consumers
 type: subsystem
 created: 2026-11-11
-updated: 2026-11-13
+updated: 2026-11-15
 sources:
-  - code: templates/iken/src/lib.rs
-  - code: templates/iken/src/imp.rs
-  - code: templates/iken/src/models.rs
-  - code: templates/iken/src/helpers.rs
-  - code: templates/iken/src/home.rs
-  - code: templates/iken/src/markdown.rs
-  - code: templates/iken/src/test.rs
-  - code: templates/iken/src/source_test.rs
-  - code: sources/en.hivescans/src/helpers.rs
-  - code: sources/es.eternalmangas/src/helpers.rs
-  - code: sources/es.eternalmangas/src/home.rs
-  - code: sources/es.eternalmangas/src/test.rs
-  - code: sources/es.eternalmangas/res/source.json
-  - code: sources/en.hijalascans/src/lib.rs
-  - code: sources/en.hijalascans/res/filters.json
-  - code: sources/en.hijalascans/Cargo.toml
-  - code: sources/en.sanascans/src/lib.rs
-  - code: sources/en.sanascans/res/filters.json
-  - code: sources/en.sanascans/Cargo.toml
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/imp.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/markdown.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/source_test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.hivescans/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/es.eternalmangas/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/es.eternalmangas/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/es.eternalmangas/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/es.eternalmangas/res/source.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.hijalascans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.hijalascans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.hijalascans/Cargo.toml
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.sanascans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.sanascans/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.sanascans/Cargo.toml
   - ext: https://github.com/Aidoku-Community/sources/pull/900#pullrequestreview-5897319010
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/lib-multisrc/iken
   - ext: https://github.com/LucifersCircle/pirate.vodka-extensions/tree/0.9/stable/src/Hijala
@@ -33,6 +33,11 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/commit/79f1619cc0d14e853619b4e13d48b5331cd099b1
 verified_at: 73fde51
 ---
+
+> ⚠️ The Iken template, Hive, Nyx, Vortex, Magus, Hijala, Sana and EternalMangas left main for
+> [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources)
+> after #900 merged, from main `56d5306` with their tests and `scripts/test-http.py`. Later
+> maintenance starts from upstream's crates and restores only the needed fork tests.
 
 
 Iken serves Hive, Nyx, Vortex, Magus, Hijala and Sana through the Params/Impl arrangement

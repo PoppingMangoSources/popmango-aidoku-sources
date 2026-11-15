@@ -532,7 +532,7 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | V2 Trending Now was overridden with Month despite the site's Today default (owner's correction) | Use Today cards directly for Trending. Fetch Month for Most Reviewed, the owner's explicit choice; do not apply that override to Trending. | R |
 | Newly Added fell back to a document-wide grid (owner's review) | Read its own cards or its immediately adjacent grid, then reuse the normal card conversion. An empty section must not borrow another row's cards. | R |
 | The Keyoapp V1 section ancestor bound was widened from three to five without evidence (owner's correction) | Keep the three-level walk supported by Mist's headings, and test that a heading cannot capture a card only present at a fourth ancestor. (verified on the live Mist homepage, 2026-11-09) | R |
-| Blocked requests looked like missing catalogues or invalid JSON (owner’s CI log) | On fork main, live-tested Keyoapp and MangaThemesia requests use checked fetch helpers before parsing. Image request providers still return unsent requests to the host. Report non-2xx status and log URL, content type and at most 240 body characters. `scripts/test-http.py` checks failures with a loopback fixture; `check-sources.py` rejects direct requests that bypass the helper. | F |
+| Blocked requests looked like missing catalogues or invalid JSON (owner’s CI log) | On fork main, live-tested Keyoapp and MangaThemesia requests use checked fetch helpers before parsing. Image request providers still return unsent requests to the host. Report non-2xx status and log URL, content type and at most 240 body characters. `scripts/test-http.py` checks failures with a loopback fixture; it and the templates it covers now live on `merged-sources`. `check-sources.py` rejects direct requests that bypass the helper. | F |
 
 ### From #900 and #905 (iken template, `es.eternalmangas`)
 
@@ -1301,7 +1301,8 @@ Most templates track upstream. `madara` and `madtheme` carry additions our sourc
 (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and
 is upstream's copy again; its consumers live upstream only. `mangathemesia` adds shared novel
 reading and an opt-in `child_theme` module for Violet, Thunder, Madara and Eva; their source
-overrides select its home and deep-link handlers. The default home and deep-link handlers remain
+overrides select its home and deep-link handlers. It left `main` with Scythe Scans, its last
+consumer there, and `iken` with its six consumers; both are on `merged-sources` (section 17). The default home and deep-link handlers remain
 upstream's for the other consumers. KingOfShojo and RokariComics merged with the original template
 unchanged (section 17). The `madtheme` additions (a home page and a chapter-list fallback)
 were for Kaliscan, which now sits on
@@ -1535,6 +1536,9 @@ site has a Hentai theme. Its submission branch is `feat/multi.mangaball`.
 
 ## Iken maintenance
 
+The template, its six consumers and EternalMangas left `main` for `merged-sources` once #900
+merged (section 17); start later work from upstream's crates. What they taught stays below.
+
 Hive, Nyx, Vortex, Magus, Hijala and Sana use Iken with numeric API series and chapter keys. Home links
 arrive as `/series/<slug>` and resolve before returning details or deep links. A numeric
 chapter-only update skips the details lookup; the reader requests the chapter by id alone.
@@ -1606,6 +1610,14 @@ and push gates reject incomplete preservation. Archive branches do not publish p
 | `en.mistscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
 | `en.sirenscans` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
 | `en.timelesstoons` | merged (#888) | `81e42e5` | `merged-sources`; maintenance from upstream | `docs/subsystems/keyoapp-template.md` |
+| `en.hivescans` | merged (#900) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/iken-template.md` |
+| `en.nyxscans` | merged (#900) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/iken-template.md` |
+| `en.vortexscans` | merged (#900) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/iken-template.md` |
+| `en.magusmanga` | merged (#900) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/iken-template.md` |
+| `en.hijalascans` | merged (#900) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/iken-template.md` |
+| `en.sanascans` | merged (#900) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/iken-template.md` |
+| `es.eternalmangas` | rewrite approved, #905 open when archived (owner's call) | `56d5306` | `merged-sources`; `fix-eternal` for #905 | `docs/subsystems/iken-template.md` |
+| `en.scythescans` | merged (#897) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/mangathemesia-consumers.md` |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a

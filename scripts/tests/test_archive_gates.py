@@ -45,6 +45,13 @@ class ArchiveGateTests(unittest.TestCase):
                     arguments = json.loads((root / "source-args.json").read_text())
                     self.assertEqual(arguments, ["--upstream", "en.example"] if branch.endswith("-sources") else ["--base", base])
 
+    def test_pre_push_omits_publication_rules_on_archives_like_ci(self):
+        hook = (ROOT / ".githooks/pre-push").read_text()
+        archive = hook.split("merged-sources|dead-sources)", 1)[1].split(";;", 1)[0]
+        self.assertIn("changed-crates.py\" --base \"$base\" --sources-only", archive)
+        self.assertIn("check-sources.py\" --repo \"$root\" --upstream $archived", archive)
+        self.assertNotIn("--base \"$base\" --upstream", archive)
+
 
 if __name__ == "__main__":
     unittest.main()

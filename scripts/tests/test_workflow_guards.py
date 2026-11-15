@@ -61,7 +61,8 @@ class ScopeTests(unittest.TestCase):
             for template, expected in [('iken', True), ('', False)]:
                 output = subprocess.check_output(['bash', '-euo', 'pipefail', '-c', block],
                     env={**os.environ, 'PATH': str(folder) + ':' + os.environ['PATH'],
-                         'root': '/submission', 'tooling': '/fork', 'base': 'canonical', 'template': template}, text=True)
+                         'root': '/submission', 'tooling': '/fork', 'base': 'canonical', 'template': template,
+                         'branch': 'fix-iken' if template else 'main'}, text=True)
                 args = output.splitlines()
                 self.assertEqual(args[:5], ['/fork/scripts/check-sources.py', '--repo', '/submission', '--base', 'canonical'])
                 self.assertEqual('--upstream' in args, expected)

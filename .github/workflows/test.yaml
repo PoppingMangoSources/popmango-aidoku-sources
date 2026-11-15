@@ -121,14 +121,6 @@ jobs:
       - name: Run portable template review contracts
         run: python3 scripts/review-contracts.py --crates-file "$RUNNER_TEMP/candidates"
 
-      - name: Run HTTP response regressions
-        run: |
-          set -euo pipefail
-          for template in mangathemesia iken; do
-            if grep -qx "templates/$template" "$RUNNER_TEMP/tested"; then
-              python3 scripts/test-http.py "templates/$template"
-            fi
-          done
 
       - name: Run review contract regressions
         run: |

@@ -2,17 +2,17 @@
 title: MangaThemesia consumers
 type: subsystem
 created: 2026-11-07
-updated: 2026-11-12
+updated: 2026-11-15
 sources:
-  - code: templates/mangathemesia/src/imp.rs
-  - code: templates/mangathemesia/src/helpers.rs
-  - code: templates/mangathemesia/src/test.rs
-  - code: scripts/test-http.py
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/mangathemesia/src/imp.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/mangathemesia/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/mangathemesia/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/scripts/test-http.py
   - ext: https://github.com/Aidoku-Community/sources/blob/289b5613bb47f62c6eb91de3d8b2282643586533/templates/madara/src/imp.rs
   - ext: https://github.com/Aidoku-Community/sources/blob/289b5613bb47f62c6eb91de3d8b2282643586533/templates/keyoapp/src/home.rs
   - code: .github/workflows/test.yaml
-  - code: templates/mangathemesia/src/child_theme.rs
-  - code: sources/en.scythescans/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/mangathemesia/src/child_theme.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/sources/en.scythescans/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.lagoonscans/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/5882af8cedaea94150b49d4207c37ece5309a1fa/sources/en.ravenscans/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.ragescans/src/lib.rs
@@ -28,6 +28,11 @@ sources:
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
 verified_at: 8244562
 ---
+
+> ⚠️ Scythe Scans, the template's last consumer on main, left with the template for
+> [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources)
+> from main `56d5306`, with its tests and `scripts/test-http.py`. Later maintenance starts from
+> upstream's crates.
 
 Portable review gates and their coverage are recorded in [[source-checks]].
 

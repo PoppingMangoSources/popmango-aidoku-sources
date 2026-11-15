@@ -63,7 +63,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         python3 "$tooling/scripts/review-contracts.py" --repo "$root" --base "$base"
         source_checks=(--repo "$root" --base "$base")
         [ -z "$template" ] || source_checks+=(--upstream)
-        python3 "$tooling/scripts/check-sources.py" "${source_checks[@]}"
+        case "$branch" in
+            merged-sources|dead-sources)
+                # Archives keep the source rules without install cards or new versions, as ci-gates.py does
+                archived=$(python3 "$tooling/scripts/changed-crates.py" --base "$base" --sources-only | xargs -r -n1 basename)
+                [ -z "$archived" ] || python3 "$tooling/scripts/check-sources.py" --repo "$root" --upstream $archived
+                ;;
+            *) python3 "$tooling/scripts/check-sources.py" "${source_checks[@]}" ;;
+        esac
         if git diff --name-only "$base" "$local_sha" -- .github | grep -q .; then
             python3 "$tooling/scripts/check-workflows.py" --offline
         fi

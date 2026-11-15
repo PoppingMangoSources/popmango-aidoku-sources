@@ -5,7 +5,7 @@ created: 2026-10-31
 updated: 2026-11-13
 sources:
   - code: scripts/check-sources.py
-  - code: scripts/test-http.py
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/scripts/test-http.py
   - code: scripts/review-contracts.py
   - code: scripts/review-contracts/vinetheme.rs
   - code: scripts/review-contracts/keyoapp.rs
@@ -14,7 +14,7 @@ sources:
   - code: scripts/tests/test_review_rules.py
   - code: scripts/tests/test_review_contracts.py
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/81e42e5312cda0aed39d174c3dcf3b2797f858c0/templates/keyoapp/src/test.rs
-  - code: templates/mangathemesia/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/mangathemesia/src/test.rs
   - code: scripts/tests/test_check_sources.py
   - code: scripts/calibrate-rules.sh
   - code: .github/workflows/check.yaml
