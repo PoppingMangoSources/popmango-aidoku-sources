@@ -19,7 +19,7 @@ It is based on canonical Aidoku-Community main; fork publication stays on main.
 | High Score Manga | `/wp-json/manga/v1/highscore?type=all&number=15`. |
 | Tag and type settings, overridden by search | Both sites call the one taxonomy "Tags" on /browse, so the filter is Tags and the setting Excluded Tags. Empty exclusion lists exclude nothing. As in MangaBall, search exclusions add to the settings, and a tag or type the search includes lifts its setting exclusion. |
 | Content rating | Both sources are rated 1 (owner's call); per-title ratings come from tags. |
-| All browse controls | Four bidirectional sorts (untitled, as on the site), multi-select Type and Tags, single-choice Status and Year with the site's "All" option (its `app.js` keeps one value for each), and Match (Any/All) after Tags, read from live `/browse`. Selecting every status was not the same as none on Rolia, which a single choice avoids. |
+| All browse controls | Four bidirectional sorts (untitled, as on the site), multi-select Type and Tags, single-choice Status and Year with the site's "All" option (its `app.js` keeps one value for each), and Match (Any/All) after Tags, read from live `/browse`. Selecting every status was not the same as none on Rolia, which a single choice avoids. Type stays a multi-select with exclusion although the site's Type dropdown takes one value (owner's call, after checking it in the app); excluded types are filtered locally and the live suites test excluding Novel. |
 | Key-only reading, deep links, novels | Series keys are public slugs; chapter keys are the site's slug/chapter path. Comic pages and paragraph-preserving novel Markdown use chapter-content. |
 
 ## API boundaries

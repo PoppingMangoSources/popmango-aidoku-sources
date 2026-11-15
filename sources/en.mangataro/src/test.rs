@@ -321,4 +321,8 @@ fn deep_links_unknown_key_and_each_filter() {
 	assert!(without_action.iter().all(|k| !with_action.contains(k)));
 
 	assert_eq!(keys(&select("genre", "Action")), with_action);
+
+	let no_novels = search("type", Vec::new(), vec!["Novel".into()]);
+	assert!(!no_novels.is_empty());
+	assert!(no_novels.iter().all(|m| !m.title.ends_with("(Novel)")));
 }
