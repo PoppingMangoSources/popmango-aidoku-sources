@@ -2,7 +2,7 @@ use crate::{
 	Params,
 	api::SearchParams,
 	helpers::{
-		browse, credits, excluded_slugs, get, html, link_keys, novel_title, options, parse, rating,
+		browse, credits, excluded_slugs, html, link_keys, novel_title, options, parse, rating,
 		request, status, tags, viewer,
 	},
 	home,
@@ -10,7 +10,7 @@ use crate::{
 };
 use aidoku::{
 	Chapter, DeepLinkResult, Filter, FilterValue, HomeLayout, Manga, MangaPageResult,
-	MultiSelectFilter, MultiSelectSetting, Page, Result, Setting,
+	MultiSelectFilter, MultiSelectSetting, Page, Result, SelectFilter, Setting,
 	alloc::{String, Vec, string::ToString, vec},
 	helpers::{
 		element::ElementHelpers,
@@ -104,29 +104,53 @@ pub trait Impl {
 
 	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
 		let document = browse(&params.base_url)?;
-		let mut filters = Vec::new();
-		for (id, title, class, can_exclude) in [
-			("type", "Type", "type-btn", true),
-			("status", "Status", "status-btn", false),
-			("year", "Year", "year-btn", false),
-			("genre", "Tags", "genre-btn", true),
-		] {
+		let multi_select = |id: &'static str, title: &'static str, class| -> Filter {
 			let (ids, options) = options(&document, class);
-			filters.push(
-				MultiSelectFilter {
-					id: id.into(),
-					title: Some(title.into()),
-					is_genre: id == "genre",
-					uses_tag_style: id == "genre",
-					options,
-					ids: Some(ids),
-					can_exclude,
-					..Default::default()
-				}
-				.into(),
-			);
-		}
-		Ok(filters)
+			MultiSelectFilter {
+				id: id.into(),
+				title: Some(title.into()),
+				is_genre: id == "genre",
+				uses_tag_style: id == "genre",
+				options,
+				ids: Some(ids),
+				can_exclude: true,
+				..Default::default()
+			}
+			.into()
+		};
+		// The site's status and year dropdowns take one value, after an "All" button
+		let select = |id: &'static str, title: &'static str, class| -> Filter {
+			let (mut ids, mut options) = options(&document, class);
+			let all = document
+				.select_first(format!(".{class}[data-value='']"))
+				.and_then(|el| el.text())
+				.unwrap_or_else(|| "All".into());
+			ids.insert(0, "".into());
+			options.insert(0, all.into());
+			SelectFilter {
+				id: id.into(),
+				title: Some(title.into()),
+				options,
+				ids: Some(ids),
+				..Default::default()
+			}
+			.into()
+		};
+		Ok(vec![
+			multi_select("type", "Type", "type-btn"),
+			select("status", "Status", "status-btn"),
+			select("year", "Year", "year-btn"),
+			multi_select("genre", "Tags", "genre-btn"),
+			SelectFilter {
+				id: "genreMatchMode".into(),
+				title: Some("Match".into()),
+				hide_from_header: Some(true),
+				options: vec!["Any".into(), "All".into()],
+				ids: Some(vec!["any".into(), "all".into()]),
+				..Default::default()
+			}
+			.into(),
+		])
 	}
 
 	fn get_dynamic_settings(&self, params: &Params) -> Result<Vec<Setting>> {
@@ -266,11 +290,9 @@ pub trait Impl {
 			.map(|(_, id)| id)
 			.filter(|id| id.parse::<u64>().is_ok())
 			.ok_or(error!("Invalid chapter key"))?;
-		get::<ChapterContent>(
-			&params.base_url,
-			&format!("{}/auth/chapter-content?chapter_id={id}", params.base_url),
-		)?
-		.try_into()
+		let base_url = params.base_url.as_ref();
+		let url = format!("{base_url}/auth/chapter-content?chapter_id={id}");
+		parse::<ChapterContent>(request(base_url, &url)?.send()?)?.try_into()
 	}
 
 	fn handle_deep_link(&self, _params: &Params, url: String) -> Result<Option<DeepLinkResult>> {

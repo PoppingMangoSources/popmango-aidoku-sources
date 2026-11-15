@@ -2,26 +2,11 @@
 	{
 		"type": "sort",
 		"id": "sort",
-		"title": "Sort",
 		"options": [
 			"Latest Updates",
 			"Release Date",
 			"Title A-Z",
 			"Popular"
-		]
-	},
-	{
-		"type": "select",
-		"id": "genreMatchMode",
-		"title": "Tag Match",
-		"hideFromHeader": true,
-		"options": [
-			"Any",
-			"All"
-		],
-		"ids": [
-			"any",
-			"all"
 		]
 	}
 ]

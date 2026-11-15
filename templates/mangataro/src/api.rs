@@ -69,13 +69,14 @@ impl SearchParams {
 						search.excluded_types.extend(excluded);
 						overrides.extend(included);
 					}
-					"status" => search.statuses = serde_json::to_string(&included)?,
-					"year" => search.years = number_list(&included)?,
 					_ => {}
 				},
-				FilterValue::Select { id, value } if id == "genreMatchMode" => {
-					search.genre_match_mode = value
-				}
+				FilterValue::Select { id, value } => match id.as_str() {
+					"status" => search.statuses = serde_json::to_string(&[value])?,
+					"year" => search.years = number_list(&[value])?,
+					"genreMatchMode" => search.genre_match_mode = value,
+					_ => {}
+				},
 				_ => {}
 			}
 		}

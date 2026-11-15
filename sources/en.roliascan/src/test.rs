@@ -143,14 +143,13 @@ fn filter_capabilities_and_type_override() {
 				..
 			}
 		)));
-	assert!(filters.iter().any(|f| f.id == "status"
-		&& matches!(
-			f.kind,
-			FilterKind::MultiSelect {
-				can_exclude: false,
-				..
-			}
-		)));
+	for id in ["status", "year"] {
+		assert!(
+			filters
+				.iter()
+				.any(|f| f.id == id && matches!(f.kind, FilterKind::Select { .. }))
+		);
+	}
 	defaults_set(
 		"excludedTypes",
 		DefaultValue::StringArray(vec!["Novel".into()]),
@@ -214,4 +213,115 @@ fn each_sort_direction_decodes_and_narrows() {
 			);
 		}
 	}
+}
+
+#[aidoku_test]
+fn deep_links_unknown_key_and_each_filter() {
+	use aidoku::{
+		DeepLinkHandler, DeepLinkResult, DynamicFilters, FilterKind, FilterValue, MangaStatus,
+		alloc::{format, string::String, vec},
+	};
+	let source = SourceImpl::new();
+	let key = "all-hail-the-sect-leader";
+	let unknown = Manga {
+		key: "zzzz-not-a-series-987654".into(),
+		..Default::default()
+	};
+	assert!(source.get_manga_update(unknown, true, false).is_err());
+	let series_url = format!("{BASE_URL}/manga/{key}");
+	assert!(matches!(
+		source.handle_deep_link(series_url.clone()).unwrap(),
+		Some(DeepLinkResult::Manga { key: found }) if found == key
+	));
+	let pasted = source
+		.get_search_manga_list(Some(series_url), 1, Vec::new())
+		.unwrap();
+	assert_eq!(pasted.entries.len(), 1);
+	assert_eq!(pasted.entries[0].key, key);
+	let manga = Manga {
+		key: key.into(),
+		..Default::default()
+	};
+	let chapter = source
+		.get_manga_update(manga, false, true)
+		.unwrap()
+		.chapters
+		.unwrap()
+		.remove(0);
+	assert!(matches!(
+		source.handle_deep_link(chapter.url.clone().unwrap()).unwrap(),
+		Some(DeepLinkResult::Chapter { manga_key, key: found })
+			if manga_key == key && found == chapter.key
+	));
+
+	let filters = source.get_dynamic_filters().unwrap();
+	assert_eq!(filters.last().unwrap().id, "genreMatchMode");
+	assert!(
+		filters
+			.iter()
+			.any(|f| f.id == "genre" && f.title.as_deref() == Some("Tags"))
+	);
+	let kind = |id: &str| &filters.iter().find(|f| f.id == id).unwrap().kind;
+	let FilterKind::MultiSelect { options, ids, .. } = kind("genre") else {
+		panic!("genre");
+	};
+	let index = options.iter().position(|o| o == "Action").unwrap();
+	let action = ids.as_ref().unwrap()[index].clone().into_owned();
+	let FilterKind::Select { ids: years, .. } = kind("year") else {
+		panic!("year");
+	};
+	let years = years.as_ref().unwrap();
+	assert!(years[0].is_empty());
+	assert!(
+		matches!(kind("status"), FilterKind::Select { ids: Some(ids), .. } if ids[0].is_empty())
+	);
+	let select = |id: &str, value: &str| {
+		source
+			.get_search_manga_list(
+				None,
+				1,
+				vec![FilterValue::Select {
+					id: id.into(),
+					value: value.into(),
+				}],
+			)
+			.unwrap()
+			.entries
+	};
+	let search = |id: &str, included: Vec<String>, excluded: Vec<String>| {
+		source
+			.get_search_manga_list(
+				None,
+				1,
+				vec![FilterValue::MultiSelect {
+					id: id.into(),
+					included,
+					excluded,
+				}],
+			)
+			.unwrap()
+			.entries
+	};
+	let keys = |entries: &[Manga]| entries.iter().map(|m| m.key.clone()).collect::<Vec<_>>();
+	let unfiltered = keys(
+		&source
+			.get_search_manga_list(None, 1, Vec::new())
+			.unwrap()
+			.entries,
+	);
+
+	let completed = select("status", "Completed");
+	assert!(!completed.is_empty());
+	assert!(completed.iter().all(|m| m.status == MangaStatus::Completed));
+
+	let year = select("year", &years[1]);
+	assert!(!year.is_empty());
+	assert_ne!(keys(&year), unfiltered);
+
+	let with_action = keys(&search("genre", vec![action.clone()], Vec::new()));
+	let without_action = keys(&search("genre", Vec::new(), vec![action]));
+	assert!(!with_action.is_empty() && !without_action.is_empty());
+	assert!(without_action.iter().all(|k| !with_action.contains(k)));
+
+	assert_eq!(keys(&select("genre", "Action")), with_action);
 }

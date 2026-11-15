@@ -35,10 +35,6 @@ pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 	checked(response)?.get_json_owned()
 }
 
-pub fn get<T: DeserializeOwned>(base_url: &str, url: &str) -> Result<T> {
-	parse(request(base_url, url)?.send()?)
-}
-
 pub fn html(base_url: &str, url: &str) -> Result<Document> {
 	Ok(checked(request(base_url, url)?.send()?)?.get_html()?)
 }

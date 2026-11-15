@@ -32,7 +32,7 @@ impl Markdown {
 				self.end_line();
 			}
 			for c in part.chars() {
-				// Whitespace stays outside emphasis markers.
+				// Whitespace stays outside emphasis markers
 				if c.is_whitespace() {
 					if !self.line.is_empty() && !self.line.ends_with(char::is_whitespace) {
 						self.line.push(c);
@@ -55,7 +55,7 @@ impl Markdown {
 					|| (matches!(c, '.' | ')')
 						&& !self.line.is_empty()
 						&& self.line.bytes().all(|b| b.is_ascii_digit()));
-				// Escaping ordinary punctuation creates excessive inline nodes in long prose.
+				// Escaping ordinary punctuation creates excessive inline nodes in long prose
 				if block
 					|| matches!(
 						c,
@@ -91,7 +91,7 @@ impl Markdown {
 
 	fn end_line(&mut self) {
 		self.line.truncate(self.line.trim_end().len());
-		// Emphasis cannot span Markdown paragraphs.
+		// Emphasis cannot span Markdown paragraphs
 		for marker in self.open[..self.written].iter().rev() {
 			self.line.push_str(marker);
 		}
