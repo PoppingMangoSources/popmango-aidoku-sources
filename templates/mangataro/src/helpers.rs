@@ -1,0 +1,207 @@
+use crate::models::Slug;
+use aidoku::{
+	ContentRating, Result,
+	alloc::{String, Vec, collections::BTreeSet},
+	helpers::uri::{QueryParameters, decode_uri},
+	imports::{
+		html::{Document, Html},
+		net::{Request, Response},
+		std::{current_date, parse_date_with_options},
+	},
+	prelude::*,
+};
+
+pub fn request(base_url: &str, url: &str) -> Result<Request> {
+	Ok(site_headers(Request::get(url)?, base_url))
+}
+
+pub fn site_headers(request: Request, base_url: &str) -> Request {
+	request
+		.header("Referer", base_url)
+		.header("Accept", "application/json,text/html,*/*")
+		.header("X-Requested-With", "XMLHttpRequest")
+}
+
+pub fn checked(response: Response) -> Result<Response> {
+	let status = response.status_code();
+	if !(200..300).contains(&status) {
+		bail!("HTTP {status}");
+	}
+	Ok(response)
+}
+
+pub fn plain_text(value: &str) -> Result<String> {
+	Html::parse(format!("<div id=plain>{value}</div>"))?
+		.select_first("#plain")
+		.and_then(|el| el.text())
+		.ok_or(error!("Invalid text"))
+}
+
+pub fn series_key(url: &str) -> Option<&str> {
+	let path = url.split(['?', '#']).next()?;
+	let rest = path
+		.split("/manga/")
+		.nth(1)
+		.or_else(|| path.split("/read/").nth(1))?;
+	let key = rest.split('/').next()?;
+	(!key.is_empty()).then_some(key)
+}
+
+pub fn date(value: &str) -> Option<i64> {
+	let text = value.trim().to_ascii_lowercase();
+	if text == "just now" || text == "now" {
+		return Some(current_date());
+	}
+	let number = text
+		.find(|c: char| !c.is_ascii_digit())
+		.unwrap_or(text.len());
+	if let Ok(amount) = text[..number].parse::<i64>() {
+		let unit = text[number..].trim_start();
+		let seconds = if unit.starts_with("mo") {
+			2_592_000
+		} else if unit.starts_with('y') {
+			31_536_000
+		} else if unit.starts_with('w') {
+			604_800
+		} else if unit.starts_with('d') {
+			86_400
+		} else if unit.starts_with('h') {
+			3_600
+		} else if unit.starts_with('m') {
+			60
+		} else if unit.starts_with('s') {
+			1
+		} else {
+			0
+		};
+		if seconds > 0 {
+			return Some(current_date() - amount * seconds);
+		}
+	}
+	parse_date_with_options(
+		format!("{value} 00:00"),
+		"MMM d, yyyy HH:mm",
+		"en_US_POSIX",
+		"UTC",
+	)
+}
+
+pub fn tags(document: &Document) -> Vec<String> {
+	let mut tags = document
+		.select(".manga-page-wrapper a[href*='/tag/']")
+		.into_iter()
+		.flatten()
+		.filter_map(|el| el.text())
+		.collect::<Vec<_>>();
+	tags.sort();
+	tags.dedup();
+	tags
+}
+
+pub fn rating(tags: &[String]) -> ContentRating {
+	if tags.iter().any(|tag| {
+		matches!(
+			tag.to_ascii_lowercase().as_str(),
+			"adult" | "hentai" | "erotica" | "smut" | "pornographic" | "19+"
+		)
+	}) {
+		ContentRating::NSFW
+	} else if tags.iter().any(|tag| {
+		matches!(
+			tag.to_ascii_lowercase().as_str(),
+			"mature" | "ecchi" | "suggestive"
+		)
+	}) {
+		ContentRating::Suggestive
+	} else {
+		ContentRating::Safe
+	}
+}
+
+pub fn credits(value: &str) -> Vec<String> {
+	let mut names = Vec::new();
+	for name in value
+		.split([',', '&'])
+		.map(str::trim)
+		.filter(|s| !s.is_empty())
+	{
+		if !names.iter().any(|s| s == name) {
+			names.push(name.into());
+		}
+	}
+	names
+}
+
+pub fn link_keys(url: &str) -> Option<(String, Option<String>)> {
+	let key = series_key(url)?;
+	let chapter = url.split("/read/").nth(1).and_then(|path| {
+		let path = path.split(['?', '#']).next()?.trim_end_matches('/');
+		let (_, chapter) = path.split_once('/')?;
+		chapter.rsplit_once('-')?.1.parse::<u64>().ok()?;
+		Some(path.into())
+	});
+	Some((decode_uri(key), chapter))
+}
+
+pub fn excluded_slugs<'a>(
+	base_url: &str,
+	keys: impl Iterator<Item = &'a str>,
+	excluded: &[String],
+) -> Result<BTreeSet<String>> {
+	if excluded.is_empty() {
+		return Ok(BTreeSet::new());
+	}
+	let keys = keys
+		.collect::<BTreeSet<_>>()
+		.into_iter()
+		.collect::<Vec<_>>();
+	let mut requests = Vec::new();
+	for chunk in keys.chunks(100) {
+		let mut query = QueryParameters::new();
+		query.push("slug", Some(&chunk.join(",")));
+		query.push("tags", Some(&excluded.join(",")));
+		query.push("per_page", Some("100"));
+		query.push("_fields", Some("slug"));
+		requests.push(request(
+			base_url,
+			&format!("{base_url}/wp-json/wp/v2/manga?{query}"),
+		)?);
+	}
+	let mut blocked = BTreeSet::new();
+	for response in Request::send_all(requests) {
+		blocked.extend(
+			checked(response?)?
+				.get_json_owned::<Vec<Slug>>()?
+				.into_iter()
+				.map(|x| x.slug),
+		);
+	}
+	Ok(blocked)
+}
+
+pub fn options(
+	document: &Document,
+	class: &str,
+) -> (
+	Vec<aidoku::alloc::borrow::Cow<'static, str>>,
+	Vec<aidoku::alloc::borrow::Cow<'static, str>>,
+) {
+	document
+		.select(format!(".{class}[data-value]"))
+		.into_iter()
+		.flatten()
+		.filter_map(|el| {
+			let id = el.attr("data-value").filter(|s| !s.is_empty())?;
+			let name = el.text()?;
+			let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
+			let name = if class == "year-btn" {
+				name
+			} else {
+				name.trim_end_matches(|c: char| c.is_ascii_digit())
+					.trim_end()
+					.into()
+			};
+			Some((id.into(), name.into()))
+		})
+		.unzip()
+}
