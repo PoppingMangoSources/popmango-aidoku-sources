@@ -1,0 +1,895 @@
+use super::*;
+use aidoku::println;
+use aidoku::{
+	HomeComponentValue, LinkValue,
+	alloc::{format, vec},
+	imports::{html::Html, std::current_date},
+};
+use aidoku_test::aidoku_test;
+
+#[aidoku_test]
+fn review_novel_emphasis_and_paragraph_boundaries() {
+	assert_eq!(
+		markdown::parse(
+			"<p><b><i>one</i></b><b><i>two</i></b></p><p><strong>three<br>four</strong></p>"
+		)
+		.unwrap(),
+		"***onetwo***\n\n**three**\n\n**four**"
+	);
+	assert_eq!(
+		markdown::parse("<p><i><b>one</b></i><i><b>two</b></i></p>").unwrap(),
+		"***onetwo***"
+	);
+	let prose = "Hello, world. Wait: yes! ".repeat(500);
+	assert_eq!(markdown::parse(&prose).unwrap(), prose.trim());
+	assert!(markdown::parse("<script>hidden</script><p> </p>").is_err());
+}
+
+#[aidoku_test]
+fn review_independent_locks_and_numeric_strings() {
+	for flag in [
+		"isLocked",
+		"isTimeLocked",
+		"isPermanentlyLocked",
+		"isLockedByCoins",
+		"isShortLinkLocked",
+	] {
+		let chapter: models::IkenChapter = serde_json::from_str(
+			&format!(
+				r#"{{"id":1,"slug":"chapter-1","number":"1.5","isLocked":false,"{flag}":true}}"#
+			)
+			.replace("\"isLocked\":false,\"isLocked\":true", "\"isLocked\":true"),
+		)
+		.unwrap();
+		assert!(chapter.locked());
+		assert_eq!(
+			chapter
+				.into_chapter("https://example.com", Some("title"))
+				.unwrap()
+				.chapter_number,
+			Some(1.5)
+		);
+	}
+	let chapter: models::IkenChapter = serde_json::from_str(
+		r#"{"id":1,"slug":"chapter-1","number":1,"price":100,"isAccessible":true}"#,
+	)
+	.unwrap();
+	assert!(!chapter.locked());
+}
+
+#[aidoku_test]
+fn review_identity_compact_cards_and_blank_metadata() {
+	let post: models::Post = serde_json::from_str(r#"{"id":7,"slug":"title","postTitle":" Title ","author":"  ","artist":" ","postContent":"<p> </p>","is18Plus":true,"genres":[{"name":"Z"},{"name":"A"}]}"#).unwrap();
+	let basic = post.to_manga(true).unwrap();
+	assert_eq!(basic.key, "7");
+	assert_eq!(basic.title, "Title");
+	assert!(basic.tags.is_none() && basic.authors.is_none() && basic.description.is_none());
+	let detail = post.to_details("https://example.com", true).unwrap();
+	assert!(detail.description.is_none() && detail.authors.is_none() && detail.artists.is_none());
+	assert_eq!(detail.content_rating, aidoku::ContentRating::NSFW);
+	assert_eq!(detail.tags, Some(vec!["A".into(), "Z".into()]));
+	for (id, slug, title) in [(0, "title", "Title"), (1, " ", "Title"), (1, "title", " ")] {
+		let post: models::Post = serde_json::from_str(&format!(
+			r#"{{"id":{id},"slug":"{slug}","postTitle":"{title}"}}"#
+		))
+		.unwrap();
+		assert!(post.to_manga(true).is_err());
+	}
+}
+
+#[aidoku_test]
+fn review_home_order_compact_cards_and_section_boundaries() {
+	let html = Html::parse(r#"<main><section><div><h2>Latest Releases</h2></div><div><a href='/series/one' title=' One '><img src='https://example.com/one.jpg'></a><a href='/series/one' title='One'><img src='same'></a><a href='/series/blank' title=' '><img src='blank'></a></div></section><section><h2>Latest Updates</h2></section><section><h2>Most Popular</h2><a href='/series/two' title='Two'><img src='two'></a></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	assert_eq!(layout.components.len(), 2);
+	assert_eq!(
+		layout.components[0].title.as_deref(),
+		Some("Latest Releases")
+	);
+	assert_eq!(layout.components[1].title.as_deref(), Some("Most Popular"));
+	let HomeComponentValue::MangaList {
+		entries,
+		ranking: false,
+		page_size: Some(5),
+		..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected five-row latest list");
+	};
+	assert_eq!(entries.len(), 1);
+	assert!(entries[0].subtitle.is_none());
+	let Some(LinkValue::Manga(manga)) = &entries[0].value else {
+		panic!("Expected manga link");
+	};
+	assert_eq!(manga.key, "/series/one");
+	assert!(manga.description.is_none());
+	assert!(matches!(
+		layout.components[1].value,
+		HomeComponentValue::MangaList {
+			page_size: Some(3),
+			..
+		}
+	));
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_errors_and_key_only_reading() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	for status in [403, 404, 429, 503, 522] {
+		let url = format!("{base}/status/{status}");
+		assert!(
+			helpers::check_response(Request::get(&url).unwrap().send().unwrap(), &url).is_err()
+		);
+	}
+	let params = Params {
+		base_url: base.into(),
+		api_url: base.into(),
+		..Default::default()
+	};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	assert_eq!(
+		Site.get_page_list(
+			&params,
+			Manga {
+				key: "7".into(),
+				..Default::default()
+			},
+			Chapter {
+				key: "11".into(),
+				..Default::default()
+			}
+		)
+		.unwrap()[0]
+			.content,
+		aidoku::PageContent::text("**Text**")
+	);
+	assert!(
+		Site.get_page_list(
+			&params,
+			Manga::default(),
+			Chapter {
+				key: "12".into(),
+				..Default::default()
+			}
+		)
+		.is_err()
+	);
+	assert!(
+		Site.get_page_list(
+			&params,
+			Manga::default(),
+			Chapter {
+				key: "13".into(),
+				..Default::default()
+			}
+		)
+		.is_err()
+	);
+	for (filename_order, first) in [(false, "page-10.jpg"), (true, "page-2.jpg")] {
+		let params = Params {
+			sort_pages_by_filename: filename_order,
+			base_url: base.into(),
+			api_url: base.into(),
+			..Default::default()
+		};
+		let pages = Site
+			.get_page_list(
+				&params,
+				Manga::default(),
+				Chapter {
+					key: "14".into(),
+					..Default::default()
+				},
+			)
+			.unwrap();
+		assert_eq!(pages.len(), 2);
+		assert_eq!(
+			pages[0].content,
+			aidoku::PageContent::url(format!("https://example.com/{first}"))
+		);
+	}
+	assert_eq!(
+		Site.get_page_list(
+			&params,
+			Manga::default(),
+			Chapter {
+				key: "/series/t%C3%ADtulo/cap%C3%ADtulo-11-part-2".into(),
+				..Default::default()
+			}
+		)
+		.unwrap()[0]
+			.content,
+		aidoku::PageContent::text("**Text**")
+	);
+	assert_eq!(helpers::chapters(&params, "7").unwrap().len(), 3);
+	for id in ["996", "997", "998", "999"] {
+		assert!(helpers::chapters(&params, id).is_err());
+	}
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_deep_link_paths_and_chapter_only_update() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	let params = Params {
+		base_url: base.replacen("http:", "https:", 1).into(),
+		api_url: base.into(),
+		..Default::default()
+	};
+	for suffix in ["", "/", "?ref=home", "/#chapter-list"] {
+		assert_eq!(
+			Site.handle_deep_link(&params, format!("{base}/series/t%C3%ADtulo{suffix}"))
+				.unwrap(),
+			Some(DeepLinkResult::Manga { key: "7".into() })
+		);
+	}
+	assert_eq!(
+		Site.handle_deep_link(
+			&params,
+			format!("{base}/series/t%C3%ADtulo/cap%C3%ADtulo-11-part-2/?ref=home#reader")
+		)
+		.unwrap(),
+		Some(DeepLinkResult::Chapter {
+			manga_key: "7".into(),
+			key: "11".into()
+		})
+	);
+	for path in ["/browse", "/other/series/title", "/series/missing"] {
+		assert!(
+			Site.handle_deep_link(&params, format!("{base}{path}"))
+				.unwrap()
+				.is_none()
+		);
+	}
+	let manga = Site
+		.get_manga_update(
+			&params,
+			Manga {
+				key: "7".into(),
+				..Default::default()
+			},
+			false,
+			true,
+		)
+		.unwrap();
+	assert_eq!(manga.key, "7");
+	assert!(manga.title.is_empty());
+	assert_eq!(manga.chapters.unwrap().len(), 3);
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_captured_homes() {
+	if option_env!("AIDOKU_IKEN_EVIDENCE_DIR").is_none() {
+		return;
+	}
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	for (site, host) in [
+		("hive", "hivetoons.org"),
+		("nyx", "nyxscans.com"),
+		("vortex", "vortexscans.org"),
+		("magus", "magustoon.org"),
+		("eternal", "eternalmangas.org"),
+	] {
+		let html = Request::get(format!("{base}/captured/home/{site}"))
+			.unwrap()
+			.html()
+			.unwrap();
+		let mut params = Params {
+			base_url: format!("https://{host}").into(),
+			..Default::default()
+		};
+		if site == "eternal" {
+			params.home_slider_selector = ".em-hero .carousel-item".into();
+			params.home_section_titles = &[
+				"Popular Hoy!",
+				"Últimas Actualizaciones",
+				"Tendencias",
+				"Novelas",
+			];
+		}
+		let layout = home::parse_home(&html, &params).unwrap();
+		println!(
+			"Captured {site}: {:?}",
+			layout
+				.components
+				.iter()
+				.map(|c| c.title.as_deref())
+				.collect::<Vec<_>>()
+		);
+		assert_eq!(layout.components.len(), if site == "hive" { 2 } else { 4 });
+	}
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_new_releases_are_compact_and_ordered() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	let mut params = Params {
+		base_url: format!("{base}/home").into(),
+		api_url: base.into(),
+		..Default::default()
+	};
+	let layout = Site.get_home(&params).unwrap();
+	assert_eq!(
+		layout
+			.components
+			.iter()
+			.map(|c| c.title.as_deref())
+			.collect::<Vec<_>>(),
+		[
+			Some("Latest Releases"),
+			Some("New Releases"),
+			Some("Novels"),
+			Some("Most Popular")
+		]
+	);
+	let HomeComponentValue::Scroller { entries, .. } = &layout.components[1].value else {
+		panic!("Expected scroller");
+	};
+	assert_eq!(entries.len(), 1);
+	assert!(entries[0].subtitle.is_none());
+	assert!(
+		matches!(&entries[0].value, Some(LinkValue::Manga(m)) if m.key == "7" && m.tags.is_none() && m.description.is_none())
+	);
+	params.api_url = format!("{base}/empty-novels").into();
+	let no_novels = Site.get_home(&params).unwrap();
+	assert_eq!(no_novels.components.len(), 3);
+	assert!(
+		!no_novels
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some("Novels"))
+	);
+	params.api_url = format!("{base}/fail-new").into();
+	let novel_only = Site.get_home(&params).unwrap();
+	assert!(
+		novel_only
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some("Novels"))
+	);
+	assert!(
+		!novel_only
+			.components
+			.iter()
+			.any(|c| c.title.as_deref() == Some("New Releases"))
+	);
+	params.base_url = format!("{base}/home-existing").into();
+	params.api_url = base.into();
+	params.home_section_titles = &["Latest Releases", "Most Popular", "Novels"];
+	let existing = Site.get_home(&params).unwrap();
+	assert_eq!(
+		existing
+			.components
+			.iter()
+			.filter(|c| c.title.as_deref() == Some("Novels"))
+			.count(),
+		1
+	);
+	assert_eq!(existing.components[3].title.as_deref(), Some("Novels"));
+	params.base_url = format!("{base}/home").into();
+	params.api_url = format!("{base}/fail").into();
+	let partial = Site.get_home(&params).unwrap();
+	assert_eq!(partial.components.len(), 2);
+	params.base_url = format!("{base}/status/503").into();
+	assert!(Site.get_home(&params).is_err());
+}
+
+#[aidoku_test]
+fn review_home_latest_and_popular_page_sizes_keep_every_entry() {
+	for (latest, popular) in [
+		("Latest Releases", "Most Popular"),
+		("Latest Updates", "Most Popular"),
+		("Últimas Actualizaciones", "Tendencias"),
+	] {
+		let cards = (0..7)
+			.map(|i| {
+				format!(
+					"<a href='/series/title-{i}' title='Title {i}'><img src='https://example.com/{i}.jpg'></a>"
+				)
+			})
+			.collect::<String>();
+		let html = Html::parse(format!("<main><section><h2>{latest}</h2>{cards}</section><section><h2>{popular}</h2>{cards}</section></main>")).unwrap();
+		let params = Params {
+			base_url: "https://example.com".into(),
+			home_section_titles: &[
+				"Latest Releases",
+				"Latest Updates",
+				"Most Popular",
+				"Últimas Actualizaciones",
+				"Tendencias",
+			],
+			..Default::default()
+		};
+		let layout = home::parse_home(&html, &params).unwrap();
+		assert_eq!(layout.components.len(), 2);
+		for (component, expected_size, expected_ranking) in [
+			(&layout.components[0], 5, false),
+			(&layout.components[1], 3, true),
+		] {
+			let HomeComponentValue::MangaList {
+				entries,
+				page_size,
+				ranking,
+				..
+			} = &component.value
+			else {
+				panic!("Expected paged list");
+			};
+			assert_eq!(*page_size, Some(expected_size));
+			assert_eq!(*ranking, expected_ranking);
+			assert_eq!(entries.len(), 7);
+		}
+	}
+}
+
+#[aidoku_test]
+fn review_latest_chapters_preserve_site_order_and_skip_locked() {
+	let html = Html::parse(r#"<main><section><h2>Latest Releases</h2><a href='/series/pinned' title='pinned'><img src='cover.jpg'></a><a href='/series/recent' title='Recent'><img src='cover.jpg'></a></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let mut layout = home::parse_home(&html, &params).unwrap();
+	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":2,"slug":"recent","postTitle":"Recent","chapters":[{"id":21,"slug":"chapter-3","number":3,"createdAt":"2026-11-11T12:00:00.000Z","isAccessible":true}]},{"id":1,"slug":"pinned","postTitle":"pinned","chapters":[{"id":12,"slug":"chapter-2","number":2,"isLocked":true},{"id":11,"slug":"chapter-1","number":1,"createdAt":"2026-11-10T12:00:00.000Z","isAccessible":true}]}],"totalCount":2}"#).unwrap();
+	home::update_home_metadata(&mut layout, data.posts, &params).unwrap();
+	let HomeComponentValue::MangaChapterList {
+		page_size, entries, ..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected real chapter rows");
+	};
+	assert_eq!(*page_size, Some(5));
+	assert_eq!(
+		entries
+			.iter()
+			.map(|e| (
+				e.manga.key.as_str(),
+				e.chapter.key.as_str(),
+				e.chapter.chapter_number
+			))
+			.collect::<Vec<_>>(),
+		[("1", "11", Some(1.)), ("2", "21", Some(3.))]
+	);
+	assert_eq!(entries[0].manga.title, "pinned");
+	assert_eq!(
+		entries[0].chapter.url.as_deref(),
+		Some("https://example.com/series/pinned/chapter-1")
+	);
+	assert!(
+		entries
+			.iter()
+			.all(|e| !e.chapter.locked && e.manga.description.is_none())
+	);
+	let original = layout.clone();
+	assert!(home::update_home_metadata(&mut layout, Vec::new(), &params).is_ok());
+	assert_eq!(layout, original);
+	let mut missing = home::parse_home(&html, &params).unwrap();
+	let original = missing.clone();
+	assert!(home::update_home_metadata(&mut missing, Vec::new(), &params).is_err());
+	assert_eq!(missing, original);
+}
+
+#[aidoku_test]
+fn review_credit_names_split_trim_and_keep_roles() {
+	let post: models::Post = serde_json::from_str(r#"{"id":7,"slug":"title","postTitle":"Title","author":" First,Second & First, , ","artist":"Second & Third,Third"}"#).unwrap();
+	let details = post.to_details("https://example.com", true).unwrap();
+	assert_eq!(details.authors, Some(vec!["First".into(), "Second".into()]));
+	assert_eq!(details.artists, Some(vec!["Second".into(), "Third".into()]));
+}
+
+#[aidoku_test]
+fn review_descriptions_accept_plain_text_and_html() {
+	for content in ["short synopsis", "<div><p>short synopsis</p></div>"] {
+		let post: models::Post = serde_json::from_str(&format!(
+			r#"{{"id":7,"slug":"title","postTitle":"Title","postContent":"{content}"}}"#
+		))
+		.unwrap();
+		let details = post.to_details("https://example.com", true).unwrap();
+		assert_eq!(details.title, "Title");
+		assert_eq!(details.description.as_deref(), Some("short synopsis"));
+	}
+}
+
+#[aidoku_test]
+fn review_latest_html_survives_missing_pinned_metadata() {
+	let html=Html::parse(r#"<main><section><h2>Latest Releases</h2><div><a href='/series/pinned' title='Pinned'><img src='cover.jpg'></a><a class='newly-free-chapter-row paid-chapter-row' href='/series/pinned/chapter-9'><span>Chapter 9</span></a><a class='newly-free-chapter-row' href='/series/pinned/chapter-8'><span>Chapter 8</span><time datetime='2026-11-11T12:00:00.000Z'></time></a></div></section><section><h2>Latest Updates</h2><div><a href='/series/recent' title='Recent'><img src='cover.jpg'></a><a class='newly-free-chapter-row' href='/series/recent/chapter-3'><span>Chapter 3</span><time datetime='2026-11-11T12:00:00.000Z'></time></a></div></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let mut layout = home::parse_home(&html, &params).unwrap();
+	let original = layout.clone();
+	home::update_home_metadata(&mut layout, Vec::new(), &params).unwrap();
+	assert_eq!(layout, original);
+	assert_eq!(layout.components.len(), 1);
+	for (i, n) in [8.].into_iter().enumerate() {
+		let HomeComponentValue::MangaChapterList {
+			entries, page_size, ..
+		} = &layout.components[i].value
+		else {
+			panic!("Expected chapter rows")
+		};
+		assert_eq!(*page_size, Some(5));
+		assert_eq!(entries[0].chapter.chapter_number, Some(n));
+		assert_eq!(entries[0].chapter.date_uploaded, Some(1794398400));
+	}
+}
+
+#[aidoku_test]
+fn review_explicit_chapter_rows_keep_each_chapter_and_relative_dates() {
+	let html=Html::parse(r#"<main><section><h2>Latest Updates</h2><div class='newly-free-chapter-row'><a href='/series/title' title='Title'><img src='cover.jpg'></a><a href='/series/title/chapter-8' title='Chapter 8: Part'>Chapter 8: Part</a><span>2 hours ago</span></div><div class='newly-free-chapter-row'><a href='/series/title' title='Title'><img src='cover.jpg'></a><a href='/series/title/chapter-7' title='Chapter 7'>Chapter 7</a><span>3 hours ago</span></div></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		home_section_titles: &["Latest Updates"],
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	let HomeComponentValue::MangaChapterList { entries, .. } = &layout.components[0].value else {
+		panic!("Expected chapter rows")
+	};
+	assert_eq!(entries.len(), 2);
+	assert_eq!(entries[0].chapter.chapter_number, Some(8.));
+	assert_eq!(entries[0].chapter.title.as_deref(), Some("Part"));
+	let expected = current_date() - 7200;
+	assert!((entries[0].chapter.date_uploaded.unwrap() - expected).abs() <= 1);
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_search_controls_and_page_sizes() {
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py");
+	};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	for page_size in [18, 30] {
+		let params = Params {
+			base_url: base.into(),
+			api_url: format!("{base}/catalogue").into(),
+			page_size,
+			..Default::default()
+		};
+		for page in [1, 2] {
+			let result = Site
+				.get_search_manga_list(
+					&params,
+					Some("word & café".into()),
+					page,
+					vec![
+						FilterValue::Sort {
+							id: "sort".into(),
+							index: 4,
+							ascending: true,
+						},
+						FilterValue::MultiSelect {
+							id: "genreIds".into(),
+							included: vec!["1".into()],
+							excluded: vec!["2".into()],
+						},
+						FilterValue::MultiSelect {
+							id: "seriesType".into(),
+							included: vec!["MANHWA".into(), "MANGA".into()],
+							excluded: Vec::new(),
+						},
+						FilterValue::Select {
+							id: "seriesStatus".into(),
+							value: "ONGOING".into(),
+						},
+						FilterValue::Text {
+							id: "minChapters".into(),
+							value: "5".into(),
+						},
+						FilterValue::Text {
+							id: "maxChapters".into(),
+							value: "50".into(),
+						},
+						FilterValue::Text {
+							id: "createdAfter".into(),
+							value: "2020-01-01".into(),
+						},
+						FilterValue::Text {
+							id: "createdBefore".into(),
+							value: "2030-12-31".into(),
+						},
+					],
+				)
+				.unwrap();
+			assert_eq!(result.has_next_page, page == 1);
+			assert_eq!(result.entries[0].key, format!("{page}"));
+		}
+	}
+}
+
+#[aidoku_test]
+fn review_preferences_keep_keys_and_plain_featured_metadata() {
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	assert!(!settings::show_locked());
+	assert!(settings::label_novels());
+	defaults_set("showLocked", DefaultValue::Bool(true));
+	assert!(settings::show_locked());
+	defaults_set("showLocked", DefaultValue::Null);
+	defaults_set("labelNovels", DefaultValue::Bool(false));
+	assert!(!settings::label_novels());
+	defaults_set("labelNovels", DefaultValue::Null);
+	for suffix in ["", " (Novel)", " [Novel]"] {
+		let post: models::Post = serde_json::from_str(&format!(r#"{{"id":7,"slug":"title","postTitle":"Title{suffix}","seriesType":"NOVEL","postContent":"<p>Plain, prose.</p>","genres":[{{"name":" Z "}},{{"name":"A"}},{{"name":"A"}}]}}"#)).unwrap();
+		assert_eq!(post.to_manga(true).unwrap().title, "Title (Novel)");
+		assert_eq!(post.to_manga(false).unwrap().title, "Title");
+		assert_eq!(post.to_manga(false).unwrap().key, "7");
+		let featured = post.to_featured("https://example.com", true).unwrap();
+		assert_eq!(featured.description.as_deref(), Some("Plain, prose."));
+		assert_eq!(featured.tags, Some(vec!["A".into(), "Z".into()]));
+	}
+}
+
+#[aidoku_test]
+fn review_banner_art_and_excluded_updates_boundary() {
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/title' title='Title'><img src='https://example.com/banner.jpg' data-fallback-src='https://example.com/cover.jpg'></a></div></div><script>$R[1]={id:1,slug:"title",banner:"https://example.com/art.png"}</script><main><section><h2>Latest Releases</h2><div><h2>Latest Updates</h2><a href='/series/paid' title='Paid'><img src='cover.jpg'></a></div></section><section><h2>Most Popular</h2><a href='/series/other' title='Other'><img src='cover.jpg'></a></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		banner_width: Some(1920),
+		banner_height: Some(1080),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	assert!(!layout.components.iter().any(|c| matches!(
+		c.title.as_deref(),
+		Some("Latest Releases" | "Latest Updates")
+	)));
+	let HomeComponentValue::ImageScroller {
+		links,
+		width,
+		height,
+		..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected banner artwork")
+	};
+	assert_eq!((*width, *height), (Some(1920), Some(1080)));
+	assert_eq!(
+		links[0].image_url.as_deref(),
+		Some("https://i0.wp.com/example.com/art.png?w=3840&quality=85&strip=all&ssl=1")
+	);
+	assert!(
+		matches!(&links[0].value, Some(LinkValue::Manga(manga)) if manga.key == "/series/title")
+	);
+}
+
+#[aidoku_test]
+#[ignore]
+fn review_http_locked_visibility_preserves_complete_inventory() {
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	struct Site;
+	impl Impl for Site {
+		fn new() -> Self {
+			Self
+		}
+		fn params(&self) -> Params {
+			Params::default()
+		}
+	}
+	let Some(base) = option_env!("AIDOKU_HTTP_TEST_URL") else {
+		panic!("Run scripts/test-http.py")
+	};
+	let params = Params {
+		base_url: base.into(),
+		api_url: base.into(),
+		..Default::default()
+	};
+	for (show, count) in [(false, 2), (true, 3)] {
+		defaults_set("showLocked", DefaultValue::Bool(show));
+		let manga = Site
+			.get_manga_update(
+				&params,
+				Manga {
+					key: "77".into(),
+					..Default::default()
+				},
+				false,
+				true,
+			)
+			.unwrap();
+		let chapters = manga.chapters.unwrap();
+		assert_eq!(chapters.len(), count);
+		assert_eq!(
+			chapters.iter().filter(|chapter| chapter.locked).count(),
+			usize::from(show)
+		);
+	}
+	defaults_set("showLocked", DefaultValue::Null);
+}
+
+#[aidoku_test]
+fn review_enrichment_keeps_rankings_and_html_metadata() {
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/shared' title='Shared'><img src='cover.jpg'><div class='uppercase'>Manhwa</div><span class='font-light'>Smut</span></a></div></div><main><section><h2>Latest Releases</h2><a href='/series/shared' title='Shared'><img src='cover.jpg'></a></section><section><h2>Most Popular</h2><a href='/series/shared' title='Shared'><img src='cover.jpg'></a><a href='/series/absent' title='Absent'><img src='cover.jpg'></a></section></main>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		..Default::default()
+	};
+	let mut layout = home::parse_home(&html, &params).unwrap();
+	let ranking = layout.components[2].clone();
+	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":7,"slug":"shared","postTitle":"Shared","author":"First","chapters":[{"id":11,"slug":"chapter-1","number":1}]}],"totalCount":1}"#).unwrap();
+	home::update_home_metadata(&mut layout, data.posts, &params).unwrap();
+	assert_eq!(layout.components[2], ranking);
+	assert!(matches!(
+		layout.components[1].value,
+		HomeComponentValue::MangaChapterList { .. }
+	));
+	let HomeComponentValue::BigScroller { entries, .. } = &layout.components[0].value else {
+		panic!("Expected featured series")
+	};
+	assert_eq!(entries[0].key, "7");
+	assert_eq!(entries[0].authors, Some(vec!["First".into()]));
+	assert_eq!(entries[0].content_rating, aidoku::ContentRating::NSFW);
+	assert_eq!(entries[0].viewer, aidoku::Viewer::Webtoon);
+	assert_eq!(entries[0].tags, Some(vec!["Smut".into()]));
+}
+
+#[aidoku_test]
+fn review_html_cards_respect_novel_labels() {
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	let html = Html::parse("<main><section><h2>Most Popular</h2><a href='/series/novel' title='Title'><img src='cover.jpg'><span class='uppercase'>Novel</span></a></section></main>").unwrap();
+	for (label, expected) in [(true, "Title (Novel)"), (false, "Title")] {
+		defaults_set("labelNovels", DefaultValue::Bool(label));
+		let layout = home::parse_home(&html, &Params::default()).unwrap();
+		let HomeComponentValue::MangaList { entries, .. } = &layout.components[0].value else {
+			panic!("Expected ranking")
+		};
+		assert!(
+			matches!(&entries[0].value, Some(LinkValue::Manga(manga)) if manga.title == expected && manga.key == "/series/novel")
+		);
+	}
+	defaults_set("labelNovels", DefaultValue::Null);
+}
+
+#[aidoku_test]
+fn review_comics_open_as_webtoons_and_novels_do_not() {
+	let data: models::SearchResponse = serde_json::from_str(r#"{"posts":[{"id":1,"slug":"manga","postTitle":"Manga","seriesType":"MANGA"},{"id":2,"slug":"untyped","postTitle":"Untyped"},{"id":3,"slug":"novel","postTitle":"Novel","seriesType":"NOVEL"},{"id":4,"slug":"flagged","postTitle":"Flagged","isNovel":true}],"totalCount":4}"#).unwrap();
+	let viewers: Vec<_> = data
+		.posts
+		.iter()
+		.map(|post| {
+			post.to_featured("https://example.com", false)
+				.unwrap()
+				.viewer
+		})
+		.collect();
+	use aidoku::Viewer;
+	assert_eq!(
+		viewers,
+		vec![
+			Viewer::Webtoon,
+			Viewer::Webtoon,
+			Viewer::Unknown,
+			Viewer::Unknown
+		]
+	);
+}
+
+#[aidoku_test]
+fn review_banners_request_their_display_width() {
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-slide'><a href='/series/one' title='One'><img src='https://i0.wp.com/cdn.example.com/banner.png?w=1920&amp;quality=85&amp;ssl=1'></a></div></div><script>$R[1]={id:1,slug:"one",banner:"https://cdn.example.com/banner.png"}</script>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		banner_width: Some(340),
+		banner_height: Some(124),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	let HomeComponentValue::ImageScroller {
+		links,
+		width,
+		height,
+		..
+	} = &layout.components[0].value
+	else {
+		panic!("Expected banners")
+	};
+	assert_eq!((*width, *height), (Some(340), Some(124)));
+	assert_eq!(
+		links[0].image_url.as_deref(),
+		Some("https://i0.wp.com/cdn.example.com/banner.png?w=680&quality=85&strip=all&ssl=1")
+	);
+}
+
+// Some sites lowercase tag names and capitalise them only with CSS
+#[aidoku_test]
+fn review_lowercase_tags_are_title_cased() {
+	let tags = helpers::sorted_tags(
+		["romance", "shoujo", "Drama", "sci-fi", "BL", "Romance"]
+			.map(helpers::tag_name)
+			.into(),
+	);
+	assert_eq!(tags, ["BL", "Drama", "Romance", "Sci-Fi", "Shoujo"]);
+}
+
+// Vortex's slider mixes banner art with cover slides and renders most slides lazily
+#[aidoku_test]
+fn review_banner_row_keeps_only_banner_series() {
+	let html = Html::parse(r#"<div class='mainSlider'><div class='swiper-wrapper'>
+		<div class='swiper-slide'><a href='/series/ballad' aria-label='Open Ballad'><div><img alt='Ballad' src='https://i0.wp.com/cdn.example.com/banner/b.png?w=1920'></div></a></div>
+		<div class='swiper-slide'><a href='/series/quest' aria-label='Open Quest'><div><img alt='Quest' src='https://i0.wp.com/cdn.example.com/2026/q.webp?w=1920'></div></a></div>
+		<div class='swiper-slide'><a href='/series/barbarian&#x27;s-world' aria-label='Open Barbarian’s World'><div aria-hidden='true'></div></a></div>
+		<div class='swiper-slide'><a href='/series/bastard' aria-label='Open Bastard'><div aria-hidden='true'></div></a></div>
+	</div></div>
+	<script>$R[1]=[$R[2]={id:1,slug:"ballad",chapters:$R[3]=[$R[4]={id:9,slug:"chapter-1",title:"a } [ \" b"}],banner:"https://cdn.example.com/banner/b.png",hot:!0},$R[5]={id:2,title:"Quest",slug:"quest",chapters:$R[6]=[],banner:"",hot:!1},$R[7]={id:3,slug:"barbarian's-world",genres:$R[8]=[],banner:"https://cdn.example.com/banner/w.png"},$R[9]={id:4,slug:"bastard",chapters:$R[10]=[]},$R[11]={id:5,slug:"other",banner:"https://cdn.example.com/banner/o.png"}]</script>"#).unwrap();
+	let params = Params {
+		base_url: "https://example.com".into(),
+		banner_width: Some(340),
+		banner_height: Some(124),
+		..Default::default()
+	};
+	let layout = home::parse_home(&html, &params).unwrap();
+	let HomeComponentValue::ImageScroller { links, .. } = &layout.components[0].value else {
+		panic!("Expected banners")
+	};
+	let shown: Vec<_> = links
+		.iter()
+		.map(|link| (link.title.as_str(), link.image_url.as_deref()))
+		.collect();
+	assert_eq!(
+		shown,
+		[
+			(
+				"Ballad",
+				Some(
+					"https://i0.wp.com/cdn.example.com/banner/b.png?w=680&quality=85&strip=all&ssl=1"
+				)
+			),
+			(
+				"Barbarian’s World",
+				Some(
+					"https://i0.wp.com/cdn.example.com/banner/w.png?w=680&quality=85&strip=all&ssl=1"
+				)
+			),
+		]
+	);
+}

@@ -40,3 +40,23 @@ both template generations, all source/template tests and `scripts/test-http.py`.
 Run the template contracts with `cargo test review_` from `templates/keyoapp` and its
 loopback regressions with `python3 scripts/test-http.py templates/keyoapp` from this root.
 Source versions are preserved. Later changes start from current canonical upstream.
+
+## Iken, MangaThemesia and EternalMangas
+
+PR 900 (Iken template, Hive, Nyx, Vortex, Magus, Hijala, Sana) and PR 897 (Scythe Scans) merged
+into canonical upstream. EternalMangas' own rewrite, PR 905, was approved and still open when it
+was archived at the owner's request. The complete fork snapshot is main `56d5306e971cb47db1cc0ea9d3a08767d637fa64`,
+including both templates, every source and template test and `scripts/test-http.py`.
+
+- `en.hivescans`
+- `en.nyxscans`
+- `en.vortexscans`
+- `en.magusmanga`
+- `en.hijalascans`
+- `en.sanascans`
+- `es.eternalmangas`
+- `en.scythescans`
+
+`templates/iken` and `templates/mangathemesia` replace the earlier copies here; Scythe Scans
+was the last MangaThemesia consumer on main. Run the loopback regressions with
+`python3 scripts/test-http.py templates/iken` (or `templates/mangathemesia`, `templates/keyoapp`).

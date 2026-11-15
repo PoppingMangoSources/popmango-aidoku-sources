@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run template HTTP regressions against a loopback server, without contacting a site."""
 
+import base64
 import http.server
 import json
 import os
@@ -39,8 +40,24 @@ class Responses(http.server.BaseHTTPRequestHandler):
         if self.path.startswith("/metadata/"):
             kind = parts[2]
             body = f'<div class="postbody"><h1 class="entry-title">Title</h1><div class="tsinfo"><span class="type">{kind}</span></div><div class="comments"><span>Author discussed this story.</span><span>Artist discussed this story.</span></div></div>'
-        if self.path == "/novel":
-            body = '<div id="readerarea"><p><strong>First<br>Second</strong></p><p><em>Third</em></p></div><script>ts_reader.run({"is_novel":true,"images":[]})</script>'
+        if self.path in {"/novel", "/novel-cached", "/novel-bad-base64", "/novel-bad-utf8"}:
+            script = 'ts_reader.run({"is_novel":true,"images":[]})'
+            body = '<div id="readerarea"><p><strong>First<br>Second</strong></p><p><em>Third</em></p></div>'
+            if self.path != "/novel":
+                data = script.encode() + (b"\xff" if self.path == "/novel-bad-utf8" else b"")
+                encoded = base64.b64encode(data).decode()
+                if self.path == "/novel-bad-base64":
+                    encoded += "!"
+                body += f'<script src="data:text/javascript;base64,{encoded}"></script>'
+            if self.path != "/novel-cached":
+                body += f"<script>{script}</script>"
+        if self.path in {"/images", "/images-cached"}:
+            script = 'ts_reader.run({"images":["https://example.com/1.jpg","https://example.com/2.jpg"]})'
+            if self.path == "/images-cached":
+                encoded = base64.b64encode(script.encode()).decode()
+                body = f'<script src="data:text/javascript;base64,{encoded}"></script>'
+            else:
+                body = f"<script>{script}</script>"
         query = parse_qs(urlsplit(self.path).query)
         if urlsplit(self.path).path in {"/home", "/home-existing"}:
             body = "<main><section><h2>Latest Releases</h2><a href='/series/old' title='Old'><img src='https://example.com/old.jpg'></a></section><section><h2>Most Popular</h2><a href='/series/popular' title='Popular'><img src='https://example.com/popular.jpg'></a></section></main>"
@@ -61,6 +78,18 @@ class Responses(http.server.BaseHTTPRequestHandler):
             if novel and urlsplit(self.path).path.startswith("/empty-novels"):
                 posts = []
             body = json.dumps({"posts": posts, "totalCount": len(posts)})
+        if urlsplit(self.path).path == "/catalogue/api/query":
+            expected = {
+                "page": query.get("page"), "perPage": query.get("perPage"),
+                "view": ["archive"], "orderBy": ["postTitle"], "orderDirection": ["asc"],
+                "searchTerm": ["word & café"], "genreIds": ["1"], "excludedGenreIds": ["2"],
+                "seriesType": ["MANHWA,MANGA"], "seriesStatus": ["ONGOING"],
+                "minChapters": ["5"], "maxChapters": ["50"],
+                "createdAfter": ["2020-01-01"], "createdBefore": ["2030-12-31"],
+            }
+            status = 200 if query == expected and query["page"] in (["1"], ["2"]) and query["perPage"] in (["18"], ["30"]) else 400
+            page = int(query.get("page", ["0"])[0])
+            body = json.dumps({"posts": [{"id": page, "slug": f"title-{page}", "postTitle": f"Title {page}"}], "totalCount": 31})
         if urlsplit(self.path).path.startswith("/api/"):
             content_type = "application/json"
             chapter = {"id": 11, "slug": "chapter-1", "number": "1", "content": "<p><strong>Text</strong></p>"}
@@ -74,6 +103,8 @@ class Responses(http.server.BaseHTTPRequestHandler):
                 chapter_id = query.get("chapterId", [""])[0]
                 if chapter_id == "12": chapter.update(content=None, images=[{"url": " "}])
                 if chapter_id == "13": chapter.update(isLocked=False, isTimeLocked=True)
+                if chapter_id == "14":
+                    chapter.update(content=None, images=[{"url": "https://example.com/page-10.jpg", "order": 0}, {"url": "https://example.com/page-2.jpg", "order": 1}])
                 body = json.dumps({"chapter": chapter})
             elif parts[2] == "chapters":
                 skip = int(query.get("skip", ["0"])[0])
@@ -83,7 +114,7 @@ class Responses(http.server.BaseHTTPRequestHandler):
                     ids = [13, 12]
                 if post_id == "996" and skip == 0:
                     ids = [11, 11]
-                body = json.dumps({"post": {"chapters": [dict(chapter, id=i, slug=f"capítulo-{i}-part-2") for i in ids]}, "totalChapterCount": 3})
+                body = json.dumps({"post": {"chapters": [dict(chapter, id=i, slug=f"capítulo-{i}-part-2", isLocked=post_id == "77" and i == 13) for i in ids]}, "totalChapterCount": 3})
         if parts[1:3] == ["captured", "home"]:
             evidence = os.environ.get("AIDOKU_IKEN_EVIDENCE_DIR")
             if evidence and parts[3] in {"hive", "nyx", "vortex", "magus", "eternal"}:
