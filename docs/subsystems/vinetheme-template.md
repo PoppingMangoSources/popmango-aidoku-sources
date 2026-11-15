@@ -48,6 +48,11 @@ details and dynamic filters. Filter requests retain the site's original facet sl
 
 The public catalogue is `/api/series`; `/api/series/facets` returns current genres and tags.
 Details and complete chapters use `/api/ai/series/{canonicalSlug}?chapters=none|all`.
+> ⚠️ Every Valir novel has an API slug different from its public `urlSlug` (`…-novel`, `…-2`),
+> and a novel's `urlSlug` can equal its comic's, where `/api/ai/series/{urlSlug}` answers the comic.
+> Novel keys therefore hold the API slug; home links are mapped from `urlSlug` to that key, and an
+> older public-slug novel key is resolved with one search when the API answers a comic.
+
 Readers use `/series/{comic|novel}/{urlSlug}/chapter/{number}` with `rsc: 1`.
 The public routes use `urlSlug` when it differs from the database slug. Bare legacy comic
 keys remain valid; novel keys include `novel/`, and old Valir `comic/` keys remain readable.

@@ -31,8 +31,18 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 	let html = Html::parse(body)?;
 	let flight = rsc::decode(body)?;
 	let mut metadata = BTreeMap::new();
+	// Home links name novels by their public slug, which can differ from the key
+	let mut aliases = BTreeMap::new();
 	for value in rsc::objects(&flight, &["slug", "title", "coverImage"]) {
 		if let Ok(mut series) = serde_json::from_value::<Series>(value) {
+			if series.is_novel()
+				&& let Some(url_slug) = series.url_slug.take()
+			{
+				aliases.insert(
+					format!("novel/{url_slug}"),
+					format!("novel/{}", series.slug),
+				);
+			}
 			let chapters = core::mem::take(&mut series.chapters);
 			let description = series.description.take().and_then(|text| {
 				rsc::text(&flight, &text)
@@ -163,6 +173,7 @@ pub fn parse(body: &str, params: &Params) -> Result<HomeLayout> {
 			let Some((key, None)) = link_keys(&href) else {
 				continue;
 			};
+			let key = aliases.get(&key).cloned().unwrap_or(key);
 			if !seen.insert(key.clone()) {
 				continue;
 			}

@@ -499,6 +499,8 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | Long novel HTML was a Flight reference | Decode the JSON push strings and resolve byte-length text rows. Raw text may contain newlines and may end immediately before the next row. Do not unescape Flight with chained string replacements. | R |
 | Vine home and detail tags appeared in lowercase | Format display-only names from API genres, tags and slug fallbacks as readable title case, consistently across home, details and dynamic filters. Keep filter ids/slugs untouched and test mixed-case duplicates and content ratings. | R |
 | Displayed genre names were sent as API slugs | Resolve dynamic tag taps through the fetched genre/tag facets once. A successful response with an ignored or wrong parameter is not a filter test. Static sorts have no ascending arrow when the site has one order. | R |
+| A Valir novel card opened its comic edition (owner's screenshots) | A novel's public slug can equal its comic's; key novels by the API slug and map home links through the public slug. Resolve an older public-slug novel key by search when the API answers with a comic. Test a novel that shares its comic's title. | R |
+| Locked chapters still showed on a library series with Show Locked off (owner's screenshot) | The app shows a library series' stored chapters until a refresh replaces them (`MangaView+ViewModel.swift`, `CoreDataManager+Chapter.swift`). Prove the source's filter with a key-only live test before changing it. | R |
 
 The owner requested `fix-vine` as an explicit template branch-name exception. Its template,
 Drake/Elf updates, Valir consumer and new Diva/Kayn consumers are submitted from canonical

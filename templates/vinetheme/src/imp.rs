@@ -96,14 +96,32 @@ pub trait Impl {
 		needs_chapters: bool,
 	) -> Result<Manga> {
 		let path = series_path(&manga.key);
-		let slug = path.split_once('/').ok_or(error!("Invalid series key"))?.1;
-		let url = format!(
-			"{}/api/ai/series/{}?chapters={}",
-			params.base_url,
-			encode_uri_component(slug),
-			if needs_chapters { "all" } else { "none" }
-		);
-		let mut series: Series = response(Request::get(url)?)?.get_json_owned()?;
+		let (kind, slug) = path.split_once('/').ok_or(error!("Invalid series key"))?;
+		let fetch = |slug: &str| -> Result<Series> {
+			let url = format!(
+				"{}/api/ai/series/{}?chapters={}",
+				params.base_url,
+				encode_uri_component(slug),
+				if needs_chapters { "all" } else { "none" }
+			);
+			response(Request::get(url)?)?.get_json_owned()
+		};
+		let mut series = fetch(slug)?;
+		// Older novel keys hold the public slug, which can name the comic of the same title
+		if kind == "novel" && !series.is_novel() {
+			let found: SeriesResponse = response(Request::get(format!(
+				"{}/api/series?limit=24&page=1&contentMode=all&q={}",
+				params.base_url,
+				encode_uri_component(slug.replace('-', " "))
+			))?)?
+			.get_json_owned()?;
+			let novel = found
+				.data
+				.into_iter()
+				.find(|found| found.is_novel() && found.url_slug.as_deref() == Some(slug))
+				.ok_or(error!("Novel not found"))?;
+			series = fetch(&novel.slug)?;
+		}
 		let mut chapters = core::mem::take(&mut series.chapters);
 		let count = series.chapter_count;
 		if needs_details {

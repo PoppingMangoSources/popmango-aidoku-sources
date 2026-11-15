@@ -134,34 +134,43 @@ pub struct PageDto {
 	pub is_redacted: bool,
 }
 
+impl Series {
+	pub fn is_novel(&self) -> bool {
+		matches!(
+			self.series_type.as_str(),
+			"NOVEL"
+				| "LIGHT_NOVEL"
+				| "WEB_NOVEL"
+				| "PUBLISHED_NOVEL"
+				| "FANFICTION"
+				| "ORIGINAL_FICTION"
+				| "ONE_SHOT"
+		)
+	}
+}
+
 impl TryFrom<Series> for Manga {
 	type Error = aidoku::AidokuError;
 
 	fn try_from(series: Series) -> Result<Self> {
-		let slug = series
-			.url
-			.as_deref()
-			.and_then(link_keys)
-			.map(|(key, _)| match key.strip_prefix("novel/") {
-				Some(slug) => slug.into(),
-				None => key,
-			})
-			.or(series.url_slug)
-			.filter(|s| !s.trim().is_empty())
-			.unwrap_or(series.slug);
+		let novel = series.is_novel();
+		// A novel's public slug can be its comic's, so novels keep the API slug
+		let slug = if novel {
+			series.slug
+		} else {
+			series
+				.url
+				.as_deref()
+				.and_then(link_keys)
+				.map(|(key, _)| key)
+				.or(series.url_slug)
+				.filter(|s| !s.trim().is_empty())
+				.unwrap_or(series.slug)
+		};
 		let title = series.title.trim();
 		if slug.trim().is_empty() || title.is_empty() {
 			bail!("Series has no key or title");
 		}
-		let novel =
-			matches!(
-				series.series_type.as_str(),
-				"NOVEL"
-					| "LIGHT_NOVEL" | "WEB_NOVEL"
-					| "PUBLISHED_NOVEL"
-					| "FANFICTION" | "ORIGINAL_FICTION"
-					| "ONE_SHOT"
-			);
 		let key = if novel { format!("novel/{slug}") } else { slug };
 		let mut tags: Vec<String> = series
 			.genres

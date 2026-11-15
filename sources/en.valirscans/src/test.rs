@@ -90,6 +90,49 @@ fn home_has_no_duplicate_series_per_row() {
 }
 
 #[aidoku_test]
+fn novel_sharing_a_comic_slug_opens_the_novel() {
+	let source = VineTheme::<ValirScans>::new();
+	let card = source
+		.get_search_manga_list(Some("white tiger clan".into()), 1, Vec::new())
+		.unwrap()
+		.entries
+		.into_iter()
+		.find(|manga| manga.key.starts_with("novel/"))
+		.unwrap();
+	let novel = source
+		.get_manga_update(
+			Manga {
+				key: card.key,
+				..Default::default()
+			},
+			true,
+			true,
+		)
+		.unwrap();
+	assert_eq!(novel.viewer, aidoku::Viewer::Unknown);
+	assert!(novel.chapters.unwrap().len() > 100);
+}
+
+#[aidoku_test]
+fn locked_chapters_stay_hidden_by_default() {
+	let chapters = VineTheme::<ValirScans>::new()
+		.get_manga_update(
+			Manga {
+				key: "novel/apocalypse-villainess-surviving-with-my-corporate-slave-skills-novel"
+					.into(),
+				..Default::default()
+			},
+			false,
+			true,
+		)
+		.unwrap()
+		.chapters
+		.unwrap();
+	assert!(!chapters.is_empty());
+	assert!(chapters.iter().all(|chapter| !chapter.locked));
+}
+
+#[aidoku_test]
 fn novel_chapter_reads_from_keys_only() {
 	let pages = VineTheme::<ValirScans>::new()
 		.get_page_list(
@@ -241,6 +284,16 @@ fn live_home_has_requested_rows() {
 	assert!(
 		matches!(&home.components[5].value, aidoku::HomeComponentValue::BigScroller { entries, .. } if entries.len() > 1)
 	);
+	let aidoku::HomeComponentValue::Scroller { entries, .. } = &home.components[3].value else {
+		panic!("Expected the novels row")
+	};
+	let Some(aidoku::LinkValue::Manga(card)) = &entries[0].value else {
+		panic!("Expected a series link")
+	};
+	let novel = VineTheme::<ValirScans>::new()
+		.get_manga_update(card.clone(), true, false)
+		.unwrap();
+	assert_eq!(novel.viewer, aidoku::Viewer::Unknown);
 }
 
 #[aidoku_test]
