@@ -449,6 +449,10 @@ def check_version_bump(source: Path, version: int, base: str, lock_sync: bool = 
         return
     if version <= before.get("info", {}).get("version", 0):
         fail(path, f"version {version} was not bumped from {base}")
+    # A rewrite keeps the migration prompt readers below that version still need
+    breaking = before.get("config", {}).get("breakingChangeVersion")
+    if breaking and json.loads(path.read_text()).get("config", {}).get("breakingChangeVersion", 0) < breaking:
+        fail(path, f"breakingChangeVersion {breaking} from {base} was removed or lowered")
 
 
 RELEASE_PROFILE = ('panic = "abort"', 'opt-level = "s"', "strip = true", "lto = true")

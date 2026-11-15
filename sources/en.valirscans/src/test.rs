@@ -331,3 +331,42 @@ fn live_novel_listing_preserves_type_and_pagination() {
 	);
 	assert_ne!(first.entries[0].key, second.entries[0].key);
 }
+
+#[aidoku_test]
+fn slash_credits_and_chapter_range() {
+	use aidoku::{FilterValue, alloc::vec};
+	let source = VineTheme::<ValirScans>::new();
+	let found = source
+		.get_search_manga_list(Some("The Convenient Empress Resigns".into()), 1, Vec::new())
+		.unwrap();
+	let manga = Manga {
+		key: found.entries.into_iter().next().unwrap().key,
+		..Default::default()
+	};
+	let authors = source
+		.get_manga_update(manga, true, false)
+		.unwrap()
+		.authors
+		.unwrap();
+	assert!(authors.len() > 1, "{authors:?}");
+	assert!(authors.iter().all(|name| !name.contains('/')));
+
+	let range = |from: Option<f32>, to: Option<f32>| {
+		source
+			.get_search_manga_list(
+				None,
+				1,
+				vec![FilterValue::Range {
+					id: "chapters".into(),
+					from,
+					to,
+				}],
+			)
+			.unwrap()
+			.entries
+	};
+	assert!(!range(Some(100.0), None).is_empty());
+	assert!(range(Some(100000.0), None).is_empty());
+	let short = range(None, Some(3.0));
+	assert!(!short.is_empty() && short.len() < range(None, None).len());
+}

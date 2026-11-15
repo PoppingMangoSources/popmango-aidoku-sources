@@ -10,11 +10,26 @@ use aidoku::{
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
-fn review_relative_dates_allow_surrounding_space() {
+fn review_relative_dates_cover_the_site_suffixes() {
 	let now = aidoku::imports::std::current_date();
-	let hours = crate::home::relative_date(" 6h ").unwrap();
-	assert!((now - hours - 6 * 3600).abs() < 5);
+	for (label, seconds) in [
+		("9m", 9 * 60),
+		("6h", 6 * 3600),
+		("29d", 29 * 86400),
+		("5mo", 5 * 2_592_000),
+	] {
+		let date = crate::home::relative_date(label).unwrap();
+		assert!((now - date - seconds).abs() < 5, "{label}");
+	}
 	assert!(crate::home::relative_date("soon").is_none());
+}
+
+#[aidoku_test]
+fn review_credit_names_split_slashes() {
+	assert_eq!(
+		crate::helpers::credit_names(Some("Writer / Artist, Writer".into())),
+		Some(vec!["Writer".into(), "Artist".into()])
+	);
 }
 
 #[aidoku_test]

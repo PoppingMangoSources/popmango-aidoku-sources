@@ -73,6 +73,16 @@ class CardRuleTests(unittest.TestCase):
             checks.check_version_bump(self.source, 3, "origin/main")
         self.assertTrue(any("not bumped" in failure for failure in checks.failures))
 
+    def test_breaking_change_version_is_kept(self):
+        (self.source / "Cargo.toml").write_text('[dependencies]\n')
+        before = '{"info":{"version":3},"config":{"breakingChangeVersion":3}}'
+        for config, fails in [({}, True), ({"breakingChangeVersion": 3}, False)]:
+            checks.failures.clear()
+            (self.source / "res/source.json").write_text(checks.json.dumps({"info": {"version": 4}, "config": config}))
+            with patch.object(checks, "git", side_effect=["sources/en.example/res/source.json\n", before]):
+                checks.check_version_bump(self.source, 4, "upstream/main")
+            self.assertEqual(any("breakingChangeVersion" in f for f in checks.failures), fails)
+
     def cards(self, text):
         checks.check_cards(self.path, text)
         return list(checks.failures)

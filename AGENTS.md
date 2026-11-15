@@ -549,6 +549,19 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | Vortex's banner row showed three slides, one a cropped cover (owner's screenshots) | The slider mixes cover slides with banner art and renders most slides lazily, without an image or a title. Keep a slide only when the page's series data gives it a `banner`, take the image from that and the title from the link's label, and keep requesting twice the row width. Hive's 2048px script banners request 680px the same way. | R |
 | Nyx home tags showed in lowercase (owner's screenshot) | Some sites capitalise tag names only with CSS (`span.capitalize`). Title-case a name that arrives all lowercase, leave cased ones alone, and deduplicate case-insensitively. | R |
 
+### From #908 (vinetheme template, Valir, Diva and Kayn)
+
+| What was flagged | The rule | |
+|---|---|---|
+| Relative dates without the "mo" suffix ("looking at the valir scans home page as an example") | Collect every suffix the home pages actually print before writing the parser. The VineTheme sites print `m`, `h`, `d` up to 29 and then `mo`, never `w`; an unknown suffix leaves the date unset rather than guessing. | R |
+| `value.trim()` in a helper only ever fed `text()` ("this is only called after an html `text` call") | The `text()` rule covers helpers too: don't trim inside a function whose every caller passes `text()` output. | N |
+| `chapters.reverse()` before `into_iter()` ("reverse the iterator below before collecting it") | Reverse with `.rev()` on the iterator that is already being collected, not the vector beforehand. | R |
+| `push` replacing `push_encoded` for `limit`, `page` and `contentMode` ("encoding the static values here is not necessary") | Keep `push_encoded` for values that never need escaping; `push`/`set` are for user input. | R |
+| `if let Some(query) = query { qs.set("q", Some(query)) }` ("unwrapping `query` from the optional, then immediately re-wrapping it") | Pass the `Option` straight through when the callee takes one. | R |
+| A template update dropped Elf Toon's `"breakingChangeVersion": 3` ("this should not be removed") | Rewriting a consumer's `source.json` keeps every existing `config` key; readers below that version still need the migration prompt. | F |
+| Chapter count as two text filters, "Chapters From" and "Chapters To" ("would it be better to use the range type filter, like the atsumaru source does") | A numeric bound pair is one `range` filter. Probe what the API does with 0: VineTheme answers `ch_max=0` with everything, so its range starts at 1. | R |
+| Valir authors such as The Convenient Empress Resigns joined by `/` | Split credits on every separator the sites use, `/` included, and test a real example from the reviewer. | R |
+
 ### From #843 (`en.atsumaru`)
 
 - **Filter exclusions:** every multi-select with `canExclude: true` must process both
