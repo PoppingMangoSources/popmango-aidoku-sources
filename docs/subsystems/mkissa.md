@@ -55,8 +55,16 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > ⚠️ The reader decodes pages in the page's script and pins a pristine `JSON.parse` taken from a
 > new iframe under a generated window key. The web view claims that key first and hides iframe
 > windows, then captures `chapterPages`. The site's own human check never clears in a hidden view,
-> so after five sightings the reader asks the user to solve it in the web view. The test runner
+> so after five seconds of it the reader asks the user to solve it in the web view. The test runner
 > stubs web views, so reading is checked in the app only.
+
+> ⚠️ The chapter route answers Cloudflare's 403 to a fresh browser while the series page loads,
+> so the reader opens the series page and routes to the chapter inside it
+> (`sources/en.mkissa/src/reader.rs`). The hidden view blocks images, stylesheets, fonts, media
+> and analytics (Chromium, 2026-11-15: load event 0.3-0.5 s instead of 0.8-1.4 s, about 9.6 MB
+> fewer bytes, routing unchanged). It must not block `challenges.cloudflare.com`. The capture
+> settles a promise that `eval_async` awaits, so pages return as soon as they are captured;
+> `eval_async` puts the minimum app version at 0.9.0.
 
 Home rows, in the order the owner set: Popular Weekly (big scroller from the popular feed's own
 description, genres and status), Manga {year}, Trending, Random, Latest Updates (newest chapter

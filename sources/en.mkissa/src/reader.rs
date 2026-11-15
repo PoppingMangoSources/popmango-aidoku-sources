@@ -9,14 +9,20 @@ use aidoku::{
 	imports::{
 		js::{WebView, WebViewUserScript},
 		net::Request,
-		std::sleep,
 	},
 	prelude::*,
 };
 
 const RESULT_TOKEN: &str = "__AIDOKU_MKISSA_PAGES__";
-const WAIT_TOKEN: &str = "__AIDOKU_MKISSA_WAIT__";
 const CHALLENGE_TOKEN: &str = "__AIDOKU_MKISSA_CHALLENGE__";
+
+// The hidden page only has to route to the chapter, so its images, styles and trackers are skipped
+const BLOCKED_CONTENT: &str = r#"[
+	{"trigger": {"url-filter": ".*", "resource-type": ["image", "style-sheet", "font", "media"]}, "action": {"type": "block"}},
+	{"trigger": {"url-filter": "^https?://[^/]*google-analytics\\.com"}, "action": {"type": "block"}},
+	{"trigger": {"url-filter": "^https?://[^/]*googletagmanager\\.com"}, "action": {"type": "block"}},
+	{"trigger": {"url-filter": "^https?://[^/]*cloudflareinsights\\.com"}, "action": {"type": "block"}}
+]"#;
 
 fn is_parser_key_byte(byte: u8) -> bool {
 	byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$'
@@ -126,7 +132,8 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 	None
 }
 
-// Captures the decoded `chapterPages`, then clicks through to the chapter so the site's router fetches it
+// Captures the decoded `chapterPages`, then clicks through to the chapter so the site's router fetches it.
+// The promise settles with the pages, the challenge token after five seconds of a check, or empty text.
 fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 	let chapter_path = serde_json::to_string(chapter_path).unwrap_or_else(|_| String::from("\"\""));
 	let pin = pinned_key
@@ -148,13 +155,27 @@ fn capture_script(chapter_path: &str, pinned_key: Option<&str>) -> String {
 	format!(
 		"(function () {{
 	if (window['{RESULT_TOKEN}']) return;
-	window['{RESULT_TOKEN}'] = {{ data: '', done: false }};
-	const state = window['{RESULT_TOKEN}'];
+	const state = {{ done: false }};
+	window['{RESULT_TOKEN}'] = state;
+	state.result = new Promise((resolve) => {{
+		state.resolve = resolve;
+	}});
 	const finish = (payload) => {{
 		if (state.done) return;
-		state.data = payload;
 		state.done = true;
+		state.resolve(payload);
 	}};
+	setTimeout(() => finish(''), 30000);
+
+	// The site's own check never clears in a hidden view
+	let challenged = 0;
+	const watch = setInterval(() => {{
+		if (state.done) return clearInterval(watch);
+		const challenge = document.title.includes('Just a moment')
+			|| document.querySelector('.captcha-overlay--visible') != null;
+		challenged = challenge ? challenged + 1 : 0;
+		if (challenged >= 20) finish('{CHALLENGE_TOKEN}');
+	}}, 250);
 	const capture = (parsed, raw) => {{
 		try {{
 			if (parsed && (parsed.chapterPages || (parsed.data && parsed.data.chapterPages))) {{
@@ -240,6 +261,7 @@ pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
 
 	// Navigating client-side from the cleared page avoids a second Cloudflare check
 	let web_view = WebView::new();
+	web_view.set_rule_list(BLOCKED_CONTENT)?;
 	let mut user_script =
 		WebViewUserScript::new(capture_script(&chapter_path, parser_key.as_deref()));
 	user_script.at_document_end = false;
@@ -247,32 +269,12 @@ pub fn page_urls(manga_id: &str, chapter: &str) -> Result<Vec<String>> {
 	web_view.add_user_script(user_script)?;
 	web_view.load_html_blocking(&html, Some(&manga_url))?;
 
-	let mut result = None;
-	let mut challenged = 0;
-	for _ in 0..30 {
-		if let Ok(value) = web_view.eval(&format!(
-			"(() => {{
-				const state = window['{RESULT_TOKEN}'];
-				if (state && state.done) return state.data;
-				const challenge = document.title.includes('Just a moment')
-					|| document.querySelector('.captcha-overlay--visible') != null;
-				return challenge ? '{CHALLENGE_TOKEN}' : '{WAIT_TOKEN}';
-			}})()"
-		)) {
-			// The site's own check never clears in a hidden view
-			if value == CHALLENGE_TOKEN {
-				challenged += 1;
-				if challenged >= 5 {
-					bail!("Open the series in the web view, solve the site's check, then retry");
-				}
-			} else if value != WAIT_TOKEN && !value.is_empty() {
-				result = Some(value);
-				break;
-			}
-		}
-		sleep(1);
+	let result = web_view.eval_async(&format!("return await window['{RESULT_TOKEN}'].result;"))?;
+	if result == CHALLENGE_TOKEN {
+		bail!("Open the series in the web view, solve the site's check, then retry");
+	} else if result.is_empty() {
+		bail!("The reader did not produce any pages");
 	}
-	let result = result.ok_or(error!("The reader did not produce any pages"))?;
 
 	// The page hands back the text it parsed, not a response body
 	let payload: ReaderPayload = serde_json::from_str(&result)?;
