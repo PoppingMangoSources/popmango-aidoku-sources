@@ -3,7 +3,7 @@ title: MKissa (en.mkissa)
 type: subsystem
 created: 2026-11-15
 updated: 2026-11-15
-verified_at: 96de49c
+verified_at: db1ade7
 sources:
   - code: sources/en.mkissa/src/graphql.rs
   - code: sources/en.mkissa/src/home.rs

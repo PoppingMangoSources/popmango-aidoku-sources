@@ -2,7 +2,7 @@
 title: VineTheme template and consumers
 type: subsystem
 created: 2026-11-13
-updated: 2026-11-14
+updated: 2026-11-15
 sources:
   - code: templates/vinetheme/src/lib.rs
   - code: templates/vinetheme/src/imp.rs
@@ -32,7 +32,7 @@ sources:
   - ext: https://valirscans.org/
   - ext: https://divascans.org/
   - ext: https://kaynscans.com/
-verified_at: 453f52c
+verified_at: 6678210
 ---
 
 VineTheme serves Drake, Elf, Valir, Diva and Kayn. The owner requested publication on main
