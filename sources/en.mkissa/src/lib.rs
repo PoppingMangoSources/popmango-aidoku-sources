@@ -1,8 +1,8 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterValue, Home,
-	HomeLayout, ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult,
-	MultiSelectFilter, Page, PageContent, PageContext, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, ImageRequestProvider,
+	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result,
+	Source,
 	alloc::{String, Vec, vec},
 	imports::{
 		net::Request,
@@ -74,9 +74,7 @@ impl Source for Mkissa {
 		let mut search = Map::new();
 		let mut country = String::from("ALL");
 		let mut genres: Vec<String> = Vec::new();
-		let mut tags: Vec<String> = Vec::new();
 		let mut excluded_genres: Vec<String> = Vec::new();
-		let mut excluded_tags: Vec<String> = Vec::new();
 		if let Some(query) = query {
 			search.insert("query".into(), query.into());
 		}
@@ -89,9 +87,14 @@ impl Source for Mkissa {
 				}
 				FilterValue::Select { id, value } => match id.as_str() {
 					"country" => country = value,
-					// A tapped tag sends its display name
-					"genre" => match tag_filter_id(&value)? {
-						Some(tag) => tags.push(tag),
+					// A tapped tag sends its display name; magazines search by name in their own field
+					"genre" => match find_tag(&value)? {
+						Some(tag) if tag.slug.ends_with("-magazine") => {
+							search.insert("magazine".into(), tag.name.into());
+						}
+						Some(tag) => {
+							search.insert("tags".into(), vec![tag.slug].into());
+						}
 						None => genres.push(value),
 					},
 					"day" => {
@@ -127,14 +130,6 @@ impl Source for Mkissa {
 				}
 				// The site's panel only includes; the API also excludes
 				FilterValue::MultiSelect {
-					id,
-					included,
-					excluded,
-				} if id == "tags" => {
-					tags.extend(included);
-					excluded_tags.extend(excluded);
-				}
-				FilterValue::MultiSelect {
 					included, excluded, ..
 				} => {
 					genres.extend(included);
@@ -143,25 +138,7 @@ impl Source for Mkissa {
 				_ => {}
 			}
 		}
-		let (magazines, tags): (Vec<_>, Vec<_>) = tags
-			.into_iter()
-			.partition(|tag| tag.starts_with("magazine:"));
-		match magazines.as_slice() {
-			[] => {}
-			[magazine] => {
-				search.insert("magazine".into(), magazine["magazine:".len()..].into());
-			}
-			_ => bail!("The site searches one magazine at a time"),
-		}
-		if excluded_tags.iter().any(|tag| tag.starts_with("magazine:")) {
-			bail!("Magazines can only be included");
-		}
-		for (field, values) in [
-			("genres", genres),
-			("tags", tags),
-			("excludeGenres", excluded_genres),
-			("excludeTags", excluded_tags),
-		] {
+		for (field, values) in [("genres", genres), ("excludeGenres", excluded_genres)] {
 			if !values.is_empty() {
 				search.insert(field.into(), values.into());
 			}
@@ -225,35 +202,6 @@ impl Home for Mkissa {
 	}
 }
 
-impl DynamicFilters for Mkissa {
-	// The site's Tags section offers whichever tags are trending
-	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let data: TagsData = fetch(
-			TAGS_QUERY,
-			json!({ "search": { "queryType": "Home", "format": "manga" }, "limit": 16 }),
-		)?;
-		let (ids, options) = data
-			.query_tags
-			.edges
-			.into_iter()
-			.map(|tag| (tag.filter_id().into(), tag.name.into()))
-			.unzip();
-		Ok(vec![
-			MultiSelectFilter {
-				id: "tags".into(),
-				title: Some("Tags".into()),
-				options,
-				ids: Some(ids),
-				can_exclude: true,
-				uses_tag_style: true,
-				hide_from_header: Some(true),
-				..Default::default()
-			}
-			.into(),
-		])
-	}
-}
-
 impl ListingProvider for Mkissa {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		Feed::from_id(&listing.id)
@@ -303,7 +251,6 @@ impl DeepLinkHandler for Mkissa {
 register_source!(
 	Mkissa,
 	Home,
-	DynamicFilters,
 	ListingProvider,
 	ImageRequestProvider,
 	DeepLinkHandler

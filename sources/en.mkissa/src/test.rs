@@ -1,6 +1,6 @@
 use super::*;
 use aidoku::{
-	FilterKind, HomeComponentValue, LinkValue, MangaStatus, Viewer,
+	HomeComponentValue, LinkValue, MangaStatus, Viewer,
 	alloc::{String, vec},
 };
 use aidoku_test::aidoku_test;
@@ -432,60 +432,18 @@ fn site_filters_narrow_results() {
 }
 
 #[aidoku_test]
-fn trending_tags_filter_and_tag_taps_search_by_slug() {
-	let filters = Mkissa::new().get_dynamic_filters().unwrap();
-	let FilterKind::MultiSelect {
-		ids: Some(ids),
-		options,
-		can_exclude,
-		..
-	} = &filters[0].kind
-	else {
-		panic!("Expected the tags multi-select")
-	};
-	assert!(!options.is_empty() && *can_exclude);
-	let tags = |included: &str, excluded: &str| FilterValue::MultiSelect {
-		id: "tags".into(),
-		included: [included]
-			.into_iter()
-			.filter(|t| !t.is_empty())
-			.map(Into::into)
-			.collect(),
-		excluded: [excluded]
-			.into_iter()
-			.filter(|t| !t.is_empty())
-			.map(Into::into)
-			.collect(),
-	};
-	// Trending tags rotate, and some match only adult titles, which are hidden by default
+fn tapped_tags_search_by_slug_or_magazine() {
+	let unfiltered = keys(&search(Vec::new()));
+	// A theme tag and a magazine both resolve; neither is a genre, which would match nothing
+	for name in ["Long Strip", "Ridi Webtoon"] {
+		let tapped = keys(&search(vec![select("genre", name)]));
+		assert!(!tapped.is_empty() && tapped != unfiltered, "{name}");
+	}
 	assert!(
-		ids.iter()
-			.filter(|id| id.starts_with("theme:"))
-			.any(|theme| !search(vec![tags(theme, "")]).entries.is_empty())
-	);
-	assert!(
-		!search(vec![select("genre", "Long Strip")])
+		search(vec![select("genre", "Zzzz None")])
 			.entries
 			.is_empty()
 	);
-	assert!(search(vec![tags("theme:zzzz_none", "")]).entries.is_empty());
-	// Magazines search by name, whether picked or tapped
-	let magazine = search(vec![tags("magazine:Ridi Webtoon", "")]);
-	assert!(!magazine.entries.is_empty());
-	assert_eq!(
-		keys(&search(vec![select("genre", "Ridi Webtoon")])),
-		keys(&magazine)
-	);
-	let source = Mkissa::new();
-	assert!(
-		source
-			.get_search_manga_list(None, 1, vec![tags("", "magazine:Ridi Webtoon")])
-			.is_err()
-	);
-	let with = keys(&search(vec![tags("format:long_strip", "")]));
-	let without = keys(&search(vec![tags("", "format:long_strip")]));
-	assert!(!with.is_empty() && !without.is_empty());
-	assert!(without.iter().all(|key| !with.contains(key)));
 }
 
 #[aidoku_test]
