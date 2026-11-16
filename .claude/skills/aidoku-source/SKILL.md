@@ -127,6 +127,18 @@ that shipped:
       unless review requires a narrower source-rating policy; keep Rust/JSON defaults aligned
 - [ ] Featured and detail tags use the same alphabetical order; test shuffled API input
 - [ ] A full selection sends nothing, unless a missing value means less (ratings, §6) — probe it
+- [ ] An unset language selection takes the default; a cleared one browses nothing, with no
+      request (search, listings and home)
+- [ ] A chapter name is dropped only when, without the site's label prefix, it parses to the
+      chapter number; numbered prose keeps its title
+- [ ] A name the API can leave null is optional and converted with `TryFrom`; lists and home
+      rows drop that card, details and pasted links return the error
+- [ ] Home returns the last real error when no section loads, not a generic message
+- [ ] Group and language rules live in the chapter conversion, so home rows and chapter lists
+      apply the same ones
+- [ ] Listing names in `source.json` are the short common ones ("Latest Updates", "Recently
+      Added"); a home row may keep the site's longer heading
+- [ ] After a merge, diff `upstream/main` against `main` and copy back the reviewer's own commits
 - [ ] `src/test.rs` with `#[aidoku_test]` cases checked against the site's data (AGENTS.md / CLAUDE.md §1)
 
 ## Phase 4 — Verify

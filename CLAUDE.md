@@ -549,6 +549,36 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | Vortex's banner row showed three slides, one a cropped cover (owner's screenshots) | The slider mixes cover slides with banner art and renders most slides lazily, without an image or a title. Keep a slide only when the page's series data gives it a `banner`, take the image from that and the title from the link's label, and keep requesting twice the row width. Hive's 2048px script banners request 680px the same way. | R |
 | Nyx home tags showed in lowercase (owner's screenshot) | Some sites capitalise tag names only with CSS (`span.capitalize`). Title-case a name that arrives all lowercase, leave cased ones alone, and deduplicate case-insensitively. | R |
 
+### From #902 (`multi.mangaball`)
+
+Merged on 2026-11-14 with no review comments. kkantan pushed one commit of their own to the
+branch first, `chore: update listing titles`, the only place `main` then differed from what
+merged.
+
+| What was changed | The rule | |
+|---|---|---|
+| The `source.json` listings "Latest Chapter Updates" and "Recently Added Titles" became "Latest Updates" and "Recently Added"; the home rows in `home.rs` kept the site's headings | A listing in `source.json` takes the short, common name ("Recently Added" is on 8 merged sources, "Latest Updates" on 5), without "Titles" or "Chapter". A home row may keep the site's own heading, so the two names can differ. (inferred, one commit, no comment) | N |
+| The reviewer's commit sat on the PR branch and `main` kept the old names | After a merge, diff `upstream/main` against `main` for the source (ignoring the version, `test.rs` and `serde_json`) and copy back whatever the reviewer changed, as the #821 note says. | R |
+
+The merged source is the standard for this kind of site. Its diff against the first version
+published here (v6, `4c4a08a`) is 246 lines added and 82 removed. The rows above under "A safe
+API mode", "A select default", "Excluded groups", "Sorting returned HTTP 200" and "MangaBall's
+bold text" already record five of its changes; these are the rest, each read from that diff.
+
+| What v6 did | What merged, and the rule | |
+|---|---|---|
+| A cleared language selection fell back to English (`.filter(\|l\| !l.is_empty())`), following XCOMIC and Kagane | Only an unset selection is English. A cleared one browses nothing: search and listings return `MangaPageResult::default()` and home returns an empty layout, before any request. This is the section 7 `None` against `Some(vec![])` rule; the two older sources are not the precedent. | R |
+| A chapter name was dropped when it merely contained the number (`name.contains(&number.to_string())`), so "12 Days Later" lost its title on chapter 12 | Strip the site's own label prefixes ("Vol.N ", "Chapter ", "Ch.") and drop the name only when what remains parses to exactly the chapter number. Test numbered prose. | R |
+| Home swallowed every section's error and reported "MangaBall didn't answer" | Keep the last real error and return it when no section loads, so the reader sees the status or the decode failure. | R |
+| `From<Title> for Manga` with a required `name` | The API returns titles with a null name. Make the name optional, convert with `TryFrom`, drop the failing card from lists and home rows, and return the error on the details and pasted-link paths. | R |
+| The page list failed only when it was empty | Fail it as well when any page url is blank, rather than hand the reader a hole. | R |
+| Authors and tags were passed through as the API listed them | Trim author names, drop blanks and repeats, leave `authors` as `None` when none remain, and `dedup` the sorted tags. | R |
+| The excluded-scanlator test sat in `lib.rs`, so the home chapter row ignored it | Put the group and language tests inside `into_chapter`, which both the chapter list and the home row call. | R |
+| Seven comments, such as "The site's three content modes." and "Pairs each site language code with the app language that selects it." | They were cut; four short ones stayed, each naming an API or runner quirk. A comment that says what a well-named function does goes. | R |
+| `pub` on `Title.id`, `Title.is18plus`, `ChapterItem.group` and `Group` | A field or type is `pub` only while another module reads it; narrow it again when the reader moves into `models.rs`. | R |
+| `.iter().map(\|name\| name.trim().to_lowercase())` over an owned `Vec` from `defaults_get` | `.into_iter()` on a value that is consumed anyway. | R |
+| No way to collapse several groups' uploads of one chapter | A Deduplicate Chapters switch, off by default: per volume, number and language keep the group with the most likes, then views, then the newest upload, and keep every part from that group. Unnumbered chapters always stay. | R |
+
 ### From #908 (vinetheme template, Valir, Diva and Kayn)
 
 | What was flagged | The rule | |
@@ -1533,7 +1563,9 @@ reaches the site, unless marked.
 its live tests have not run, and its models were checked against the owner's captures. The
 endpoints, content modes, language codes and every unverified parameter are in
 `docs/subsystems/mangaball.md`; read it before changing the source. It is rated 1 because the
-site has a Hentai theme. Its submission branch is `feat/multi.mangaball`.
+site has a Hentai theme. It merged upstream as #902 on 2026-11-14; `main` matches the merged
+source apart from its version, `src/test.rs` and the tests' `serde_json` dependency. A later
+change goes up with `pr-branch.sh multi.mangaball --update …` from `upstream/main`.
 
 ## Iken maintenance
 

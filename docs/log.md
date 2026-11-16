@@ -196,3 +196,7 @@ restored Valir as a thin consumer, and prepared Diva/Kayn consumers. Added porta
 contracts and guidance in [[vinetheme-template]]. Kept the Iken review lessons and source-scope,
 standard scaffold, genre and spacing guards; `fix-vine` is an explicit submission exception.
 Verification and remaining device/network boundaries are recorded on the subsystem page.
+
+## 2026-11-16 MangaBall merged
+
+Compared the first published MangaBall source with the one merged upstream and recorded the differences as section 3 rows and skill checklist items. Copied the reviewer's listing names back to `main`, with a checker note for long listing names. See [[mangaball]].

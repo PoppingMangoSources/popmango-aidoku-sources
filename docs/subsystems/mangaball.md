@@ -2,7 +2,7 @@
 title: MangaBall (multi.mangaball)
 type: subsystem
 created: 2026-11-13
-updated: 2026-11-13
+updated: 2026-11-16
 sources:
   - code: sources/multi.mangaball/src/api.rs
   - code: sources/multi.mangaball/src/home.rs
@@ -16,6 +16,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/blob/2924f522ba533e2dc8b3c138b3769c0e29e03aba/sources/en.atsumaru/src/helpers.rs
   - ext: https://mangaball.com/search-advanced
   - ext: https://mangaball.com/api/v1/title/search-advanced
+  - ext: https://github.com/Aidoku-Community/sources/pull/902
 verified_at: a9768d3
 ---
 
@@ -249,3 +250,15 @@ tie breaking; a live test ensures the selected uploads retain existing keys.
 
 > ⚠️ Selecting one upload can hide a previously read upload. Switching back restores that
 > original upload's visibility; never rewrite chapter keys to a manufactured chapter number.
+
+## Merged upstream
+
+The source merged as PR 902 on 2026-11-14 without review comments. Before merging, the
+reviewer pushed `chore: update listing titles` to the branch: the two listings in
+`source.json` became "Latest Updates" and "Recently Added". The home rows keep the site's
+headings, "Latest Chapter Updates" and "Recently Added Titles", so a row and the listing it
+opens are named differently on purpose.
+
+> ⚠️ Do not "fix" the listing names in `source.json` back to the home headings. The short names
+> are the reviewer's own edit, and `check-sources.py` notes the long ones.
+

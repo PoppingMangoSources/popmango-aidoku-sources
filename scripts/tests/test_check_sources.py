@@ -178,6 +178,18 @@ class CardRuleTests(unittest.TestCase):
         checks.check_filters_json(path)
         self.assertEqual(checks.notes, [])
 
+    def test_long_listing_name_is_noted(self):
+        path = self.source / 'res/source.json'
+        body = '{\n\t"info": {\n\t\t"id": "en.example",\n\t\t"minAppVersion": "0.7.1"\n\t},\n\t"listings": [\n\t\t{"id": "a", "name": "%s"},\n\t\t{"id": "b", "name": "%s"}\n\t]\n}\n'
+        checks.notes.clear()
+        path.write_text(body % ('Latest Chapter Updates', 'Recently Added Titles'))
+        checks.check_source_json(path, 'en.example')
+        self.assertEqual(sum('keeps a home heading' in n for n in checks.notes), 2)
+        checks.notes.clear()
+        path.write_text(body % ('Latest Updates', 'Recently Added'))
+        checks.check_source_json(path, 'en.example')
+        self.assertEqual(checks.notes, [])
+
     def test_genre_flag_after_options_is_noted(self):
         checks.notes.clear()
         path = self.source / 'res/filters.json'

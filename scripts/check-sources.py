@@ -96,9 +96,15 @@ def check_source_json(path: Path, source_id: str) -> dict:
     ids = [listing.get("id") for listing in info.get("listings", [])]
     if len(ids) != len(set(ids)):
         fail(path, "listing ids repeat")
+    for listing in info.get("listings", []):
+        name = listing.get("name", "")
+        if LONG_LISTING_NAME.search(name):
+            note(path, f'listing "{name}" keeps a home heading; upstream shortens it, e.g. "Latest Updates", "Recently Added"')
     return info
 
 
+# The reviewer renamed MangaBall's listings to the short names most merged sources use.
+LONG_LISTING_NAME = re.compile(r"\bChapter Updates$|\bAdded Titles$", re.I)
 COMMERCIAL_CONTROL = re.compile(r"price|pricing|discount|sale|purchase|payment|coin|currency|paid", re.I)
 CHAPTER_VISIBILITY = re.compile(r"(?:hide|exclude|skip).*?(?:paid|locked|premium).*?chapter|(?:paid|locked|premium).*?chapter.*?(?:hide|exclude|skip)", re.I)
 
