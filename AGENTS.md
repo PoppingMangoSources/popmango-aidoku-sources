@@ -1567,6 +1567,15 @@ site has a Hentai theme. It merged upstream as #902 on 2026-11-14; `main` matche
 source apart from its version, `src/test.rs` and the tests' `serde_json` dependency. A later
 change goes up with `pr-branch.sh multi.mangaball --update …` from `upstream/main`.
 
+## VyManga
+
+`en.vymanga` (mangavyvy.com, mirror mangavyvy.net) is plain server-rendered HTML that the
+sandbox reaches, so its live tests run. Its chapter links are encrypted anew on every load and
+expire, so chapters are keyed by name and `get_page_list` reads a fresh link from the series
+page. The probed search parameters, the ignored `search_po`, the genre lists and the icon's
+origin are in `docs/subsystems/vymanga.md`; read it before changing the source. A submission
+branch, `feat/en.vymanga`, is kept from `upstream/main` while it is prepared for a PR.
+
 ## Iken maintenance
 
 The template, its six consumers and EternalMangas left `main` for `merged-sources` once #900

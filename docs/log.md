@@ -200,3 +200,7 @@ Verification and remaining device/network boundaries are recorded on the subsyst
 ## 2026-11-16 MangaBall merged
 
 Compared the first published MangaBall source with the one merged upstream and recorded the differences as section 3 rows and skill checklist items. Copied the reviewer's listing names back to `main`, with a checker note for long listing names. See [[mangaball]].
+
+## 2026-11-17 VyManga rewritten
+
+Rewrote `en.vymanga` from live probes: name-based chapter keys in place of the expiring links, the site's own Popular Manga slides, its real sorts and filters, an Excluded Genres setting and the two mirrors. See [[vymanga]].

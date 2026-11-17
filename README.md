@@ -84,7 +84,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 <td align="center" width="50%"><img src="media/sources/valirscans.png" width="64"/><br/><b>ValirScans</b><br/><sub><a href="https://valirscans.org">valirscans.org</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.valirscans-v23.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.valirscans-v23.aix">.aix (v23)</a></sub></td>
 </tr>
 <tr>
-<td align="center" width="50%"><img src="media/sources/vymanga.png" width="64"/><br/><b>VyManga</b><br/><sub><a href="https://vymanga.com">vymanga.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v9.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v9.aix">.aix (v9)</a></sub></td>
+<td align="center" width="50%"><img src="media/sources/vymanga.png" width="64"/><br/><b>VyManga</b><br/><sub><a href="https://mangavyvy.com">mangavyvy.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v10.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v10.aix">.aix (v10)</a></sub></td>
 <td width="50%"></td>
 </tr>
 </table>

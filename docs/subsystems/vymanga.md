@@ -1,0 +1,107 @@
+---
+title: VyManga (en.vymanga)
+type: subsystem
+created: 2026-11-17
+updated: 2026-11-17
+sources:
+  - code: sources/en.vymanga/src/lib.rs
+  - code: sources/en.vymanga/src/helpers.rs
+  - code: sources/en.vymanga/src/home.rs
+  - code: sources/en.vymanga/src/settings.rs
+  - code: sources/en.vymanga/src/test.rs
+  - code: sources/en.vymanga/res/filters.json
+  - code: sources/en.vymanga/res/settings.json
+  - code: sources/en.vymanga/res/source.json
+  - ext: https://mangavyvy.com/search
+  - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/vyvymanga
+verified_at: 02bf746
+---
+
+VyManga (`mangavyvy.com`, mirror `mangavyvy.net`) is server-rendered HTML with no API and no
+theme template. The sandbox reaches it with plain requests, so everything below was probed
+live on 2026-11-17 and the source's live tests run. Both hosts serve the same pages; the
+reader picks one through the app's base url select (`urls` in `source.json`).
+
+## Pages
+
+| Use | Request | Notes |
+|---|---|---|
+| Search, listings, two home rows | `GET /search` | 36 cards a page; `[rel=next]` is the next-page signal; the last page and an unmatched query answer no cards |
+| Popular Manga | `GET /` | 16 slides in `.slick-detail > a`, each with the fields of a series page |
+| Series and chapters | `GET /manga/<slug>` | 404 for an unknown slug; the chapter list is in the same page |
+| Reader | the chapter's link | one redirect to a rotating host; images are `.carousel-item > img[data-src]` |
+
+A card (`.comic-item`) carries the link, title, cover (`img[data-src]`), a `.comic-completed`
+marker and the latest chapter's name. A series is Completed or Ongoing, nothing else.
+
+Requests need no headers: every page, the reader chain, covers and page images answered 200
+without a browser user agent or a Referer.
+
+## Search parameters
+
+Probed one at a time against the page count; a missing parameter is the site's default.
+
+| Parameter | Values | Result |
+|---|---|---|
+| `q` | text | matches titles |
+| `check_search_desc` | `1` | also matches descriptions ("pirate": 1 page without, 4 with) |
+| `author`, `author_po` | text; `0` contain, `1` begin, `2` end | all three positions change the results |
+| `completed` | `2` all, `1` completed, `0` ongoing | an unknown value answers nothing |
+| `sort` | `viewed` (default), `scored`, `created_at`, `updated_at` | an unknown value is the default |
+| `sort_type` | `desc` (default), `asc` | works on every sort |
+| `genre[]`, `exclude_genre[]` | the whole `data-value`, such as `Action-1-action` | the number or the name alone is ignored for `genre[]` |
+| `page` | from 1 | |
+
+> ⚠️ `search_po` (the Contain, Begin, End select beside the title box) changes nothing: "one
+> piece" and "piece" answered the same pages for all three values. The source leaves it out;
+> don't add it back without a probe that shows it narrowing.
+
+> ⚠️ A genre both included and excluded answers nothing, so `search_url` drops a genre from
+> the exclusions when the search includes it. That is also how a search overrides the
+> Excluded Genres setting.
+
+> ⚠️ `filters.json` and `settings.json` hold the same 244 genres, generated from the search
+> page's `.checkbox-genre[data-value]` boxes. The site adds genres freely (three ids contain a
+> line break), so regenerate both together; `review_genre_lists_match` fails when they differ.
+
+## Chapters
+
+> ⚠️ A chapter's link is encrypted anew on every page load and expires within hours, and the
+> `id="chapter-<n>"` attributes repeat (`chapter-0` 96 times on one series). The chapter key is
+> therefore its name as the site prints it, with `#2`, `#3` counted from the oldest when a name
+> repeats. `get_page_list` reads the series page again and follows the fresh link of the
+> chapter with that key. Keying by the link, as versions up to 9 did, changed every key on
+> every refresh.
+
+Names come as "Chapter 212 : Ch 212 : S2 Finale", "Chapter 211 : Ch 211", "Vol.15 Chapter
+136: Hometown Song", "Vol.2 Fifth Course: …" and bare names such as "Extra". The volume and
+chapter numbers are taken from those prefixes; a remainder that is only "Ch <the number>" is
+dropped. Dates print as "Dec 09, 2025", or "N hour ago" and "N minutes ago" for the last day.
+
+> ⚠️ The runner parses no date-only format, so the absolute dates are only checked in the app.
+
+The latest chapter named on a card can be one ahead of the series page for a while (seen
+once in 14), so the Latest Update row is a plain scroller, not a chapter list.
+
+## Details and ratings
+
+A home slide and a series page share their markup (`h1.title`, `.img-manga img`, `.pre-title`
+rows, `.label-badge` genres), so `parse_manga` reads both; only the description's class
+differs. A series page links each author; a slide prints them joined by " , ". Names such as
+"Kariya, Tetsu" keep their comma.
+
+The site blurs covers it counts as adult (`cover-adult`). That flag, or an Erotica,
+Pornographic, R-18 or Smut genre, rates a series NSFW; Ecchi or Mature rates it Suggestive.
+The site has no control for hiding adult titles, so the source adds none; Excluded Genres
+covers it. Smut titles are not always flagged by the site.
+
+## Home
+
+Popular Manga comes from the home page; Latest Update and New Release are the first page of
+the search sorted by `updated_at` and `created_at`, so the Excluded Genres setting applies to
+them on the server. The slides are filtered by genre name, read from the id's first part.
+
+## Icon
+
+`https://pvzcdelcc.xyz/web/img/icon.png` is the site's 256px logo; the favicon it links
+(`icon-green.png`) is 60px. The icon is the larger one, scaled to 92px on white.

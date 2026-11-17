@@ -2,16 +2,28 @@
 	"info": {
 		"id": "en.vymanga",
 		"name": "VyManga",
-		"version": 9,
-		"url": "https://mangavyvy.net",
+		"version": 10,
+		"urls": [
+			"https://mangavyvy.com",
+			"https://mangavyvy.net"
+		],
 		"contentRating": 1,
-		"languages": ["en"],
-		"minAppVersion": "0.8.3"
+		"languages": [
+			"en"
+		],
+		"minAppVersion": "0.7.1"
 	},
 	"listings": [
-		{ "id": "viewed", "name": "Popular" },
-		{ "id": "updated_at", "name": "Latest Updated" },
-		{ "id": "scored", "name": "Top Rated" },
-		{ "id": "created_at", "name": "Newest" }
-	]
+		{
+			"id": "updated_at",
+			"name": "Latest Updates"
+		},
+		{
+			"id": "created_at",
+			"name": "Recently Added"
+		}
+	],
+	"config": {
+		"allowsBaseUrlSelect": true
+	}
 }
