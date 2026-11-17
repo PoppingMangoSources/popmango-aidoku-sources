@@ -2,7 +2,7 @@
 	"info": {
 		"id": "multi.yaoime",
 		"name": "yaoi.me",
-		"version": 8,
+		"version": 9,
 		"url": "https://yaoi.me",
 		"contentRating": 2,
 		"languages": [
@@ -57,6 +57,10 @@
 	},
 	"listings": [
 		{
+			"id": "bookmarked",
+			"name": "Most Bookmarked"
+		},
+		{
 			"id": "latest",
 			"name": "Latest Releases"
 		},
@@ -75,10 +79,6 @@
 		{
 			"id": "talked",
 			"name": "Most Talked About"
-		},
-		{
-			"id": "bookmarked",
-			"name": "Most Bookmarked"
 		},
 		{
 			"id": "hidden-gems",

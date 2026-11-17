@@ -126,12 +126,12 @@ fn review_home_layout() {
 		order,
 		[
 			("popular", "Popular Updates", "scroller"),
+			("bookmarked", "Most Bookmarked", "scroller"),
 			("latest", "Latest Releases", "chapter list"),
 			("trending", "Trending Now", "scroller"),
 			("top-rated", "Top Rated", "scroller"),
 			("rising", "Rising", "scroller"),
 			("talked", "Most Talked About", "ranked list"),
-			("bookmarked", "Most Bookmarked", "scroller"),
 			("hidden-gems", "Hidden Gems", "scroller"),
 			("binge", "Binge-Worthy", "scroller"),
 		]

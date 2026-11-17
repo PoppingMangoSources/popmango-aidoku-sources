@@ -126,34 +126,34 @@
 				"title": "Sections",
 				"values": [
 					"popular",
+					"bookmarked",
 					"latest",
 					"trending",
 					"top-rated",
 					"rising",
 					"talked",
-					"bookmarked",
 					"hidden-gems",
 					"binge"
 				],
 				"titles": [
 					"Popular Updates",
+					"Most Bookmarked",
 					"Latest Releases",
 					"Trending Now",
 					"Top Rated",
 					"Rising",
 					"Most Talked About",
-					"Most Bookmarked",
 					"Hidden Gems",
 					"Binge-Worthy"
 				],
 				"default": [
 					"popular",
+					"bookmarked",
 					"latest",
 					"trending",
 					"top-rated",
 					"rising",
 					"talked",
-					"bookmarked",
 					"hidden-gems",
 					"binge"
 				],

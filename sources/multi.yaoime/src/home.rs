@@ -20,12 +20,12 @@ pub enum Layout {
 
 pub const SECTIONS: [(&str, &str, Layout); 9] = [
 	("popular", "Popular Updates", Layout::Row),
+	("bookmarked", "Most Bookmarked", Layout::Row),
 	("latest", "Latest Releases", Layout::Chapters),
 	("trending", "Trending Now", Layout::Row),
 	("top-rated", "Top Rated", Layout::Row),
 	("rising", "Rising", Layout::Row),
 	("talked", "Most Talked About", Layout::Ranked),
-	("bookmarked", "Most Bookmarked", Layout::Row),
 	("hidden-gems", "Hidden Gems", Layout::Row),
 	("binge", "Binge-Worthy", Layout::Row),
 ];
