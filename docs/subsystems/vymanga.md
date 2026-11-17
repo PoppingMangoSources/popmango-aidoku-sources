@@ -14,7 +14,7 @@ sources:
   - code: sources/en.vymanga/res/source.json
   - ext: https://mangavyvy.com/search
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/vyvymanga
-verified_at: 61d339f
+verified_at: d585318
 ---
 
 VyManga (`mangavyvy.com`, mirror `mangavyvy.net`) is server-rendered HTML with no API and no
@@ -51,6 +51,10 @@ Probed one at a time against the page count; a missing parameter is the site's d
 | `sort_type` | `desc` (default), `asc` | works on every sort |
 | `genre[]`, `exclude_genre[]` | the whole `data-value`, such as `Action-1-action` | the number or the name alone is ignored for `genre[]` |
 | `page` | from 1 | |
+
+Every filter also works together with a text query (probed with `q=love`: status, each sort
+and direction, genre include and exclude, author and its match, and description search all
+changed the page count or order), so `hidesFiltersWhileSearching` stays unset.
 
 > ⚠️ `search_po` (the Contain, Begin, End select beside the title box) changes nothing: "one
 > piece" and "piece" answered the same pages for all three values. The source leaves it out;
