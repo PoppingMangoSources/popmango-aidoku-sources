@@ -58,7 +58,7 @@ fn component(id: &str, name: &str, layout: Layout, content: &Element) -> HomeCom
 		},
 		Layout::Ranked => HomeComponentValue::MangaList {
 			ranking: true,
-			page_size: Some(3),
+			page_size: Some(4),
 			entries: links(),
 			listing,
 		},

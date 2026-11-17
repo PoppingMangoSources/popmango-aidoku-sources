@@ -851,7 +851,7 @@ fn live_home() {
 				..
 			} => {
 				assert!(*ranking);
-				assert_eq!(*page_size, Some(3));
+				assert_eq!(*page_size, Some(4));
 				assert!(!entries.is_empty());
 			}
 			_ => panic!("unexpected component"),
