@@ -11,6 +11,8 @@ sources:
   - code: sources/multi.yaoime/src/models.rs
   - code: sources/multi.yaoime/src/cipher.rs
   - code: sources/multi.yaoime/src/settings.rs
+  - code: sources/multi.yaoime/src/filters.rs
+  - code: sources/multi.yaoime/src/tags.rs
   - code: sources/multi.yaoime/res/filters.json
   - code: sources/multi.yaoime/res/settings.json
   - ext: https://yaoi.me/browse
@@ -60,8 +62,17 @@ ANDed; `tags` matches genre names too, which is why tapped tags go there), `type
 `author`, `artist`, `sort` (`update`, `create`, `popular`, `rating`, `chapters`, `az`), `dir` and
 `page`. Sixty cards a page; the next page is a "Next" link in the page's `nav`.
 
-The tag filters are grouped as the site's panel groups them, by its own name table and rules
-(read as data from its browse bundle, ten groups, 1330 tags on 2026-11-17).
+Genres, tags and the year range come live from the browse page's data (`sources/multi.yaoime/src/filters.rs`),
+for the filters and for the Excluded Genres and Excluded Tags settings. The site sends no group
+per tag: its panel files them by a name table and 24 rules in its browse script, copied as data
+into `sources/multi.yaoime/src/tags.rs` (ten groups, 1330 tags on 2026-11-17).
+
+> ⚠️ The app puts dynamic filters after `filters.json` and dynamic settings after
+> `settings.json` (AidokuRunner `Source.swift`). Everything from Genres onward is built in
+> Rust so the filters keep the site's order, and the Exclusions group comes last in settings.
+
+> ⚠️ A new tag the rules don't know lands in OTHER until `tags.rs` is refreshed from the
+> site's script; `review_tag_groups` pins samples of each group.
 
 ## Series and chapters
 

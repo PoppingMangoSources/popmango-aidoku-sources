@@ -74,6 +74,18 @@ impl SiteSettings {
 }
 
 #[derive(Deserialize)]
+pub struct FilterLists {
+	pub genres: Vec<Named>,
+	pub tags: Vec<Named>,
+	pub years: Vec<i32>,
+}
+
+#[derive(Deserialize)]
+pub struct Named {
+	pub name: String,
+}
+
+#[derive(Deserialize)]
 pub struct ChapterData {
 	pub groups: Vec<Group>,
 }

@@ -1,21 +1,10 @@
+use crate::tags::GROUPS;
 use aidoku::{
 	alloc::{String, Vec, format, vec},
 	imports::defaults::defaults_get,
 };
 
 pub const CONTENT_RATINGS: [&str; 4] = ["safe", "suggestive", "erotica", "pornographic"];
-pub const TAG_GROUPS: [&str; 10] = [
-	"roles",
-	"relationship",
-	"sexual",
-	"omegaverse",
-	"cast",
-	"setting",
-	"fantasy",
-	"story",
-	"format",
-	"other",
-];
 
 pub fn languages() -> Vec<String> {
 	defaults_get::<Vec<String>>("languages").unwrap_or_else(|| vec!["en".into()])
@@ -35,9 +24,9 @@ pub fn content_ratings() -> Vec<String> {
 }
 
 pub fn excluded_tags() -> Vec<String> {
-	let groups = TAG_GROUPS
+	let groups = GROUPS
 		.iter()
-		.filter_map(|group| defaults_get::<Vec<String>>(&format!("excludedTags.{group}")));
+		.filter_map(|(group, _)| defaults_get::<Vec<String>>(&format!("excludedTags.{group}")));
 	defaults_get::<Vec<String>>("excludedGenres")
 		.into_iter()
 		.chain(groups)

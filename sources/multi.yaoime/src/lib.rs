@@ -1,10 +1,12 @@
 #![no_std]
 mod browse;
 mod cipher;
+mod filters;
 mod helpers;
 mod home;
 mod models;
 mod settings;
+mod tags;
 #[cfg(test)]
 mod test;
 
@@ -17,10 +19,10 @@ use aidoku::{
 };
 use browse::BrowseParams;
 use helpers::{
-	Link, chapter_data, get_html, manga_url, parse_link, parse_manga, parse_manga_details,
+	Link, get_html, manga_url, page_data, parse_link, parse_manga, parse_manga_details,
 	parse_manga_list, reader, send,
 };
-use models::{SiteSettings, chapter_list};
+use models::{ChapterData, SiteSettings, chapter_list};
 
 const BASE_URL: &str = "https://yaoi.me";
 
@@ -72,7 +74,7 @@ impl Source for YaoiMe {
 		}
 
 		if needs_chapters {
-			let data = chapter_data(&body)?;
+			let data: ChapterData = page_data(&body, "{\"groups\":[")?;
 			let clean = settings::clean_chapters();
 			// Only the reader names the sources, and a clean list shows none; the names are
 			// optional, so a chapter the reader refuses doesn't hide the list.
@@ -161,4 +163,11 @@ impl DeepLinkHandler for YaoiMe {
 	}
 }
 
-register_source!(YaoiMe, Home, ListingProvider, DeepLinkHandler);
+register_source!(
+	YaoiMe,
+	Home,
+	ListingProvider,
+	DynamicFilters,
+	DynamicSettings,
+	DeepLinkHandler
+);

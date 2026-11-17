@@ -2,7 +2,7 @@
 
 use super::*;
 use aidoku::{
-	ContentRating, Home, HomeComponentValue, MangaStatus, Viewer,
+	ContentRating, DynamicFilters, DynamicSettings, Home, HomeComponentValue, MangaStatus, Viewer,
 	alloc::string::ToString,
 	imports::defaults::{DefaultValue, defaults_set},
 };
@@ -22,7 +22,7 @@ fn reset() {
 	defaults_set("excludedTypes", strings(&[]));
 	defaults_set("contentRatings", strings(&settings::CONTENT_RATINGS));
 	defaults_set("excludedGenres", strings(&[]));
-	for group in settings::TAG_GROUPS {
+	for (group, _) in tags::GROUPS {
 		defaults_set(&format!("excludedTags.{group}"), strings(&[]));
 	}
 	defaults_set("titlePreference", DefaultValue::String("site".into()));
@@ -147,27 +147,11 @@ fn review_filter_capabilities() {
 		filters[0]["options"].as_array().unwrap().len(),
 		browse::SORTS.len()
 	);
-	for filter in &filters {
-		if filter["type"] == "multi-select" {
-			// Genres and tags send both their included and excluded values.
-			assert_eq!(filter["canExclude"], true, "{}", filter["id"]);
-		}
-	}
-	let tag_groups: Vec<&str> = filters
-		.iter()
-		.filter_map(|filter| filter["id"].as_str()?.strip_prefix("tags."))
-		.collect();
-	assert_eq!(tag_groups, settings::TAG_GROUPS);
-	// The site writes its tag group headings and OEL in capitals.
+	// The site writes OEL and its tag group headings in capitals.
 	assert!(
-		filters
+		tags::GROUPS
 			.iter()
-			.filter(|filter| filter["id"]
-				.as_str()
-				.is_some_and(|id| id.starts_with("tags.")))
-			.all(|filter| filter["title"]
-				.as_str()
-				.is_some_and(|title| title == title.to_uppercase()))
+			.all(|(_, title)| *title == title.to_uppercase())
 	);
 	assert!(filters.iter().any(|filter| {
 		filter["id"] == "type"
@@ -186,6 +170,70 @@ fn review_filter_capabilities() {
 		.map(|value| value.as_str().unwrap())
 		.collect();
 	assert_eq!(defaults, SECTIONS.map(|(id, ..)| id));
+}
+
+#[aidoku_test]
+fn review_tag_groups() {
+	// Each tag filed where the site's own panel puts it (read from its script on 2026-11-17).
+	for (group, names) in [
+		(
+			"roles",
+			["Older Uke Younger Seme", "Persistent Uke", "Clueless Uke"],
+		),
+		("relationship", ["Kisses", "Affectionate Lover", "Bromance"]),
+		(
+			"sexual",
+			["Anal Sex", "Gang Rape", "Tights/Stocking Fetish"],
+		),
+		(
+			"omegaverse",
+			[
+				"Omegaverse",
+				"Mating Cycles/In Heat/Estrus",
+				"Dom/Sub-verse",
+			],
+		),
+		("cast", ["Muscles", "Innocent Male Lead", "All-Boys Dorm"]),
+		("setting", ["University/College", "Korean Folklore", "Judo"]),
+		("fantasy", ["Furry", "Youkai", "Devils"]),
+		(
+			"story",
+			["Incest", "Personality Changes", "Blood-Related Incest"],
+		),
+		("format", ["Full Color", "Alternating POV", "Josei-muke"]),
+		("other", ["Tomgirl", "Lab Coats", "Electric Shocks"]),
+	] {
+		for name in names {
+			assert_eq!(tags::group(name), group, "{name}");
+		}
+	}
+	// The site compares names lowercased with their spaces collapsed.
+	assert_eq!(tags::group("  anal   SEX "), "sexual");
+}
+
+#[aidoku_test]
+fn live_dynamic_filters() {
+	reset();
+	let filters = YaoiMe::new().get_dynamic_filters().unwrap();
+	let ids: Vec<&str> = filters.iter().map(|filter| filter.id.as_ref()).collect();
+	let mut expected = vec!["genre".to_string()];
+	expected.extend(tags::GROUPS.map(|(group, _)| format!("tags.{group}")));
+	expected.extend(["year", "chapters", "rating", "pages", "updated"].map(Into::into));
+	assert_eq!(ids, expected);
+	let options = |id: &str| match &filters.iter().find(|filter| filter.id == id).unwrap().kind {
+		aidoku::FilterKind::MultiSelect { options, .. } => options.len(),
+		_ => 0,
+	};
+	assert!(options("genre") > 30);
+	let tag_count: usize = tags::GROUPS
+		.iter()
+		.map(|(group, _)| options(&format!("tags.{group}")))
+		.sum();
+	assert!(tag_count > 1000);
+	assert!(options("tags.other") < tag_count / 5);
+
+	let settings = YaoiMe::new().get_dynamic_settings().unwrap();
+	assert_eq!(settings.len(), 1);
 }
 
 #[aidoku_test]

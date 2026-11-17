@@ -1,8 +1,6 @@
 use crate::{
 	BASE_URL, cipher,
-	models::{
-		ChapterData, ErrorResponse, ReaderChapter, ReaderResponse, SiteSettings, split_label,
-	},
+	models::{ErrorResponse, ReaderChapter, ReaderResponse, SiteSettings, split_label},
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Result, Viewer,
@@ -15,6 +13,7 @@ use aidoku::{
 	},
 	prelude::*,
 };
+use serde::de::DeserializeOwned;
 
 pub fn manga_url(key: &str) -> String {
 	format!("{BASE_URL}/series/{key}")
@@ -255,8 +254,9 @@ pub fn parse_manga_details(document: &Document, manga: &mut Manga) {
 	};
 }
 
-// Next.js streams the page's data as JSON strings in `self.__next_f.push` scripts.
-pub fn chapter_data(body: &str) -> Result<ChapterData> {
+// Next.js streams the page's data as JSON strings in `self.__next_f.push` scripts; this reads
+// the object that opens with `start`.
+pub fn page_data<T: DeserializeOwned>(body: &str, start: &str) -> Result<T> {
 	let mut flight = String::new();
 	for chunk in body.split("self.__next_f.push(").skip(1) {
 		if let Some(Ok((1, text))) = serde_json::Deserializer::from_str(chunk)
@@ -266,13 +266,11 @@ pub fn chapter_data(body: &str) -> Result<ChapterData> {
 			flight.push_str(&text);
 		}
 	}
-	let at = flight
-		.find("{\"groups\":[")
-		.ok_or(error!("Missing chapter list"))?;
+	let at = flight.find(start).ok_or(error!("Missing page data"))?;
 	serde_json::Deserializer::from_str(&flight[at..])
-		.into_iter::<ChapterData>()
+		.into_iter::<T>()
 		.next()
-		.ok_or(error!("Missing chapter list"))?
+		.ok_or(error!("Missing page data"))?
 		.map_err(Into::into)
 }
 
