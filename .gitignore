@@ -20,3 +20,6 @@ __pycache__/
 
 # Personal Claude Code settings; the shared hooks live in .claude/settings.json.
 .claude/settings.local.json
+
+# Local HarnessKit plugin session logs.
+.harnesskit/
