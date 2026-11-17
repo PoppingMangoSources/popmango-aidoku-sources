@@ -25,7 +25,7 @@ class CardRuleTests(unittest.TestCase):
             checks.failures.clear()
             checks.check_commercial_control(self.path, item)
             self.assertTrue(checks.failures)
-        for item in [{"key": "hidePaidChapters", "title": "Exclude Paid Chapters"}, {"key": "showLocked", "title": "Show Locked Chapters"}, {"isGenre": True, "options": ["Sales"]}]:
+        for item in [{"key": "hidePaidChapters", "title": "Exclude Paid Chapters"}, {"key": "showLocked", "title": "Show Locked Chapters"}, {"isGenre": True, "options": ["Sales"]}, {"usesTagStyle": True, "options": ["Salesman"]}]:
             checks.failures.clear()
             checks.check_commercial_control(self.path, item)
             self.assertEqual(checks.failures, [])

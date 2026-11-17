@@ -41,7 +41,13 @@ if [ -e "$dir" ]; then
 	exit 1
 fi
 
-aidoku init "$dir" -n "$name" -u "$url" -l "$languages" -c "$rating"
+# The CLI takes one code per flag.
+language_flags=()
+IFS=, read -ra codes <<<"$languages"
+for code in "${codes[@]}"; do
+	language_flags+=(-l "$code")
+done
+aidoku init "$dir" -n "$name" -u "$url" "${language_flags[@]}" -c "$rating"
 # The CLI makes each source its own repository.
 rm -rf "$dir/.git" "$dir/.gitignore"
 

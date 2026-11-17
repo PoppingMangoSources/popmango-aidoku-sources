@@ -110,7 +110,8 @@ CHAPTER_VISIBILITY = re.compile(r"(?:hide|exclude|skip).*?(?:paid|locked|premium
 
 
 def check_commercial_control(path: Path, item: dict) -> None:
-    if item.get("isGenre"):
+    # Genre and tag lists name a site's own tags, such as "Salesman", not purchase controls.
+    if item.get("isGenre") or item.get("usesTagStyle"):
         return
     text = " ".join(str(item.get(key, "")) for key in ("id", "key", "title"))
     labels = " ".join(str(value) for value in item.get("options", []) if isinstance(value, str))
