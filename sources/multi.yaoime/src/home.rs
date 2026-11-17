@@ -20,15 +20,15 @@ pub enum Layout {
 }
 
 pub const SECTIONS: [(&str, &str, Layout); 9] = [
-	("trending", "Trending now", Layout::Featured),
-	("popular", "Popular updates", Layout::Row),
-	("top-rated", "Top rated", Layout::Row),
+	("trending", "Trending Now", Layout::Featured),
+	("popular", "Popular Updates", Layout::Row),
+	("top-rated", "Top Rated", Layout::Row),
 	("rising", "Rising", Layout::Row),
-	("latest", "Latest releases", Layout::Chapters),
-	("bookmarked", "Most bookmarked", Layout::Row),
-	("hidden-gems", "Hidden gems", Layout::Row),
-	("binge", "Binge-worthy", Layout::Row),
-	("talked", "Most talked about", Layout::Ranked),
+	("latest", "Latest Releases", Layout::Chapters),
+	("bookmarked", "Most Bookmarked", Layout::Row),
+	("hidden-gems", "Hidden Gems", Layout::Row),
+	("binge", "Binge-Worthy", Layout::Row),
+	("talked", "Most Talked About", Layout::Ranked),
 ];
 
 // Sections the site's home page shows by default that the source doesn't.
@@ -128,9 +128,12 @@ impl Home for YaoiMe {
 		let components = sections
 			.iter()
 			.filter_map(|(id, name, layout)| {
-				let heading = headings
-					.iter()
-					.find(|heading| heading.text().as_deref() == Some(*name))?;
+				// The site writes its headings in sentence case ("Trending now").
+				let heading = headings.iter().find(|heading| {
+					heading
+						.text()
+						.is_some_and(|text| text.eq_ignore_ascii_case(name))
+				})?;
 				let content = heading.parent()?.next()?;
 				Some(HomeComponent {
 					title: Some(String::from(*name)),

@@ -23,7 +23,7 @@
 					"Other",
 					"Manhwa",
 					"Manhua",
-					"Oel",
+					"OEL",
 					"Novel"
 				],
 				"default": [],
@@ -127,7 +127,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.roles",
-								"title": "Seme & uke",
+								"title": "SEME & UKE",
 								"values": [
 									"Older Uke Younger Seme",
 									"Older Seme Younger Uke",
@@ -288,7 +288,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.relationship",
-								"title": "Relationship",
+								"title": "RELATIONSHIP",
 								"values": [
 									"Kisses",
 									"Age Gap",
@@ -485,7 +485,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.sexual",
-								"title": "Sexual content",
+								"title": "SEXUAL CONTENT",
 								"values": [
 									"Anal Sex",
 									"Fellatio",
@@ -663,7 +663,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.omegaverse",
-								"title": "Omegaverse",
+								"title": "OMEGAVERSE",
 								"values": [
 									"Omegaverse",
 									"Male Pregnancy",
@@ -685,7 +685,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.cast",
-								"title": "Characters & looks",
+								"title": "CHARACTERS & LOOKS",
 								"values": [
 									"Muscles",
 									"Crossdressing",
@@ -898,7 +898,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.setting",
-								"title": "Setting & occupation",
+								"title": "SETTING & OCCUPATION",
 								"values": [
 									"University/College",
 									"High School Students",
@@ -1137,7 +1137,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.fantasy",
-								"title": "Fantasy & supernatural",
+								"title": "FANTASY & SUPERNATURAL",
 								"values": [
 									"Furry",
 									"Cat Boys",
@@ -1241,7 +1241,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.story",
-								"title": "Story & themes",
+								"title": "STORY & THEMES",
 								"values": [
 									"Incest",
 									"Misunderstandings",
@@ -1405,7 +1405,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.format",
-								"title": "Format & source",
+								"title": "FORMAT & SOURCE",
 								"values": [
 									"Full Color",
 									"Webtoons",
@@ -1470,7 +1470,7 @@
 							{
 								"type": "multi-select",
 								"key": "excludedTags.other",
-								"title": "Other",
+								"title": "OTHER",
 								"values": [
 									"Tomgirl",
 									"Stockings",
@@ -1655,15 +1655,15 @@
 					"talked"
 				],
 				"titles": [
-					"Trending now",
-					"Popular updates",
-					"Top rated",
+					"Trending Now",
+					"Popular Updates",
+					"Top Rated",
 					"Rising",
-					"Latest releases",
-					"Most bookmarked",
-					"Hidden gems",
-					"Binge-worthy",
-					"Most talked about"
+					"Latest Releases",
+					"Most Bookmarked",
+					"Hidden Gems",
+					"Binge-Worthy",
+					"Most Talked About"
 				],
 				"default": [
 					"trending",

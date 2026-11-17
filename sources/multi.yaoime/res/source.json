@@ -2,7 +2,7 @@
 	"info": {
 		"id": "multi.yaoime",
 		"name": "yaoi.me",
-		"version": 2,
+		"version": 3,
 		"url": "https://yaoi.me",
 		"contentRating": 2,
 		"languages": [
@@ -58,11 +58,11 @@
 	"listings": [
 		{
 			"id": "trending",
-			"name": "Trending now"
+			"name": "Trending Now"
 		},
 		{
 			"id": "top-rated",
-			"name": "Top rated"
+			"name": "Top Rated"
 		},
 		{
 			"id": "rising",
@@ -70,23 +70,23 @@
 		},
 		{
 			"id": "latest",
-			"name": "Latest releases"
+			"name": "Latest Releases"
 		},
 		{
 			"id": "bookmarked",
-			"name": "Most bookmarked"
+			"name": "Most Bookmarked"
 		},
 		{
 			"id": "hidden-gems",
-			"name": "Hidden gems"
+			"name": "Hidden Gems"
 		},
 		{
 			"id": "binge",
-			"name": "Binge-worthy"
+			"name": "Binge-Worthy"
 		},
 		{
 			"id": "talked",
-			"name": "Most talked about"
+			"name": "Most Talked About"
 		}
 	]
 }

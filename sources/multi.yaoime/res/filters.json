@@ -23,7 +23,7 @@
 			"Other",
 			"Manhwa",
 			"Manhua",
-			"Oel",
+			"OEL",
 			"Novel"
 		],
 		"ids": [
@@ -153,7 +153,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.roles",
-		"title": "Seme & uke",
+		"title": "SEME & UKE",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -312,7 +312,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.relationship",
-		"title": "Relationship",
+		"title": "RELATIONSHIP",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -507,7 +507,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.sexual",
-		"title": "Sexual content",
+		"title": "SEXUAL CONTENT",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -683,7 +683,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.omegaverse",
-		"title": "Omegaverse",
+		"title": "OMEGAVERSE",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -703,7 +703,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.cast",
-		"title": "Characters & looks",
+		"title": "CHARACTERS & LOOKS",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -914,7 +914,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.setting",
-		"title": "Setting & occupation",
+		"title": "SETTING & OCCUPATION",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -1151,7 +1151,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.fantasy",
-		"title": "Fantasy & supernatural",
+		"title": "FANTASY & SUPERNATURAL",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -1253,7 +1253,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.story",
-		"title": "Story & themes",
+		"title": "STORY & THEMES",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -1415,7 +1415,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.format",
-		"title": "Format & source",
+		"title": "FORMAT & SOURCE",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,
@@ -1478,7 +1478,7 @@
 	{
 		"type": "multi-select",
 		"id": "tags.other",
-		"title": "Other",
+		"title": "OTHER",
 		"canExclude": true,
 		"usesTagStyle": true,
 		"hideFromHeader": true,

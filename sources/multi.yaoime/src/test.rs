@@ -126,15 +126,15 @@ fn review_home_layout() {
 	assert_eq!(
 		order,
 		[
-			("trending", "Trending now", "big scroller"),
-			("popular", "Popular updates", "scroller"),
-			("top-rated", "Top rated", "scroller"),
+			("trending", "Trending Now", "big scroller"),
+			("popular", "Popular Updates", "scroller"),
+			("top-rated", "Top Rated", "scroller"),
 			("rising", "Rising", "scroller"),
-			("latest", "Latest releases", "chapter list"),
-			("bookmarked", "Most bookmarked", "scroller"),
-			("hidden-gems", "Hidden gems", "scroller"),
-			("binge", "Binge-worthy", "scroller"),
-			("talked", "Most talked about", "ranked list"),
+			("latest", "Latest Releases", "chapter list"),
+			("bookmarked", "Most Bookmarked", "scroller"),
+			("hidden-gems", "Hidden Gems", "scroller"),
+			("binge", "Binge-Worthy", "scroller"),
+			("talked", "Most Talked About", "ranked list"),
 		]
 	);
 }
@@ -158,6 +158,24 @@ fn review_filter_capabilities() {
 		.filter_map(|filter| filter["id"].as_str()?.strip_prefix("tags."))
 		.collect();
 	assert_eq!(tag_groups, settings::TAG_GROUPS);
+	// The site writes its tag group headings and OEL in capitals.
+	assert!(
+		filters
+			.iter()
+			.filter(|filter| filter["id"]
+				.as_str()
+				.is_some_and(|id| id.starts_with("tags.")))
+			.all(|filter| filter["title"]
+				.as_str()
+				.is_some_and(|title| title == title.to_uppercase()))
+	);
+	assert!(filters.iter().any(|filter| {
+		filter["id"] == "type"
+			&& filter["options"]
+				.as_array()
+				.unwrap()
+				.contains(&json!("OEL"))
+	}));
 	let settings_json: Value = serde_json::from_str(include_str!("../res/settings.json")).unwrap();
 	let home = &settings_json.as_array().unwrap().last().unwrap()["items"][0];
 	assert_eq!(home["key"], "homeSections");
@@ -808,7 +826,7 @@ fn live_home() {
 		.iter()
 		.map(|component| component.title.as_deref().unwrap())
 		.collect();
-	assert_eq!(titles, ["Trending now", "Most talked about"]);
+	assert_eq!(titles, ["Trending Now", "Most Talked About"]);
 	reset();
 }
 
