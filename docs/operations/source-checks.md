@@ -2,7 +2,7 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-13
+updated: 2026-11-17
 sources:
   - code: scripts/check-sources.py
   - code: scripts/test-http.py
@@ -40,7 +40,7 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: 2184823
+verified_at: 56022f1
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -176,7 +176,21 @@ notes a multi-select that is not a genre filter and leaves `canExclude` unstated
 
 `check_settings_json` (`scripts/check-sources.py:119`) fails a `hide…`/`show…` adult switch whose
 default shows adult titles on a source rated 1. `check_cards` notes an image scroller left
-without a width.
+without a width, and an Option that is unwrapped and wrapped again
+(`if let Some(q) = q { qs.push("search", Some(&q)) }`, the `OPTIONAL_REWRAP` pattern).
+`check_source_json` notes a listing name that ends in "Chapter Updates" or "Added Titles".
+
+> ⚠️ The optional-rewrap rule is a note because eight merged sources still do it, MangaDex
+> among them (calibrated on 2026-11-17). kkantan asked for the fix on #908 and pushed it
+> themselves on #905, so don't promote it to a failure without a fresh calibration. Its
+> pattern needs the `if let` and the wrapping call on consecutive lines; a value that is
+> transformed on the way (`Some(&q.to_lowercase())`) is not a rewrap and must stay clean
+> (`test_optional_rewrap_is_noted`).
+
+> ⚠️ The listing-name note asks for the site's own titles, not for short names. kkantan's
+> only comment on #902 was "we should match the titles from the site", and VyManga's
+> listings ("Latest Update", "New Release") are the site's. Read the note as "check what
+> the site calls it" (`test_long_listing_name_is_noted`).
 
 > ⚠️ The sort-first rule is a note, not a failure: 47 merged sources put the sort later,
 > including en.hentai2read, which kkantan approved this month. Don't promote it without a

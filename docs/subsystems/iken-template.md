@@ -34,12 +34,14 @@ sources:
 verified_at: 38322e3
 ---
 
-> ⚠️ #900 merged on 2026-11-15 and #905 on 2026-11-16. kkantan pushed `chore(es.eternalmangas):
+> ⚠️ The comments kkantan left on #900 and #905 are listed under "kkantan's review comments"
+> below. #900 merged on 2026-11-15 and #905 on 2026-11-16. kkantan pushed `chore(es.eternalmangas):
 > revert version change` to the first and `refactor(es.eternalmangas): avoid optional rewrap`
 > to the second. Compared on 2026-11-17, the archived Iken template, Hijala and Sana equal the
-> merged crates. EternalMangas differed by that rewrap, copied into the archive, and by a
-> `tags()` helper that title-cases lowercase tags, which never went upstream: merged Eternal
-> shows tags as the site writes them, so a later change starts from upstream's crate.
+> merged crates. EternalMangas differed by that rewrap and by a `tags()` helper that
+> title-cases lowercase tags, which never went upstream. The archived copy now matches the
+> merged crate and a comment in its `helpers.rs` records the dropped helper: merged Eternal
+> shows tags as the site writes them.
 
 > ⚠️ The Iken template, Hive, Nyx, Vortex, Magus, Hijala, Sana and EternalMangas left main for
 > [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources)
@@ -271,3 +273,35 @@ the template's deterministic suite and loopback HTTP tests pass. Captured-home t
 need their optional evidence directory, so the loopback run does not establish fresh captured
 site rendering. The seven fork source versions advance once for this publication; submission
 versions remain upstream plus one (new Hijala/Sana remain 1).
+
+## kkantan's review comments
+
+Read from the review API on 2026-11-17.
+
+### #900 (Iken template, Hive, Nyx, Vortex, Magus, Hijala, Sana)
+
+- Review summary, changes requested: "I think the EternalMangas update is completely separate from the template changes and other sources, so it would be better put in a separate pr."
+- Review summary, changes requested: "checking sana scans, it looks like most pages are stitched together. the source should either default to the webtoon viewer, or attempt to separate them. hive scans does this too, but only for one series that I've seen. for nyx scans, vortex scans, and I think magus manga, everything labeled "manga" is still a webtoon and the viewer is set incorrectly. hive scans banners seem slightly too wide. it might be good to set the size of these in the source."
+- `templates/iken/Cargo.toml`: "I'm not sure about removing these from every source. even if there are no tests currently, this is standard to have in case any are added later."
+- `templates/iken/src/home.rs`: "what's happening with the indentation here? it doesn't seem quite right."
+- `en.vortexscans/src/lib.rs`: "this loads a ridiculously large banner. this shouldn't be set any higher than a standard phone width, which is around 400px."
+- `en.hijalascans/src/lib.rs` and `en.sanascans/src/lib.rs`: a suggestion each, writing out `struct`, `impl Impl` with `Params { base_url, api_url, ..Default::default() }` (Sana adds `page_size: 30` and `sort_pages_by_filename: true`) and `register_source!` as separate items.
+- `en.hivescans/src/lib.rs`: a suggestion for the `parse_home(&self, params: &Params, html: &Document)` signature.
+- `es.eternalmangas/src/helpers.rs`: "empty lines should separate top level items."
+- `es.eternalmangas/res/filters.json`: "`isGenre` should be kept."
+- `es.eternalmangas/src/helpers.rs`: "you might be able to do this with just the selector with `:has` and/or `:contains` pseudo-classes, but this is probably still okay."
+- `es.eternalmangas/res/source.json`: "this pr leaves eternalmangas broken, so the version change should be saved for the other pr." (suggesting `"version": 2`; kkantan pushed `chore(es.eternalmangas): revert version change`)
+
+kkantan approved on 2026-11-15.
+
+### #905 (EternalMangas)
+
+- `res/filters.json`: "this should be put before the options and ids." (`isGenre`)
+- `src/helpers.rs`: "`text()` trims already so this is unnecessary."
+- `src/lib.rs`: "top level items should have newlines separating them." (with a suggestion spacing the `mod` lines, `URL` and the struct)
+- `src/models.rs`: a suggestion giving each `Legacy…Response` struct its own `#[derive(Deserialize)]` and blank lines between them
+- `src/helpers.rs`: "I think the built-in `parse_date` should be favored over chrono."
+- `src/helpers.rs`: "`trim` after `text` is not necessary." (suggesting `text.strip_prefix("hace ")?.split_once(' ')?`)
+- `src/lib.rs`: a suggestion to write `if query.is_some() { qs.push("search", query.as_deref()); }`, which kkantan then pushed as `refactor(es.eternalmangas): avoid optional rewrap`
+
+kkantan approved on 2026-11-15 and left a final comment review on 2026-11-16 with no text.

@@ -40,11 +40,26 @@ verified_at: 38322e3
 > after #908 merged, from main `38322e3` with their tests. Later maintenance starts from
 > upstream's crates and restores only the needed fork tests.
 
-> ⚠️ #908 merged on 2026-11-16 as one squash of our five commits. kkantan left seven
-> comments (the `mo` suffix, `text()` already trimmed, `.rev()` on the iterator, `push_encoded`
-> for static values, the optional rewrap, Elf Toon's `breakingChangeVersion`, one `range`
-> filter for chapter counts) and pushed no commit. Our crates matched the merged ones apart
+> ⚠️ #908 merged on 2026-11-16 as one squash of our five commits. kkantan left eight
+> comments, listed below, and pushed no commit. Our crates matched the merged ones apart
 > from tests and versions, checked on 2026-11-17. The rules are in AGENTS.md section 3.
+
+## kkantan's review comments on #908
+
+Read from the review API on 2026-11-17, with what we did (our replies on the PR).
+
+| Where | Comment | What we did |
+|---|---|---|
+| `templates/vinetheme/src/home.rs` | "I think the "mo" suffix may need to be handled as well, looking at the valir scans home page as an example." | Added `mo`; the sites print m, h and d up to 29 and then mo, so `w` was dropped |
+| `templates/vinetheme/src/home.rs` | "this is only called after an html `text` call, so this is unnecessary." (a `trim()`) | Removed |
+| `templates/vinetheme/src/imp.rs` | "you can reverse the iterator below before collecting it rather than the vector beforehand." | Reversed the iterator |
+| `templates/vinetheme/src/imp.rs` | "you could keep the `push_encoded` calls since they are more performant, and encoding the static values here is not necessary." | Kept `push_encoded` for `limit`, `page` and `contentMode` |
+| `templates/vinetheme/src/imp.rs` | "this change isn't necessary. you're unwrapping `query` from the optional, then immediately re-wrapping it." | The `Option` passes straight through |
+| `sources/en.elftoon/res/source.json` | "this should not be removed." (`breakingChangeVersion: 3`) | Restored |
+| `sources/en.divascans/res/filters.json` | "would it be better to use the "range" type filter, like the atsumaru source does for chapter count filtering?" | One range filter on all five sources, starting at 1 because the API ignores 0 |
+| Review summary (changes requested) | "it looks like valirscans may separate authors by `/`. for example, `The Convenient Empress Resigns`." | Authors split on `/` as well |
+
+kkantan approved on 2026-11-16 with no comment.
 
 VineTheme serves Drake, Elf, Valir, Diva and Kayn. The owner requested publication on main
 and a clean `fix-vine` template submission, with the new sources in separate commits.

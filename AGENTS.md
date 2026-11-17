@@ -482,7 +482,7 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 Merged on 2026-11-15 (#900) and 2026-11-16 (#905); kkantan pushed one commit to each branch,
 the version revert and the optional rewrap above. The Iken template, Hijala and Sana on
 `merged-sources` matched the merged crates; EternalMangas differed by the rewrap, now copied
-into the archive, and by the tag title-casing that never went upstream.
+into the archive, and by the tag title-casing that never went upstream; the archive now matches the merged crate and a comment in `helpers.rs` records the dropped helper.
 
 | What was flagged | The rule | |
 |---|---|---|
@@ -554,7 +554,7 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | Sana's stitched pages and Nyx, Vortex and Magus series typed "manga" opened in the paged reader | Open a site's "manga" series and long chapters before mapping types to viewers. Every Iken and VineTheme site's comics are long strips (VineTheme's "MANGA" chapters measured 800 to 900 wide and up to 16,000 tall), so they all open as Webtoon and only novels are Unknown. | R |
 | The EternalMangas rewrite rode along in the Iken template PR ("completely separate… better put in a separate pr") | A source that left a template goes up in its own PR (section 1, one concern per PR). | R |
 | Vortex's banner row showed three slides, one a cropped cover (owner's screenshots) | The slider mixes cover slides with banner art and renders most slides lazily, without an image or a title. Keep a slide only when the page's series data gives it a `banner`, take the image from that and the title from the link's label, and keep requesting twice the row width. Hive's 2048px script banners request 680px the same way. | R |
-| Nyx home tags showed in lowercase (owner's screenshot) | Some sites capitalise tag names only with CSS (`span.capitalize`). Title-case a name that arrives all lowercase, leave cased ones alone, and deduplicate case-insensitively. Merged EternalMangas (#905) does not: it sorts and deduplicates tags as the site writes them, so its `tags()` helper exists only in our archived copy. | R |
+| Nyx home tags showed in lowercase (owner's screenshot) | Some sites capitalise tag names only with CSS (`span.capitalize`). Title-case a name that arrives all lowercase, leave cased ones alone, and deduplicate case-insensitively. Merged EternalMangas (#905) does not: it sorts and deduplicates tags as the site writes them. Our `tags()` helper was dropped from the archived copy, which keeps a two-line comment saying it never merged. | R |
 
 ### From #902 (`multi.mangaball`)
 
@@ -603,7 +603,7 @@ newest first), which also shows comments the PR pages hide once resolved.
 
 ### From #908 (vinetheme template, Valir, Diva and Kayn)
 
-Merged on 2026-11-16 with seven comments from kkantan and no commit of theirs. The template
+Merged on 2026-11-16 with eight comments from kkantan (seven inline and the review's authors comment) and no commit of theirs. The template
 and the five consumers on `main` matched the merged crates apart from tests and versions
 (diffed on 2026-11-17), so nothing was copied back. They are on `merged-sources` (section 17).
 
