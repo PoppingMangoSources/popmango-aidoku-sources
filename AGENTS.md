@@ -479,6 +479,11 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 
 ### From #900 (Iken and EternalMangas)
 
+Merged on 2026-11-15 (#900) and 2026-11-16 (#905); kkantan pushed one commit to each branch,
+the version revert and the optional rewrap above. The Iken template, Hijala and Sana on
+`merged-sources` matched the merged crates; EternalMangas differed by the rewrap, now copied
+into the archive, and by the tag title-casing that never went upstream.
+
 | What was flagged | The rule | |
 |---|---|---|
 | Eternal's independent rewrite was bundled with the Iken template update | A rewrite that no longer uses a template belongs in its own PR. Keep only necessary API/minimum-version compatibility changes with the shared template, and test the remaining legacy consumer until its migration merges. | R |
@@ -486,6 +491,8 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 | Genre resource rewrite dropped `isGenre` | Preserve genre capabilities while changing options, IDs or select types. Eternal's genre select must keep `isGenre: true`. | F |
 | Structs, impls, registration and methods ran together | Separate Rust items and methods with blank lines; rustfmt does not insert them. Reviewed Iken/Eternal gaps fail the checker; existing merged counterexamples are advisory elsewhere. | F/N |
 | Metadata label lookup could use `:has`/`:contains` | A scoped selector can simplify the walk. Eternal uses `.col-lg-3 li:has(strong)` and exact label-prefix matching. `:contains` was an optional suggestion, not a general requirement; test host/runner support before using it. | R |
+| EternalMangas' version raised in the Iken PR ("this pr leaves eternalmangas broken, so the version change should be saved for the other pr"; kkantan pushed `chore(es.eternalmangas): revert version change`) | A consumer a template PR leaves broken keeps its upstream version in that PR, and its own PR carries the bump. | R |
+| Hijala, Sana and Hive wiring (kkantan wrote the exact layout as suggestions on #900) | Declare `struct X;`, then `impl Impl for X` with `new` and `params`, then `register_source!`, each item separated by a blank line, and copy the signature the trait gives. (inferred) | R |
 
 ### From the Vine reader reports and template audit
 
@@ -509,7 +516,7 @@ Drake/Elf updates, Valir consumer and new Diva/Kayn consumers are submitted from
 upstream. Main publishes every affected source with tests and the normal version bump.
 Vine's regression contracts intentionally reproduce the open upstream reader/home defects;
 pre-existing Keyoapp/MangaThemesia contracts remain the merged calibration baseline.
-See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network evidence.
+See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network evidence. It merged as #908 on 2026-11-16, and the template and its five consumers are on `merged-sources`.
 
 ### From #860 (`en.flamecomics`)
 
@@ -547,7 +554,7 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 | Sana's stitched pages and Nyx, Vortex and Magus series typed "manga" opened in the paged reader | Open a site's "manga" series and long chapters before mapping types to viewers. Every Iken and VineTheme site's comics are long strips (VineTheme's "MANGA" chapters measured 800 to 900 wide and up to 16,000 tall), so they all open as Webtoon and only novels are Unknown. | R |
 | The EternalMangas rewrite rode along in the Iken template PR ("completely separate… better put in a separate pr") | A source that left a template goes up in its own PR (section 1, one concern per PR). | R |
 | Vortex's banner row showed three slides, one a cropped cover (owner's screenshots) | The slider mixes cover slides with banner art and renders most slides lazily, without an image or a title. Keep a slide only when the page's series data gives it a `banner`, take the image from that and the title from the link's label, and keep requesting twice the row width. Hive's 2048px script banners request 680px the same way. | R |
-| Nyx home tags showed in lowercase (owner's screenshot) | Some sites capitalise tag names only with CSS (`span.capitalize`). Title-case a name that arrives all lowercase, leave cased ones alone, and deduplicate case-insensitively. | R |
+| Nyx home tags showed in lowercase (owner's screenshot) | Some sites capitalise tag names only with CSS (`span.capitalize`). Title-case a name that arrives all lowercase, leave cased ones alone, and deduplicate case-insensitively. Merged EternalMangas (#905) does not: it sorts and deduplicates tags as the site writes them, so its `tags()` helper exists only in our archived copy. | R |
 
 ### From #902 (`multi.mangaball`)
 
@@ -596,13 +603,17 @@ newest first), which also shows comments the PR pages hide once resolved.
 
 ### From #908 (vinetheme template, Valir, Diva and Kayn)
 
+Merged on 2026-11-16 with seven comments from kkantan and no commit of theirs. The template
+and the five consumers on `main` matched the merged crates apart from tests and versions
+(diffed on 2026-11-17), so nothing was copied back. They are on `merged-sources` (section 17).
+
 | What was flagged | The rule | |
 |---|---|---|
 | Relative dates without the "mo" suffix ("looking at the valir scans home page as an example") | Collect every suffix the home pages actually print before writing the parser. The VineTheme sites print `m`, `h`, `d` up to 29 and then `mo`, never `w`; an unknown suffix leaves the date unset rather than guessing. | R |
 | `value.trim()` in a helper only ever fed `text()` ("this is only called after an html `text` call") | The `text()` rule covers helpers too: don't trim inside a function whose every caller passes `text()` output. | N |
 | `chapters.reverse()` before `into_iter()` ("reverse the iterator below before collecting it") | Reverse with `.rev()` on the iterator that is already being collected, not the vector beforehand. | R |
 | `push` replacing `push_encoded` for `limit`, `page` and `contentMode` ("encoding the static values here is not necessary") | Keep `push_encoded` for values that never need escaping; `push`/`set` are for user input. | R |
-| `if let Some(query) = query { qs.set("q", Some(query)) }` ("unwrapping `query` from the optional, then immediately re-wrapping it") | Pass the `Option` straight through when the callee takes one. | R |
+| `if let Some(query) = query { qs.set("q", Some(query)) }` ("unwrapping `query` from the optional, then immediately re-wrapping it", #908; again on #905, where kkantan pushed the fix themselves as `refactor(es.eternalmangas): avoid optional rewrap`) | Pass the `Option` straight through when the callee takes one: `if query.is_some() { qs.push("search", query.as_deref()); }`. Eight merged sources still unwrap and re-wrap, so `check-sources.py` notes it. | N |
 | A template update dropped Elf Toon's `"breakingChangeVersion": 3` ("this should not be removed") | Rewriting a consumer's `source.json` keeps every existing `config` key; readers below that version still need the migration prompt. | F |
 | Chapter count as two text filters, "Chapters From" and "Chapters To" ("would it be better to use the range type filter, like the atsumaru source does") | A numeric bound pair is one `range` filter. Probe what the API does with 0: VineTheme answers `ch_max=0` with everything, so its range starts at 1. | R |
 | Valir authors such as The Convenient Empress Resigns joined by `/` | Split credits on every separator the sites use, `/` included, and test a real example from the reviewer. | R |
@@ -1094,7 +1105,7 @@ went in one of these ways, and new ones go in the same way:
   lock in #807; ours move when a source is next edited (`cargo update -p aidoku -p aidoku-test`),
   since a sweep would first need each old source's backlog fixed. It notes the section 3 **N** rows (page-size names,
   own-field wrappers, single-call helpers used once, full-path calls, a sort filter that isn't
-  first, an unsized image scroller) and a non-genre multi-select that leaves `canExclude` unstated.
+  first, an unsized image scroller, an Option unwrapped and wrapped again) and a non-genre multi-select that leaves `canExclude` unstated.
   From sections 3 and 7 it also fails a `push(name, None)`, a `From` into `Manga` or `Chapter`
   that defaults its key, a `parse_date` of month or day names without a locale, a response body
   parsed with `serde_json` rather than `json_owned`, a Rust genre multi-select without
@@ -1350,7 +1361,7 @@ is upstream's copy again; its consumers live upstream only. `mangathemesia` adds
 reading and an opt-in `child_theme` module for Violet, Thunder, Madara and Eva; their source
 overrides select its home and deep-link handlers. It stays on `main` with its loopback fixtures
 for future consumers, though Scythe Scans, its last one, moved to `merged-sources`; `iken` left
-with its six consumers (section 17). The default home and deep-link handlers remain
+with its six consumers and `vinetheme` with its five (section 17). The default home and deep-link handlers remain
 upstream's for the other consumers. KingOfShojo and RokariComics merged with the original template
 unchanged (section 17). The `madtheme` additions (a home page and a chapter-list fallback)
 were for Kaliscan, which now sits on
@@ -1580,9 +1591,10 @@ reaches the site, unless marked.
 its live tests have not run, and its models were checked against the owner's captures. The
 endpoints, content modes, language codes and every unverified parameter are in
 `docs/subsystems/mangaball.md`; read it before changing the source. It is rated 1 because the
-site has a Hentai theme. It merged upstream as #902 on 2026-11-14; `main` matches the merged
-source apart from its version, `src/test.rs` and the tests' `serde_json` dependency. A later
-change goes up with `pr-branch.sh multi.mangaball --update …` from `upstream/main`.
+site has a Hentai theme. It merged upstream as #902 on 2026-11-14 and then left `main` for
+`merged-sources` (section 17), with its tests; it matched the merged source apart from its
+version, `src/test.rs` and the tests' `serde_json` dependency. A later change starts from
+`upstream/main` and goes up with `pr-branch.sh multi.mangaball --update …`.
 
 ## VyManga
 
@@ -1630,7 +1642,7 @@ A source leaves `main` once it is upstream, or while its upstream branch waits o
 crate and live tests stay in `main`'s history; what it taught stays in this file and `docs/`.
 The `merged-sources` branch keeps the last copy of each merged one, tests included (Atsumaru,
 MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive and the seven MangaThemesia
-sources merged in the November batch, plus both Keyoapp generations and their ten consumers),
+sources merged in the November batch, plus both Keyoapp generations and their ten consumers, VineTheme with its five consumers, and MangaBall),
 so they can be read and
 tested in one place.
 
@@ -1679,6 +1691,12 @@ and push gates reject incomplete preservation. Archive branches do not publish p
 | `en.sanascans` | merged (#900) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/iken-template.md` |
 | `es.eternalmangas` | rewrite approved, #905 open when archived (owner's call) | `56d5306` | `merged-sources`; `fix-eternal` for #905 | `docs/subsystems/iken-template.md` |
 | `en.scythescans` | merged (#897) | `56d5306` | `merged-sources`; maintenance from upstream | `docs/subsystems/mangathemesia-consumers.md` |
+| `en.drakescans` | merged (#908) | `38322e3` | `merged-sources`; maintenance from upstream | `docs/subsystems/vinetheme-template.md` |
+| `en.elftoon` | merged (#908) | `38322e3` | `merged-sources`; maintenance from upstream | `docs/subsystems/vinetheme-template.md` |
+| `en.valirscans` | merged (#908) | `38322e3` | `merged-sources`; maintenance from upstream | `docs/subsystems/vinetheme-template.md` |
+| `en.divascans` | merged (#908) | `38322e3` | `merged-sources`; maintenance from upstream | `docs/subsystems/vinetheme-template.md` |
+| `en.kaynscans` | merged (#908) | `38322e3` | `merged-sources`; maintenance from upstream | `docs/subsystems/vinetheme-template.md` |
+| `multi.mangaball` | merged (#902) | `38322e3` | `merged-sources`; maintenance from upstream | section 3, `docs/subsystems/mangaball.md` |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a

@@ -99,11 +99,11 @@ def check_source_json(path: Path, source_id: str) -> dict:
     for listing in info.get("listings", []):
         name = listing.get("name", "")
         if LONG_LISTING_NAME.search(name):
-            note(path, f'listing "{name}" keeps a home heading; upstream shortens it, e.g. "Latest Updates", "Recently Added"')
+            note(path, f'listing "{name}" ends like a home heading; the reviewer asked MangaBall\'s listings to match the site\'s own titles ("Latest Updates", "Recently Added"), so check what the site calls it')
     return info
 
 
-# The reviewer renamed MangaBall's listings to the short names most merged sources use.
+# The reviewer renamed MangaBall's listings to the titles the site itself uses.
 LONG_LISTING_NAME = re.compile(r"\bChapter Updates$|\bAdded Titles$", re.I)
 COMMERCIAL_CONTROL = re.compile(r"price|pricing|discount|sale|purchase|payment|coin|currency|paid", re.I)
 CHAPTER_VISIBILITY = re.compile(r"(?:hide|exclude|skip).*?(?:paid|locked|premium).*?chapter|(?:paid|locked|premium).*?chapter.*?(?:hide|exclude|skip)", re.I)
@@ -241,6 +241,9 @@ def check_cards(path: Path, text: str) -> None:
         if int(width.group(1)) > 400:
             line = text.count("\n", 0, width.start()) + 1
             fail(path, f"line {line} sizes banners {width.group(1)} wide; keep them within a phone's width, about 400")
+    for rewrap in OPTIONAL_REWRAP.finditer(text):
+        line = text.count("\n", 0, rewrap.start()) + 1
+        note(path, f"line {line} unwraps an Option and wraps it again; pass the Option through, as `if x.is_some() {{ qs.push(name, x.as_deref()) }}`")
     for trimmed in TRIMMED_TEXT.finditer(text):
         line = text.count("\n", 0, trimmed.start()) + 1
         note(path, f"line {line} trims the result of text(), which is already trimmed")
@@ -251,6 +254,8 @@ def check_cards(path: Path, text: str) -> None:
 
 # Vortex Scans set 1920 (iken review); an image scroller wider than the phone loads oversized images
 BANNER_WIDTH = re.compile(r"\b(?:banner_)?width:\s*Some\((\d+)\)")
+# `if let Some(query) = query { qs.push("search", Some(&query)) }` (kkantan, #908 and #905)
+OPTIONAL_REWRAP = re.compile(r"if let Some\((\w+)\) = \1 \{\n[^\n]*\bSome\(&?\1\)")
 # `text()` returns normalized, trimmed text (es.eternalmangas review)
 TRIMMED_TEXT = re.compile(r"\.text\(\)\)?\s*\.(?:map|filter)\(\|(\w+)(?::[^|]*)?\|\s*!?\1\.trim\(\)")
 

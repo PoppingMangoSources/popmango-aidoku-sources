@@ -204,3 +204,7 @@ Compared the first published MangaBall source with the one merged upstream and r
 ## 2026-11-17 VyManga rewritten
 
 Rewrote `en.vymanga` from live probes: name-based chapter keys in place of the expiring links, the site's own Popular Manga slides, its real sorts and filters, an Excluded Genres setting and the two mirrors. See [[vymanga]].
+
+## 2026-11-17 VineTheme, MangaBall and Iken consumers merged
+
+Compared our crates with the ones merged in #908, #905, #900 and #902 and found them equal apart from tests, versions and EternalMangas' tag title-casing. Recorded kkantan's comments and the two commits they pushed, added a note for an Option unwrapped and wrapped again, and moved VineTheme with its five consumers and MangaBall to `merged-sources`. See [[vinetheme-template]], [[iken-template]] and [[mangaball]].

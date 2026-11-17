@@ -2,7 +2,7 @@
 title: Iken template and consumers
 type: subsystem
 created: 2026-11-11
-updated: 2026-11-15
+updated: 2026-11-17
 sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/56d5306e971cb47db1cc0ea9d3a08767d637fa64/templates/iken/src/imp.rs
@@ -31,8 +31,15 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/commit/d88a384f99bcccff7e2e4340b5b19bd6ea66210f
   - ext: https://github.com/Aidoku-Community/sources/commit/289b5613bb47f62c6eb91de3d8b2282643586533
   - ext: https://github.com/Aidoku-Community/sources/commit/79f1619cc0d14e853619b4e13d48b5331cd099b1
-verified_at: 73fde51
+verified_at: 38322e3
 ---
+
+> ⚠️ #900 merged on 2026-11-15 and #905 on 2026-11-16. kkantan pushed `chore(es.eternalmangas):
+> revert version change` to the first and `refactor(es.eternalmangas): avoid optional rewrap`
+> to the second. Compared on 2026-11-17, the archived Iken template, Hijala and Sana equal the
+> merged crates. EternalMangas differed by that rewrap, copied into the archive, and by a
+> `tags()` helper that title-cases lowercase tags, which never went upstream: merged Eternal
+> shows tags as the site writes them, so a later change starts from upstream's crate.
 
 > ⚠️ The Iken template, Hive, Nyx, Vortex, Magus, Hijala, Sana and EternalMangas left main for
 > [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources)

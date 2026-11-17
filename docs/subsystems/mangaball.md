@@ -2,23 +2,28 @@
 title: MangaBall (multi.mangaball)
 type: subsystem
 created: 2026-11-13
-updated: 2026-11-16
+updated: 2026-11-17
 sources:
-  - code: sources/multi.mangaball/src/api.rs
-  - code: sources/multi.mangaball/src/home.rs
-  - code: sources/multi.mangaball/src/lib.rs
-  - code: sources/multi.mangaball/src/models.rs
-  - code: sources/multi.mangaball/src/helpers.rs
-  - code: sources/multi.mangaball/src/settings.rs
-  - code: sources/multi.mangaball/res/filters.json
-  - code: sources/multi.mangaball/res/settings.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/src/api.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/src/settings.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/sources/multi.mangaball/res/settings.json
   - ext: https://api.github.com/repos/Smexhy/yomu-aidoku-sources/git/blobs/76bed84198f3eb07c7f2124faedbe0de7301a7f2
   - ext: https://github.com/Aidoku-Community/sources/blob/2924f522ba533e2dc8b3c138b3769c0e29e03aba/sources/en.atsumaru/src/helpers.rs
   - ext: https://mangaball.com/search-advanced
   - ext: https://mangaball.com/api/v1/title/search-advanced
   - ext: https://github.com/Aidoku-Community/sources/pull/902
-verified_at: a9768d3
+verified_at: 38322e3
 ---
+
+> ⚠️ MangaBall left main for
+> [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources)
+> after #902 merged, from main `38322e3` with its tests. Later maintenance starts from
+> upstream's crate and restores only the needed fork tests.
 
 MangaBall (`mangaball.com`, formerly `mangaball.net`) is a Next.js app over a JSON API at
 `/api/v1`. The pages are server-rendered shells; the source uses the API only, as the site's

@@ -184,7 +184,7 @@ class CardRuleTests(unittest.TestCase):
         checks.notes.clear()
         path.write_text(body % ('Latest Chapter Updates', 'Recently Added Titles'))
         checks.check_source_json(path, 'en.example')
-        self.assertEqual(sum('keeps a home heading' in n for n in checks.notes), 2)
+        self.assertEqual(sum('ends like a home heading' in n for n in checks.notes), 2)
         checks.notes.clear()
         path.write_text(body % ('Latest Updates', 'Recently Added'))
         checks.check_source_json(path, 'en.example')
@@ -254,6 +254,15 @@ class CardRuleTests(unittest.TestCase):
         self.assertEqual(len(checks.notes), 1)
         checks.notes.clear()
         checks.check_cards(self.path, '.attr("alt")\n\t.filter(|title| !title.trim().is_empty())\n')
+        self.assertEqual(checks.notes, [])
+
+    def test_optional_rewrap_is_noted(self):
+        checks.notes.clear()
+        checks.check_cards(self.path, 'if let Some(query) = query {\n\tqs.push("search", Some(&query));\n}\n')
+        self.assertEqual(len(checks.notes), 1)
+        checks.notes.clear()
+        checks.check_cards(self.path, 'if query.is_some() {\n\tqs.push("search", query.as_deref());\n}\n')
+        checks.check_cards(self.path, 'if let Some(query) = query {\n\tqs.push("search", Some(&query.to_lowercase()));\n}\n')
         self.assertEqual(checks.notes, [])
 
     def test_top_level_items_need_blank_lines(self):

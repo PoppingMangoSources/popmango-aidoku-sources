@@ -111,6 +111,7 @@ that shipped:
 - [ ] JSON types and their `From` impls in `models.rs`, free functions in `helpers.rs`
 - [ ] `.json_owned()` rather than `.string()` plus `serde_json::from_str`; `parse_date`
       rather than a hand-written parser; no `JsContext` where a Rust crate does the job
+- [ ] An Option goes straight to a callee that takes one (`if query.is_some() { qs.push("q", query.as_deref()) }`); no `if let Some(q) = q { push(.., Some(&q)) }`
 - [ ] No empty-query test, no neither-flag guard, no `!included.is_empty()` in a
       multi-select arm, no trait registered just to return `Unimplemented`
 - [ ] A per-page failure fails the page list or leaves the page unprocessed, never drops it

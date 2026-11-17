@@ -15,9 +15,9 @@ traps found in them. It grows as work touches new areas.
 - Working on Novel Archive: [[novelarchive]]
 - Working on KingOfShojo or RokariComics: [[mangathemesia-consumers]]
 - Working on Genz Toon or another Keyoapp site: [[keyoapp-template]]
-- Working on MangaBall: [[mangaball]]
+- Working on MangaBall: [[mangaball]] (archived)
 - Working on VyManga: [[vymanga]]
-- Working on VineTheme, Drake, Elf, Valir, Diva or Kayn: [[vinetheme-template]]
+- Working on VineTheme, Drake, Elf, Valir, Diva or Kayn: [[vinetheme-template]] (archived)
 
 ---
 
@@ -36,11 +36,11 @@ _(none yet)_
 - [[novelarchive]] -- Novel Archive's API, adult exclusions, dynamic genres, home feeds
 - [[mangathemesia-consumers]] -- KingOfShojo and Rokari on upstream's template unchanged
 - [[keyoapp-template]] -- the Keyoapp template: whole-catalogue search, generic home, which sites fit
-- [[mangaball]] -- MangaBall's API, content modes, language codes, home feeds, what is unverified
+- [[mangaball]] -- MangaBall's API, content modes, language codes, home feeds, what is unverified (archived)
 - [[vymanga]] -- VyManga's pages, probed search parameters, expiring chapter links and name keys
 - [[mkissa]] -- MKissa's GraphQL feeds, viewer and tag mapping, and the web view reader
 
-- [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing
+- [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing (archived)
 
 ## decisions
 

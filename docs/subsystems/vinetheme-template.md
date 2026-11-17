@@ -2,17 +2,17 @@
 title: VineTheme template and consumers
 type: subsystem
 created: 2026-11-13
-updated: 2026-11-15
+updated: 2026-11-17
 sources:
-  - code: templates/vinetheme/src/lib.rs
-  - code: templates/vinetheme/src/imp.rs
-  - code: templates/vinetheme/src/models.rs
-  - code: templates/vinetheme/src/home.rs
-  - code: templates/vinetheme/src/helpers.rs
-  - code: templates/vinetheme/src/rsc.rs
-  - code: templates/vinetheme/src/markdown.rs
-  - code: templates/vinetheme/src/settings.rs
-  - code: templates/vinetheme/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/imp.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/rsc.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/markdown.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/settings.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/test.rs
   - code: scripts/review-contracts/vinetheme.rs
   - code: scripts/review-contracts/fixtures.py
   - code: scripts/check-upstream-scope.py
@@ -32,8 +32,19 @@ sources:
   - ext: https://valirscans.org/
   - ext: https://divascans.org/
   - ext: https://kaynscans.com/
-verified_at: 6678210
+verified_at: 38322e3
 ---
+
+> ⚠️ The VineTheme template, Drake Scans, Elf Toon, Valir, Diva and Kayn left main for
+> [merged-sources](https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources)
+> after #908 merged, from main `38322e3` with their tests. Later maintenance starts from
+> upstream's crates and restores only the needed fork tests.
+
+> ⚠️ #908 merged on 2026-11-16 as one squash of our five commits. kkantan left seven
+> comments (the `mo` suffix, `text()` already trimmed, `.rev()` on the iterator, `push_encoded`
+> for static values, the optional rewrap, Elf Toon's `breakingChangeVersion`, one `range`
+> filter for chapter counts) and pushed no commit. Our crates matched the merged ones apart
+> from tests and versions, checked on 2026-11-17. The rules are in AGENTS.md section 3.
 
 VineTheme serves Drake, Elf, Valir, Diva and Kayn. The owner requested publication on main
 and a clean `fix-vine` template submission, with the new sources in separate commits.
