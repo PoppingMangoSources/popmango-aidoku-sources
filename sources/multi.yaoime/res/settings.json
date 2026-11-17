@@ -125,37 +125,37 @@
 				"key": "homeSections",
 				"title": "Sections",
 				"values": [
-					"trending",
 					"popular",
+					"latest",
+					"trending",
 					"top-rated",
 					"rising",
-					"latest",
+					"talked",
 					"bookmarked",
 					"hidden-gems",
-					"binge",
-					"talked"
+					"binge"
 				],
 				"titles": [
-					"Trending Now",
 					"Popular Updates",
+					"Latest Releases",
+					"Trending Now",
 					"Top Rated",
 					"Rising",
-					"Latest Releases",
+					"Most Talked About",
 					"Most Bookmarked",
 					"Hidden Gems",
-					"Binge-Worthy",
-					"Most Talked About"
+					"Binge-Worthy"
 				],
 				"default": [
-					"trending",
 					"popular",
+					"latest",
+					"trending",
 					"top-rated",
 					"rising",
-					"latest",
+					"talked",
 					"bookmarked",
 					"hidden-gems",
-					"binge",
-					"talked"
+					"binge"
 				],
 				"refreshes": [
 					"content"

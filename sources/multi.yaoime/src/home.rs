@@ -19,15 +19,15 @@ pub enum Layout {
 }
 
 pub const SECTIONS: [(&str, &str, Layout); 9] = [
-	("trending", "Trending Now", Layout::Row),
 	("popular", "Popular Updates", Layout::Row),
+	("latest", "Latest Releases", Layout::Chapters),
+	("trending", "Trending Now", Layout::Row),
 	("top-rated", "Top Rated", Layout::Row),
 	("rising", "Rising", Layout::Row),
-	("latest", "Latest Releases", Layout::Chapters),
+	("talked", "Most Talked About", Layout::Ranked),
 	("bookmarked", "Most Bookmarked", Layout::Row),
 	("hidden-gems", "Hidden Gems", Layout::Row),
 	("binge", "Binge-Worthy", Layout::Row),
-	("talked", "Most Talked About", Layout::Ranked),
 ];
 
 // Sections the site's home page shows by default that the source doesn't.
@@ -58,7 +58,7 @@ fn component(id: &str, name: &str, layout: Layout, content: &Element) -> HomeCom
 		},
 		Layout::Ranked => HomeComponentValue::MangaList {
 			ranking: true,
-			page_size: Some(4),
+			page_size: Some(3),
 			entries: links(),
 			listing,
 		},

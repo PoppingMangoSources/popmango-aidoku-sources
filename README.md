@@ -73,7 +73,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 </tr>
 <tr>
 <td align="center" width="50%"><img src="media/sources/vymanga.png" width="64"/><br/><b>VyManga</b><br/><sub><a href="https://mangavyvy.com">mangavyvy.com</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v12.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v12.aix">.aix (v12)</a></sub></td>
-<td align="center" width="50%"><img src="media/sources/yaoime.png" width="64"/><br/><b>yaoi.me</b><br/><sub><a href="https://yaoi.me">yaoi.me</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v6.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v6.aix">.aix (v6)</a></sub></td>
+<td align="center" width="50%"><img src="media/sources/yaoime.png" width="64"/><br/><b>yaoi.me</b><br/><sub><a href="https://yaoi.me">yaoi.me</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v7.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v7.aix">.aix (v7)</a></sub></td>
 </tr>
 </table>
 

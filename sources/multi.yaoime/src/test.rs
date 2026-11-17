@@ -125,15 +125,15 @@ fn review_home_layout() {
 	assert_eq!(
 		order,
 		[
-			("trending", "Trending Now", "scroller"),
 			("popular", "Popular Updates", "scroller"),
+			("latest", "Latest Releases", "chapter list"),
+			("trending", "Trending Now", "scroller"),
 			("top-rated", "Top Rated", "scroller"),
 			("rising", "Rising", "scroller"),
-			("latest", "Latest Releases", "chapter list"),
+			("talked", "Most Talked About", "ranked list"),
 			("bookmarked", "Most Bookmarked", "scroller"),
 			("hidden-gems", "Hidden Gems", "scroller"),
 			("binge", "Binge-Worthy", "scroller"),
-			("talked", "Most Talked About", "ranked list"),
 		]
 	);
 }
@@ -851,7 +851,7 @@ fn live_home() {
 				..
 			} => {
 				assert!(*ranking);
-				assert_eq!(*page_size, Some(4));
+				assert_eq!(*page_size, Some(3));
 				assert!(!entries.is_empty());
 			}
 			_ => panic!("unexpected component"),
