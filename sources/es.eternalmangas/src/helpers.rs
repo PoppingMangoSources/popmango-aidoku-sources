@@ -149,35 +149,18 @@ fn names(text: &str) -> Option<Vec<String>> {
 	(!names.is_empty()).then_some(names)
 }
 
-// The site writes many tag names in lowercase and capitalises them only with CSS
-pub fn tags(badges: impl Iterator<Item = Element>) -> Vec<String> {
-	let mut tags: Vec<String> = badges
+pub fn details(html: &Document, key: String, label_novels: bool) -> Result<Manga> {
+	// Tags stay as the site writes them. A helper that title-cased lowercase tags and sorted
+	// them case-insensitively was never merged upstream, so it is not repeated here.
+	let mut tags: Vec<String> = html
+		.select("#tab-sinopsis .em-badge")
+		.into_iter()
+		.flatten()
 		.filter_map(|tag| tag.text())
 		.filter(|tag| !tag.is_empty())
-		.map(|tag| {
-			if tag.chars().any(char::is_uppercase) {
-				return tag;
-			}
-			let mut title = String::with_capacity(tag.len());
-			let mut word_start = true;
-			for character in tag.chars() {
-				if word_start {
-					title.extend(character.to_uppercase());
-				} else {
-					title.push(character);
-				}
-				word_start = matches!(character, ' ' | '-');
-			}
-			title
-		})
 		.collect();
-	tags.sort_unstable_by_key(|tag| tag.to_lowercase());
-	tags.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
-	tags
-}
-
-pub fn details(html: &Document, key: String, label_novels: bool) -> Result<Manga> {
-	let tags = self::tags(html.select("#tab-sinopsis .em-badge").into_iter().flatten());
+	tags.sort_unstable();
+	tags.dedup();
 	let series_type = labelled(html, "Tipo:").map(|kind| kind.to_lowercase());
 	let adult = series_type
 		.as_deref()

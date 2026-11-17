@@ -16,11 +16,15 @@ pub fn parse_home(html: &Document) -> Result<HomeLayout> {
 			manga.description = card
 				.select_first(".em-hero-copy p.d-none")
 				.and_then(|description| description.text());
-			let tags = helpers::tags(
-				card.select(".em-hero-badges .em-badge")
-					.into_iter()
-					.flatten(),
-			);
+			let mut tags: Vec<_> = card
+				.select(".em-hero-badges .em-badge")
+				.into_iter()
+				.flatten()
+				.filter_map(|tag| tag.text())
+				.filter(|tag| !tag.is_empty())
+				.collect();
+			tags.sort_unstable();
+			tags.dedup();
 			manga.content_rating = helpers::content_rating(&tags, false);
 			manga.tags = (!tags.is_empty()).then_some(tags);
 			Some(manga)
