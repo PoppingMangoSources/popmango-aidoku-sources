@@ -205,6 +205,44 @@ fn review_chapter_list() {
 }
 
 #[aidoku_test]
+fn review_extra_numbers_and_missing_dates() {
+	// Shapes from the site's own data: an extra counted as 164, a numbered extra, an undated upload.
+	let data: ChapterData = serde_json::from_value(json!({
+		"groups": [
+			{ "label": "Ch.8", "num": 8, "numReal": 1, "createdAt": 1_794_850_311_000_i64, "variants": [variant(7, 8, "en")] },
+			{ "label": "Bounus.7 : Mature official", "num": 164, "numReal": 1, "extra": true, "after": 7, "createdAt": 1_794_850_311_000_i64, "variants": [variant(7, 164, "en")] },
+			{ "label": "Ch.26.5", "num": 26.5, "numReal": 1, "extra": true, "after": 26.1, "createdAt": 0, "variants": [variant(7, 265, "en")] },
+			{ "label": "hitaus. : Hiatus Notice", "num": 18, "numReal": 0, "extra": true, "createdAt": 0, "variants": [variant(7, 18, "en")] },
+		],
+	}))
+	.unwrap();
+	let chapters = chapter_list(data, &["en".to_string()], &BTreeMap::new(), false);
+	let rows: Vec<(Option<f32>, Option<&str>, Option<i64>)> = chapters
+		.iter()
+		.map(|chapter| {
+			(
+				chapter.chapter_number,
+				chapter.title.as_deref(),
+				chapter.date_uploaded,
+			)
+		})
+		.collect();
+	assert_eq!(
+		rows,
+		[
+			(Some(8.0), None, Some(1_794_850_311)),
+			(
+				None,
+				Some("Bounus.7 : Mature official"),
+				Some(1_794_850_311)
+			),
+			(Some(26.5), None, None),
+			(None, Some("hitaus. : Hiatus Notice"), None),
+		]
+	);
+}
+
+#[aidoku_test]
 fn review_clean_chapter_list() {
 	let languages = ["en".to_string()];
 	let names = [("7".to_string(), "Seven".to_string())].into();
@@ -589,6 +627,24 @@ fn live_chapters() {
 			.any(|chapter| chapter.scanlators.as_deref() == Some(&["Official".to_string()]))
 	);
 	assert!(all.iter().any(|chapter| chapter.key == CHAPTER));
+
+	// 4-Week Lovers ends at 133; its "Bounus" extras are counted 158 to 164 by the site.
+	let extras = source
+		.get_manga_update(key_only("4971"), false, true)
+		.unwrap()
+		.chapters
+		.unwrap();
+	assert!(
+		extras
+			.iter()
+			.all(|chapter| chapter.chapter_number.is_none_or(|number| number <= 133.0))
+	);
+	assert!(extras.iter().any(|chapter| {
+		chapter
+			.title
+			.as_deref()
+			.is_some_and(|title| title.starts_with("Bounus.7"))
+	}));
 
 	defaults_set("officialOnly", DefaultValue::Bool(true));
 	let official = source

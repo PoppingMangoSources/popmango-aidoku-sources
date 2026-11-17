@@ -1612,12 +1612,12 @@
 	{
 		"type": "group",
 		"title": "Chapters",
+		"footer": "Official chapters only: A title's chapters without broken copies, notices, or batches that repeat chapters it has already. Where an official translation exists, its copies replace the others, batches included. Extras stay.\n\nDeduplicate chapters & clean order: Each chapter once, by its number alone (Ch.1, Ch.2 ...), in order, with nothing else on its row.",
 		"items": [
 			{
 				"type": "switch",
 				"key": "officialOnly",
 				"title": "Official chapters only",
-				"subtitle": "A title's chapters without broken copies, notices, or batches that repeat chapters it has already. Where an official translation exists, its copies replace the others, batches included. Extras stay.",
 				"default": false,
 				"refreshes": [
 					"content"
@@ -1627,7 +1627,6 @@
 				"type": "switch",
 				"key": "cleanChapters",
 				"title": "Deduplicate chapters & clean order",
-				"subtitle": "Each chapter once, by its number alone (Ch.1, Ch.2 ...), in order, with nothing else on its row.",
 				"default": false,
 				"refreshes": [
 					"content"

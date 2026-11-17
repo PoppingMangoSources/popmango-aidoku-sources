@@ -75,6 +75,13 @@ The tag filters are grouped as the site's panel groups them, by its own name tab
   request for the first variant (none in clean mode, which shows no names).
 - Credits read `Story by A, B · Art by C` or `Story & art by A` under the title.
 
+> ⚠️ An extra group's `num` is often a running count, not its place: 4-Week Lovers (4971) ends
+> at 133, and its "Bounus.1" to "Bounus.7" extras carry 158 to 164 with `numReal` 1. Taken as
+> chapter numbers they sat among chapters 1 to 8 in the app. An extra keeps a number only when
+> its label names the same one ("Ch.26.5"); otherwise it shows by its label in the site's order.
+
+> ⚠️ Undated uploads have `createdAt` 0, which the app shows as 31 December 1969; they get no date.
+
 ## Reader
 
 `GET /api/reader/chapter?s={s}&c={id}` needs `x-yf-t` (milliseconds; seconds times 1000 is

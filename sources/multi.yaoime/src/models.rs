@@ -138,11 +138,22 @@ impl Group {
 		self.num.filter(|num| self.num_real == 1 && num.is_finite())
 	}
 
+	// An extra's number is a running count ("Bounus.7" is 164), unless its label names the same one.
+	fn chapter_number(&self) -> Option<f32> {
+		self.numbered()
+			.filter(|num| !self.extra || split_label(&self.label).0 == Some(*num))
+	}
+
 	fn title(&self) -> Option<String> {
 		match split_label(&self.label) {
-			(Some(number), title) if self.numbered() == Some(number) => title,
+			(Some(number), title) if self.chapter_number() == Some(number) => title,
 			_ => Some(self.label.clone()),
 		}
+	}
+
+	// Some uploads have no date, which the site sends as 0.
+	fn date(&self) -> Option<i64> {
+		(self.created_at > 0).then_some(self.created_at / 1000)
 	}
 }
 
@@ -218,9 +229,9 @@ pub fn chapter_list(
 				let language = variant.language(languages)?;
 				Some(Chapter {
 					title: group.title(),
-					chapter_number: group.numbered(),
+					chapter_number: group.chapter_number(),
 					volume_number: group.vol,
-					date_uploaded: Some(group.created_at / 1000),
+					date_uploaded: group.date(),
 					scanlators: names
 						.get(&variant.s.to_string())
 						.map(|name| vec![name.clone()]),
@@ -260,7 +271,7 @@ fn clean_list(groups: &[Group], languages: &[String]) -> Vec<Chapter> {
 			Some(Chapter {
 				chapter_number: Some(*number as f32),
 				volume_number: first.vol.filter(|_| volumes > 1),
-				date_uploaded: members.iter().map(|group| group.created_at / 1000).max(),
+				date_uploaded: members.iter().filter_map(|group| group.date()).max(),
 				..variant.chapter(variant.language(languages)?)
 			})
 		})
