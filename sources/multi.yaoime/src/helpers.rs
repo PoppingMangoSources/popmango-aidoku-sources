@@ -80,15 +80,6 @@ pub fn parse_status(label: &str) -> MangaStatus {
 	}
 }
 
-pub fn parse_content_rating(label: &str) -> ContentRating {
-	match label.to_lowercase().as_str() {
-		"pornographic" | "erotica" => ContentRating::NSFW,
-		"suggestive" => ContentRating::Suggestive,
-		"safe" => ContentRating::Safe,
-		_ => ContentRating::Unknown,
-	}
-}
-
 // A card is its cover link; list rows put the title on a separate link to the same series.
 pub fn parse_manga_list(root: &Element) -> Vec<Manga> {
 	let mut entries: Vec<Manga> = Vec::new();
@@ -193,7 +184,6 @@ fn credits(document: &Document) -> (Vec<String>, Vec<String>) {
 fn synopsis(document: &Document) -> Option<String> {
 	let html = document
 		.select("h2.section-title")?
-		.into_iter()
 		.find(|heading| heading.text().as_deref() == Some("Synopsis"))?
 		.parent()?
 		.select_first(".prose-text")?
@@ -242,10 +232,17 @@ pub fn parse_manga_details(document: &Document, manga: &mut Manga) {
 	manga.url = Some(manga_url(&manga.key));
 	manga.tags = Some(tags).filter(|tags| !tags.is_empty());
 	manga.status = fact("Status").map_or(MangaStatus::Unknown, |label| parse_status(&label));
-	manga.content_rating = document
+	manga.content_rating = match document
 		.select_first("span.badge.normal-case")
 		.and_then(|badge| badge.text())
-		.map_or(ContentRating::Unknown, |label| parse_content_rating(&label));
+		.map(|label| label.to_lowercase())
+		.as_deref()
+	{
+		Some("pornographic" | "erotica") => ContentRating::NSFW,
+		Some("suggestive") => ContentRating::Suggestive,
+		Some("safe") => ContentRating::Safe,
+		_ => ContentRating::Unknown,
+	};
 	manga.viewer = match fact("Format").map(|kind| kind.to_lowercase()).as_deref() {
 		Some("manhwa" | "manhua") => Viewer::Webtoon,
 		Some("manga" | "doujinshi") => Viewer::RightToLeft,
@@ -294,7 +291,6 @@ pub fn reader(key: &str) -> Result<ReaderChapter> {
 	Ok(response.get_json_owned::<ReaderResponse>()?.chapter)
 }
 
-// Latest release rows link the series and its newest chapter, with the upload time.
 pub fn parse_chapter_list(root: &Element) -> Vec<MangaWithChapter> {
 	let mut entries: Vec<MangaWithChapter> = Vec::new();
 	for row in root.select("div.grid > div").into_iter().flatten() {
