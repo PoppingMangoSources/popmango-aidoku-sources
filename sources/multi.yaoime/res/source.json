@@ -1,0 +1,92 @@
+{
+	"info": {
+		"id": "multi.yaoime",
+		"name": "yaoi.me",
+		"version": 1,
+		"url": "https://yaoi.me",
+		"contentRating": 2,
+		"languages": [
+			"en",
+			"ja",
+			"zh",
+			"vi",
+			"id",
+			"es",
+			"ko",
+			"pl",
+			"tr",
+			"fr",
+			"it",
+			"ru",
+			"pt",
+			"hu",
+			"uk",
+			"cs",
+			"th",
+			"ar",
+			"es-419",
+			"mn",
+			"de",
+			"fa",
+			"pt-BR",
+			"ca",
+			"sk",
+			"bg",
+			"ro",
+			"bn",
+			"he",
+			"km",
+			"my",
+			"ms",
+			"nl",
+			"hi",
+			"kk",
+			"hr",
+			"fi",
+			"sr",
+			"el",
+			"sv",
+			"no"
+		],
+		"minAppVersion": "0.7.1"
+	},
+	"config": {
+		"supportsTagSearch": true,
+		"supportsAuthorSearch": true,
+		"supportsArtistSearch": true
+	},
+	"listings": [
+		{
+			"id": "trending",
+			"name": "Trending now"
+		},
+		{
+			"id": "top-rated",
+			"name": "Top rated"
+		},
+		{
+			"id": "rising",
+			"name": "Rising"
+		},
+		{
+			"id": "latest",
+			"name": "Latest releases"
+		},
+		{
+			"id": "bookmarked",
+			"name": "Most bookmarked"
+		},
+		{
+			"id": "hidden-gems",
+			"name": "Hidden gems"
+		},
+		{
+			"id": "binge",
+			"name": "Binge-worthy"
+		},
+		{
+			"id": "talked",
+			"name": "Most talked about"
+		}
+	]
+}

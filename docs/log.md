@@ -208,3 +208,10 @@ Rewrote `en.vymanga` from live probes: name-based chapter keys in place of the e
 ## 2026-11-17 VineTheme, MangaBall and Iken consumers merged
 
 Compared our crates with the ones merged in #908, #905, #900 and #902 and found them equal apart from tests, versions and EternalMangas' tag title-casing. Recorded kkantan's comments and the two commits they pushed, added a note for an Option unwrapped and wrapped again, and moved VineTheme with its five consumers and MangaBall to `merged-sources`. See [[vinetheme-template]], [[iken-template]] and [[mangaball]].
+
+## 2026-11-17 yaoi.me
+
+Added multi.yaoime: the settings cookie the site applies on the server, browse parameters,
+grouped tag filters, chapter variants with the clean list, and the signed, sealed reader, all in
+[[yaoime]]. Narrowed the commercial-control check to skip tag lists, which name tags like
+"Salesman", and made new-source.sh pass each language to the CLI separately.

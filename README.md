@@ -5,7 +5,7 @@
 <p align="center">
   <img src="media/badge-platform.svg" alt="iOS / iPadOS" height="28"/>
   <img src="media/badge-aidoku.svg" alt="Aidoku 0.8+" height="28"/>
-  <img src="media/badge-sources.svg" alt="17 sources" height="28"/>
+  <img src="media/badge-sources.svg" alt="18 sources" height="28"/>
   <img src="media/badge-unofficial.svg" alt="Best effort, not maintained 24/7" height="28"/>
 </p>
 
@@ -38,7 +38,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 
 ## Route select
 
-<sub><b>17 routes</b> in this repository. Add the whole repository with the button up top, or tap <b>Choose route</b> to install one source on its own.</sub>
+<sub><b>18 routes</b> in this repository. Add the whole repository with the button up top, or tap <b>Choose route</b> to install one source on its own.</sub>
 
 ### Manga, manhwa & manhua
 
@@ -73,7 +73,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 </tr>
 <tr>
 <td align="center" width="50%"><img src="media/sources/vymanga.png" width="64"/><br/><b>VyManga</b><br/><sub><a href="https://mangavyvy.com">mangavyvy.com</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v12.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v12.aix">.aix (v12)</a></sub></td>
-<td width="50%"></td>
+<td align="center" width="50%"><img src="media/sources/yaoime.png" width="64"/><br/><b>yaoi.me</b><br/><sub><a href="https://yaoi.me">yaoi.me</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v1.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v1.aix">.aix (v1)</a></sub></td>
 </tr>
 </table>
 

@@ -18,6 +18,7 @@ traps found in them. It grows as work touches new areas.
 - Working on MangaBall: [[mangaball]] (archived)
 - Working on VyManga: [[vymanga]]
 - Working on VineTheme, Drake, Elf, Valir, Diva or Kayn: [[vinetheme-template]] (archived)
+- Working on yaoi.me: [[yaoime]]
 
 ---
 
@@ -41,6 +42,7 @@ _(none yet)_
 - [[mkissa]] -- MKissa's GraphQL feeds, viewer and tag mapping, and the web view reader
 
 - [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing (archived)
+- [[yaoime]] -- yaoi.me's settings cookie, browse parameters, chapter variants and the signed reader
 
 ## decisions
 

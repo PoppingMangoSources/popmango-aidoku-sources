@@ -1,0 +1,88 @@
+---
+title: yaoi.me (multi.yaoime)
+type: subsystem
+created: 2026-11-17
+updated: 2026-11-17
+sources:
+  - code: sources/multi.yaoime/src/lib.rs
+  - code: sources/multi.yaoime/src/browse.rs
+  - code: sources/multi.yaoime/src/helpers.rs
+  - code: sources/multi.yaoime/src/home.rs
+  - code: sources/multi.yaoime/src/models.rs
+  - code: sources/multi.yaoime/src/cipher.rs
+  - code: sources/multi.yaoime/src/settings.rs
+  - code: sources/multi.yaoime/res/filters.json
+  - code: sources/multi.yaoime/res/settings.json
+  - ext: https://yaoi.me/browse
+  - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/yaoime
+verified_at: 9d55a75
+---
+
+yaoi.me is a Next.js site rendered on the server, so the source reads its HTML; the only JSON
+endpoint is the reader. The sandbox reaches it directly, and everything below was probed live
+on 2026-11-17 unless marked.
+
+## Settings live in a cookie
+
+The site keeps its settings in a `yf.settings` cookie (URL-encoded JSON, with `yf.adult=1`
+beside it) and applies most of them on the server. The source sends the same cookie on every
+page request (`SiteSettings::cookie`).
+
+| Key | Applied by the server to | Probe |
+| --- | --- | --- |
+| `hiddenTypes`, `hiddenRatings`, `hiddenTags` | home, browse, Discover | results changed; `tags=smut` with `smut` hidden answers nothing |
+| `titleLang` (`site`, `en`, `romaji`, `native`) | every title on every page | browse titles changed to native script |
+| `officialOnly` | the series page's chapter data | variants 729 to 222 on series 4578 |
+| `chapterLangs` | home only | browse ignores it; browse takes `langs=` instead |
+| `home` | which home sections render, in order | one request renders all nine rows |
+
+- Every rating hidden reads as none hidden on the site, so a cleared Content Ratings setting
+  returns nothing in the source instead of everything.
+- A search's Type or Content rating filter clears that axis from the cookie, and an included
+  genre or tag is removed from `hiddenTags`, so a filter overrides its setting for that search.
+- Hidden tags are names, lowercased by the site, at most 40.
+
+> ⚠️ Browse ignores `chapterLangs`; the translated languages go to browse as `langs=` and to
+> the home page in the cookie. Sending only one of them leaves the other unfiltered.
+
+> ⚠️ A filter only overrides its setting because the source removes that axis from the cookie
+> (`sources/multi.yaoime/src/browse.rs`). With the axis left in, the site ANDs both and an
+> included tag that is also hidden answers nothing.
+- `chapterClean` (dedupe and clean order) is applied by the site's client, not the server, so
+  the source reimplements it (`clean_list`, from the site's own function in its chapter bundle).
+
+## Browse
+
+`/browse` takes `q`, `langs` (comma list), `genre`, `without`, `tags`, `withoutTags` (comma lists,
+ANDed; `tags` matches genre names too, which is why tapped tags go there), `type`, `status`,
+`content`, `demographic`, `yearFrom`/`yearTo`, `minChapters`/`maxChapters`, `minRating`/`maxRating`
+(0 to 100), `minPages`, `updatedWithin` (`1`, `7`, `30`, `90`, `365`), `anime=1`, `licensed=1`,
+`author`, `artist`, `sort` (`update`, `create`, `popular`, `rating`, `chapters`, `az`), `dir` and
+`page`. Sixty cards a page; the next page is a "Next" link in the page's `nav`.
+
+The tag filters are grouped as the site's panel groups them, by its own name table and rules
+(read as data from its browse bundle, ten groups, 1330 tags on 2026-11-17).
+
+## Series and chapters
+
+- Series keys are the title id from `/series/{id}`. A series also opens under any of its source
+  series ids (`/series/196432` is title 4578), so deep links and pasted links read the
+  canonical link from the page.
+- The chapter data is a Flight object with `groups` (one per chapter, each with `variants`, one
+  per upload) and `sources`. A variant's `s` is its source series; chapter keys are `{s}/{id}`,
+  which the reader needs, and chapter urls are `/chapter/{s}/{id}`.
+- Source display names come only from the reader response, so a chapter list costs one reader
+  request for the first variant (none in clean mode, which shows no names).
+- Credits read `Story by A, B · Art by C` or `Story & art by A` under the title.
+
+## Reader
+
+`GET /api/reader/chapter?s={s}&c={id}` needs `x-yf-t` (milliseconds; seconds times 1000 is
+accepted, ten minutes old is refused) and `x-yf-s`, the unpadded base64url HMAC-SHA256 of
+`"{path} {t}"`. Page hashes come sealed: a 16-byte salt and 12-byte IV, then AES-256-GCM under
+`sha256(SEAL_KEY ‖ salt)`, holding `{"p": [hashes]}`. Images are `/i/p/{hash}?w={width}` with the
+first offered width at least the page's own; they need no cookie or referer. "Novels" on the site
+are image pages through the same reader.
+
+> ⚠️ The two keys come from the site's reader bundle and will change if it rotates them; the
+> reader then answers 403 "Not a request from the reader."

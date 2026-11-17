@@ -174,6 +174,12 @@ already uses, `usesTagStyle` beside `isGenre`, and a check filter shown in the h
 notes a multi-select that is not a genre filter and leaves `canExclude` unstated
 (`scripts/check-sources.py:106`), and a sort filter that is not first (`scripts/check-sources.py:109`).
 
+`check_commercial_control` (`scripts/check-sources.py:106`) fails a filter or setting that
+names prices, sales or purchases, except chapter visibility controls.
+
+> ⚠️ Genre and tag-style lists are skipped there: they name the site's own tags, and yaoi.me's
+> "Salesman" tag failed the check before the `usesTagStyle` exemption.
+
 `check_settings_json` (`scripts/check-sources.py:119`) fails a `hide…`/`show…` adult switch whose
 default shows adult titles on a source rated 1. `check_cards` notes an image scroller left
 without a width, and an Option that is unwrapped and wrapped again
