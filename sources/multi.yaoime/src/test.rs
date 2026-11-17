@@ -116,7 +116,6 @@ fn chapter_fixture() -> ChapterData {
 fn review_home_layout() {
 	let order = SECTIONS.map(|(id, name, layout)| {
 		let layout = match layout {
-			Layout::Featured => "big scroller",
 			Layout::Row => "scroller",
 			Layout::Chapters => "chapter list",
 			Layout::Ranked => "ranked list",
@@ -126,7 +125,7 @@ fn review_home_layout() {
 	assert_eq!(
 		order,
 		[
-			("trending", "Trending Now", "big scroller"),
+			("trending", "Trending Now", "scroller"),
 			("popular", "Popular Updates", "scroller"),
 			("top-rated", "Top Rated", "scroller"),
 			("rising", "Rising", "scroller"),
@@ -828,14 +827,6 @@ fn live_home() {
 	assert_eq!(titles, SECTIONS.map(|(_, name, _)| name));
 	for component in &home.components {
 		match &component.value {
-			HomeComponentValue::BigScroller { entries, .. } => {
-				assert!(!entries.is_empty());
-				assert!(
-					entries
-						.iter()
-						.all(|manga| manga.tags.as_ref().is_some_and(|tags| tags.len() == 1))
-				);
-			}
 			HomeComponentValue::Scroller { entries, .. } => {
 				assert!(!entries.is_empty(), "{:?}", component.title);
 				assert!(entries.iter().all(|link| link.subtitle.is_none()));

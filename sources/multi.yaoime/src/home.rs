@@ -1,26 +1,25 @@
 use crate::{
 	BASE_URL, YaoiMe,
-	helpers::{get_html, parse_chapter_list, parse_manga_list, series_key},
+	helpers::{get_html, parse_chapter_list, parse_manga_list},
 	models::SiteSettings,
 	settings,
 };
 use aidoku::{
-	Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing, ListingKind, Manga, Result,
-	alloc::{String, Vec, format, vec},
+	Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing, ListingKind, Result,
+	alloc::{String, Vec, format},
 	imports::html::Element,
 	prelude::*,
 };
 
 #[derive(Clone, Copy)]
 pub enum Layout {
-	Featured,
 	Row,
 	Chapters,
 	Ranked,
 }
 
 pub const SECTIONS: [(&str, &str, Layout); 9] = [
-	("trending", "Trending Now", Layout::Featured),
+	("trending", "Trending Now", Layout::Row),
 	("popular", "Popular Updates", Layout::Row),
 	("top-rated", "Top Rated", Layout::Row),
 	("rising", "Rising", Layout::Row),
@@ -33,25 +32,6 @@ pub const SECTIONS: [(&str, &str, Layout); 9] = [
 
 // Sections the site's home page shows by default that the source doesn't.
 const SITE_SECTIONS: [&str; 4] = ["continue", "reviews", "creators", "about"];
-
-// Shelf cards name the series' type under the title.
-fn with_types(content: &Element) -> Vec<Manga> {
-	let mut entries = parse_manga_list(content);
-	for link in content.select("a.card-title").into_iter().flatten() {
-		let Some(key) = series_key(&link) else {
-			continue;
-		};
-		let kind = link
-			.next()
-			.and_then(|facts| facts.select_first("span"))
-			.and_then(|span| span.text());
-		if let (Some(manga), Some(kind)) = (entries.iter_mut().find(|manga| manga.key == key), kind)
-		{
-			manga.tags = Some(vec![kind]);
-		}
-	}
-	entries
-}
 
 fn component(id: &str, name: &str, layout: Layout, content: &Element) -> HomeComponentValue {
 	// Popular updates has no page of its own on the site.
@@ -67,10 +47,6 @@ fn component(id: &str, name: &str, layout: Layout, content: &Element) -> HomeCom
 			.collect()
 	};
 	match layout {
-		Layout::Featured => HomeComponentValue::BigScroller {
-			entries: with_types(content),
-			auto_scroll_interval: None,
-		},
 		Layout::Row => HomeComponentValue::Scroller {
 			entries: links(),
 			listing,
