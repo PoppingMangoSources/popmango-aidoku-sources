@@ -609,7 +609,9 @@ bold text" already record five of its changes; these are the rest, each read fro
   Pornographic opt-in. Keep the Rust fallback and settings JSON defaults identical; do not
   overwrite the reader's explicit selection.
 - **Submission dependencies:** removing fork-only tests also removes their unused
-  `serde_json` dev dependency and root lockfile entry. Keep it on main while tests use it.
+  `serde_json` dev dependency and root lockfile entry, along with every lockfile package only
+  it needed (`en.vymanga` has no `json` feature, so `memchr` and `zmij` were left behind and
+  cargo rewrote the lock during the push gates). Keep it on main while tests use it.
   `check-sources.py` notes unused declarations; preparation normalizes the same files when
   checking preserved snapshots and final source equality.
 - **Tag order:** sort featured tags alphabetically, using the same order in details, so

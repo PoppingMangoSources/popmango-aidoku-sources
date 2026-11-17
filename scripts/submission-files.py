@@ -31,7 +31,20 @@ def without_tests(files):
         for i, package in enumerate(packages):
             if re.search(r'(?m)^name = "' + re.escape(info['package']['name']) + r'"$', package):
                 packages[i] = re.sub(r'(?m)^ "serde_json",\n', '', package)
-        files['Cargo.lock'] = '[[package]]'.join(packages).encode()
+        # Cargo rewrites a lock that still lists packages only serde_json pulled in.
+        # A dependency is listed as "name", or "name version" when the lock holds several versions.
+        def field(package, key):
+            return re.search(rf'(?m)^{key} = "(.+)"$', package).group(1)
+        reachable, pending = set(), [(info['package']['name'], None)]
+        while pending:
+            name, version = pending.pop()
+            for i, package in enumerate(packages[1:], 1):
+                if i not in reachable and field(package, 'name') == name and version in (None, field(package, 'version')):
+                    reachable.add(i)
+                    pending += [(dependency, wanted or None)
+                                for dependency, wanted in re.findall(r'(?m)^ "([^ "]+) ?([^ "]*)', package)]
+        packages = [package for i, package in enumerate(packages) if i == 0 or i in reachable]
+        files['Cargo.lock'] = ('[[package]]'.join(packages).rstrip('\n') + '\n').encode()
     return files
 
 

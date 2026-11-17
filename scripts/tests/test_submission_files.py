@@ -12,7 +12,7 @@ class SubmissionFilesTests(unittest.TestCase):
     def files(self):
         return {
             'Cargo.toml': b'[package]\nname = "example"\n\n[dependencies]\nserde = "1"\n\n[dev-dependencies]\naidoku-test = "1"\nserde_json = { version = "1", features = ["alloc"] }\n\n[lib]\ncrate-type = ["cdylib"]\n',
-            'Cargo.lock': b'[[package]]\nname = "example"\ndependencies = [\n "serde",\n "serde_json",\n]\n\n[[package]]\nname = "other"\ndependencies = [\n "serde_json",\n]\n',
+            'Cargo.lock': b'[[package]]\nname = "example"\nversion = "0.1.0"\ndependencies = [\n "other",\n "serde",\n "serde_json",\n]\n\n[[package]]\nname = "other"\nversion = "1.0.0"\ndependencies = [\n "serde_json",\n]\n',
             'src/lib.rs': b'mod models;\n\n#[cfg(test)]\nmod test;\n',
             'src/test.rs': b'let parsed = serde_json::from_str("{}");\n',
             'res/icon.png': b'\x89PNG\r\n',
@@ -29,6 +29,23 @@ class SubmissionFilesTests(unittest.TestCase):
         self.assertEqual(result['res/icon.png'], files['res/icon.png'])
         self.assertIn('src/test.rs', files)
         self.assertEqual(without_tests(result), result)
+
+    def test_packages_only_the_test_dependency_needed_leave_the_lock(self):
+        files = self.files()
+        kept = (
+            b'version = 4\n\n[[package]]\nname = "example"\nversion = "0.1.0"\ndependencies = [\n "itoa",\n "syn 2.0.0",\n]\n\n'
+            b'[[package]]\nname = "itoa"\nversion = "1.0.0"\n\n'
+        )
+        files['Cargo.lock'] = (
+            kept.replace(b' "itoa",\n', b' "itoa",\n "serde_json",\n')
+            + b'[[package]]\nname = "memchr"\nversion = "2.0.0"\n\n'
+            b'[[package]]\nname = "serde_json"\nversion = "1.0.0"\ndependencies = [\n "itoa",\n "memchr",\n "syn 1.0.0",\n]\n\n'
+            b'[[package]]\nname = "syn"\nversion = "1.0.0"\n\n[[package]]\nname = "syn"\nversion = "2.0.0"\n'
+        )
+        self.assertEqual(
+            without_tests(files)['Cargo.lock'],
+            kept + b'[[package]]\nname = "syn"\nversion = "2.0.0"\n',
+        )
 
     def test_remaining_json_usage_keeps_dependency(self):
         files = self.files()
