@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.vymanga",
 		"name": "VyManga",
-		"version": 10,
+		"version": 11,
 		"urls": [
 			"https://mangavyvy.com",
 			"https://mangavyvy.net"
@@ -16,11 +16,11 @@
 	"listings": [
 		{
 			"id": "updated_at",
-			"name": "Latest Updates"
+			"name": "Latest Update"
 		},
 		{
 			"id": "created_at",
-			"name": "Recently Added"
+			"name": "New Release"
 		}
 	],
 	"config": {

@@ -551,13 +551,15 @@ See `docs/subsystems/vinetheme-template.md` for endpoint, rendering and network 
 
 ### From #902 (`multi.mangaball`)
 
-Merged on 2026-11-14 with no review comments. kkantan pushed one commit of their own to the
-branch first, `chore: update listing titles`, the only place `main` then differed from what
-merged.
+Merged on 2026-11-14. kkantan left one comment, on the listing names in `source.json` ("we
+should match the titles from the site"), and pushed the change themselves as `chore: update
+listing titles`, the only place `main` then differed from what merged. An earlier reading of
+this PR, made from the commit alone, recorded "no review comments" and a rule about short
+common names; the comment, read from the review API on 2026-11-17, says otherwise.
 
 | What was changed | The rule | |
 |---|---|---|
-| The `source.json` listings "Latest Chapter Updates" and "Recently Added Titles" became "Latest Updates" and "Recently Added"; the home rows in `home.rs` kept the site's headings | A listing in `source.json` takes the short, common name ("Recently Added" is on 8 merged sources, "Latest Updates" on 5), without "Titles" or "Chapter". A home row may keep the site's own heading, so the two names can differ. (inferred, one commit, no comment) | N |
+| The `source.json` listings "Latest Chapter Updates" and "Recently Added Titles" became "Latest Updates" and "Recently Added"; the home rows in `home.rs` kept the site's headings | A listing in `source.json` is named as the site titles that list. MangaBall's page titles are "Latest Updates" and "Recently Added"; VyManga's are "Latest Update" and "New Release", so those are its listings. Don't substitute a name that is merely common upstream. | N |
 | The reviewer's commit sat on the PR branch and `main` kept the old names | After a merge, diff `upstream/main` against `main` for the source (ignoring the version, `test.rs` and `serde_json`) and copy back whatever the reviewer changed, as the #821 note says. | R |
 
 The merged source is the standard for this kind of site. Its diff against the first version
@@ -578,6 +580,19 @@ bold text" already record five of its changes; these are the rest, each read fro
 | `pub` on `Title.id`, `Title.is18plus`, `ChapterItem.group` and `Group` | A field or type is `pub` only while another module reads it; narrow it again when the reader moves into `models.rs`. | R |
 | `.iter().map(\|name\| name.trim().to_lowercase())` over an owned `Vec` from `defaults_get` | `.into_iter()` on a value that is consumed anyway. | R |
 | No way to collapse several groups' uploads of one chapter | A Deduplicate Chapters switch, off by default: per volume, number and language keep the group with the most likes, then views, then the newest upload, and keep every part from that group. Unnumbered chapters always stay. | R |
+
+### From #903 and #909 (other contributors, November)
+
+Read on 2026-11-17 from the review comments API (`/repos/Aidoku-Community/sources/pulls/comments`,
+newest first), which also shows comments the PR pages hide once resolved.
+
+| What was flagged | The rule | |
+|---|---|---|
+| Filters read on a path that ignores them ("filters aren't used when searching", #903; "it doesn't look like the status filter is supported on this path", #909) | Probe each filter together with a query. When the site ignores filters while searching, set `hidesFiltersWhileSearching`; when one filter is ignored on one path, say so in a note filter. | R |
+| `let query = query.trim();` ("the site doesn't appear to trim queries so I don't think the source needs to", #903) | Send the query as typed. | R |
+| `attr(..).unwrap_or_default()` then used ("does it make sense to unwrap to an empty string here? it seems to me like it should be in a let chain", #903) | Skip the item in a let chain when an attribute it needs is missing. | R |
+| An icon with rounded corners (#903) | Fully opaque, square, no corner radii of its own. | R |
+| A status the site lists mapped to nothing, or two site statuses mapped to Completed (#903, #909) | Map every status the site's filter lists, each to its own `MangaStatus` where one fits. | R |
 
 ### From #908 (vinetheme template, Valir, Diva and Kayn)
 

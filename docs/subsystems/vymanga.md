@@ -103,5 +103,8 @@ them on the server. The slides are filtered by genre name, read from the id's fi
 
 ## Icon
 
-`https://pvzcdelcc.xyz/web/img/icon.png` is the site's 256px logo; the favicon it links
-(`icon-green.png`) is 60px. The icon is the larger one, scaled to 92px on white.
+The site's logo is `icon-green.png` on its image host, 60px, and no larger copy exists on
+either mirror or on vymanga.site. The icon is that logo scaled to 88px on white.
+
+> ⚠️ `icon.png` beside it is 256px but is an older, different mark. It shipped for one version
+> and the owner rejected it; a larger file is not the site's logo just because it is larger.

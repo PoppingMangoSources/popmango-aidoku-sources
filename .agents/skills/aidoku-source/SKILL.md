@@ -136,8 +136,7 @@ that shipped:
 - [ ] Home returns the last real error when no section loads, not a generic message
 - [ ] Group and language rules live in the chapter conversion, so home rows and chapter lists
       apply the same ones
-- [ ] Listing names in `source.json` are the short common ones ("Latest Updates", "Recently
-      Added"); a home row may keep the site's longer heading
+- [ ] Listing names in `source.json` are the site's own titles for those lists
 - [ ] After a merge, diff `upstream/main` against `main` and copy back the reviewer's own commits
 - [ ] `src/test.rs` with `#[aidoku_test]` cases checked against the site's data (AGENTS.md / CLAUDE.md §1)
 
