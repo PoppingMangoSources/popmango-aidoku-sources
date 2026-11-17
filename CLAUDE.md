@@ -1590,7 +1590,9 @@ change goes up with `pr-branch.sh multi.mangaball --update …` from `upstream/m
 sandbox reaches, so its live tests run. Its chapter links are encrypted anew on every load and
 expire, so chapters are keyed by name and `get_page_list` reads a fresh link from the series
 page. The probed search parameters, the ignored `search_po`, the genre lists and the icon's
-origin are in `docs/subsystems/vymanga.md`; read it before changing the source. A submission
+origin are in `docs/subsystems/vymanga.md`; read it before changing the source. Its catalogue
+rating is 2, the owner's explicit request on November 17; per-title ratings still come from the
+site's adult flag and genres. A submission
 branch, `feat/en.vymanga`, is kept from `upstream/main` while it is prepared for a PR.
 
 ## Iken maintenance

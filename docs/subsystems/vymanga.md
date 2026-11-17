@@ -96,7 +96,7 @@ differs. A series page links each author; a slide prints them joined by " , ". N
 
 The site blurs covers it counts as adult (`cover-adult`). That flag, or an Erotica,
 Pornographic, R-18 or Smut genre, rates a series NSFW; Ecchi or Mature rates it Suggestive.
-The site has no control for hiding adult titles, so the source adds none; Excluded Genres
+The source is rated 2 (the owner's call). The site has no control for hiding adult titles, so the source adds none; Excluded Genres
 covers it. Smut titles are not always flagged by the site.
 
 ## Home

@@ -2,12 +2,12 @@
 	"info": {
 		"id": "en.vymanga",
 		"name": "VyManga",
-		"version": 11,
+		"version": 12,
 		"urls": [
 			"https://mangavyvy.com",
 			"https://mangavyvy.net"
 		],
-		"contentRating": 1,
+		"contentRating": 2,
 		"languages": [
 			"en"
 		],
