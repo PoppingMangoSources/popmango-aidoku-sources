@@ -348,7 +348,6 @@ fn load_chapter(manga_id: &str, chapter_path: &str, chapter: &str) -> Result<Web
 	user_script.at_document_end = false;
 	user_script.for_main_frame_only = false;
 	web_view.add_user_script(user_script)?;
-	// A failed navigation may never signal didFinish. Let the page polling loop expire instead.
-	web_view.load_html(&html, Some(&manga_url))?;
+	web_view.load_html_blocking(&html, Some(&manga_url))?;
 	Ok(web_view)
 }

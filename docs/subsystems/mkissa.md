@@ -101,8 +101,10 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > ⚠️ AidokuRunner's web view is created with a zero frame and never joins a window
 > (`WebViewHandler.swift:25`). `load_html_blocking` is `load_html` plus `wait_for_load`, a
 > semaphore only `didFinish` signals: the handler has no `didFail` delegate, so a navigation that
-> fails would block the reader forever. v40 loads without blocking and lets the 30 second poll
-> expire instead. Merged Comix and Toonkotsu still block; Toonkotsu loads an empty document under
+> fails would block the reader forever. v40 loaded without blocking and let the 30 second poll
+> expire instead, but in the app chapters then failed with the site's check message, so v41 went
+> back to v39's blocking load (owner's logs, 2026-11-18). The check counter in `wait_for_pages`
+> never resets, and polling during the load can count an overlay the finished page no longer shows. Merged Comix and Toonkotsu still block; Toonkotsu loads an empty document under
 > the site's origin, so its wait costs nothing. `sleep` takes whole seconds, so polling adds up to
 > a second after the pages are captured.
 
