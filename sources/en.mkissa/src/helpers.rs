@@ -24,8 +24,6 @@ pub fn html_text(value: &str) -> Option<String> {
 	.filter(|text| !text.is_empty())
 }
 
-// Descriptions are HTML or Markdown, and raw newlines only count without HTML breaks. Details
-// render Markdown, so they keep hard breaks and bold/italic; the big scroller shows plain text.
 pub fn description_text(description: &str, markdown: bool) -> Option<String> {
 	let mut text = String::from(description);
 	if text.contains("<br") || text.contains("<p") {
@@ -209,7 +207,7 @@ pub fn season_and_year(timestamp: i64) -> (&'static str, i32) {
 
 // The site's update days run from local midnight to the second before the next
 pub fn day_range(days_ago: i64, now: i64) -> (i64, i64) {
-	let offset = get_utc_offset(); // UTC minus local time, in seconds
+	let offset = get_utc_offset();
 	let start = (now - offset).div_euclid(86400) * 86400 + offset - days_ago * 86400;
 	(start, start + 86399)
 }
