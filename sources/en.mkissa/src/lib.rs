@@ -5,7 +5,7 @@ use aidoku::{
 	Source,
 	alloc::{String, Vec, vec},
 	imports::{
-		net::Request,
+		net::{Request, TimeUnit, set_rate_limit},
 		std::{current_date, send_partial_result},
 	},
 	prelude::*,
@@ -40,6 +40,8 @@ struct MKissa {
 
 impl Source for MKissa {
 	fn new() -> Self {
+		// The API answers bursts with "Too many requests"
+		set_rate_limit(3, 1, TimeUnit::Seconds);
 		Self {
 			reader: RefCell::new(reader::Reader::default()),
 		}

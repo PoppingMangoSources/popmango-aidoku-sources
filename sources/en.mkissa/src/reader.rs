@@ -265,7 +265,9 @@ fn wait_for_pages(web_view: &WebView, seconds: usize) -> Result<Option<String>> 
 			if value == CHALLENGE_TOKEN {
 				challenged += 1;
 				if challenged >= 5 {
-					bail!("Open the series in the web view, solve the site's check, then retry");
+					bail!(
+						"Pass the site's check under Pass Human Check in MKissa's settings, then retry"
+					);
 				}
 			} else if value != WAIT_TOKEN && !value.is_empty() {
 				return Ok(Some(value));
@@ -348,6 +350,7 @@ fn load_chapter(manga_id: &str, chapter_path: &str, chapter: &str) -> Result<Web
 	user_script.at_document_end = false;
 	user_script.for_main_frame_only = false;
 	web_view.add_user_script(user_script)?;
-	web_view.load_html_blocking(&html, Some(&manga_url))?;
+	// A failed navigation may never signal didFinish. Let the page polling loop expire instead.
+	web_view.load_html(&html, Some(&manga_url))?;
 	Ok(web_view)
 }

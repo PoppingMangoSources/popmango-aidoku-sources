@@ -103,8 +103,15 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > semaphore only `didFinish` signals: the handler has no `didFail` delegate, so a navigation that
 > fails would block the reader forever. v40 loaded without blocking and let the 30 second poll
 > expire instead, but in the app chapters then failed with the site's check message, so v41 went
-> back to v39's blocking load (owner's logs, 2026-11-18). The check counter in `wait_for_pages`
-> never resets, and polling during the load can count an overlay the finished page no longer shows. Merged Comix and Toonkotsu still block; Toonkotsu loads an empty document under
+> back to v39's blocking load (owner's logs, 2026-11-18). v41 failed the same way, so v42 restored
+> v40's load and added `set_rate_limit(3, 1, TimeUnit::Seconds)`, the limit Inkdex's AllManga uses
+> (keiyoushi limits the API host to 1 a second). The API's "Too many requests, please try again
+> in N seconds" reaches readers through `graphql.rs`.
+
+> ⚠️ Settings has a Pass Human Check web login on `https://mkissa.to/`, as merged Toonkotsu has.
+> The settings sheet and the reader's web view share the source's data store
+> (`WKWebsiteDataStore.forSource`), so a check passed there carries over to reading; plain requests
+> do not see it. On iOS before 17 that store is not persistent. Merged Comix and Toonkotsu still block; Toonkotsu loads an empty document under
 > the site's origin, so its wait costs nothing. `sleep` takes whole seconds, so polling adds up to
 > a second after the pages are captured.
 
