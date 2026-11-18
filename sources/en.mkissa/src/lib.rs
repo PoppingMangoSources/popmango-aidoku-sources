@@ -98,7 +98,7 @@ impl Source for MKissa {
 						let (start, end) = value
 							.parse()
 							.ok()
-							.and_then(|days_ago| day_range(days_ago, current_date()))
+							.map(|days_ago| day_range(days_ago, current_date()))
 							.ok_or(error!("Unknown update day"))?;
 						search.insert("dateRangeStart".into(), start.into());
 						search.insert("dateRangeEnd".into(), end.into());

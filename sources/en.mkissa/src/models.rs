@@ -5,7 +5,6 @@ use crate::helpers::{
 use aidoku::{
 	AidokuError, ContentRating, Manga, Result,
 	alloc::{String, Vec},
-	helpers::string::PlainText,
 	prelude::*,
 };
 use serde::Deserialize;
@@ -89,12 +88,10 @@ impl MangaCard {
 		Ok(Manga {
 			title: display_title(self.english_name.as_deref(), &self.name)?,
 			cover: cover_url(self.thumbnail.as_deref()),
-			// The details page renders Markdown; the big scroller shows plain text
 			description: self
 				.description
 				.as_deref()
-				.and_then(description_text)
-				.map(|description| description.escape_markdown()),
+				.and_then(|description| description_text(description, true)),
 			authors: (!authors.is_empty()).then_some(authors),
 			status: parse_status(self.status.as_deref()),
 			content_rating: content_rating(&tags, self.is_adult),
@@ -116,7 +113,7 @@ impl MangaCard {
 		let description = self
 			.description
 			.take()
-			.and_then(|description| description_text(&description));
+			.and_then(|description| description_text(&description, false));
 		let status = parse_status(self.status.as_deref());
 		let content_rating = content_rating(&tags, self.is_adult);
 		Ok(Manga {

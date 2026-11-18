@@ -190,6 +190,19 @@ class CardRuleTests(unittest.TestCase):
         checks.check_source_json(path, 'en.example')
         self.assertEqual(checks.notes, [])
 
+    def test_urls_repeating_url_fails(self):
+        path = self.source / 'res/source.json'
+        body = '{\n\t"info": {\n\t\t"id": "en.example",\n\t\t"url": "https://a.example",\n\t\t%s"minAppVersion": "0.7.1"\n\t}\n}\n'
+        checks.failures.clear()
+        path.write_text(body % '"urls": ["https://a.example"],\n\t\t')
+        checks.check_source_json(path, 'en.example')
+        self.assertTrue(any('urls only repeats url' in f for f in checks.failures))
+        for urls in ('', '"urls": ["https://a.example", "https://b.example"],\n\t\t'):
+            checks.failures.clear()
+            path.write_text(body % urls)
+            checks.check_source_json(path, 'en.example')
+            self.assertEqual(checks.failures, [])
+
     def test_genre_flag_after_options_is_noted(self):
         checks.notes.clear()
         path = self.source / 'res/filters.json'

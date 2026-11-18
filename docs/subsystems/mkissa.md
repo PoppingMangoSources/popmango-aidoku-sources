@@ -2,7 +2,7 @@
 title: MKissa (en.mkissa)
 type: subsystem
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-18
 verified_at: db1ade7
 sources:
   - code: sources/en.mkissa/src/graphql.rs
@@ -42,6 +42,15 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > site's season picker always pairs a season with a year, so a season alone sends the current
 > year. Its Origin list shows Taiwan, but the API rejects `TW`, so the filter leaves it out.
 > Quick picks are shortcuts for the Update sort, the current season and the Top sort.
+> The local day comes from `get_utc_offset()`, which is UTC minus local time in seconds, so
+> local midnight is `(now - offset)` floored to a day, plus the offset
+> (`sources/en.mkissa/src/helpers.rs`, kkantan on #910).
+
+> ⚠️ Descriptions arrive as Markdown (`**Links:**`, `[Official Twitter](…)`, `___`) or as
+> HTML with `<br>`, `<b>`, `<i>` and `<a>`; 200 popular series showed both (2026-11-18).
+> Details keep the Markdown unescaped, turn bold and italic tags into it and end lines with hard
+> breaks; raw newlines only count when the text has no HTML breaks, since `<br>\n` is one break.
+> The big scroller gets the same lines as plain text. Escaping showed every marker (#910).
 
 > ⚠️ `pageInfo.total` is capped at 100 pages of the requested size, as on the site.
 

@@ -2,7 +2,10 @@ use super::*;
 use aidoku::{
 	ContentRating, HomeComponentValue, LinkValue, MangaStatus, Viewer,
 	alloc::{String, vec},
-	imports::defaults::{DefaultValue, defaults_set},
+	imports::{
+		defaults::{DefaultValue, defaults_set},
+		std::get_utc_offset,
+	},
 };
 use aidoku_test::aidoku_test;
 use helpers::{parse_page_urls, tag_name};
@@ -219,8 +222,11 @@ fn review_missing_series_and_pages_fail() {
 #[aidoku_test]
 fn review_html_text_decodes_every_entity() {
 	assert_eq!(
-		helpers::description_text("<p>It&#8217;s &amp; <i>more</i></p><p>Next<br/>line</p>")
-			.as_deref(),
+		helpers::description_text(
+			"<p>It&#8217;s &amp; <i>more</i></p><p>Next<br/>line</p>",
+			false
+		)
+		.as_deref(),
 		Some("It\u{2019}s & more\n\nNext\nline")
 	);
 	assert_eq!(helpers::html_text("  plain  ").as_deref(), Some("plain"));
@@ -228,23 +234,39 @@ fn review_html_text_decodes_every_entity() {
 }
 
 #[aidoku_test]
-fn review_only_details_escape_the_description() {
-	let extra = || json!({ "description": "Half *bold*<br>2 + 2" });
+fn review_details_keep_the_description_markdown() {
+	let description = |value: &str, details: bool| {
+		let card = card("x", json!({ "description": value }));
+		if details {
+			card.into_details()
+		} else {
+			card.into_featured()
+		}
+		.unwrap()
+		.description
+	};
+	// Descriptions as the site sends them, from Kaoru Hana wa Rin to Saku and Berserk
+	let markdown = "Kikyo Girls.\n___\n**Links:**\n- [Official Twitter (JP)](https://twitter.com/kaoruhana_mp)";
 	assert_eq!(
-		card("x", extra())
-			.into_details()
-			.unwrap()
-			.description
-			.as_deref(),
-		Some("Half \\*bold\\*  \n2 \\+ 2")
+		description(markdown, true).as_deref(),
+		Some(markdown.replace('\n', "  \n").as_str())
+	);
+	let html = "humanity.<br>\n<br>\n[Written by MAL Rewrite]<br>\n<br>\n<b>Included one-shot:</b><br>\nVolume 14: <i>The Prototype</i>";
+	assert_eq!(
+		description(html, true).as_deref(),
+		Some(
+			"humanity.\n\n[Written by MAL Rewrite]\n\n**Included one-shot:**  \nVolume 14: *The Prototype*"
+		)
 	);
 	assert_eq!(
-		card("x", extra())
-			.into_featured()
-			.unwrap()
-			.description
-			.as_deref(),
-		Some("Half *bold*\n2 + 2")
+		description(html, false).as_deref(),
+		Some(
+			"humanity.\n\n[Written by MAL Rewrite]\n\nIncluded one-shot:\nVolume 14: The Prototype"
+		)
+	);
+	assert_eq!(
+		description("Line one\n\n\nLine two\nLine three", true).as_deref(),
+		Some("Line one\n\nLine two  \nLine three")
 	);
 }
 
@@ -448,9 +470,11 @@ fn review_filters_follow_the_site_panel() {
 
 #[aidoku_test]
 fn review_update_days_are_whole_days() {
-	let (today, today_end) = day_range(0, NOW).unwrap();
-	let (yesterday, yesterday_end) = day_range(1, NOW).unwrap();
+	let (today, today_end) = day_range(0, NOW);
+	let (yesterday, yesterday_end) = day_range(1, NOW);
 	assert!(today <= NOW && NOW <= today_end);
+	// Local midnight
+	assert_eq!((today - get_utc_offset()).rem_euclid(86400), 0);
 	assert_eq!(today_end - today, 86399);
 	assert_eq!(today - yesterday, 86400);
 	assert_eq!(yesterday_end + 1, today);

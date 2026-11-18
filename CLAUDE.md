@@ -619,6 +619,17 @@ and the five consumers on `main` matched the merged crates apart from tests and 
 | Valir authors such as The Convenient Empress Resigns joined by `/` | Split credits on every separator the sites use, `/` included, and test a real example from the reviewer. | R |
 | MangaTaro's comma split turned "Oda, Eiichiro" into two authors (our own miss, found checking #908's rule) | Read a page of real credits before choosing separators. Where the site writes names surname first with commas ("Kaneshiro, Muneyuki, Nomura, Yuusuke" is two people), a comma separates nothing reliably, so keep the credit whole as the site prints it. | R |
 
+### From #910 (`en.mkissa`)
+
+kkantan requested changes on 2026-11-18, read from the PR page.
+
+| What was flagged | The rule | |
+|---|---|---|
+| `"urls": ["https://mkissa.to"]` beside the same `url` ("this is not necessary when `url` is provided") | List `urls` only for mirrors. | F |
+| A local offset from parsing one date with `parse_date` and `parse_local_date` ("is this the same result as `get_utc_offset` from aidoku-rs? if you're already using chrono I'm a little confused why `parse_date` is being used") | Use `get_utc_offset()`: seconds of UTC minus local time, in AidokuRunner (`-secondsFromGMT`) and the test runner alike. Where chrono is already a dependency, build a timestamp from date parts with chrono rather than formatting a string for `parse_date`. | R |
+| `escape_markdown` on details descriptions ("why are we escaping markdown? don't we want to display markdown in descriptions?") | Sample real descriptions before escaping. MKissa's carry Markdown (`**Links:**`, `[Official Twitter](…)`, `___`) and HTML `<b>`/`<i>`; escaping showed every marker. Keep the Markdown, turn bold and italic tags into it and keep line breaks hard; the big scroller still gets plain text. | R |
+| "this source seems rather unreliable, with chapters taking quite a bit of time to load and failing a multiple times" | A web-view reader is judged in the app, where the reviewer reads it. Time and retry several chapters of several series on a device before submitting; the test runner stubs web views. | R |
+
 ### From #843 (`en.atsumaru`)
 
 - **Filter exclusions:** every multi-select with `canExclude: true` must process both
@@ -871,8 +882,10 @@ is short-lived, so a cache dies with it.
 - `MangaList` rows also show the **manga's tags** when it has any, so a row's manga carries
   none.
 - The details page and text pages render **Markdown** (`en.hentai2read` says so for
-  descriptions), so escape the site's text with `escape_markdown` and turn `<em>`/`<strong>` into
-  `*`/`**`, as `en.novelbuddy`, `en.chikari` and `en.freewebnovel` do. A `BigScroller` shows its
+  descriptions), so escape plain text with `escape_markdown` and turn `<em>`/`<strong>` into
+  `*`/`**`, as `en.novelbuddy`, `en.chikari` and `en.freewebnovel` do. Sample the site's
+  descriptions first: where they already carry Markdown, keep it unescaped (kkantan on #910,
+  MKissa). A `BigScroller` shows its
   entries' descriptions verbatim (`Text(description)` in the app's `HomeBigScrollerView.swift`),
   so escape on the details path only: escaped text there shows every backslash
   (`en.novelarchive`, found by the owner in the app). Walking text nodes needs

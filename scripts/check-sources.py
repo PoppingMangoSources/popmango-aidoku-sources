@@ -91,6 +91,8 @@ def check_source_json(path: Path, source_id: str) -> dict:
         fail(path, f"info.id is {meta.get('id')!r}, the folder is {source_id!r}")
     if "multi" in meta.get("languages", []):
         fail(path, 'languages lists "multi"; list each language instead')
+    if "url" in meta and meta.get("urls") in ([], [meta["url"]]):
+        fail(path, 'urls only repeats url; leave it out unless the site has mirrors (kkantan: "this is not necessary when `url` is provided")')
     if info.get("config", {}).get("languageSelectType") == "multi":
         fail(path, 'languageSelectType "multi" makes the source fail to install; omit it')
     ids = [listing.get("id") for listing in info.get("listings", [])]

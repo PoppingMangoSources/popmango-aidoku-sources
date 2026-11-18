@@ -2,9 +2,8 @@
 	"info": {
 		"id": "en.mkissa",
 		"name": "MKissa",
-		"version": 37,
+		"version": 38,
 		"url": "https://mkissa.to",
-		"urls": ["https://mkissa.to"],
 		"contentRating": 1,
 		"languages": ["en"],
 		"minAppVersion": "0.8.4"
