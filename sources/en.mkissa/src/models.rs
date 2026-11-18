@@ -70,28 +70,27 @@ pub struct MangaCard {
 }
 
 impl MangaCard {
-	pub fn into_details(self) -> Result<Manga> {
+	pub fn into_details(mut self) -> Result<Manga> {
 		let tags = tag_names(
 			self.genres
+				.take()
 				.unwrap_or_default()
 				.into_iter()
-				.chain(self.tags.unwrap_or_default())
+				.chain(self.tags.take().unwrap_or_default())
 				.collect(),
 		);
 		let mut authors: Vec<String> = Vec::new();
-		for author in self.authors.unwrap_or_default() {
+		for author in self.authors.take().unwrap_or_default() {
 			let name = author.trim();
 			if !name.is_empty() && !authors.iter().any(|existing| existing == name) {
 				authors.push(name.into());
 			}
 		}
 		Ok(Manga {
-			title: display_title(self.english_name.as_deref(), &self.name)?,
-			cover: cover_url(self.thumbnail.as_deref()),
 			description: self
 				.description
-				.as_deref()
-				.and_then(|description| description_text(description, true)),
+				.take()
+				.and_then(|description| description_text(&description, true)),
 			authors: (!authors.is_empty()).then_some(authors),
 			status: parse_status(self.status.as_deref()),
 			content_rating: content_rating(&tags, self.is_adult),
@@ -102,12 +101,11 @@ impl MangaCard {
 			),
 			url: Some(manga_url(&self.id)),
 			tags: (!tags.is_empty()).then_some(tags),
-			key: self.id,
-			..Default::default()
+			..Manga::try_from(self)?
 		})
 	}
 
-	// The big scroller shows what the popular feed already carries
+	// The popular feed carries enough for the big scroller
 	pub fn into_featured(mut self) -> Result<Manga> {
 		let tags = tag_names(self.genres.take().unwrap_or_default());
 		let description = self

@@ -9,34 +9,14 @@ use aidoku::{
 	imports::{
 		js::{WebView, WebViewUserScript},
 		net::Request,
-		std::{current_date, sleep},
+		std::sleep,
 	},
 	prelude::*,
 };
 
 const RESULT_TOKEN: &str = "__AIDOKU_MKISSA_PAGES__";
 const WAIT_TOKEN: &str = "__AIDOKU_MKISSA_WAIT__";
-
-#[derive(Default)]
-pub(super) struct ChallengeSignals {
-	pub(super) waiting_title: bool,
-	pub(super) captcha_overlay: bool,
-}
-
-impl ChallengeSignals {
-	pub(super) fn observe(&mut self, token: &str) -> bool {
-		match token {
-			"waiting-title" => self.waiting_title = true,
-			"captcha-overlay" => self.captcha_overlay = true,
-			"both-signals" => {
-				self.waiting_title = true;
-				self.captcha_overlay = true;
-			}
-			_ => return false,
-		}
-		true
-	}
-}
+const CHALLENGE_TOKEN: &str = "__AIDOKU_MKISSA_CHALLENGE__";
 
 fn is_parser_key_byte(byte: u8) -> bool {
 	byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$'
@@ -99,7 +79,7 @@ fn resolve_parser_key_assignment(script: &str, target: &str) -> Option<String> {
 	None
 }
 
-// The reader pins an untouched JSON.parse under a generated window key, written whole or built from literals
+// The page pins a pristine JSON.parse under a window key, written whole or built from literals
 fn pinned_parser_key(html: &str) -> Option<String> {
 	let mut offset = 0;
 	while let Some(relative) = html[offset..].find("defineProperty") {
@@ -146,8 +126,7 @@ fn pinned_parser_key(html: &str) -> Option<String> {
 	None
 }
 
-// Captures the decoded `chapterPages`, then clicks through to the chapter so the site's router
-// fetches it. `open` sends the same page on to another chapter.
+// The site decodes `chapterPages` in its own script, so the page is captured as it parses them
 fn capture_script(chapter_path: &str, chapter: &str, pinned_key: Option<&str>) -> String {
 	let chapter_path = serde_json::to_string(chapter_path).unwrap_or_else(|_| String::from("\"\""));
 	let chapter = serde_json::to_string(chapter).unwrap_or_else(|_| String::from("\"\""));
@@ -262,47 +241,37 @@ fn capture_script(chapter_path: &str, chapter: &str, pinned_key: Option<&str>) -
 		state.data = '';
 		state.done = false;
 		route(path);
-		return 'opened';
+		return 'opened'; // eval fails on undefined
 	}};
 	route({chapter_path});
 }})()"
 	)
 }
 
-pub(super) fn persistent_challenge(streak: &mut u8, visible: bool) -> bool {
-	*streak = if visible { *streak + 1 } else { 0 };
-	*streak >= 5
-}
-
-// Polls once a second, skipping evals that fail while the page is busy
-fn wait_for_pages(
-	web_view: &WebView,
-	seconds: usize,
-	signals: &mut ChallengeSignals,
-) -> Result<Option<String>> {
+// Polls once a second; an eval that fails while the page is busy is skipped
+fn wait_for_pages(web_view: &WebView, seconds: usize) -> Result<Option<String>> {
 	let mut challenged = 0;
 	for _ in 0..seconds {
-		let poll = web_view.eval(&format!(
+		match web_view.eval(&format!(
 			"(() => {{
 				const state = window['{RESULT_TOKEN}'];
 				if (state && state.done) return state.data;
-				const title = document.title.includes('Just a moment');
-				const overlay = document.querySelector('.captcha-overlay--visible') != null;
-				if (title && overlay) return 'both-signals';
-				if (title) return 'waiting-title';
-				return overlay ? 'captcha-overlay' : '{WAIT_TOKEN}';
+				const challenge = document.title.includes('Just a moment')
+					|| document.querySelector('.captcha-overlay--visible') != null;
+				return challenge ? '{CHALLENGE_TOKEN}' : '{WAIT_TOKEN}';
 			}})()"
-		));
-		let visible = poll.as_deref().is_ok_and(|token| signals.observe(token));
-		if persistent_challenge(&mut challenged, visible) {
-			bail!("Pass the site's check under Pass Human Check in MKissa's settings, then retry");
-		}
-		if let Ok(value) = poll
-			&& !visible
-			&& value != WAIT_TOKEN
-			&& !value.is_empty()
-		{
-			return Ok(Some(value));
+		)) {
+			// The check can flash while the page loads, so only five polls in a row count
+			Ok(value) if value == CHALLENGE_TOKEN => {
+				challenged += 1;
+				if challenged >= 5 {
+					bail!(
+						"Pass the site's check under Pass Human Check in MKissa's settings, then retry"
+					);
+				}
+			}
+			Ok(value) if value != WAIT_TOKEN && !value.is_empty() => return Ok(Some(value)),
+			_ => challenged = 0,
 		}
 		sleep(1);
 	}
@@ -318,25 +287,6 @@ pub struct Reader {
 
 impl Reader {
 	pub fn page_urls(&mut self, manga_id: &str, chapter: &str) -> Result<Vec<String>> {
-		let started = current_date();
-		let mut signals = ChallengeSignals::default();
-		self.read_chapter(manga_id, chapter, &mut signals)
-			.inspect_err(|_| {
-				println!(
-					"Reader failed after {}s: waiting title={}, CAPTCHA overlay={}",
-					current_date().saturating_sub(started).max(0),
-					signals.waiting_title,
-					signals.captcha_overlay
-				);
-			})
-	}
-
-	fn read_chapter(
-		&mut self,
-		manga_id: &str,
-		chapter: &str,
-		signals: &mut ChallengeSignals,
-	) -> Result<Vec<String>> {
 		let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
 		// The site answers a chapter the page already showed from its own cache, which parses nothing
@@ -349,7 +299,7 @@ impl Reader {
 					serde_json::to_string(&chapter_path)?,
 					serde_json::to_string(chapter)?
 				))
-				.is_ok() && let Some(result) = wait_for_pages(&web_view, 10, signals)?
+				.is_ok() && let Some(result) = wait_for_pages(&web_view, 10)?
 		{
 			found = Some((web_view, result));
 		}
@@ -358,7 +308,7 @@ impl Reader {
 			None => {
 				self.opened.clear();
 				let web_view = load_chapter(manga_id, &chapter_path, chapter)?;
-				let result = wait_for_pages(&web_view, 30, signals)?
+				let result = wait_for_pages(&web_view, 30)?
 					.ok_or(error!("The reader did not produce any pages"))?;
 				(web_view, result)
 			}
@@ -394,7 +344,7 @@ fn load_chapter(manga_id: &str, chapter_path: &str, chapter: &str) -> Result<Web
 	let html = response.get_string()?;
 	let parser_key = pinned_parser_key(&html);
 
-	// Navigating client-side from the cleared page avoids a second Cloudflare check
+	// The chapter route only answers a navigation from inside the site
 	let web_view = WebView::new();
 	let mut user_script =
 		WebViewUserScript::new(capture_script(chapter_path, chapter, parser_key.as_deref()));
@@ -402,7 +352,7 @@ fn load_chapter(manga_id: &str, chapter_path: &str, chapter: &str) -> Result<Web
 	// The human check runs Turnstile in a frame of its own, which the capture would break
 	user_script.for_main_frame_only = true;
 	web_view.add_user_script(user_script)?;
-	// A failed navigation may never signal didFinish. Let the page polling loop expire instead.
+	// The blocking load never returns if the navigation fails; the poll has a deadline
 	web_view.load_html(&html, Some(&manga_url))?;
 	Ok(web_view)
 }

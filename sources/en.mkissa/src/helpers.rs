@@ -11,8 +11,7 @@ use aidoku::{
 use chrono::{DateTime, Datelike, NaiveDate};
 use serde_json::Value;
 
-// Text of an HTML fragment with its entities decoded; plain text skips the parse. A wrapper
-// element works in the test runner too, where a fragment has no body to select.
+// The wrapper works in the test runner too, where a fragment has no body to select
 pub fn html_text(value: &str) -> Option<String> {
 	if value.contains(['&', '<']) {
 		Html::parse(format!("<div id=text>{value}</div>"))
@@ -25,9 +24,8 @@ pub fn html_text(value: &str) -> Option<String> {
 	.filter(|text| !text.is_empty())
 }
 
-// Descriptions are HTML or Markdown; raw newlines only break lines when there are no HTML
-// breaks. A blank line or `</p>` ends a paragraph. The details page renders Markdown, so it
-// keeps hard line breaks and gets bold and italic from the HTML; the big scroller shows text.
+// Descriptions are HTML or Markdown, and raw newlines only count without HTML breaks. Details
+// render Markdown, so they keep hard breaks and bold/italic; the big scroller shows plain text.
 pub fn description_text(description: &str, markdown: bool) -> Option<String> {
 	let mut text = String::from(description);
 	if text.contains("<br") || text.contains("<p") {
@@ -211,8 +209,7 @@ pub fn season_and_year(timestamp: i64) -> (&'static str, i32) {
 
 // The site's update days run from local midnight to the second before the next
 pub fn day_range(days_ago: i64, now: i64) -> (i64, i64) {
-	// UTC minus local time, in seconds
-	let offset = get_utc_offset();
+	let offset = get_utc_offset(); // UTC minus local time, in seconds
 	let start = (now - offset).div_euclid(86400) * 86400 + offset - days_ago * 86400;
 	(start, start + 86399)
 }
