@@ -201,6 +201,18 @@ fn capture_script(chapter_path: &str, chapter: &str, pinned_key: Option<&str>) -
 		}};
 	}}
 
+	// SvelteKit's router listens for clicks on the document element once the first page has
+	// rendered, about a second before that page's own links appear
+	let routerReady = false;
+	const addListener = EventTarget.prototype.addEventListener;
+	EventTarget.prototype.addEventListener = function (type, ...rest) {{
+		if (type === 'click' && this === document.documentElement) {{
+			routerReady = true;
+			EventTarget.prototype.addEventListener = addListener;
+		}}
+		return addListener.call(this, type, ...rest);
+	}};
+
 	function triggerChapterNav(path) {{
 		const a = document.createElement('a');
 		a.href = a.dataset.href = path;
@@ -212,7 +224,7 @@ fn capture_script(chapter_path: &str, chapter: &str, pinned_key: Option<&str>) -
 		let attempts = 0;
 		const check = () => {{
 			if (state.done) return;
-			if (document.querySelector('[data-href]')) {{
+			if (routerReady || document.querySelector('[data-href]')) {{
 				triggerChapterNav(path);
 			}} else if (attempts < 300) {{
 				attempts++;

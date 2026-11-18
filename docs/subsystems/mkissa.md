@@ -84,6 +84,25 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > reuse loads a fresh page as v31 did. A capture counts only when its `chapterString` is the
 > chapter asked for. Try one change per release in the app.
 
+> ⚠️ In the app (owner, 2026-11-18) the first chapter loads slowly, then every later chapter,
+> of any series, loads fast: the kept page works, and the first load is the cost. The page is a
+> SvelteKit shell whose `kit.start(app, element)` has no hydration data, and its `start()` awaits
+> the first navigation before the router adds its click listener to `document.documentElement`
+> (bundle `yF11j1xh.js`, read 2026-11-18). v39 clicks as soon as that listener appears instead of
+> waiting for the series page's `[data-href]` links: in Chromium the click moved from 1.7-2.3 s to
+> 1.1-1.4 s and the first chapter from 2.7-3.5 s to 2.2-3.1 s, usually before the series page's
+> covers download. Untested in the app at the time of writing.
+
+> ⚠️ Loading the shell straight at the chapter URL renders the reader without ever requesting its
+> pages, and so does an unknown path; client-side navigation from a real route is the only way
+> in. A search route works too, but has no `[data-href]` links to wait for.
+
+> ⚠️ AidokuRunner's web view is created with a zero frame and never joins a window
+> (`WebViewHandler.swift:25`), and `load_html_blocking` returns at `didFinish`, the page's load
+> event. Merged Comix and Toonkotsu block the same way; Toonkotsu loads an empty document under
+> the site's origin, so its wait costs nothing. `sleep` takes whole seconds, so polling adds up to
+> a second after the pages are captured.
+
 Home rows, in the order the owner set: Popular Weekly (big scroller from the popular feed's own
 description, genres and status), Manga {year}, Trending, Random, Latest Updates (newest chapter
 and date), Most Saved, Most Boosted and {Season} {year} Anime, where the season is the calendar
