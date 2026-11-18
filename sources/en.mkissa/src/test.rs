@@ -658,3 +658,18 @@ fn review_only_consecutive_challenge_polls_trigger_the_prompt() {
 	}
 	assert!(reader::persistent_challenge(&mut streak, true));
 }
+
+#[aidoku_test]
+fn review_reader_remembers_challenge_signals_across_polls() {
+	let mut signals = reader::ChallengeSignals::default();
+	assert!(!signals.observe("waiting"));
+	assert!(!signals.waiting_title && !signals.captcha_overlay);
+	assert!(signals.observe("captcha-overlay"));
+	assert!(!signals.waiting_title && signals.captcha_overlay);
+	assert!(!signals.observe("page data"));
+	assert!(signals.observe("waiting-title"));
+	assert!(signals.waiting_title && signals.captcha_overlay);
+	let mut together = reader::ChallengeSignals::default();
+	assert!(together.observe("both-signals"));
+	assert!(together.waiting_title && together.captcha_overlay);
+}

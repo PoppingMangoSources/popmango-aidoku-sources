@@ -9,14 +9,34 @@ use aidoku::{
 	imports::{
 		js::{WebView, WebViewUserScript},
 		net::Request,
-		std::sleep,
+		std::{current_date, sleep},
 	},
 	prelude::*,
 };
 
 const RESULT_TOKEN: &str = "__AIDOKU_MKISSA_PAGES__";
 const WAIT_TOKEN: &str = "__AIDOKU_MKISSA_WAIT__";
-const CHALLENGE_TOKEN: &str = "__AIDOKU_MKISSA_CHALLENGE__";
+
+#[derive(Default)]
+pub(super) struct ChallengeSignals {
+	pub(super) waiting_title: bool,
+	pub(super) captcha_overlay: bool,
+}
+
+impl ChallengeSignals {
+	pub(super) fn observe(&mut self, token: &str) -> bool {
+		match token {
+			"waiting-title" => self.waiting_title = true,
+			"captcha-overlay" => self.captcha_overlay = true,
+			"both-signals" => {
+				self.waiting_title = true;
+				self.captcha_overlay = true;
+			}
+			_ => return false,
+		}
+		true
+	}
+}
 
 fn is_parser_key_byte(byte: u8) -> bool {
 	byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$'
@@ -254,26 +274,30 @@ pub(super) fn persistent_challenge(streak: &mut u8, visible: bool) -> bool {
 }
 
 // Polls once a second, skipping evals that fail while the page is busy
-fn wait_for_pages(web_view: &WebView, seconds: usize) -> Result<Option<String>> {
+fn wait_for_pages(
+	web_view: &WebView,
+	seconds: usize,
+	signals: &mut ChallengeSignals,
+) -> Result<Option<String>> {
 	let mut challenged = 0;
 	for _ in 0..seconds {
 		let poll = web_view.eval(&format!(
 			"(() => {{
 				const state = window['{RESULT_TOKEN}'];
 				if (state && state.done) return state.data;
-				const challenge = document.title.includes('Just a moment')
-					|| document.querySelector('.captcha-overlay--visible') != null;
-				return challenge ? '{CHALLENGE_TOKEN}' : '{WAIT_TOKEN}';
+				const title = document.title.includes('Just a moment');
+				const overlay = document.querySelector('.captcha-overlay--visible') != null;
+				if (title && overlay) return 'both-signals';
+				if (title) return 'waiting-title';
+				return overlay ? 'captcha-overlay' : '{WAIT_TOKEN}';
 			}})()"
 		));
-		if persistent_challenge(
-			&mut challenged,
-			matches!(poll.as_deref(), Ok(CHALLENGE_TOKEN)),
-		) {
+		let visible = poll.as_deref().is_ok_and(|token| signals.observe(token));
+		if persistent_challenge(&mut challenged, visible) {
 			bail!("Pass the site's check under Pass Human Check in MKissa's settings, then retry");
 		}
 		if let Ok(value) = poll
-			&& value != CHALLENGE_TOKEN
+			&& !visible
 			&& value != WAIT_TOKEN
 			&& !value.is_empty()
 		{
@@ -293,6 +317,25 @@ pub struct Reader {
 
 impl Reader {
 	pub fn page_urls(&mut self, manga_id: &str, chapter: &str) -> Result<Vec<String>> {
+		let started = current_date();
+		let mut signals = ChallengeSignals::default();
+		self.read_chapter(manga_id, chapter, &mut signals)
+			.inspect_err(|_| {
+				println!(
+					"Reader failed after {}s: waiting title={}, CAPTCHA overlay={}",
+					current_date().saturating_sub(started).max(0),
+					signals.waiting_title,
+					signals.captcha_overlay
+				);
+			})
+	}
+
+	fn read_chapter(
+		&mut self,
+		manga_id: &str,
+		chapter: &str,
+		signals: &mut ChallengeSignals,
+	) -> Result<Vec<String>> {
 		let chapter_path = format!("/manga/{manga_id}/chapter-{chapter}-sub");
 
 		// The site answers a chapter the page already showed from its own cache, which parses nothing
@@ -305,7 +348,7 @@ impl Reader {
 					serde_json::to_string(&chapter_path)?,
 					serde_json::to_string(chapter)?
 				))
-				.is_ok() && let Some(result) = wait_for_pages(&web_view, 10)?
+				.is_ok() && let Some(result) = wait_for_pages(&web_view, 10, signals)?
 		{
 			found = Some((web_view, result));
 		}
@@ -314,7 +357,7 @@ impl Reader {
 			None => {
 				self.opened.clear();
 				let web_view = load_chapter(manga_id, &chapter_path, chapter)?;
-				let result = wait_for_pages(&web_view, 30)?
+				let result = wait_for_pages(&web_view, 30, signals)?
 					.ok_or(error!("The reader did not produce any pages"))?;
 				(web_view, result)
 			}
