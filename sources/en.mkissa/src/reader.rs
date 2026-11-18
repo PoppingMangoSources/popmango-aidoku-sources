@@ -207,9 +207,10 @@ fn capture_script(chapter_path: &str, chapter: &str, pinned_key: Option<&str>) -
 	JSON.parse = captureParse;
 	{pin}
 
-	// The page takes a pristine JSON.parse from a new iframe; with no frame window it keeps ours
+	// The page takes a pristine JSON.parse from a new iframe as it boots; with no frame window it
+	// keeps ours. Later frames, such as the site's human check, keep theirs.
 	const hideFrame = (element) => {{
-		if (element && String(element.tagName).toUpperCase() === 'IFRAME') {{
+		if (document.readyState === 'loading' && element && String(element.tagName).toUpperCase() === 'IFRAME') {{
 			Object.defineProperty(element, 'contentWindow', {{ get: () => null, configurable: false }});
 		}}
 		return element;
@@ -398,7 +399,8 @@ fn load_chapter(manga_id: &str, chapter_path: &str, chapter: &str) -> Result<Web
 	let mut user_script =
 		WebViewUserScript::new(capture_script(chapter_path, chapter, parser_key.as_deref()));
 	user_script.at_document_end = false;
-	user_script.for_main_frame_only = false;
+	// The human check runs Turnstile in a frame of its own, which the capture would break
+	user_script.for_main_frame_only = true;
 	web_view.add_user_script(user_script)?;
 	// A failed navigation may never signal didFinish. Let the page polling loop expire instead.
 	web_view.load_html(&html, Some(&manga_url))?;

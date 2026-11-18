@@ -108,6 +108,15 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > (keiyoushi limits the API host to 1 a second). The API's "Too many requests, please try again
 > in N seconds" reaches readers through `graphql.rs`.
 
+> ⚠️ The site's check is Cloudflare Turnstile in its own frame (`api.mkissa.net/captcha/turnstile`,
+> bundle `B3DA467b.js`), drawn by the page, so the app's Cloudflare solver never sees it: that only
+> answers a plain request's 403/503 challenge page, in a hidden web view it attaches to the window
+> (`CloudflareHandler.swift:69-186`), which is how the community and Yomu Kagane got through. Up to
+> v44 the reader's user script ran in every frame and blanked every iframe's `contentWindow`, so
+> Turnstile never started inside the reader (Chromium: no challenge output at all, while it runs with
+> no script). v45 injects into the main frame only and hides only iframes made while the page boots,
+> which is all the `JSON.parse` pin needs.
+
 > ⚠️ Settings has a Pass Human Check web login on `https://mkissa.to/`, as merged Toonkotsu has.
 > The settings sheet and the reader's web view share the source's data store
 > (`WKWebsiteDataStore.forSource`). On v42 the owner completed the check in settings and
