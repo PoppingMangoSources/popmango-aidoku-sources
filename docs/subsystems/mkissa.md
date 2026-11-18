@@ -99,8 +99,10 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > in. A search route works too, but has no `[data-href]` links to wait for.
 
 > ⚠️ AidokuRunner's web view is created with a zero frame and never joins a window
-> (`WebViewHandler.swift:25`), and `load_html_blocking` returns at `didFinish`, the page's load
-> event. Merged Comix and Toonkotsu block the same way; Toonkotsu loads an empty document under
+> (`WebViewHandler.swift:25`). `load_html_blocking` is `load_html` plus `wait_for_load`, a
+> semaphore only `didFinish` signals: the handler has no `didFail` delegate, so a navigation that
+> fails would block the reader forever. v40 loads without blocking and lets the 30 second poll
+> expire instead. Merged Comix and Toonkotsu still block; Toonkotsu loads an empty document under
 > the site's origin, so its wait costs nothing. `sleep` takes whole seconds, so polling adds up to
 > a second after the pages are captured.
 
