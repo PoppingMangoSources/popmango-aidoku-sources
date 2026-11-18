@@ -110,8 +110,11 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 
 > ⚠️ Settings has a Pass Human Check web login on `https://mkissa.to/`, as merged Toonkotsu has.
 > The settings sheet and the reader's web view share the source's data store
-> (`WKWebsiteDataStore.forSource`), so a check passed there carries over to reading; plain requests
-> do not see it. On iOS before 17 that store is not persistent. Merged Comix and Toonkotsu still block; Toonkotsu loads an empty document under
+> (`WKWebsiteDataStore.forSource`). On v42 the owner completed the check in settings and
+> reopened a chapter successfully on their iPhone. Plain requests use a separate session.
+> v43 prompts after five consecutive challenge polls. Reset Session indicates saved cookies.
+> On iOS before 17 the store is not persistent. Merged Comix and Toonkotsu still block.
+> Toonkotsu loads an empty document under
 > the site's origin, so its wait costs nothing. `sleep` takes whole seconds, so polling adds up to
 > a second after the pages are captured.
 

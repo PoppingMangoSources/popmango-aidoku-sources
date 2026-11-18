@@ -649,3 +649,12 @@ fn adult_titles_follow_the_setting() {
 			.any(|manga| manga.content_rating == ContentRating::NSFW)
 	);
 }
+
+#[aidoku_test]
+fn review_only_consecutive_challenge_polls_trigger_the_prompt() {
+	let mut streak = 0;
+	for visible in [true, true, true, true, false, true, true, true, true] {
+		assert!(!reader::persistent_challenge(&mut streak, visible));
+	}
+	assert!(reader::persistent_challenge(&mut streak, true));
+}

@@ -248,11 +248,16 @@ fn capture_script(chapter_path: &str, chapter: &str, pinned_key: Option<&str>) -
 	)
 }
 
+pub(super) fn persistent_challenge(streak: &mut u8, visible: bool) -> bool {
+	*streak = if visible { *streak + 1 } else { 0 };
+	*streak >= 5
+}
+
 // Polls once a second, skipping evals that fail while the page is busy
 fn wait_for_pages(web_view: &WebView, seconds: usize) -> Result<Option<String>> {
 	let mut challenged = 0;
 	for _ in 0..seconds {
-		if let Ok(value) = web_view.eval(&format!(
+		let poll = web_view.eval(&format!(
 			"(() => {{
 				const state = window['{RESULT_TOKEN}'];
 				if (state && state.done) return state.data;
@@ -260,18 +265,19 @@ fn wait_for_pages(web_view: &WebView, seconds: usize) -> Result<Option<String>> 
 					|| document.querySelector('.captcha-overlay--visible') != null;
 				return challenge ? '{CHALLENGE_TOKEN}' : '{WAIT_TOKEN}';
 			}})()"
-		)) {
-			// The site's own check never clears in a hidden view
-			if value == CHALLENGE_TOKEN {
-				challenged += 1;
-				if challenged >= 5 {
-					bail!(
-						"Pass the site's check under Pass Human Check in MKissa's settings, then retry"
-					);
-				}
-			} else if value != WAIT_TOKEN && !value.is_empty() {
-				return Ok(Some(value));
-			}
+		));
+		if persistent_challenge(
+			&mut challenged,
+			matches!(poll.as_deref(), Ok(CHALLENGE_TOKEN)),
+		) {
+			bail!("Pass the site's check under Pass Human Check in MKissa's settings, then retry");
+		}
+		if let Ok(value) = poll
+			&& value != CHALLENGE_TOKEN
+			&& value != WAIT_TOKEN
+			&& !value.is_empty()
+		{
+			return Ok(Some(value));
 		}
 		sleep(1);
 	}
@@ -335,9 +341,10 @@ fn load_chapter(manga_id: &str, chapter_path: &str, chapter: &str) -> Result<Web
 		.header("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
 		.send()?;
 	let status = response.status_code();
-	if status == 403 || status == 503 {
-		bail!("Solve the Cloudflare check, then retry");
-	} else if status >= 400 {
+	if status >= 400 {
+		if response.get_header("cf-mitigated").as_deref() == Some("challenge") {
+			bail!("The reader returned HTTP {status}. Complete the Cloudflare check and retry");
+		}
 		bail!("The reader returned HTTP {status}");
 	}
 	let html = response.get_string()?;
