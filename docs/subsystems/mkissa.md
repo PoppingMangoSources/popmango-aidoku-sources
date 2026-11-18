@@ -91,7 +91,8 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > (bundle `yF11j1xh.js`, read 2026-11-18). v39 clicks as soon as that listener appears instead of
 > waiting for the series page's `[data-href]` links: in Chromium the click moved from 1.7-2.3 s to
 > 1.1-1.4 s and the first chapter from 2.7-3.5 s to 2.2-3.1 s, usually before the series page's
-> covers download. Untested in the app at the time of writing.
+> covers download. The owner found it faster in the app, with no failing load across several
+> series and chapters (2026-11-18).
 
 > ⚠️ Loading the shell straight at the chapter URL renders the reader without ever requesting its
 > pages, and so does an unknown path; client-side navigation from a real route is the only way
