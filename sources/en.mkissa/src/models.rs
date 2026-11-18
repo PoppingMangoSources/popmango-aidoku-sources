@@ -105,7 +105,6 @@ impl MangaCard {
 		})
 	}
 
-	// The popular feed carries enough for the big scroller
 	pub fn into_featured(mut self) -> Result<Manga> {
 		let tags = tag_names(self.genres.take().unwrap_or_default());
 		let description = self
