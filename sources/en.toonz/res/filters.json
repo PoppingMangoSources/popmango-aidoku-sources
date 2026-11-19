@@ -446,18 +446,17 @@
 		]
 	},
 	{
-		"type": "select",
+		"type": "multi-select",
 		"id": "rating",
-		"title": "Age Rating",
+		"title": "Content Rating",
+		"canExclude": false,
 		"options": [
-			"Use Source Setting",
 			"Safe",
 			"Suggestive",
 			"Erotica",
 			"Explicit"
 		],
 		"ids": [
-			"",
 			"safe",
 			"suggestive",
 			"erotica",

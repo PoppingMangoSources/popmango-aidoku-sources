@@ -1,4 +1,4 @@
-use crate::BASE_URL;
+use crate::Params;
 use aidoku::{
 	Chapter,
 	alloc::{String, Vec, format},
@@ -26,8 +26,8 @@ pub struct ReaderImage {
 }
 
 impl ChapterItem {
-	pub fn into_chapter(self, manga_key: &str) -> Chapter {
-		// The chapter route takes the slug's number, as written ("2.1", "84.02").
+	pub fn into_chapter(self, params: &Params, manga_key: &str) -> Chapter {
+		// The chapter route takes the slug after "chapter-", as written ("2.1", "45-wad21").
 		let key: String = self
 			.slug
 			.strip_prefix("chapter-")
@@ -40,7 +40,10 @@ impl ChapterItem {
 			.and_then(|date| date.get(..19))
 			.and_then(|date| parse_date(date.replace('T', " "), "yyyy-MM-dd HH:mm:ss"));
 		Chapter {
-			url: Some(format!("{BASE_URL}/comic/{manga_key}/chapter/{key}")),
+			url: Some(format!(
+				"{}/{}/{manga_key}/chapter/{key}",
+				params.base_url, params.series_path
+			)),
 			key,
 			title: self.title.filter(|title| !title.trim().is_empty()),
 			chapter_number: self.chapter_number.parse().ok(),

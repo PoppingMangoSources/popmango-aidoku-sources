@@ -1,8 +1,8 @@
 [
 	{
 		"type": "group",
-		"title": "Content",
-		"footer": "Like the site's content setting: titles at or below the rating, of the selected types and without the excluded genres. The Age Rating and Types filters and an included tag override these for one search.",
+		"title": "Content Rating",
+		"footer": "Each rating shows its own titles and every rating below it: Safe shows only safe titles, Suggestive adds suggestive ones, Erotica adds erotica, and Explicit shows everything. Choosing ratings in the Content Rating filter overrides this for one search.",
 		"items": [
 			{
 				"type": "select",
@@ -25,7 +25,14 @@
 					"content",
 					"listings"
 				]
-			},
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Content",
+		"footer": "Only the selected types are shown, and titles with an excluded genre are hidden everywhere. The Types filter and an included tag override these for one search.",
+		"items": [
 			{
 				"type": "multi-select",
 				"key": "types",

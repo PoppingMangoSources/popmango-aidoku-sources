@@ -348,9 +348,17 @@ name = "toonz"
 version = "0.1.0"
 dependencies = [
  "aidoku",
- "aidoku-test",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "toonzto"
+version = "0.1.0"
+dependencies = [
+ "aidoku",
+ "aidoku-test",
+ "toonz",
 ]
 
 [[package]]
