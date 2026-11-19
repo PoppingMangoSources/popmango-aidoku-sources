@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::{ReaderPageProps, ReaderPages};
 use aidoku::{
 	ContentRating, Home, HomeComponentValue, LinkValue, Viewer, alloc::string::ToString,
 	imports::html::Html,
@@ -6,7 +7,7 @@ use aidoku::{
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
-fn review_discover_uses_the_site_order_and_real_chapters() {
+fn review_discover_uses_the_requested_headings_and_real_chapters() {
 	let c = "<li class='card-item'><a class='card-link' href='/manga/story'><img class='cover-img' src='/cover/story'><h3 class='card-title'>A story</h3></a><span class='card-rank'>1</span><p class='card-meta'><span>Manhwa</span><span>202 readers</span></p><ul class='card-chapters'><li><a href='/read/upload'><span class='card-ch-label'>Ch.12.5</span><span class='card-ch-time'>2h ago</span></a></li></ul></li>";
 	let side = "<ol class='side-list'><li><a class='side-row' href='/manga/story'><span class='side-title'>A story</span></a></li></ol>";
 	let mut html = format!(
@@ -33,10 +34,10 @@ fn review_discover_uses_the_site_order_and_real_chapters() {
 			.collect::<Vec<_>>(),
 		[
 			"Popular This Week",
-			"Readers’ favourites",
+			"Readers Favourites",
 			"New in 2026",
-			"Latest updates",
-			"Recently popular",
+			"Latest Updates",
+			"Recently Popular",
 			"Finished",
 			"Just Added"
 		]
@@ -156,6 +157,21 @@ fn review_key_only_links_and_complete_page_lists() {
 			.unwrap()
 			.is_none()
 	);
+	let props = concat!(
+		r#"1:{"chapter":{},"series":{"href":"/manga/story"}}"#,
+		"\n",
+		r#"2:{"chapter":{},"series":{"href":"/manga/story"},"pagesUrl":"/read/canonical/pages"}"#
+	);
+	let doc = Html::parse(format!(
+		"<script>self.__next_f.push([1,{}])</script>",
+		serde_json::to_string(props).unwrap()
+	))
+	.unwrap();
+	let decoded: ReaderProps = parse_flight_value(&doc, "{\"chapter\":").unwrap();
+	assert_eq!(decoded.series.href, "/manga/story");
+	let decoded: ReaderPageProps = parse_flight_value(&doc, "{\"chapter\":").unwrap();
+	assert_eq!(decoded.pages_url, "/read/canonical/pages");
+
 	let result = |urls: &[&str]| {
 		Vec::<Page>::try_from(ReaderPages {
 			pages: urls.iter().map(|s| (*s).into()).collect(),

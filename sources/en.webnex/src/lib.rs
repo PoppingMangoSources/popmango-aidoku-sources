@@ -4,9 +4,8 @@ use aidoku::{
 	Source,
 	alloc::{String, Vec, vec},
 	imports::{
-		js::{WebView, WebViewUserScript},
 		net::Request,
-		std::{current_date, send_partial_result, sleep},
+		std::{current_date, send_partial_result},
 	},
 	prelude::*,
 };
@@ -14,10 +13,11 @@ use aidoku::{
 mod helpers;
 mod home;
 mod models;
+mod reader;
 mod settings;
 
 use helpers::{browse, get_html, parse_flight_value, parse_key, parse_response};
-use models::{ReaderPages, ReaderProps};
+use models::ReaderProps;
 use settings::{Catalogue, Groups};
 
 const BASE_URL: &str = "https://webnex.cc";
@@ -122,26 +122,7 @@ impl Source for WebNex {
 	}
 
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let view = WebView::new();
-		let url = format!("{BASE_URL}/read/{}", chapter.key);
-		// The reader loads its page list once, including images it has not rendered yet.
-		view.add_user_script(WebViewUserScript {
-			source: include_str!("reader.js").into(),
-			at_document_end: false,
-			for_main_frame_only: true,
-		})?;
-		view.load(Request::get(url)?)?;
-		for _ in 0..20 {
-			if let Ok(json) = view.eval(include_str!("reader_result.js"))
-				&& !json.is_empty()
-			{
-				let data: ReaderPages = serde_json::from_str(&json)
-					.map_err(|_| error!("WebNex returned an unreadable chapter response"))?;
-				return data.try_into();
-			}
-			sleep(1);
-		}
-		bail!("WebNex did not load the chapter pages. Open the chapter on webnex.cc.")
+		reader::pages(&chapter.key)
 	}
 }
 

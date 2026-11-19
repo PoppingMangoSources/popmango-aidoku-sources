@@ -1,11 +1,22 @@
-(() => {
-	const fetch = window.fetch;
-	window.fetch = async function (...args) {
-		const response = await fetch.apply(this, args);
-		const url = new URL(response.url || location.href);
-		if (url.origin === location.origin && url.pathname === location.pathname.replace(/\/$/, "") + "/pages") {
-			response.clone().text().then(body => { window.webnexPageList = body; });
+endpoint => {
+	const url = new URL(endpoint, location.href);
+	const fail = message => { window.webnexPageList = JSON.stringify({ message }); };
+	if (url.origin !== location.origin) {
+		fail("WebNex returned a page list on a different origin.");
+		return "";
+	}
+
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), 12000);
+	fetch(url, { signal: controller.signal }).then(async response => {
+		if (!response.ok) {
+			const error = await response.json().catch(() => null);
+			const detail = typeof error?.message === "string" ? ` ${error.message}` : "";
+			fail(`WebNex returned HTTP ${response.status}.${detail}`);
+			return;
 		}
-		return response;
-	};
-})();
+		window.webnexPageList = await response.text();
+	}).catch(() => fail("WebNex could not fetch the chapter's page list. Open the chapter on webnex.cc."))
+		.finally(() => clearTimeout(timer));
+	return "";
+}
