@@ -1,7 +1,7 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Manga, MangaPageResult, Page, Result,
-	Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Manga,
+	MangaPageResult, Page, PageContext, Result, Source,
 	alloc::{String, Vec, vec},
 	imports::{
 		net::Request,
@@ -151,7 +151,13 @@ impl DeepLinkHandler for WebNex {
 	}
 }
 
-register_source!(WebNex, Home, DeepLinkHandler);
+impl ImageRequestProvider for WebNex {
+	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
+		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
+	}
+}
+
+register_source!(WebNex, Home, ImageRequestProvider, DeepLinkHandler);
 
 #[cfg(test)]
 mod test;
