@@ -54,6 +54,6 @@ suite runs. Probed on 2026-11-19.
 > `chapterCount` and `chapter_count` together, so only one may be named.
 
 > ⚠️ Chapter languages use regional and legacy codes (`es-la`, `kr`, `pt-br`); `helpers.rs`
-> `app_language` maps them to the app's. One Piece-sized series list thousands of uploads, one
-> per uploader copy (`official2` is a second copy of `official`); the site's own pick is the
+> `app_language` maps them to the app's. Large series list thousands of uploads (Solo Leveling
+> 4,716), one per uploader copy (`official2` is a second copy of `official`); the site's own pick is the
 > lowest rank letter, then the first copy, which deduplication follows.
