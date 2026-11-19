@@ -1,0 +1,262 @@
+[
+	{
+		"type": "group",
+		"title": "Content",
+		"footer": "Applies to the home page, listings and search where the site lists the data: Hot and New Updates carry no genres, tags or types, and only the Discover popular rows carry tags. The Content Rating, Type and Genres filters override these for one search.",
+		"items": [
+			{
+				"type": "select",
+				"key": "contentRating",
+				"title": "Content Rating",
+				"values": [
+					"safe",
+					"all",
+					"nsfw"
+				],
+				"titles": [
+					"Safe",
+					"All",
+					"NSFW"
+				],
+				"default": "safe",
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "multi-select",
+				"key": "types",
+				"title": "Types",
+				"values": [
+					"Artbook",
+					"Comic",
+					"Doujinshi",
+					"Elenty",
+					"French",
+					"Indonesian",
+					"Kayden",
+					"Manga",
+					"Manhua",
+					"Manhwa",
+					"Nordic",
+					"Novel",
+					"Oel",
+					"Spanish",
+					"Thai",
+					"Vietnamese"
+				],
+				"default": [
+					"Artbook",
+					"Comic",
+					"Doujinshi",
+					"Elenty",
+					"French",
+					"Indonesian",
+					"Kayden",
+					"Manga",
+					"Manhua",
+					"Manhwa",
+					"Nordic",
+					"Novel",
+					"Oel",
+					"Spanish",
+					"Thai",
+					"Vietnamese"
+				],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "multi-select",
+				"key": "excludedGenres",
+				"title": "Excluded Genres",
+				"values": [
+					"4-koma",
+					"Action",
+					"Adaptation",
+					"Adult",
+					"Adventure",
+					"Aliens",
+					"Animals",
+					"Anthology",
+					"Army",
+					"Award Winning",
+					"College",
+					"Comedy",
+					"Coming-of-age",
+					"Cooking",
+					"Crazy Mc",
+					"Crime",
+					"Crossdressing",
+					"Dark Fantasy",
+					"Delinquents",
+					"Demon",
+					"Demons",
+					"Doujin",
+					"Doujinshi",
+					"Drama",
+					"Dungeons",
+					"Ecchi",
+					"Fan Colored",
+					"Fantasy",
+					"Full Color",
+					"Game",
+					"Gender Bender",
+					"Genderswap",
+					"Genius Mc",
+					"Ghosts",
+					"Gore",
+					"Gyaru",
+					"Harem",
+					"Hentai",
+					"Historical",
+					"Horror",
+					"Incest",
+					"Isekai",
+					"Josei",
+					"Loli",
+					"Lolicon",
+					"Long Strip",
+					"Mafia",
+					"Magic",
+					"Magical Girls",
+					"Manga",
+					"Manga Adaptation",
+					"Manhwa",
+					"Martial Arts",
+					"Mature",
+					"Mecha",
+					"Medical",
+					"Military",
+					"Monster Girls",
+					"Monsters",
+					"Murim",
+					"Music",
+					"Mystery",
+					"Necromancer",
+					"Ninja",
+					"Ntr",
+					"Office Workers",
+					"Official Colored",
+					"One Shot",
+					"Oneshot",
+					"Overpowered",
+					"Philosophical",
+					"Police",
+					"Post-apocalyptic",
+					"Psychological",
+					"Rebirth",
+					"Regression",
+					"Reincarnation",
+					"Revenge",
+					"Reverse Harem",
+					"Romance",
+					"Samurai",
+					"School Life",
+					"Sci-fi",
+					"Science Fiction",
+					"Seinen",
+					"Sexual Violence",
+					"Shota",
+					"Shotacon",
+					"Shoujo",
+					"Shoujo Ai",
+					"Shounen",
+					"Shounen Ai",
+					"Slice Of Life",
+					"Smut",
+					"Sports",
+					"Superhero",
+					"Supernatural",
+					"Survival",
+					"System",
+					"Thriller",
+					"Time Travel",
+					"Tower",
+					"Traditional Games",
+					"Tragedy",
+					"User Created",
+					"Vampires",
+					"Video Games",
+					"Villain",
+					"Villainess",
+					"Virtual Reality",
+					"Web Comic",
+					"Webtoon",
+					"Wuxia",
+					"Yaoi",
+					"Yuri",
+					"Zombies"
+				],
+				"default": [],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "editable-list",
+				"key": "excludedTags",
+				"title": "Excluded Tags",
+				"placeholder": "Tag name",
+				"lineLimit": 1,
+				"default": [],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Chapters",
+		"footer": "One per Uploader keeps one copy of each chapter from each uploader; One per Chapter keeps one upload per chapter, trying Preferred Uploaders from top to bottom first. Blocked uploaders are removed first; names aren't case-sensitive.",
+		"items": [
+			{
+				"type": "select",
+				"key": "deduplicateChapters",
+				"title": "Deduplicate Chapters",
+				"values": [
+					"off",
+					"uploader",
+					"chapter"
+				],
+				"titles": [
+					"All Uploads",
+					"One per Uploader",
+					"One per Chapter"
+				],
+				"default": "off",
+				"refreshes": [
+					"content"
+				]
+			},
+			{
+				"type": "editable-list",
+				"key": "preferredUploaders",
+				"title": "Preferred Uploaders",
+				"placeholder": "Uploader name",
+				"lineLimit": 1,
+				"default": [],
+				"refreshes": [
+					"content"
+				]
+			},
+			{
+				"type": "editable-list",
+				"key": "blockedUploaders",
+				"title": "Blocked Uploaders",
+				"placeholder": "Uploader name",
+				"lineLimit": 1,
+				"default": [],
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	}
+]
