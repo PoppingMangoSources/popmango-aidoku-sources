@@ -1,0 +1,153 @@
+use crate::{
+	Swarm,
+	api::{API_URL, Content, parse, request},
+	helpers::app_language,
+	models::{self, Listing, Novel, Title, Update},
+	settings,
+};
+use aidoku::{
+	AidokuError, Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
+	Manga, MangaWithChapter, Result,
+	alloc::{String, Vec, format},
+	helpers::uri::QueryParameters,
+	imports::{
+		net::{Request, Response},
+		std::send_partial_result,
+	},
+	prelude::*,
+};
+
+#[derive(Clone, Copy)]
+pub enum Feed {
+	Popular,
+	Hot,
+	New,
+	NewComics,
+	Novels,
+}
+
+pub const SECTIONS: [(&str, Feed); 5] = [
+	("Most Recent Popular", Feed::Popular),
+	("Hot Updates", Feed::Hot),
+	("New Updates", Feed::New),
+	("Most Followed New Comics", Feed::NewComics),
+	("Novels", Feed::Novels),
+];
+
+fn feed_url(feed: Feed, content: &Content) -> String {
+	match feed {
+		Feed::Popular => format!("{API_URL}/analytics/popular?window=7d&limit=50&offset=0"),
+		Feed::NewComics => format!("{API_URL}/analytics/new-comics?window=7d&limit=50&offset=0"),
+		Feed::Novels => format!("{API_URL}/novel"),
+		Feed::Hot | Feed::New => {
+			let filter = if let Feed::Hot = feed { "hot" } else { "new" };
+			let mut query = QueryParameters::new();
+			query.push_encoded("limit", Some("50"));
+			query.push_encoded("filter", Some(filter));
+			query.push_encoded("page", Some("1"));
+			content.rating_query(&mut query, true);
+			format!("{API_URL}/latest?{query}")
+		}
+	}
+}
+
+// The update feeds list one row per chapter, in the site's order.
+fn updates(updates: Vec<Update>, content: &Content) -> Vec<Update> {
+	let blocked = settings::blocked_uploaders();
+	let mut kept: Vec<Update> = Vec::new();
+	for update in updates {
+		if content
+			.languages
+			.iter()
+			.any(|code| code == app_language(&update.lang))
+			&& !blocked.contains(&update.uploader().to_lowercase())
+			&& !kept.iter().any(|other| other.url == update.url)
+		{
+			kept.push(update);
+		}
+	}
+	kept
+}
+
+pub fn fill(feed: Feed, response: Response, content: &Content) -> Result<HomeComponentValue> {
+	let row = |entries: Vec<Manga>| HomeComponentValue::Scroller {
+		entries: entries.into_iter().map(Link::from).collect(),
+		listing: None,
+	};
+	Ok(match feed {
+		Feed::Popular | Feed::NewComics => row(parse::<Listing<Title>>(response)?
+			.data
+			.into_iter()
+			.filter(|title| content.allows(title))
+			.filter_map(|title| Manga::try_from(title).ok())
+			.collect()),
+		Feed::Hot => row(updates(parse::<Listing<Update>>(response)?.data, content)
+			.into_iter()
+			.filter_map(Update::into_manga)
+			.collect()),
+		Feed::New => HomeComponentValue::MangaChapterList {
+			page_size: Some(5),
+			entries: updates(parse::<Listing<Update>>(response)?.data, content)
+				.into_iter()
+				.filter_map(Update::into_chapter)
+				.map(|(manga, chapter)| MangaWithChapter { manga, chapter })
+				.collect(),
+			listing: None,
+		},
+		Feed::Novels => row(parse::<models::Response<Vec<Novel>>>(response)?
+			.data
+			.into_iter()
+			.map(Novel::into_manga)
+			.collect()),
+	})
+}
+
+impl Home for Swarm {
+	fn get_home(&self) -> Result<HomeLayout> {
+		send_partial_result(&HomePartialResult::Layout(HomeLayout {
+			components: SECTIONS
+				.iter()
+				.map(|(title, feed)| HomeComponent {
+					title: Some(String::from(*title)),
+					subtitle: None,
+					value: match feed {
+						Feed::New => HomeComponentValue::empty_manga_chapter_list(),
+						_ => HomeComponentValue::empty_scroller(),
+					},
+				})
+				.collect(),
+		}));
+
+		let content = Content::new();
+		let requests = SECTIONS
+			.iter()
+			.map(|(_, feed)| request(&feed_url(*feed, &content)))
+			.collect::<Result<Vec<_>>>()?;
+		// The final layout removes failed-section placeholders.
+		let mut failure = None;
+		let components: Vec<_> = SECTIONS
+			.iter()
+			.zip(Request::send_all(requests))
+			.filter_map(|((title, feed), response)| {
+				match response
+					.map_err(AidokuError::from)
+					.and_then(|response| fill(*feed, response, &content))
+				{
+					Ok(value) => Some(HomeComponent {
+						title: Some(String::from(*title)),
+						subtitle: None,
+						value,
+					}),
+					Err(error) => {
+						failure = Some(error);
+						None
+					}
+				}
+			})
+			.collect();
+		if components.is_empty() {
+			return Err(failure.unwrap_or_else(|| error!("No home sections")));
+		}
+		Ok(HomeLayout { components })
+	}
+}

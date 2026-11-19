@@ -1,0 +1,88 @@
+use crate::api::{API_URL, BASE_URL};
+use aes::Aes256;
+use aidoku::{
+	alloc::{String, Vec, format},
+	helpers::uri::encode_uri_component,
+	imports::std::current_date,
+};
+use cbc::cipher::{BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
+use sha2::{Digest, Sha256};
+
+// The app's code for each of the site's regional and legacy chapter codes.
+const LANGUAGE_ALIASES: [(&str, &str); 4] = [
+	("es-la", "es-419"),
+	("kr", "ko"),
+	("pt-br", "pt-BR"),
+	("zh-hk", "zh"),
+];
+
+// The constant the site's reader hashes into its page-request key.
+const PAYLOAD_SECRET: &str = "e3bca6f9a7e64e369ddc450bb7ff295b3d78e7d4fcb148c10d10ae9385476a5f";
+
+pub enum Link {
+	Comic(String),
+	// Slug, chapter number and the upload's rank letter.
+	Chapter(String, String, String),
+	Novel(String),
+	NovelChapter(String, String),
+}
+
+pub fn app_language(code: &str) -> &str {
+	LANGUAGE_ALIASES
+		.iter()
+		.find(|(site, _)| *site == code)
+		.map(|(_, app)| *app)
+		.unwrap_or(code)
+}
+
+// The site serves its own covers under /covers/ and proxies every other host.
+pub fn cover_url(cover: &str) -> Option<String> {
+	if cover.is_empty() {
+		None
+	} else if let Some(path) = cover.strip_prefix("https://cum.swarm.ws/") {
+		Some(format!("{BASE_URL}/covers/{path}"))
+	} else if cover.starts_with(BASE_URL) {
+		Some(cover.into())
+	} else {
+		Some(format!(
+			"{API_URL}/image-proxy?url={}",
+			encode_uri_component(cover)
+		))
+	}
+}
+
+// A chapter url picks its upload with a bare rank query ("?b"), "a" when absent.
+pub fn parse_link(url: &str) -> Option<Link> {
+	let path = url.trim().strip_prefix(BASE_URL)?;
+	let (path, rank) = path.split_once('?').unwrap_or((path, "a"));
+	let mut parts = path.trim_matches('/').split('/');
+	let kind = parts.next()?;
+	let slug = String::from(parts.next().filter(|slug| !slug.is_empty())?);
+	match (kind, parts.next(), parts.next()) {
+		("comic", None, _) => Some(Link::Comic(slug)),
+		("comic", Some("chapter"), Some(number)) => {
+			Some(Link::Chapter(slug, number.into(), rank.into()))
+		}
+		("novel", None, _) => Some(Link::Novel(slug)),
+		("novel", Some("chapter"), Some(number)) => Some(Link::NovelChapter(slug, number.into())),
+		_ => None,
+	}
+}
+
+// The site's reader sends "ivHex:ciphertextHex", AES-256-CBC under the secret's SHA-256.
+pub fn encrypt_payload(json: &str) -> String {
+	let key = Sha256::digest(PAYLOAD_SECRET);
+	// The reader draws a random IV; any one decrypts.
+	let seed = Sha256::digest(format!("{json}{}", current_date()));
+	let iv = &seed[..16];
+	let encrypted = cbc::Encryptor::<Aes256>::new(&key, iv.into())
+		.encrypt_padded_vec_mut::<Pkcs7>(json.as_bytes());
+	let hex = |bytes: &[u8]| {
+		bytes
+			.iter()
+			.map(|byte| format!("{byte:02x}"))
+			.collect::<Vec<_>>()
+			.concat()
+	};
+	format!("{}:{}", hex(iv), hex(&encrypted))
+}
