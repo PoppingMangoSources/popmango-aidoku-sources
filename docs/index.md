@@ -19,6 +19,8 @@ traps found in them. It grows as work touches new areas.
 - Working on VyManga: [[vymanga]]
 - Working on VineTheme, Drake, Elf, Valir, Diva or Kayn: [[vinetheme-template]] (archived)
 - Working on yaoi.me: [[yaoime]]
+- Working on Toonz: [[toonz]]
+- Working on Swarm: [[swarm]]
 
 ---
 
@@ -43,6 +45,8 @@ _(none yet)_
 
 - [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing (archived)
 - [[yaoime]] -- yaoi.me's settings cookie, browse parameters, chapter variants and the signed reader
+- [[toonz]] -- Toonz's content cookie, streamed pages, home rows and the challenged series pages
+- [[swarm]] -- Swarm's API, local exclusions, encrypted page request, languages and uploads
 
 ## decisions
 
