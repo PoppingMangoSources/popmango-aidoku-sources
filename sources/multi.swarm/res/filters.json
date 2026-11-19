@@ -10,19 +10,16 @@
 		]
 	},
 	{
-		"type": "select",
+		"type": "multi-select",
 		"id": "rating",
 		"title": "Content Rating",
+		"canExclude": false,
 		"options": [
-			"Use Source Setting",
 			"Safe",
-			"All",
 			"NSFW"
 		],
 		"ids": [
-			"",
 			"safe",
-			"all",
 			"nsfw"
 		]
 	},

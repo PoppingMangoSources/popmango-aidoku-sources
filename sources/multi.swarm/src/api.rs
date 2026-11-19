@@ -18,9 +18,11 @@ pub const API_URL: &str = "https://swarm.ws/api";
 const PAGE_SIZE: usize = 50;
 
 // Sorts in `filters.json` order.
-pub const SORTS: [&str; 3] = ["last_updated", "title", "created"];
+// Browse answers `created` with an error; `newest` is the same sort.
+pub const SORTS: [&str; 3] = ["last_updated", "title", "newest"];
 
 // What the reader's settings let through.
+#[derive(Default)]
 pub struct Content {
 	pub rating: String,
 	pub types: Option<Vec<String>>,
@@ -62,6 +64,19 @@ impl Content {
 		}
 	}
 
+	// A cleared language or type selection shows nothing.
+	pub fn cleared(&self) -> bool {
+		self.languages.is_empty() || self.types.as_ref().is_some_and(|types| types.is_empty())
+	}
+
+	pub fn allows_novels(&self) -> bool {
+		self.languages.iter().any(|language| language == "en")
+			&& self
+				.types
+				.as_ref()
+				.is_none_or(|types| types.iter().any(|kind| kind == "Novel"))
+	}
+
 	pub fn allows_rating(&self, rating: ContentRating) -> bool {
 		match self.rating.as_str() {
 			"safe" => rating == ContentRating::Safe,
@@ -96,6 +111,7 @@ impl Content {
 	}
 }
 
+#[derive(Default)]
 pub struct SearchParams {
 	pub query: Option<String>,
 	pub sort: &'static str,
@@ -111,21 +127,13 @@ impl SearchParams {
 		Self {
 			query,
 			sort: SORTS[0],
-			genres: Vec::new(),
-			tags: Vec::new(),
-			chapters: (None, None),
-			years: (None, None),
 			content: Content::new(),
+			..Default::default()
 		}
 	}
 
 	pub fn page(&self, page: i32) -> Result<MangaPageResult> {
-		if self
-			.content
-			.types
-			.as_ref()
-			.is_some_and(|types| types.is_empty())
-		{
+		if self.content.cleared() {
 			return Ok(MangaPageResult::default());
 		}
 		let offset = (page as usize - 1) * PAGE_SIZE;
@@ -189,9 +197,14 @@ impl SearchParams {
 
 // The comic page carries the series and every upload as `initialData`.
 pub fn comic_page(slug: &str) -> Result<ComicPage> {
-	let body = Request::get(format!("{BASE_URL}/comic/{slug}?_rsc"))?
+	let response = Request::get(format!("{BASE_URL}/comic/{slug}?_rsc"))?
 		.header("RSC", "1")
-		.string()?;
+		.send()?;
+	let status = response.status_code();
+	if !(200..300).contains(&status) {
+		bail!("Swarm returned status {status}");
+	}
+	let body = response.get_string()?;
 	let marker = r#""initialData":"#;
 	let start = body
 		.find(marker)

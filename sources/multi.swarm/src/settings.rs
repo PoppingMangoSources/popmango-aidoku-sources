@@ -3,8 +3,6 @@ use aidoku::{
 	imports::defaults::defaults_get,
 };
 
-const TYPE_COUNT: usize = 16;
-
 pub fn languages() -> Vec<String> {
 	defaults_get::<Vec<String>>("languages").unwrap_or_else(|| vec!["en".into()])
 }
@@ -13,9 +11,9 @@ pub fn content_rating() -> String {
 	defaults_get::<String>("contentRating").unwrap_or_else(|| "safe".into())
 }
 
-// None when every type is selected.
+// None when all 16 types in `settings.json` are selected.
 pub fn types() -> Option<Vec<String>> {
-	defaults_get::<Vec<String>>("types").filter(|types| types.len() < TYPE_COUNT)
+	defaults_get::<Vec<String>>("types").filter(|types| types.len() < 16)
 }
 
 pub fn excluded_genres() -> Vec<String> {

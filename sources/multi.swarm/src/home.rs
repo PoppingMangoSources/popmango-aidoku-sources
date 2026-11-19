@@ -69,10 +69,17 @@ fn updates(updates: Vec<Update>, content: &Content) -> Vec<Update> {
 	kept
 }
 
-pub fn fill(feed: Feed, response: Response, content: &Content) -> Result<HomeComponentValue> {
-	let row = |entries: Vec<Manga>| HomeComponentValue::Scroller {
-		entries: entries.into_iter().map(Link::from).collect(),
-		listing: None,
+// An empty row is left out rather than shown as a title over nothing.
+pub fn fill(
+	feed: Feed,
+	response: Response,
+	content: &Content,
+) -> Result<Option<HomeComponentValue>> {
+	let row = |entries: Vec<Manga>| {
+		(!entries.is_empty()).then(|| HomeComponentValue::Scroller {
+			entries: entries.into_iter().map(Link::from).collect(),
+			listing: None,
+		})
 	};
 	Ok(match feed {
 		Feed::Popular | Feed::NewComics => row(parse::<Listing<Title>>(response)?
@@ -85,25 +92,36 @@ pub fn fill(feed: Feed, response: Response, content: &Content) -> Result<HomeCom
 			.into_iter()
 			.filter_map(Update::into_manga)
 			.collect()),
-		Feed::New => HomeComponentValue::MangaChapterList {
-			page_size: Some(5),
-			entries: updates(parse::<Listing<Update>>(response)?.data, content)
+		Feed::New => {
+			let entries: Vec<_> = updates(parse::<Listing<Update>>(response)?.data, content)
 				.into_iter()
 				.filter_map(Update::into_chapter)
 				.map(|(manga, chapter)| MangaWithChapter { manga, chapter })
-				.collect(),
-			listing: None,
-		},
-		Feed::Novels => row(parse::<models::Response<Vec<Novel>>>(response)?
-			.data
-			.into_iter()
-			.map(Novel::into_manga)
-			.collect()),
+				.collect();
+			(!entries.is_empty()).then_some(HomeComponentValue::MangaChapterList {
+				page_size: Some(5),
+				entries,
+				listing: None,
+			})
+		}
+		// Novels are English and typed "Novel", with no rating or genres to check.
+		Feed::Novels if content.allows_novels() => {
+			row(parse::<models::Response<Vec<Novel>>>(response)?
+				.data
+				.into_iter()
+				.filter_map(Novel::into_manga)
+				.collect())
+		}
+		Feed::Novels => None,
 	})
 }
 
 impl Home for Swarm {
 	fn get_home(&self) -> Result<HomeLayout> {
+		let content = Content::new();
+		if content.cleared() {
+			return Ok(HomeLayout::default());
+		}
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: SECTIONS
 				.iter()
@@ -118,7 +136,6 @@ impl Home for Swarm {
 				.collect(),
 		}));
 
-		let content = Content::new();
 		let requests = SECTIONS
 			.iter()
 			.map(|(_, feed)| request(&feed_url(*feed, &content)))
@@ -136,7 +153,7 @@ impl Home for Swarm {
 					Ok(value) => Some(HomeComponent {
 						title: Some(String::from(*title)),
 						subtitle: None,
-						value,
+						value: value?,
 					}),
 					Err(error) => {
 						failure = Some(error);

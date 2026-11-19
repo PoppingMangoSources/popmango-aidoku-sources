@@ -29,7 +29,7 @@ pub struct Listing<T> {
 pub struct Title {
 	title: Option<String>,
 	#[serde(default)]
-	pub url: String,
+	url: String,
 	cover: Option<String>,
 	#[serde(default)]
 	covers: Vec<String>,
@@ -393,16 +393,16 @@ pub fn chapter_list(
 }
 
 impl Novel {
-	pub fn into_manga(self) -> Manga {
-		Manga {
+	pub fn into_manga(self) -> Option<Manga> {
+		Some(Manga {
 			key: format!("{NOVEL_PREFIX}{}", self.slug),
-			title: self.title,
 			cover: self.covers.first().and_then(|cover| cover_url(cover)),
+			title: Some(self.title).filter(|title| !title.trim().is_empty())?,
 			..Default::default()
-		}
+		})
 	}
 
-	pub fn into_details(mut self) -> Manga {
+	pub fn into_details(mut self) -> Result<Manga> {
 		let url = format!("{BASE_URL}/novel/{}", self.slug);
 		let chapters = core::mem::take(&mut self.chapters)
 			.into_iter()
@@ -419,7 +419,7 @@ impl Novel {
 				}
 			})
 			.collect();
-		Manga {
+		Ok(Manga {
 			url: Some(url),
 			description: self
 				.description
@@ -428,9 +428,11 @@ impl Novel {
 				.map(|text| text.escape_markdown()),
 			authors: self.author.take().map(|author| vec![author]),
 			status: status(self.status.as_deref()),
-			viewer: Viewer::Vertical,
+			viewer: Viewer::Unknown,
 			chapters: Some(chapters),
-			..self.into_manga()
-		}
+			..self
+				.into_manga()
+				.ok_or_else(|| error!("Novel has no title"))?
+		})
 	}
 }

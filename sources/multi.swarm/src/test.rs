@@ -31,11 +31,11 @@ const TYPES: [&str; 16] = [
 ];
 
 const UPLOADS: &str = r#"[
-	{"id":"a1","lang":"en","number":"2","title":"Chapter 2","rank":"b","source_name":"official2","published_date":"2026-01-02"},
-	{"id":"a2","lang":"en","number":"2","title":"Chapter 2","rank":"a","source_name":"official","published_date":"2026-01-02"},
-	{"id":"a3","lang":"en","number":"2","title":"Chapter 2","rank":"c","source_name":"comick","published_date":"0001-01-01"},
-	{"id":"a4","lang":"fr","number":"2","title":"Chapter 2","rank":"a","source_name":"lelscanfr"},
-	{"id":"a5","lang":"en","number":"1","title":"The Start","rank":"a","source_name":"comick"}
+	{"id":"a1","lang":"en","number":"2","title":"Chapter 2","rank":"b","source_name":"groupa2","published_date":"2026-01-02"},
+	{"id":"a2","lang":"en","number":"2","title":"Chapter 2","rank":"a","source_name":"groupa","published_date":"2026-01-02"},
+	{"id":"a3","lang":"en","number":"2","title":"Chapter 2","rank":"c","source_name":"groupb","published_date":"0001-01-01"},
+	{"id":"a4","lang":"fr","number":"2","title":"Chapter 2","rank":"a","source_name":"groupc"},
+	{"id":"a5","lang":"en","number":"1","title":"The Start","rank":"a","source_name":"groupb"}
 ]"#;
 
 fn strings(values: &[&str]) -> DefaultValue {
@@ -119,8 +119,8 @@ fn review_chapter_list_modes() {
 	assert_eq!(uploads("uploader", &[], &[], &["en"]), ["a2", "a3", "a5"]);
 	assert_eq!(uploads("chapter", &[], &[], &["en"]), ["a2", "a5"]);
 	// Settings hand over names lowercased.
-	assert_eq!(uploads("chapter", &["comick"], &[], &["en"]), ["a3", "a5"]);
-	assert_eq!(uploads("off", &[], &["official"], &["en"]), ["a3", "a5"]);
+	assert_eq!(uploads("chapter", &["groupb"], &[], &["en"]), ["a3", "a5"]);
+	assert_eq!(uploads("off", &[], &["groupa"], &["en"]), ["a3", "a5"]);
 	assert_eq!(
 		uploads("chapter", &[], &[], &["en", "fr"]),
 		["a2", "a4", "a5"]
@@ -139,7 +139,7 @@ fn review_chapter_list_modes() {
 	assert_eq!(chapters[0].title, None);
 	assert_eq!(chapters[3].title.as_deref(), Some("The Start"));
 	assert_eq!(chapters[2].date_uploaded, None);
-	assert_eq!(chapters[0].scanlators, Some(vec!["official2".into()]));
+	assert_eq!(chapters[0].scanlators, Some(vec!["groupa2".into()]));
 	assert_eq!(chapters[0].language.as_deref(), Some("en"));
 }
 
@@ -300,19 +300,24 @@ fn ratings_follow_the_setting_and_filter() {
 			.iter()
 			.all(|manga| manga.content_rating == ContentRating::Safe)
 	);
-	let nsfw = search(
-		None,
-		vec![FilterValue::Select {
-			id: "rating".into(),
-			value: "nsfw".into(),
-		}],
-	);
+	let nsfw = search(None, vec![multi("rating", &["nsfw"])]);
 	assert!(!nsfw.entries.is_empty());
 	assert!(
 		nsfw.entries
 			.iter()
 			.all(|manga| manga.content_rating == ContentRating::NSFW)
 	);
+	// Both ratings are the site's "All".
+	let all = search(None, vec![multi("rating", &["safe", "nsfw"])]);
+	assert!(
+		all.entries
+			.iter()
+			.any(|manga| manga.content_rating != ContentRating::Safe)
+	);
+	defaults_set("languages", strings(&[]));
+	assert!(search(None, Vec::new()).entries.is_empty());
+	assert!(Swarm::new().get_home().unwrap().components.is_empty());
+	reset();
 }
 
 #[aidoku_test]

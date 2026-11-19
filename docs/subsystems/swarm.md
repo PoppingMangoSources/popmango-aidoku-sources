@@ -25,7 +25,7 @@ suite runs. Probed on 2026-11-19.
 ## Requests
 
 - Browse `/api/manga/filtered`, text search `/api/comic/search` (`title=`), both with `limit`,
-  `offset`, `order` (`last_updated`, `title`, `created`), `genres`, `types`, `tags`, `nsfw`,
+  `offset`, `order` (`last_updated`, `title`, `newest`), `genres`, `types`, `tags`, `nsfw`,
   `suggestive`, `yearStartMin`/`yearStartMax` and `minChapters` (`api.rs`).
 - Series and chapters: `/comic/{slug}?_rsc` with `RSC: 1`, the `initialData` object
   (`api.rs` `comic_page`). Chapter keys are upload ids.
@@ -46,8 +46,8 @@ suite runs. Probed on 2026-11-19.
 > honours `nsfw`, `nsfwOnly` and `suggestive` as the site's home sends them. `suggestive`
 > changes nothing on browse.
 
-> ⚠️ `order=created` answered 500 on `/api/manga/filtered` without a query while working on
-> search; the site lists the sort, so it stays.
+> ⚠️ `order=created` answers an error on `/api/manga/filtered` without a query; `newest` is the
+> same sort and works on browse and search alike (`api.rs` `SORTS`).
 
 > ⚠️ Some records hold `genres`, `tags` and `publishers` as Python list reprs
 > (`"['Action', \"Boys' Love\"]"`); `models.rs` `list` reads both shapes. The popular feed sends

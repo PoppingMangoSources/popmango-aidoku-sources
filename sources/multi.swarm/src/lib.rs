@@ -12,7 +12,7 @@ use aidoku::{
 	MangaPageResult, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, format, vec},
 	helpers::string::PlainText,
-	imports::{net::Request, std::send_partial_result},
+	imports::net::Request,
 	prelude::*,
 };
 use api::{API_URL, BASE_URL, SORTS, SearchParams, comic_page, get, parse, site_headers};
@@ -39,7 +39,7 @@ impl Source for Swarm {
 			Some(Link::Novel(slug) | Link::NovelChapter(slug, _)) => {
 				get::<Response<Novel>>(&format!("{API_URL}/novel/{slug}"))
 					.ok()
-					.map(|novel| novel.data.into_manga())
+					.and_then(|novel| novel.data.into_manga())
 			}
 			None => None,
 		};
@@ -58,22 +58,25 @@ impl Source for Swarm {
 						search.sort = sort;
 					}
 				}
-				FilterValue::Select { id, value } if !value.is_empty() => match id.as_str() {
-					"rating" => search.content.rating = value,
-					// A tapped tag sends its name, which is either a genre or a tag.
-					"genre" => {
-						let genres = get::<Genres>(&format!("{API_URL}/manga/genres"))?.genres;
-						if genres.contains(&value) {
-							search.genres.push(value);
-						} else {
-							search.tags.push(value);
-						}
+				// A tapped tag sends its name, which is either a genre or a tag.
+				FilterValue::Select { id, value } if id == "genre" && !value.is_empty() => {
+					let genres = get::<Genres>(&format!("{API_URL}/manga/genres"))?.genres;
+					if genres.contains(&value) {
+						search.genres.push(value);
+					} else {
+						search.tags.push(value);
 					}
-					_ => {}
-				},
+				}
 				FilterValue::MultiSelect { id, included, .. } => match id.as_str() {
 					"genre" => search.genres.extend(included),
 					"type" => search.content.types = Some(included),
+					// Both ratings are the site's "All".
+					"rating" => {
+						search.content.rating = match included.as_slice() {
+							[only] => only.clone(),
+							_ => "all".into(),
+						}
+					}
 					_ => {}
 				},
 				FilterValue::Text { id, value } if id == "tags" => search.tags.extend(
@@ -114,7 +117,7 @@ impl Source for Swarm {
 	) -> Result<Manga> {
 		if let Some(slug) = manga.key.strip_prefix(NOVEL_PREFIX) {
 			let novel = get::<Response<Novel>>(&format!("{API_URL}/novel/{slug}"))?.data;
-			let details = novel.into_details();
+			let details = novel.into_details()?;
 			if needs_details {
 				manga.copy_from(details);
 			} else {
@@ -126,9 +129,6 @@ impl Source for Swarm {
 		let page = comic_page(&manga.key)?;
 		if needs_details {
 			manga.copy_from(page.manga.into_details()?);
-			if needs_chapters {
-				send_partial_result(&manga);
-			}
 		}
 		if needs_chapters {
 			manga.chapters = Some(chapter_list(
