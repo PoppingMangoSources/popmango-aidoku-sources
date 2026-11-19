@@ -70,7 +70,8 @@ impl Source for MKissa {
 			});
 		}
 
-		let mut search = Map::new();
+		// The app leaves out the default sort, and the API then sorts by latest update
+		let mut search = Map::from_iter([("sortBy".into(), SORTS[0].into())]);
 		let mut country = String::from("ALL");
 		let mut genres: Vec<String> = Vec::new();
 		let mut excluded_genres: Vec<String> = Vec::new();

@@ -620,6 +620,10 @@ fn every_sort_returns_its_own_order() {
 	assert!(pages.iter().all(|page| !page.is_empty()));
 	// Name ascending and descending must not share their first pages
 	assert!(pages[3].iter().all(|key| !pages[4].contains(key)));
+	// The app sends no sort for the default, which must still be Top, not Update
+	let unsorted = keys(&search(Vec::new()));
+	assert_eq!(unsorted, pages[0]);
+	assert_ne!(unsorted, pages[1]);
 }
 
 #[aidoku_test]
