@@ -1,7 +1,7 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Manga,
-	MangaPageResult, Page, PageContext, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Manga, MangaPageResult, Page, Result,
+	Source,
 	alloc::{String, Vec, vec},
 	imports::{
 		js::{WebView, WebViewUserScript},
@@ -132,7 +132,7 @@ impl Source for WebNex {
 		})?;
 		view.load(Request::get(url)?)?;
 		for _ in 0..20 {
-			if let Ok(json) = view.eval("window.webnexPageList || ''")
+			if let Ok(json) = view.eval(include_str!("reader_result.js"))
 				&& !json.is_empty()
 			{
 				let data: ReaderPages = serde_json::from_str(&json)
@@ -141,7 +141,7 @@ impl Source for WebNex {
 			}
 			sleep(1);
 		}
-		bail!("WebNex did not load the chapter pages")
+		bail!("WebNex did not load the chapter pages. Open the chapter on webnex.cc.")
 	}
 }
 
@@ -170,13 +170,7 @@ impl DeepLinkHandler for WebNex {
 	}
 }
 
-impl ImageRequestProvider for WebNex {
-	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
-		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
-	}
-}
-
-register_source!(WebNex, Home, ImageRequestProvider, DeepLinkHandler);
+register_source!(WebNex, Home, DeepLinkHandler);
 
 #[cfg(test)]
 mod test;

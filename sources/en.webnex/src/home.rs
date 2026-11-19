@@ -1,41 +1,20 @@
 use crate::{
 	BASE_URL, WebNex,
-	helpers::{browse, card, get_html, parse_key, parse_relative_date, text},
+	helpers::{browse, card, chunks, expand, get_html, parse_key, parse_relative_date, text},
 	settings::{CONTENT_RATINGS, Catalogue},
 };
 use aidoku::{
 	Chapter, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, MangaWithChapter, Result,
 	alloc::{Vec, string::ToString, vec},
 	imports::{
-		html::{Document, Element},
+		html::{Document, Html},
 		std::current_date,
 	},
 	prelude::*,
 };
 
-// Streamed cards live in the matching S: chunk, in placeholder order.
-fn cards(doc: &Document, row: &Element) -> Vec<Element> {
-	let mut cards = Vec::new();
-	for el in row
-		.select("li.card-item, .side-list > li, template[id^='P:']")
-		.into_iter()
-		.flatten()
-	{
-		if let Some(id) = el
-			.attr("id")
-			.and_then(|s| s.strip_prefix("P:").map(|s| s.to_string()))
-		{
-			if let Some(chunk) = doc.select_first(format!("div[id='S:{id}']")) {
-				cards.extend(self::cards(doc, &chunk));
-			}
-		} else {
-			cards.push(el);
-		}
-	}
-	cards
-}
-
 pub fn layout(doc: &Document, now: i64) -> HomeLayout {
+	let mut chunks = chunks(doc);
 	let mut components = Vec::new();
 	for (id, selector) in [
 		("popular", "section[aria-labelledby=popular-heading]"),
@@ -49,12 +28,21 @@ pub fn layout(doc: &Document, now: i64) -> HomeLayout {
 		let Some(section) = doc.select_first(selector) else {
 			continue;
 		};
-		let elements = cards(doc, &section);
+		let Some(row) = expand(&section, &mut chunks)
+			.and_then(|html| Html::parse_with_url(html, BASE_URL).ok())
+		else {
+			continue;
+		};
+		let elements: Vec<_> = row
+			.select("li.card-item, .side-list > li")
+			.into_iter()
+			.flatten()
+			.collect();
 		let title = match id {
 			"popular" => Some("Popular This Week".into()),
 			"finished" => Some("Finished".into()),
 			"added" => Some("Just Added".into()),
-			_ => text(&section, "h2"),
+			_ => row.select_first("h2").and_then(|el| el.text()),
 		};
 		let value = match id {
 			"popular" => {
@@ -62,13 +50,6 @@ pub fn layout(doc: &Document, now: i64) -> HomeLayout {
 					.iter()
 					.filter_map(|el| {
 						let mut manga = card(el)?;
-						let readers = text(el, ".card-meta span:nth-child(2)");
-						let rank = text(el, ".card-rank");
-						manga.description = match (rank, readers) {
-							(Some(rank), Some(readers)) => Some(format!("#{rank} · {readers}")),
-							(Some(rank), None) => Some(format!("#{rank}")),
-							(None, readers) => readers,
-						};
 						manga.tags = text(el, ".card-kind, .card-meta span:first-child")
 							.filter(|s| matches!(s.as_str(), "Manga" | "Manhwa" | "Manhua"))
 							.map(|s| vec![s]);

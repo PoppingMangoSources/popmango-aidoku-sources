@@ -4,7 +4,7 @@ use crate::{
 };
 use aidoku::{
 	FilterValue, Manga, MangaPageResult, Result,
-	alloc::{String, Vec, string::ToString, vec},
+	alloc::{String, Vec, collections::BTreeMap, string::ToString, vec},
 	helpers::uri::QueryParameters,
 	imports::{
 		html::{Document, Element, Html},
@@ -70,6 +70,26 @@ pub fn parse_key<'a>(url: &'a str, prefix: &str) -> Option<&'a str> {
 
 pub fn text(el: &Element, selector: &str) -> Option<String> {
 	el.select_first(selector)?.text().filter(|s| !s.is_empty())
+}
+
+pub fn chunks(doc: &Document) -> BTreeMap<String, Element> {
+	doc.select("div[id^='S:']")
+		.into_iter()
+		.flatten()
+		.filter_map(|el| Some((el.attr("id")?.strip_prefix("S:")?.into(), el)))
+		.collect()
+}
+
+// React streams both whole cards and fragments inside a card.
+pub fn expand(row: &Element, chunks: &mut BTreeMap<String, Element>) -> Option<String> {
+	let mut html = row.html()?;
+	for slot in row.select("template[id^='P:']").into_iter().flatten() {
+		let id = slot.attr("id")?;
+		if let Some(chunk) = chunks.remove(id.strip_prefix("P:")?) {
+			html = html.replacen(&slot.outer_html()?, &expand(&chunk, chunks)?, 1);
+		}
+	}
+	Some(html)
 }
 
 pub fn card(el: &Element) -> Option<Manga> {
@@ -269,9 +289,12 @@ pub fn browse(
 	if let Some(error) = doc.select_first(".notice-error").and_then(|e| e.text()) {
 		bail!("{error}");
 	}
-	if doc.select_first("section.browse").is_none() {
-		bail!("WebNex did not return the catalogue");
-	}
+	let section = doc
+		.select_first("section.browse")
+		.ok_or_else(|| error!("WebNex did not return the catalogue"))?;
+	let html = expand(&section, &mut chunks(&doc))
+		.ok_or_else(|| error!("WebNex returned an unreadable catalogue"))?;
+	let doc = Html::parse_with_url(html, BASE_URL)?;
 	Ok(MangaPageResult {
 		entries: doc
 			.select("li.card-item")

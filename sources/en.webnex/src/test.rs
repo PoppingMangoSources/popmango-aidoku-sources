@@ -7,7 +7,7 @@ use aidoku_test::aidoku_test;
 
 #[aidoku_test]
 fn review_discover_uses_the_site_order_and_real_chapters() {
-	let c = "<li class='card-item'><a class='card-link' href='/manga/story'><img class='cover-img' src='/cover/story'><h3 class='card-title'>A story</h3></a><p class='card-meta'><span>Manhwa</span></p><ul class='card-chapters'><li><a href='/read/upload'><span class='card-ch-label'>Ch.12.5</span><span class='card-ch-time'>2h ago</span></a></li></ul></li>";
+	let c = "<li class='card-item'><a class='card-link' href='/manga/story'><img class='cover-img' src='/cover/story'><h3 class='card-title'>A story</h3></a><span class='card-rank'>1</span><p class='card-meta'><span>Manhwa</span><span>202 readers</span></p><ul class='card-chapters'><li><a href='/read/upload'><span class='card-ch-label'>Ch.12.5</span><span class='card-ch-time'>2h ago</span></a></li></ul></li>";
 	let side = "<ol class='side-list'><li><a class='side-row' href='/manga/story'><span class='side-title'>A story</span></a></li></ol>";
 	let mut html = format!(
 		"<div id='S:8' hidden>{c}</div><section aria-labelledby='popular-heading'><template id='P:8'></template></section>"
@@ -42,7 +42,7 @@ fn review_discover_uses_the_site_order_and_real_chapters() {
 		]
 	);
 	assert!(
-		matches!(&rows[0].value,HomeComponentValue::BigScroller{entries,..} if entries[0].key=="story" && entries[0].tags.as_ref().unwrap()[0]=="Manhwa")
+		matches!(&rows[0].value,HomeComponentValue::BigScroller{entries,..} if entries[0].key=="story" && entries[0].description.is_none() && entries[0].tags.as_ref().unwrap()[0]=="Manhwa")
 	);
 	assert!(
 		matches!(&rows[1].value,HomeComponentValue::Scroller{entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
@@ -50,6 +50,23 @@ fn review_discover_uses_the_site_order_and_real_chapters() {
 	assert!(
 		matches!(&rows[3].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(4),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
 	);
+}
+
+#[aidoku_test]
+fn review_finished_reassembles_nested_titles_and_side_rows() {
+	let doc = Html::parse_with_url("<div role='tabpanel' id='x-finished'><ol class='side-list'><li><a class='side-row' href='/manga/first'><template id='P:a'></template></a></li><template id='P:b'></template></ol></div><div id='S:b'><li><a class='side-row' href='/manga/second'><template id='P:c'></template></a></li></div><div id='S:c'><span class='side-title'>Second</span></div><div id='S:a'><span class='side-title'>First</span></div>", BASE_URL).unwrap();
+	let rows = home::layout(&doc, 0).components;
+	let HomeComponentValue::Scroller { entries, .. } = &rows[0].value else {
+		panic!()
+	};
+	let titles: Vec<_> = entries
+		.iter()
+		.filter_map(|entry| match &entry.value {
+			Some(LinkValue::Manga(m)) => Some(m.title.as_str()),
+			_ => None,
+		})
+		.collect();
+	assert_eq!(titles, ["First", "Second"]);
 }
 
 #[aidoku_test]
