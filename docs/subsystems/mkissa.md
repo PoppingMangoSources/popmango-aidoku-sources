@@ -19,6 +19,11 @@ MKissa serves its catalogue from a GraphQL API at `api.mkissa.net/api`. Full POS
 so the persisted-query hashes the site sends are not needed. Queries and the request helper live
 in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `models.rs`.
 
+> ⚠️ Search starts from `sortBy: Top`: the app sends no sort filter at its default, and the API
+> answers a missing `sortBy` in Latest_Update order (probed 2026-11-19). The sorts and their order
+> match the site's manga `sortItems` in bundle `B3DA467b.js`; the name sorts are not alphabetical
+> there either.
+
 > ⚠️ `queryLatestPageStatus` (Trending) answers `total: null`, so a full page is the only sign
 > of another. `sortBy: Random` on browse silently returns Latest; Random is its own
 > `queryRandomRecommendation`. `sortDirection` is an enum and is left out.
