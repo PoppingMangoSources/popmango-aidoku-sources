@@ -40,6 +40,9 @@ pub fn layout(doc: &Document, now: i64) -> HomeLayout {
 			.collect();
 		let title = match id {
 			"popular" => Some("Popular This Week".into()),
+			"taste" => Some("Readers Favourites".into()),
+			"latest" => Some("Latest Updates".into()),
+			"trending" => Some("Recently Popular".into()),
 			"finished" => Some("Finished".into()),
 			"added" => Some("Just Added".into()),
 			_ => row.select_first("h2").and_then(|el| el.text()),
