@@ -19,9 +19,12 @@ pub fn layout(doc: &Document, now: i64) -> HomeLayout {
 	for (id, selector) in [
 		("popular", "section[aria-labelledby=popular-heading]"),
 		("taste", "section[aria-labelledby=taste-heading]"),
-		("new", "section[aria-labelledby=new-heading]"),
 		("latest", "section[aria-labelledby=latest-heading]"),
 		("trending", "section[aria-labelledby=trending-heading]"),
+		("new", "section[aria-labelledby=new-heading]"),
+		("manhwa", "section[aria-labelledby=manhwa-heading]"),
+		("manga", "section[aria-labelledby=manga-heading]"),
+		("manhua", "section[aria-labelledby=manhua-heading]"),
 		("finished", "[role=tabpanel][id$=-finished]"),
 		("added", "[role=tabpanel][id$=-added]"),
 	] {

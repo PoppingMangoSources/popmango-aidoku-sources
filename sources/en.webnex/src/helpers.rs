@@ -10,10 +10,11 @@ use aidoku::{
 		html::{Document, Element, Html},
 		js::WebView,
 		net::{Request, Response},
-		std::{parse_date, sleep},
+		std::{current_date, parse_date_with_options, sleep},
 	},
 	prelude::*,
 };
+use chrono::{DateTime, Datelike};
 use serde::de::DeserializeOwned;
 
 pub fn get_html(url: &str, cookie: Option<&str>) -> Result<Document> {
@@ -138,7 +139,7 @@ pub fn parse_flight_value<T: DeserializeOwned>(doc: &Document, marker: &str) -> 
 pub fn date(el: &Element) -> Option<i64> {
 	let raw = el.attr("datetime")?;
 	let utc = raw.strip_suffix('Z')?.split('.').next()?.replace('T', " ");
-	parse_date(utc, "yyyy-MM-dd HH:mm:ss")
+	parse_date_with_options(utc, "yyyy-MM-dd HH:mm:ss", "en_US_POSIX", "UTC")
 }
 
 pub fn parse_relative_date(label: &str, now: i64) -> Option<i64> {
@@ -167,6 +168,8 @@ pub fn search_params(
 	prefs: &mut Catalogue,
 ) -> QueryParameters {
 	let mut p = QueryParameters::new();
+	let (mut chapters, mut min_chapters) = (None, None);
+	let (mut years, mut released) = ((None, None), (None, None));
 	if query.is_some() {
 		p.push("q", query);
 	}
@@ -196,18 +199,16 @@ pub fn search_params(
 			} => match id.as_str() {
 				"rating" => prefs.ratings = included,
 				"kind" => prefs.types = included,
+				// The site matches genres, formats and themes as tags.
 				"genre" | "format" | "theme" => {
-					let (yes, no) = if id == "genre" {
+					if id == "genre" {
 						prefs.hidden_genres.clear();
-						("genre", "xgenre")
-					} else {
-						("tag", "xtag")
-					};
+					}
 					for v in included {
-						p.push(yes, Some(&v));
+						p.push("tag", Some(&v));
 					}
 					for v in excluded {
-						p.push(no, Some(&v));
+						p.push("xtag", Some(&v));
 					}
 				}
 				"status" | "demographic" | "language" => {
@@ -224,42 +225,28 @@ pub fn search_params(
 				let kind = value.to_ascii_lowercase();
 				if CONTENT_TYPES.contains(&kind.as_str()) {
 					prefs.types = vec![kind];
-					continue;
+				} else {
+					p.push("tag", Some(&value));
 				}
-				// Tag taps only carry the label.
-				let is_genre =
-					serde_json::from_str::<serde_json::Value>(include_str!("../res/filters.json"))
-						.ok()
-						.and_then(|filters| {
-							Some(
-								filters.as_array()?.iter().find(|f| f["id"] == "genre")?["options"]
-									.as_array()?
-									.iter()
-									.any(|v| v.as_str() == Some(&value)),
-							)
-						})
-						.unwrap_or(false);
-				p.push(if is_genre { "genre" } else { "tag" }, Some(&value));
 			}
-			FilterValue::Select { id, value } if id == "match" || id == "chapters" => {
-				p.push(&id, Some(&value))
+			FilterValue::Select { id, value } if id == "match" => p.push(&id, Some(&value)),
+			FilterValue::Select { id, value } if id == "chapters" => chapters = Some(value),
+			FilterValue::Text { id, value } if id == "minChapters" => {
+				min_chapters = value.trim().parse::<u32>().ok().map(|n| n.to_string())
 			}
 			FilterValue::Range { id, from, to } if id == "year" => {
-				if let Some(v) = from {
-					p.push("from", Some(&(v as i32).to_string()));
-				}
-				if let Some(v) = to {
-					p.push("to", Some(&(v as i32).to_string()));
-				}
+				years = (from.map(|v| v as i32), to.map(|v| v as i32))
 			}
-			FilterValue::Text { id, value } if id == "tags" => {
-				for v in value.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-					if let Some(v) = v.strip_prefix('-') {
-						p.push("xtag", Some(v.trim()));
-					} else {
-						p.push("tag", Some(v));
-					}
-				}
+			FilterValue::Select { id, value } if id == "released" => {
+				let year = DateTime::from_timestamp(current_date(), 0).map_or(1970, |d| d.year());
+				released = match value.as_str() {
+					"this-year" => (Some(year), None),
+					"last-5-years" => (Some(year - 4), None),
+					"2010s" => (Some(2010), Some(2019)),
+					"2000s" => (Some(2000), Some(2009)),
+					"before-2000" => (None, Some(1999)),
+					_ => (None, None),
+				};
 			}
 			FilterValue::Text { id, value }
 				if matches!(id.as_str(), "author" | "artist" | "studio") =>
@@ -267,6 +254,17 @@ pub fn search_params(
 				p.push(&id, Some(&value))
 			}
 			_ => {}
+		}
+	}
+	if let Some(n) = min_chapters.or(chapters) {
+		p.push("chapters", Some(&n));
+	}
+	for (name, year) in [
+		("from", years.0.or(released.0)),
+		("to", years.1.or(released.1)),
+	] {
+		if let Some(year) = year {
+			p.push(name, Some(&year.to_string()));
 		}
 	}
 	for r in &prefs.ratings {

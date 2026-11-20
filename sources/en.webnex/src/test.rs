@@ -14,10 +14,13 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		"<div id='S:8' hidden>{c}</div><section aria-labelledby='popular-heading'><template id='P:8'></template></section>"
 	);
 	for (id, title) in [
+		("manhua", "Manhua"),
 		("taste", "Readers’ favourites"),
 		("latest", "Latest updates"),
+		("manga", "Manga"),
 		("trending", "Recently popular"),
 		("new", "New in 2026"),
+		("manhwa", "Manhwa"),
 	] {
 		html.push_str(&format!(
 			"<section aria-labelledby='{id}-heading'><h2>{title}</h2><ol>{c}</ol></section>"
@@ -35,9 +38,12 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		[
 			"Popular This Week",
 			"Readers Favourites",
-			"New in 2026",
 			"Latest Updates",
 			"Recently Popular",
+			"New in 2026",
+			"Manhwa",
+			"Manga",
+			"Manhua",
 			"Finished",
 			"Just Added"
 		]
@@ -49,7 +55,7 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		matches!(&rows[1].value,HomeComponentValue::Scroller{entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
 	);
 	assert!(
-		matches!(&rows[3].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(4),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
+		matches!(&rows[2].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(4),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
 	);
 }
 
@@ -98,7 +104,7 @@ fn review_catalogue_defaults_overrides_and_clearing() {
 		qs.contains("rated=erotica")
 			&& qs.contains("rating=erotica")
 			&& qs.contains("kind=manhua")
-			&& qs.contains("genre=Action")
+			&& qs.contains("tag=Action")
 			&& qs.contains("page=2")
 			&& !qs.contains("safe")
 	);
@@ -107,6 +113,63 @@ fn review_catalogue_defaults_overrides_and_clearing() {
 	assert_eq!(prefs.ratings, ["safe", "suggestive"]);
 	assert_eq!(prefs.types, ["manga", "manhwa", "manhua"]);
 	assert!(!Groups::load().one_per_chapter);
+}
+
+#[aidoku_test]
+fn review_filters_send_tags_typed_chapters_and_release_presets() {
+	let mut prefs = Catalogue::load();
+	let select = |id: &str, value: &str| FilterValue::Select {
+		id: id.into(),
+		value: value.into(),
+	};
+	let text = |id: &str, value: &str| FilterValue::Text {
+		id: id.into(),
+		value: value.into(),
+	};
+	let query = |filters, prefs: &mut Catalogue| {
+		helpers::search_params(None, 1, filters, prefs).to_string()
+	};
+	let qs = query(
+		vec![
+			FilterValue::MultiSelect {
+				id: "theme".into(),
+				included: vec!["Magic".into()],
+				excluded: vec!["Zombies".into()],
+			},
+			select("genre", "Isekai"),
+			select("chapters", "50"),
+			text("minChapters", " 37 "),
+			select("released", "2010s"),
+			FilterValue::Range {
+				id: "year".into(),
+				from: Some(2012.0),
+				to: None,
+			},
+		],
+		&mut prefs,
+	);
+	for part in [
+		"tag=Magic",
+		"xtag=Zombies",
+		"tag=Isekai",
+		"chapters=37",
+		"from=2012",
+		"to=2019",
+	] {
+		assert!(qs.contains(part), "{part} in {qs}");
+	}
+	assert!(!qs.contains("chapters=50") && !qs.contains("genre="));
+	let qs = query(
+		vec![
+			select("chapters", "1"),
+			text("minChapters", "many"),
+			select("released", "before-2000"),
+		],
+		&mut prefs,
+	);
+	assert!(qs.contains("chapters=1") && qs.contains("to=1999") && !qs.contains("from="));
+	let qs = query(vec![select("genre", "Manhua")], &mut prefs);
+	assert!(!qs.contains("tag=") && prefs.types == ["manhua"]);
 }
 
 #[aidoku_test]
@@ -154,7 +217,7 @@ fn review_streamed_chapters_keep_links_pagination_and_official_credits() {
 		"<div class='ch-sources-menu'><a class='ch-sources-item' href='/read/alternate'>",
 		"<span class='ch-sources-name'>Fan Group</span></a></div></div></div>",
 		"<div hidden id='S:8'><li class='ch-row'><a class='ch-link' href='/read/next'>",
-		"<span class='ch-num'>20</span></a><span class='ch-source'><span class='ch-credit-group'>Other Group</span></span></li></div>",
+		"<span class='ch-num'>20</span></a><time class='ch-time' datetime='2026-09-19T23:40:35.000Z'></time><span class='ch-source'><span class='ch-credit-group'>Other Group</span></span></li></div>",
 		"<div hidden id='S:9'><ol class='pagination-pages'><li><a href='?page=3#chapters'>3</a></li></ol></div>",
 		"<div hidden id='S:a'></div>"
 	)).unwrap();
@@ -178,6 +241,11 @@ fn review_streamed_chapters_keep_links_pagination_and_official_credits() {
 		.find(|chapter| chapter.key == "alternate")
 		.unwrap();
 	assert_eq!(alternate.scanlators.as_deref().unwrap(), ["Fan Group"]);
+	let next = chapters
+		.iter()
+		.find(|chapter| chapter.key == "next")
+		.unwrap();
+	assert_eq!(next.date_uploaded, Some(1789861235));
 
 	groups.hidden.push("webtoon".into());
 	let chapters = models::select_chapters(models::uploads(&doc, &groups, 0).unwrap(), &groups);
@@ -293,6 +361,14 @@ fn live_discover_and_chapter_link() {
 		rows.iter()
 			.any(|c| matches!(c.value, HomeComponentValue::BigScroller { .. }))
 	);
+	let titles: Vec<_> = rows.iter().filter_map(|c| c.title.as_deref()).collect();
+	let position = |title| titles.iter().position(|t| *t == title).unwrap();
+	assert!(
+		position("Recently Popular") < position("Manhwa")
+			&& position("Manhwa") < position("Manga")
+			&& position("Manga") < position("Manhua"),
+		"{titles:?}"
+	);
 	assert_eq!(
 		WebNex
 			.handle_deep_link(format!("{BASE_URL}/read/gocnsptt2v-wii518ji"))
@@ -346,5 +422,33 @@ fn live_exact_ratings_override_the_default() {
 			"{rating}: {}",
 			details.title
 		);
+	}
+}
+
+#[aidoku_test]
+fn live_typed_minimum_and_release_presets_narrow_the_catalogue() {
+	let keys = |filters| {
+		WebNex
+			.get_search_manga_list(None, 1, filters)
+			.unwrap()
+			.entries
+			.into_iter()
+			.map(|m| m.key)
+			.collect::<Vec<_>>()
+	};
+	let all = keys(vec![]);
+	for filter in [
+		FilterValue::Text {
+			id: "minChapters".into(),
+			value: "300".into(),
+		},
+		FilterValue::Select {
+			id: "released".into(),
+			value: "before-2000".into(),
+		},
+	] {
+		let narrowed = keys(vec![filter]);
+		assert!(!narrowed.is_empty());
+		assert_ne!(narrowed, all);
 	}
 }

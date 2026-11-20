@@ -222,3 +222,9 @@ Synced seven stale pages. [[source-checks]] gains the site address step and wher
 read section 3 and the home rules; [[yaoime]] gains its Discover section; [[readme-and-site]]
 drops the jsDelivr icons and ValirScans; [[mangathemesia-consumers]] runs the loopback suite for
 its template alone. [[vymanga]], [[toonz]] and [[swarm]] still held.
+
+## 2026-11-20 WebNex home rows and catalogue filters
+
+Added [[webnex]]: the home shelves in the site's order with the Manhwa, Manga and Manhua rows,
+the browse parameters that alias (`tag`/`genre`), the first-value-wins chapters parameter, the
+client-side year presets, why genres stay static and why the reader still needs a web view.

@@ -165,7 +165,6 @@
 			"Official Colored",
 			"Oneshot",
 			"Self-Published",
-			"User Created",
 			"Web Comic"
 		]
 	},
@@ -215,13 +214,6 @@
 		]
 	},
 	{
-		"type": "text",
-		"id": "tags",
-		"title": "Other Tags",
-		"placeholder": "Comma-separated, -tag to exclude",
-		"hideFromHeader": true
-	},
-	{
 		"type": "select",
 		"id": "match",
 		"title": "Match Genres and Tags",
@@ -244,9 +236,32 @@
 	},
 	{
 		"type": "select",
-		"id": "chapters",
-		"title": "Minimum Chapters",
+		"id": "released",
+		"title": "Released",
+		"hideFromHeader": true,
 		"options": [
+			"Any",
+			"This Year",
+			"Last 5 Years",
+			"2010s",
+			"2000s",
+			"Before 2000"
+		],
+		"ids": [
+			"",
+			"this-year",
+			"last-5-years",
+			"2010s",
+			"2000s",
+			"before-2000"
+		]
+	},
+	{
+		"type": "select",
+		"id": "chapters",
+		"title": "Chapters",
+		"options": [
+			"Any",
 			"Readable Now",
 			"10 or More",
 			"50 or More",
@@ -254,12 +269,20 @@
 			"200 or More"
 		],
 		"ids": [
+			"",
 			"1",
 			"10",
 			"50",
 			"100",
 			"200"
 		],
+		"hideFromHeader": true
+	},
+	{
+		"type": "text",
+		"id": "minChapters",
+		"title": "Minimum Chapters",
+		"placeholder": "Any number",
 		"hideFromHeader": true
 	},
 	{
