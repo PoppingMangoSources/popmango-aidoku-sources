@@ -190,5 +190,21 @@ class AgentHookTests(unittest.TestCase):
         self.assertIn('Tag order:', out.getvalue())
 
 
+class RealInstructionTests(unittest.TestCase):
+    """The hooks against the repository's own files, so a renamed heading fails here."""
+
+    def test_every_hook_section_resolves(self):
+        for heading, end in (("## 0. Hard rules", "\n---"), ("### Home components", "### Global mutable state"),
+                             ("## 9. This repo's workflow", "### How a rule")):
+            with self.subTest(heading=heading):
+                self.assertTrue(hooks.section(heading, end).startswith(heading))
+
+    def test_checklist_reads_the_standards_rows(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            hooks.checklist(compact=True)
+        self.assertGreater(out.getvalue().count('- [ ] '), 50)
+
+
 if __name__ == '__main__':
     unittest.main()
