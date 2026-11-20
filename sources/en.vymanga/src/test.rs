@@ -544,18 +544,20 @@ fn details_and_chapters() {
 	assert_eq!(finale.chapter_number, Some(212.0));
 	assert_eq!(finale.title.as_deref(), Some("Ch 212 : S2 Finale"));
 	assert!(chapters.iter().any(|chapter| chapter.key == "Extra#2"));
-	assert!(chapters.iter().all(|chapter| chapter.url.is_some()));
+	// Their links expire within hours, so the library keeps none.
+	assert!(chapters.iter().all(|chapter| chapter.url.is_none()));
 }
 
 #[aidoku_test]
 fn chapter_keys_outlive_their_links() {
 	reset();
-	let first = update(SERIES, false, true).chapters.unwrap();
-	let second = update(SERIES, false, true).chapters.unwrap();
+	let load = || parse_chapters(&get_html(&manga_url(SERIES)).unwrap());
+	let (first, second) = (load(), load());
 	let read = |chapters: &[Chapter]| -> Vec<String> {
 		chapters.iter().map(|chapter| chapter.key.clone()).collect()
 	};
 	assert_eq!(read(&first), read(&second));
+	assert!(first[0].url.is_some());
 	assert_ne!(first[0].url, second[0].url);
 }
 

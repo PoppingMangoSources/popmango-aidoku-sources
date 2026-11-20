@@ -77,7 +77,9 @@ pub fn parse_page(html: &Document) -> MangaPageResult {
 								.select_first(".comic-title")?
 								.text()
 								.filter(|title| !title.is_empty())?,
-							cover: card.select_first("img")?.attr("data-src"),
+							cover: card
+								.select_first("img")
+								.and_then(|img| img.attr("data-src")),
 							status: if card.select_first(".comic-completed").is_some() {
 								MangaStatus::Completed
 							} else {

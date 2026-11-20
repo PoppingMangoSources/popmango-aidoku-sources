@@ -88,7 +88,16 @@ impl Source for VyManga {
 			manga = parse_manga(manga.key, &info)?;
 		}
 		if needs_chapters {
-			manga.chapters = Some(parse_chapters(&html));
+			// A chapter's link expires within hours, so none is stored; get_page_list reads a fresh one.
+			manga.chapters = Some(
+				parse_chapters(&html)
+					.into_iter()
+					.map(|chapter| Chapter {
+						url: None,
+						..chapter
+					})
+					.collect(),
+			);
 		}
 		Ok(manga)
 	}
