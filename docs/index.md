@@ -54,7 +54,8 @@ _(none yet)_
 
 ## decisions
 
-_(none yet)_
+- [[skill-layout]]: why the root file is a short hub and the work is split into the
+  aidoku-source, aidoku-submit and aidoku-archive skills
 
 ## reference
 

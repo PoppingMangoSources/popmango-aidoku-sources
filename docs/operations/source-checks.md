@@ -42,7 +42,7 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: 889f387
+verified_at: 2534d58
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -258,6 +258,13 @@ or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 > scratchpad script's `git commit` once skipped the documented form. `pre-bash` reads every
 > `.sh` a command runs outside `scripts/` and `.githooks/` (`scripts/agent-hooks.py:131`), so
 > keep tooling that commits on purpose (`pr-branch.sh`) inside those folders.
+
+> ⚠️ Every hook swallows its own exceptions so a bug cannot stop work, which made the commit
+> guard fail open: it built its refusal from section 0 first, and an unreadable `AGENTS.md`
+> raised before the deny was printed. The refusal is now built without the rules text, which is
+> only appended when it reads (`scripts/agent-hooks.py:159`), and a broken stop check honours
+> `stop_hook_active` like a failing one. `test_commit_is_refused_even_when_the_rules_are_unreadable`
+> and `test_broken_stop_check_blocks_once_per_turn` fail on the old code.
 
 > ⚠️ Section 3 and the section 6 home rules now live in the skill's `references/standards.md` and
 > `references/conventions.md`, not in `AGENTS.md`. The hooks look a heading up in `AGENTS.md`

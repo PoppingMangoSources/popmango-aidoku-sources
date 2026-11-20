@@ -1,6 +1,7 @@
 ---
 name: aidoku-source
-description: Create, fix or submit an Aidoku source in this repo. Use when adding a site as a source, changing an existing one, preparing an upstream Aidoku-Community PR, or answering review comments on one.
+description: Create or change an Aidoku source or template in this repo. Use when adding a site as a source, adding a filter, home row, parser fix or template consumer, probing a site's API, or verifying source code before any push.
+model: inherit
 ---
 
 # Building Aidoku sources
@@ -223,96 +224,7 @@ the source gates. Do not bypass it because the destination tree lacks fork scrip
 This sandbox usually cannot reach the sites. Say so rather than calling a change verified,
 and ask for a console probe or an in-app check when behaviour matters.
 
-## Phase 5 — Release on main
+## Next
 
-Every push that changes a source publishes it, so every such push bumps it:
-
-```sh
-scripts/bump.sh <id>
-```
-
-Commit as Popmango Extensions, unsigned, conventional subject, a one- or two-sentence body,
-no AI attribution (AGENTS.md / CLAUDE.md §9).
-
-## Phase 6 — Upstream PR
-
-```sh
-scripts/pr-branch.sh <id>            # feat/<id> from upstream/main, one "feat: add <id>" commit
-scripts/pr-branch.sh <id> --push     # same, then push with a lease
-# Use --from <committed-ref> when the source snapshot is on another branch.
-```
-
-The script copies the source from the selected committed snapshot (`HEAD` by default), sets `version` to 1, runs the gates, and refuses
-if the branch touches anything outside `sources/<id>` or differs from the snapshot beyond the
-version. It validates both the final diff and the commit history against upstream.
-Before a manual push, fetch canonical upstream and run:
-
-```sh
-python3 /path/to/tooling/scripts/check-upstream-scope.py --repo . --source <id>
-```
-
-If a branch is contaminated, preserve it and use `--rebuild --from <saved-ref>`. Never
-cherry-pick a commit that includes README, workflow or unrelated source changes. Keep
-the backup until the reconstructed source has been tested and the person no longer needs it. The person opens the PR; do not open it unless asked.
-
-Before opening it, reread the reviews AGENTS.md / CLAUDE.md §13 lists and predict kkantan's comments.
-An independent source rewrite that leaves a template gets its own PR, even if it began in
-the template update. Keep only compilation/minimum-version compatibility with the shared
-template until the standalone migration merges. Inspect every consumer and preserve standard
-aidoku/aidoku-test development dependencies when excluding fork-only tests.
-
-## Phase 7 — Review rounds
-
-For each comment, fix it on `main` with a bump, then fold the changes into the PR's
-requested commit structure. A new-source submission stays one `feat: add <id>` commit by
-default, including after it opens. Fetch first, preserve the old head, commit through the
-wrapper and verify the resulting source tree and commit count. Force-push with the exact
-expected remote SHA. A force-push alone does not fold an added commit into the original.
-
-Only when the owner explicitly requests a separate review-fix commit:
-
-```sh
-scripts/pr-branch.sh <id> --fix "fix(<id>): address review feedback" "<one or two sentences>" --push
-```
-
-Draft a one- or two-sentence reply per comment for the person to post; do not post on the
-PR yourself.
-
-Every comment, and every correction the person makes, also becomes a rule: a row in AGENTS.md / CLAUDE.md
-§3, decided from the implementing code, plus a `check-sources.py` rule with a test when it can
-be detected, calibrated with `scripts/calibrate-rules.sh` (AGENTS.md / CLAUDE.md §9, "How a rule gets
-into this file"). Fix the same pattern everywhere in the source before pushing, not just the
-line the reviewer pointed at.
-
-After the PR is merged, later changes go up from the same branch name as an update:
-
-```sh
-scripts/pr-branch.sh <id> --update "feat(<id>): <what>" "<one or two sentences>" --push
-```
-
-It restarts the branch from `upstream/main` and sets the version to upstream's plus one.
-Select the intended committed source with `--from <ref>` when it is not on `main`. Sources that live only upstream (`multi.kagane`,
-`en.toonkotsu`) get a branch cut straight from `upstream/main` instead, with upstream's
-version plus one and the same gates. When a comment asks "does X not support Y", answer it with a console probe, not
-from a reference client.
-
-
-## Phase 8 — Review evidence
-
-Record the upstream base SHA, source snapshot SHA, prepared head SHA, changed-path scope,
-fmt/Clippy/package/verify results, runner test results and remaining in-app checks. Check
-pagination with a second page, filters with a value that should match nothing, each content
-rating independently, missing/locked chapters, pasted URLs, deep links and page-list errors.
-Count requests per operation and identify any per-item fan-out. Consult the reference's
-reviewer evidence, then reread the final diff and every prior review thread before resubmission.
-
-## Phase 9 — Preserve merged sources
-
-Confirm the PR is merged in canonical upstream. Preserve the complete main snapshot, tests,
-icons and shared path dependencies on `merged-sources`, following section 17 of the root guide.
-Publish the archive first, then remove the crate, README entry and unused icon from main.
-Keep applicable review guidance and shared-template regressions on main. Replace archived
-frontmatter `code:` citations with pinned external references so the wiki retains working links.
-Run `scripts/check-archives.py --base <before-removal>` before publishing main; CI and the
-push hook run it as well. Later maintenance starts from current upstream, restoring only
-needed tests from the archive. Archive branches do not publish packages or need release bumps.
+Publishing, upstream PRs and review rounds: the aidoku-submit skill. Moving a merged
+source off main: the aidoku-archive skill.

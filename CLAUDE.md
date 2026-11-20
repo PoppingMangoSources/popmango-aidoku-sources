@@ -7,10 +7,15 @@ other contributors. Written down so the next source doesn't have to relearn it.
 `AGENTS.md` and `CLAUDE.md` are identical copies of this file. It is the hub: the hard rules,
 the upstream rules, the workflow, templates and where to look. Every numbered section keeps its
 heading, so "section 6" anywhere in the repository still leads somewhere; a section whose detail
-moved says where it went. Read the workflow skill before creating or submitting a source:
+moved says where it went. Three workflow skills split the work at its natural hand-offs; Codex
+reads the same files under `.agents/skills/` (for example
+[.agents/skills/aidoku-source/SKILL.md](.agents/skills/aidoku-source/SKILL.md)):
 
-- [.claude/skills/aidoku-source/SKILL.md](.claude/skills/aidoku-source/SKILL.md)
-- [.agents/skills/aidoku-source/SKILL.md](.agents/skills/aidoku-source/SKILL.md)
+| Skill | Covers |
+|---|---|
+| [aidoku-source](.claude/skills/aidoku-source/SKILL.md) | recon, scaffold, implement and verify a source or template; owns the shared `references/` |
+| [aidoku-submit](.claude/skills/aidoku-submit/SKILL.md) | bump and commit on main, upstream PR branches, review rounds, updates after a merge |
+| [aidoku-archive](.claude/skills/aidoku-archive/SKILL.md) | moving a merged source off main to `merged-sources` |
 
 | Read | When |
 |---|---|
@@ -360,7 +365,7 @@ query, one named query per home section), `zh.komiic` (GraphQL), `multi.kagane`,
 `en.weebcentral`, `en.chikari` (novels alongside manga), `multi.ehentai` (separate
 listing and detail types), `multi.cubari` (`RefCell` state), `zh.zaimanhua`
 (legitimate `DynamicSettings`), `zh.noyacg` (the site gates adult tags),
-`multi.lanraragi` and `ja.soraraw` (tag search). `en.elftoon` is 28 lines — a template consumer, and
+`multi.lanraragi` and `ja.soraraw` (tag search). Upstream's `en.elftoon` (`git show upstream/main:sources/en.elftoon/src/lib.rs`) is 28 lines — a template consumer, and
 the fastest way to see how thin a templated source can be.
 
 **The reviewer.** kkantan reviews most of these. Reading their own commits and past
@@ -408,6 +413,7 @@ Live CI failures retain their raw logs. `scripts/test-sources.py` runs non-revie
 contracts and reports observed Cloudflare 403/HTTP 522 evidence without suppressing failures.
 An unknown-series test accepting any error can pass on a blocked request; that pass does not
 establish correct missing-series handling.
+
 ## 16. Atsumaru specifics
 
 Moved to [`docs/subsystems/atsumaru.md`](docs/subsystems/atsumaru.md). Atsumaru's Typesense search, feeds, ratings, deduplication and novel keys; upstream only.
@@ -433,6 +439,7 @@ origin are in `docs/subsystems/vymanga.md`; read it before changing the source. 
 rating is 2, the owner's explicit request on November 17; per-title ratings still come from the
 site's adult flag and genres. A submission
 branch, `feat/en.vymanga`, is kept from `upstream/main` while it is prepared for a PR.
+
 ## Iken maintenance
 
 Moved to [`docs/subsystems/iken-template.md`](docs/subsystems/iken-template.md). The template, its six consumers and EternalMangas are on `merged-sources`; later work starts from upstream.
