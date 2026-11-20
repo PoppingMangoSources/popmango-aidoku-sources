@@ -41,7 +41,7 @@ _(none yet)_
 - [[keyoapp-template]] -- the Keyoapp template: whole-catalogue search, generic home, which sites fit
 - [[mangaball]] -- MangaBall's API, content modes, language codes, home feeds, what is unverified (archived)
 - [[vymanga]] -- VyManga's pages, probed search parameters, expiring chapter links and name keys
-- [[mkissa]] -- MKissa's GraphQL feeds, viewer and tag mapping, and the web view reader
+- [[mkissa]] -- MKissa's GraphQL feeds, viewer and tag mapping, and the web view reader (archived)
 
 - [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing (archived)
 - [[yaoime]] -- yaoi.me's settings cookie, browse parameters, chapter variants and the signed reader

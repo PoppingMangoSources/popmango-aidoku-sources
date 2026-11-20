@@ -3,7 +3,8 @@
 Both sites use the same MangaTaro engine, confirmed against their live browse pages,
 captured JavaScript, Keiyoushi's mangataro shared engine and both Inkdex sources.
 A single `feat/mangataro-template` submission includes the template and both consumers.
-It is based on canonical Aidoku-Community main; fork publication stays on main.
+It is based on canonical Aidoku-Community main. It merged as #911 on 2026-11-19, and the template
+and both consumers then left `main` for `merged-sources` (root `AGENTS.md` section 17).
 
 ## Requested behavior
 

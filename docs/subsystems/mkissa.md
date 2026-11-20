@@ -5,15 +5,19 @@ created: 2026-11-15
 updated: 2026-11-20
 verified_at: db1ade7
 sources:
-  - code: sources/en.mkissa/src/graphql.rs
-  - code: sources/en.mkissa/src/home.rs
-  - code: sources/en.mkissa/src/lib.rs
-  - code: sources/en.mkissa/src/models.rs
-  - code: sources/en.mkissa/src/helpers.rs
-  - code: sources/en.mkissa/src/reader.rs
-  - code: sources/en.mkissa/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/e4213542887d6a3744f188d8b72917a07b21608a/sources/en.mkissa/src/graphql.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/e4213542887d6a3744f188d8b72917a07b21608a/sources/en.mkissa/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/e4213542887d6a3744f188d8b72917a07b21608a/sources/en.mkissa/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/e4213542887d6a3744f188d8b72917a07b21608a/sources/en.mkissa/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/e4213542887d6a3744f188d8b72917a07b21608a/sources/en.mkissa/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/e4213542887d6a3744f188d8b72917a07b21608a/sources/en.mkissa/src/reader.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/e4213542887d6a3744f188d8b72917a07b21608a/sources/en.mkissa/res/filters.json
   - ext: https://mkissa.to
 ---
+
+MKissa merged upstream as #910 on 2026-11-19 and its crate, tests and icon left `main` for
+`merged-sources` (root `AGENTS.md` section 17); later work starts from upstream's crate, and the
+file paths below name the archived copy.
 
 MKissa serves its catalogue from a GraphQL API at `api.mkissa.net/api`. Full POST queries work,
 so the persisted-query hashes the site sends are not needed. Queries and the request helper live
