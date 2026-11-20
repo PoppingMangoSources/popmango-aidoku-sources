@@ -61,6 +61,12 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 ## Reader
 
 > ⚠️ `/read/<key>/pages` (the reader props' `pagesUrl`) answers 403 "Open this chapter on
-> webnex.cc to read." without the session the reader page's scripts establish, and the
-> reader HTML no longer carries a `wnx_` script cookie, so the shortcut a reference client
-> uses fails. `reader.rs` loads the chapter in a web view and fetches the list from there.
+> webnex.cc to read." without the `wnx_reader_v2` cookie. The chapter page writes it from
+> `<script data-wnx-reader>`, and only for a page request: `Accept: text/html` (or
+> `Sec-Fetch-Mode: navigate` with `Sec-Fetch-Dest: document`); without either the script is
+> absent. The list then needs that cookie and the chapter page as `Referer`
+> (`sources/en.webnex/src/reader.rs:8`). No web view is involved.
+
+> ⚠️ The "Opening series" interstitial sets a `wnx_` cookie the same way and reloads;
+> `helpers::parse_response` retries with it. It could not be reproduced on 2026-11-20, so
+> that path is checked only by the script-cookie fixture test.

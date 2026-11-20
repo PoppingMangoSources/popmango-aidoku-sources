@@ -664,6 +664,14 @@ def check_reviewed_consumer(source: Path, info: dict) -> None:
             note(source / "res/icon.png", "differs from the reviewed icon; verify its opaque background fits the site's artwork/header")
 
 
+def check_script_files(source: Path) -> None:
+    # No merged source ships JavaScript: web view scripts are short inline strings passed to eval.
+    for folder in ("src", "res"):
+        for path in sorted((source / folder).rglob("*")):
+            if path.suffix in (".js", ".mjs", ".ts"):
+                fail(path, "is a script file; pass web view JavaScript inline, as merged sources do")
+
+
 def check_source(source_id: str, base: str | None, upstream: bool = False) -> None:
     source = SOURCES / source_id
     if not (source / "Cargo.toml").exists():
@@ -689,6 +697,7 @@ def check_source(source_id: str, base: str | None, upstream: bool = False) -> No
     languages = info.get("info", {}).get("languages", [])
     check_rust(source, len(languages) == 1)
     check_naming(source)
+    check_script_files(source)
 
     version = info.get("info", {}).get("version")
     if upstream:

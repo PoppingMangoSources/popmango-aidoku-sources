@@ -288,6 +288,21 @@ fn review_key_only_links_and_complete_page_lists() {
 	.unwrap();
 	let decoded: ReaderProps = parse_flight_value(&doc, "{\"chapter\":").unwrap();
 	assert_eq!(decoded.series.href, "/manga/story");
+	assert_eq!(decoded.pages_url, "/read/canonical/pages");
+	for (script, cookie) in [
+		(
+			r#"document.cookie=["wnx_reader_v2=17.ab","Max-Age=21600","Path=/read/x"].join("; ")"#,
+			Some("wnx_reader_v2=17.ab"),
+		),
+		(
+			r#"document.cookie="wnx_series=cd; Path=/";location.reload()"#,
+			Some("wnx_series=cd"),
+		),
+		(r#"var label="wnx_reader_v2=17.ab""#, None),
+	] {
+		let doc = Html::parse(format!("<script>{script}</script>")).unwrap();
+		assert_eq!(helpers::script_cookie(&doc).as_deref(), cookie, "{script}");
+	}
 	let result = |urls: &[&str]| {
 		Vec::<Page>::try_from(ReaderPages {
 			pages: urls.iter().map(|s| (*s).into()).collect(),
@@ -451,4 +466,17 @@ fn live_typed_minimum_and_release_presets_narrow_the_catalogue() {
 		assert!(!narrowed.is_empty());
 		assert_ne!(narrowed, all);
 	}
+}
+
+#[aidoku_test]
+fn live_page_list_loads_from_the_chapter_cookie() {
+	let chapter = Chapter {
+		key: "gocnsptt2v-wii518ji".into(),
+		..Default::default()
+	};
+	let pages = WebNex.get_page_list(Manga::default(), chapter).unwrap();
+	assert!(pages.len() > 1);
+	assert!(pages.iter().all(
+		|p| matches!(&p.content, aidoku::PageContent::Url(url, _) if url.starts_with("https://"))
+	));
 }

@@ -18,8 +18,10 @@ struct Taxonomy {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReaderProps {
 	pub series: SeriesRef,
+	pub pages_url: String,
 }
 
 #[derive(Deserialize)]

@@ -460,6 +460,7 @@ call: change it or say why not); **—** needs the site or the app, so it is rea
 | Ranking periods defaulted to a week and applied to the home page | A setting's default is the site's own default for that control (Explore's All), and it applies where the site applies it. Read the site's code for the default. | — |
 | `actions/cache@v4` (and `checkout@v4`, `upload-artifact@v4`, a pages action) on Node 20 | `check-workflows.py` reads each action's runtime at its pinned ref; move to a release on a supported Node. **Action runtimes** checks weekly. | F |
 | `aidoku-test-runner` install failed on GitHub's runner | It links fontconfig and freetype; install `libfontconfig-dev libfreetype-dev` first. `check-workflows.py` fails a workflow that doesn't. | F |
+| WebNex's `src/reader.js` user script ("no merged source has a javascript file") | No merged source ships a script file: `en.toonkotsu`, `en.comix` and `en.mkissa` pass short inline JavaScript to `eval`. First try plain requests: a gate that writes its cookie from a script often does so for any page request (`Accept: text/html`), which WebNex's reader does, and needs no web view at all. | F |
 
 ## Product rules
 

@@ -8,9 +8,8 @@ use aidoku::{
 	helpers::uri::QueryParameters,
 	imports::{
 		html::{Document, Element, Html},
-		js::WebView,
 		net::{Request, Response},
-		std::{current_date, parse_date_with_options, sleep},
+		std::{current_date, parse_date_with_options},
 	},
 	prelude::*,
 };
@@ -39,21 +38,26 @@ pub fn parse_response(response: &Response) -> Result<Document> {
 		let url = response
 			.get_url()
 			.ok_or_else(|| error!("WebNex returned no series URL"))?;
-		let view = WebView::new();
-		view.load(Request::get(&url)?)?;
-		for _ in 0..10 {
-			if view
-				.eval("document.querySelector('h1.series-title')?.textContent || ''")
-				.is_ok_and(|s| !s.is_empty())
-			{
-				break;
-			}
-			sleep(1);
-		}
-		let html = view.eval("document.documentElement.outerHTML")?;
-		return Ok(Html::parse_with_url(html, url)?);
+		let cookie =
+			script_cookie(&doc).ok_or_else(|| error!("WebNex did not open this series"))?;
+		return Ok(Request::get(url)?.header("Cookie", &cookie).html()?);
 	}
 	Ok(doc)
+}
+
+// The reader and series gates set their cookie from an inline script, not a header.
+pub fn script_cookie(doc: &Document) -> Option<String> {
+	doc.select("script")
+		.into_iter()
+		.flatten()
+		.find_map(|script| {
+			let data = script
+				.html()
+				.filter(|data| data.contains("document.cookie"))?;
+			let start = data.find("\"wnx_")? + 1;
+			let pair = data[start..].split(['"', ';']).next()?;
+			pair.contains('=').then(|| pair.into())
+		})
 }
 
 pub fn parse_key<'a>(url: &'a str, prefix: &str) -> Option<&'a str> {

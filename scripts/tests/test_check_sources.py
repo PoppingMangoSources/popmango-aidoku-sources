@@ -402,6 +402,15 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cargo(path)
         self.assertEqual(checks.notes, [])
 
+    def test_script_file_in_a_source_fails(self):
+        (self.source / 'src').mkdir()
+        (self.source / 'src/lib.rs').write_text('const SCRIPT: &str = "document.title";\n')
+        checks.check_script_files(self.source)
+        self.assertEqual(checks.failures, [])
+        (self.source / 'src/reader.js').write_text('window.pages = [];\n')
+        checks.check_script_files(self.source)
+        self.assertTrue(any('reader.js' in failure for failure in checks.failures))
+
     def test_stale_aidoku_lock_fails(self):
         path = self.source / 'Cargo.lock'
         path.write_text('[[package]]\nname = "aidoku"\nsource = "git+https://github.com/Aidoku/aidoku-rs.git#1a6bb691dd67c7151fc76fc852fb5a364d325f72"\n')
