@@ -20,8 +20,9 @@ step "Gates: fmt, clippy, dead-code lints, package, verify${tests:+, live tests}
     "$root/scripts/verify-source.sh" "$dir" "${tests[@]}"
 step "Portable template review contracts" python3 "$root/scripts/review-contracts.py" --repo "$root" --crate "sources/$id"
 step "Source rules" python3 "$root/scripts/check-sources.py" --base origin/main "$id"
+step "Site address" python3 "$root/scripts/check-site-url.py" "$id"
 echo
-echo "== Names few merged sources share (swap each for its usual equivalent, or say why not)"
+echo "== How merged sources do the same (read the newest of each feature; swap rare names or say why not)"
 python3 "$root/scripts/upstream-usage.py" "$id" || true
 
 for branch in "feat/$id" "fix/$id"; do

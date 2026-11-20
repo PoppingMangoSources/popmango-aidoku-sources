@@ -13,6 +13,8 @@ use aidoku::{
 use serde::de::DeserializeOwned;
 
 mod models;
+#[cfg(test)]
+mod test;
 
 use models::*;
 
@@ -171,7 +173,8 @@ fn parse_chapter_title(raw: Option<&str>) -> (Option<String>, Option<String>) {
 	let Some(raw) = raw.map(str::trim).filter(|s| !s.is_empty()) else {
 		return (None, None);
 	};
-	let (name_part, group_part) = match raw.split_once('•') {
+	// The group comes last, and a chapter name can itself contain "•".
+	let (name_part, group_part) = match raw.rsplit_once('•') {
 		Some((name, group)) => (name.trim(), group.trim()),
 		None => (raw, ""),
 	};
@@ -222,10 +225,7 @@ fn series_to_detail(mut series: SeriesDto) -> Manga {
 }
 
 fn series_to_link(series: SeriesDto) -> Link {
-	let subtitle = tag_names(series.tags.as_deref().unwrap_or_default()).join(" · ");
-	let mut link = Link::from(series_to_manga(series));
-	link.subtitle = (!subtitle.is_empty()).then_some(subtitle);
-	link
+	Link::from(series_to_manga(series))
 }
 
 fn series_to_manga_chapter(mut series: SeriesDto) -> Option<MangaWithChapter> {
@@ -288,7 +288,7 @@ impl Source for ScansGG {
 		let term = query.unwrap_or_default();
 		let term = term.trim();
 
-		if let Some(result) = resolve_direct_query(term)? {
+		if let Some(result) = resolve_direct_query(term) {
 			return Ok(result);
 		}
 
@@ -455,7 +455,7 @@ impl Source for ScansGG {
 			.unwrap_or_else(|| chapter_id.to_string());
 
 		let mut pages = chapter_data.pages.unwrap_or_default();
-		pages.sort_by_key(|p| p.position);
+		pages.sort_unstable_by_key(|p| p.position);
 		if pages.is_empty() {
 			bail!("No pages found");
 		}
@@ -503,14 +503,13 @@ fn fetch_chapters(series_id: &str) -> Result<Vec<Chapter>> {
 				chapter_number: Some(chapter_number),
 				scanlators: scanlator.map(|s| vec![s]),
 				date_uploaded: ch.created_at.as_deref().and_then(parse_datetime),
-				language: Some("en".into()),
 				..Default::default()
 			}
 		})
 		.collect())
 }
 
-fn resolve_direct_query(query: &str) -> Result<Option<MangaPageResult>> {
+fn resolve_direct_query(query: &str) -> Option<MangaPageResult> {
 	let id = if let Some(rest) = query.to_lowercase().strip_prefix("id:") {
 		let value = rest.trim();
 		value
@@ -527,25 +526,29 @@ fn resolve_direct_query(query: &str) -> Result<Option<MangaPageResult>> {
 		None
 	};
 
-	let Some(id) = id else {
-		return Ok(None);
-	};
-
-	let manga = ScansGG.get_manga_update(
-		Manga {
-			key: id,
+	let manga = ScansGG
+		.get_manga_update(
+			Manga {
+				key: id?,
+				..Default::default()
+			},
+			true,
+			false,
+		)
+		.ok()
+		.filter(|manga| !manga.title.is_empty())?;
+	// A search card, like the rest of the results.
+	Some(MangaPageResult {
+		entries: vec![Manga {
+			key: manga.key,
+			title: manga.title,
+			cover: manga.cover,
+			status: manga.status,
+			content_rating: manga.content_rating,
 			..Default::default()
-		},
-		true,
-		false,
-	);
-	match manga {
-		Ok(manga) if !manga.title.is_empty() => Ok(Some(MangaPageResult {
-			entries: vec![manga],
-			has_next_page: false,
-		})),
-		_ => Ok(None),
-	}
+		}],
+		has_next_page: false,
+	})
 }
 
 impl Home for ScansGG {

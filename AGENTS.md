@@ -46,7 +46,8 @@ rest of this file still applies, so read each section before the work it covers.
   messages and name beside it the code, test or output that shows it; an item with nothing
   beside it isn't done. An order or layout they specify gets a `review_` test.
 - Read the merged sources built the same way (section 6), and any reference client the person
-  names, before writing a feature.
+  names, before writing a feature. `scripts/upstream-usage.py <id>` (or `--feature '<regex>'`)
+  names the newest merged sources that already do it, with file and line; match their shape.
 - Cards everywhere but `BigScroller` carry key, title and cover, optionally status and rating,
   and never a subtitle (sections 3 and 6).
 - Work on `main`; create another branch only when the owner explicitly asks. Requested branches
@@ -641,6 +642,21 @@ kkantan approved and merged it on 2026-11-19 (`eb4f68c`) with one comment, read 
 |---|---|---|
 | `tags.sort()` before `tags.dedup()` ("stable sorting usually isn't necessary and is more expensive, for future reference", suggesting `tags.sort_unstable()`) | Sort with `sort_unstable` (`_by`, `_by_key`) unless equal elements must keep their order; then keep the stable sort and say why in a comment above it, as the toonz template does for equal ratings. Names that compare equal are identical, so a stable sort of strings buys nothing. `check-sources.py` notes a stable sort without such a comment; 27 merged sources still use one, so it is a note. | N |
 
+### From #878, #894, #909 and #912 (other contributors, November 18-19)
+
+Read on 2026-11-20 from the review comments API; every review body was empty, so the inline
+comments are the whole of it. Rows already in this section (status lowercasing, compact listing
+conversions, `into_iter` over `clone`, `text()` trimming, `isGenre`, passing an `Option` through)
+were asked for again on these PRs.
+
+| What was flagged | The rule | |
+|---|---|---|
+| A hand-written `parse_timestamp` ("you could just use the aidoku-rs-provided `parse_date` or `parse_date_with_options` functions instead of reimplementing the behavior", #909) | Parse every date with `parse_date` or `parse_date_with_options` (locale, timezone); reshape the input string first if needed, never reimplement the parse. | R |
+| `let key = manga.key.clone();` before overwriting it ("I think you could use `core::mem::take` instead of cloning", #909) | Move a field out with `core::mem::take` (or `Option::take`) when the original is about to be replaced; clone only what must stay. | R |
+| `title.split_once('화')` to find a chapter number ("titles can contain the `화` character regularly, right? I think you probably want to split from the last occurrence", #894) | When the part you want sits at the end and the separator can appear in the text before it, split with `rsplit_once`. Scans.GG's "Name • Group" now does. | R |
+| HTML scraping beside a JSON API ("why not use the api that appears to exist instead of scraping the html? I believe it is faster and doesn't require cloudflare verification, which I think is unreliable for page loading", #878) | Look for the site's own API before writing selectors, in its network requests and in `/api/` paths; use it for listings, details and pages when it exists. | R |
+| `"url": "https://okutoon.com"` ("it looks like this redirects to https://okutoon.net now", #878) | `source.json`'s `url` is the site's current address: follow its redirects before submitting, and move the source to the new domain (with `breakingChangeVersion` only if keys change). | R |
+
 ### From #843 (`en.atsumaru`)
 
 - **Filter exclusions:** every multi-select with `canExclude: true` must process both
@@ -1086,7 +1102,7 @@ went in one of these ways, and new ones go in the same way:
   verify commands (section 1) for every source and template the push changes, then
   `scripts/check-sources.py`.
 - `scripts/review-source.sh <id>` is the one review command for a source: the gates plus live
-  tests (`verify-source.sh --test`), `check-sources.py --base origin/main`, `upstream-usage.py`, the
+  tests (`verify-source.sh --test`), `check-sources.py --base origin/main`, `check-site-url.py` (the address must not redirect to another host), `upstream-usage.py`, the
   upstream scope of its `feat/`/`fix/` branch, and the section 3 rules printed as a checklist to
   read against the diff. It records a stamp of the source's files under `.git/aidoku-review/`.
 - `.claude/settings.json` and `.codex/hooks.json` call the same shared handlers
@@ -1158,7 +1174,11 @@ went in one of these ways, and new ones go in the same way:
 - `scripts/calibrate-rules.sh [rule text]` runs `check-sources.py` over every merged upstream
   source and counts failures per rule (or lists the sources one rule fails). CI's
   `check.yaml` prints it in the job summary on every push.
-- `scripts/upstream-usage.py <id>` lists every aidoku item the source uses and every name it
+- `scripts/upstream-usage.py <id>` first lists each feature the source (and its template) has,
+  from deduplication and partial results to date parsing, status mapping and web views, with the
+  merged sources that do the same, newest-changed first and with file and line; `--feature
+  '<regex>'` does the same for something about to be added (the design of the Paperback repo's
+  `upstream-usage.mjs`). Then it lists every aidoku item the source uses and every name it
   defines that few or no merged sources share. For each, either the site needs it or there is
   a usual equivalent among sources built the same way (section 6): `API_URL` for the API base
   (20 sources), a fetch function for a filter list (`en.toonkotsu`'s `listed_facets`),
