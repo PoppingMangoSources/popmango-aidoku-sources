@@ -151,11 +151,13 @@ fn review_key_only_links_and_complete_page_lists() {
 			key: "story".into()
 		})
 	);
-	assert!(
+	assert_eq!(
 		WebNex
-			.handle_deep_link("https://webnex.cc.example/manga/story".into())
-			.unwrap()
-			.is_none()
+			.handle_deep_link("https://www.webnex.cc/manga/story".into())
+			.unwrap(),
+		Some(DeepLinkResult::Manga {
+			key: "story".into()
+		})
 	);
 	let props = concat!(
 		r#"1:{"chapter":{},"series":{"href":"/manga/story"}}"#,
@@ -186,6 +188,22 @@ fn review_key_only_links_and_complete_page_lists() {
 			.len(),
 		2
 	);
+}
+
+#[aidoku_test]
+fn live_pasted_links_resolve_or_fall_back_to_search() {
+	let pasted = |url: String| {
+		WebNex
+			.get_search_manga_list(Some(url), 1, vec![])
+			.unwrap()
+			.entries
+	};
+	let found = pasted(format!("{BASE_URL}/manga/hell-login-gocnsptt2v"));
+	assert_eq!(found.len(), 1);
+	assert_eq!(found[0].key, "hell-login-gocnsptt2v");
+	assert!(found[0].description.is_none());
+	// An unknown series is searched for as text rather than failing the search.
+	pasted(format!("{BASE_URL}/manga/no-such-series-zz9"));
 }
 
 #[aidoku_test]

@@ -80,6 +80,16 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 			.filter(|s| !s.is_empty())
 			.collect::<Vec<_>>()
 	};
+	// Each role in the site's order, once, and None when the site names nobody.
+	let credits = |selector| {
+		let mut names = Vec::new();
+		for name in texts(selector) {
+			if !names.contains(&name) {
+				names.push(name);
+			}
+		}
+		Some(names).filter(|names| !names.is_empty())
+	};
 	let title = root
 		.select_first("h1.series-title")
 		.and_then(|e| e.text())
@@ -123,9 +133,9 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 		cover: root
 			.select_first(".series-top-cover img")
 			.and_then(|e| e.attr("abs:src")),
-		authors: Some(texts(".series-credits a[href*=author]")),
-		artists: Some(texts(".series-credits a[href*=artist]")),
-		description: Some(texts(".series-desc p").join("\n\n")),
+		authors: credits(".series-credits a[href*=author]"),
+		artists: credits(".series-credits a[href*=artist]"),
+		description: Some(texts(".series-desc p").join("\n\n")).filter(|text| !text.is_empty()),
 		tags: Some(tags),
 		viewer,
 		status,
@@ -137,7 +147,8 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 
 pub struct Upload {
 	chapter: Chapter,
-	group: String,
+	// Lowercased, to match the group settings.
+	group: Option<String>,
 	warning: bool,
 	likes: u32,
 }
@@ -149,7 +160,7 @@ impl Upload {
 				groups
 					.preferred
 					.iter()
-					.position(|g| g == &u.group)
+					.position(|g| u.group.as_ref() == Some(g))
 					.unwrap_or(usize::MAX),
 				u.warning,
 				core::cmp::Reverse(u.likes),
@@ -185,11 +196,16 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 		                  warning,
 		                  likes: Option<String>|
 		 -> Result<()> {
-			let href = link.attr("href").unwrap_or_default();
+			let Some(href) = link.attr("href") else {
+				return Ok(());
+			};
 			let key = parse_key(&href, "/read/")
 				.ok_or_else(|| error!("WebNex returned an invalid chapter link"))?;
-			let name = group.as_deref().unwrap_or_default().to_lowercase();
-			if groups.hidden.contains(&name) {
+			let name = group.as_deref().map(str::to_lowercase);
+			if name
+				.as_ref()
+				.is_some_and(|name| groups.hidden.contains(name))
+			{
 				return Ok(());
 			}
 			uploads.push(Upload {
@@ -227,13 +243,16 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 			let likes = text(&link, ".ch-sources-likes");
 			upload(link, name, time, warning, likes)?;
 		}
-		uploads.sort_by(|a, b| a.priority(groups, b));
+		// priority breaks every tie by key, so the unstable sort gives one order.
+		uploads.sort_unstable_by(|a, b| a.priority(groups, b));
 		let mut seen = Vec::new();
 		for u in uploads {
-			if number.is_some() && !u.group.is_empty() && seen.contains(&u.group) {
-				continue;
+			if let Some(group) = &u.group {
+				if number.is_some() && seen.contains(group) {
+					continue;
+				}
+				seen.push(group.clone());
 			}
-			seen.push(u.group.clone());
 			result.push(u);
 		}
 	}
@@ -265,7 +284,7 @@ pub fn select_chapters(uploads: Vec<Upload>, groups: &Groups) -> Vec<Chapter> {
 				.chapter_number
 				.and_then(|n| winners.get(&n.to_bits()))
 				&& i != *winner
-				&& (u.group.is_empty() || group != &u.group)
+				&& (u.group.is_none() || group != &u.group)
 			{
 				return None;
 			}

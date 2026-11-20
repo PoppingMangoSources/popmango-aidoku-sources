@@ -98,7 +98,8 @@
 			"ko",
 			"zh",
 			"zh-hk"
-		]
+		],
+		"hideFromHeader": true
 	},
 	{
 		"type": "multi-select",
@@ -217,7 +218,8 @@
 		"type": "text",
 		"id": "tags",
 		"title": "Other Tags",
-		"placeholder": "Comma-separated, -tag to exclude"
+		"placeholder": "Comma-separated, -tag to exclude",
+		"hideFromHeader": true
 	},
 	{
 		"type": "select",
@@ -237,7 +239,8 @@
 		"type": "range",
 		"id": "year",
 		"title": "Release Year",
-		"min": 1800
+		"min": 1800,
+		"hideFromHeader": true
 	},
 	{
 		"type": "select",
@@ -256,7 +259,8 @@
 			"50",
 			"100",
 			"200"
-		]
+		],
+		"hideFromHeader": true
 	},
 	{
 		"type": "text",
@@ -271,6 +275,7 @@
 	{
 		"type": "text",
 		"id": "studio",
-		"title": "Studio"
+		"title": "Studio",
+		"hideFromHeader": true
 	}
 ]

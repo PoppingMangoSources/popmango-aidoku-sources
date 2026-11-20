@@ -35,24 +35,23 @@ impl Source for WebNex {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		if let Some(url) = query.as_deref().filter(|url| url.starts_with(BASE_URL))
-			&& let Some(link) = self.handle_deep_link(url.into())?
-		{
-			let key = match link {
-				DeepLinkResult::Manga { key } | DeepLinkResult::Chapter { manga_key: key, .. } => {
-					key
-				}
-				_ => return Ok(Default::default()),
-			};
-			let doc = get_html(&format!("{BASE_URL}/manga/{key}"), None)?;
-			let Manga {
+		// A pasted link that fails to resolve falls back to an ordinary search for its text.
+		if let Some(url) = query.as_deref().filter(|url| {
+			url.strip_prefix(BASE_URL)
+				.is_some_and(|path| path.starts_with('/'))
+		}) && let Ok(Some(
+			DeepLinkResult::Manga { key } | DeepLinkResult::Chapter { manga_key: key, .. },
+		)) = self.handle_deep_link(url.into())
+			&& let Ok(Manga {
 				key,
 				title,
 				cover,
 				content_rating,
 				status,
 				..
-			} = models::details(&doc, &key)?;
+			}) = get_html(&format!("{BASE_URL}/manga/{key}"), None)
+				.and_then(|doc| models::details(&doc, &key))
+		{
 			return Ok(MangaPageResult {
 				entries: vec![Manga {
 					key,
@@ -106,6 +105,7 @@ impl Source for WebNex {
 			let mut uploads = models::uploads(&doc, &groups, now)?;
 			for start in (2..=last).step_by(4) {
 				let reqs = (start..=last.min(start + 3))
+					// The series url has no query of its own.
 					.map(|page| Request::get(format!("{url}?page={page}")))
 					.collect::<core::result::Result<Vec<_>, _>>()?;
 				for response in Request::send_all(reqs) {
@@ -128,7 +128,11 @@ impl Source for WebNex {
 
 impl DeepLinkHandler for WebNex {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		let Some(path) = url.strip_prefix(BASE_URL) else {
+		// The app only passes this source's own links, so any host is fine here.
+		let Some(path) = url
+			.split_once("://")
+			.and_then(|(_, rest)| rest.find('/').map(|slash| &rest[slash..]))
+		else {
 			return Ok(None);
 		};
 		if let Some(key) = parse_key(path, "/manga/") {
