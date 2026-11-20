@@ -1,26 +1,19 @@
-use aidoku::alloc::{String, Vec};
+use crate::helpers::{
+	content_rating, cover_url, description_text, display_title, manga_url, parse_status, tag_names,
+	viewer,
+};
+use aidoku::{
+	AidokuError, ContentRating, Manga, Result,
+	alloc::{String, Vec},
+	prelude::*,
+};
 use serde::Deserialize;
 
-pub const DOMAIN: &str = "https://mkissa.to";
+pub const BASE_URL: &str = "https://mkissa.to";
 pub const API_URL: &str = "https://api.mkissa.net/api";
+pub const CDN_URL: &str = "https://wp.youtube-anime.com";
 
-pub const THUMBNAIL_CDN: &str = "https://wp.youtube-anime.com/aln.youtube-anime.com/";
-pub const IMAGE_CDN: &str = "https://wp.youtube-anime.com";
-pub const DEFAULT_IMAGE_SERVER: &str = "https://ytimgf.youtube-anime.com/";
-
-pub const LIMIT: i32 = 20;
-
-pub const POPULAR_QUERY: &str = "query($type: VaildPopularTypeEnumType!, $size: Int!, $page: Int, $dateRange: Int, $allowAdult: Boolean, $allowUnknown: Boolean) {\n  queryPopular(type: $type, size: $size, dateRange: $dateRange, page: $page, allowAdult: $allowAdult, allowUnknown: $allowUnknown) {\n    recommendations {\n      anyCard { _id name thumbnail englishName nativeName score availableChapters }\n      pageStatus { views }\n    }\n  }\n}";
-
-pub const RANDOM_QUERY: &str = "query($format: String!, $allowAdult: Boolean) {\n  queryRandomRecommendation(format: $format, allowAdult: $allowAdult) {\n    _id name thumbnail englishName\n  }\n}";
-
-pub const SEARCH_QUERY: &str = "query($search: SearchInput, $size: Int, $page: Int, $translationType: VaildTranslationTypeMangaEnumType, $countryOrigin: VaildCountryOriginEnumType) {\n  mangas(search: $search, limit: $size, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) {\n    edges { _id name thumbnail englishName }\n  }\n}";
-
-pub const LATEST_QUERY: &str = "query($search: SearchInput, $size: Int, $page: Int, $translationType: VaildTranslationTypeMangaEnumType, $countryOrigin: VaildCountryOriginEnumType) {\n  mangas(search: $search, limit: $size, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) {\n    edges { _id name thumbnail englishName availableChapters availableChaptersDetail lastChapterDate }\n  }\n}";
-
-pub const DETAILS_QUERY: &str = "query($id: String!) {\n  manga(_id: $id) { _id name thumbnail description authors genres tags status altNames englishName }\n}";
-
-pub const CHAPTERS_QUERY: &str = "query($id: String!, $showId: String!) {\n  manga(_id: $id) { _id name availableChaptersDetail }\n  episodeInfos(showId: $showId, episodeNumStart: 0, episodeNumEnd: 9999) { episodeIdNum notes uploadDates }\n}";
+pub const PAGE_SIZE: i32 = 20;
 
 #[derive(Deserialize)]
 pub struct GraphQLResponse<T> {
@@ -33,7 +26,7 @@ pub struct GraphQLError {
 	pub message: String,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
 pub struct DateParts {
 	pub year: Option<i32>,
 	pub month: Option<i32>,
@@ -43,65 +36,154 @@ pub struct DateParts {
 	pub second: Option<i32>,
 }
 
-#[derive(Deserialize, Default)]
-pub struct AvailableChaptersDetail {
-	pub sub: Option<Vec<String>>,
+#[derive(Deserialize)]
+pub struct Translations<T> {
+	pub sub: Option<T>,
 }
 
-#[derive(Deserialize, Default)]
-pub struct LastChapterDate {
-	pub sub: Option<DateParts>,
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LastChapter {
+	pub chapter_string: Option<String>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MangaCard {
 	#[serde(rename = "_id")]
 	pub id: String,
 	#[serde(default)]
 	pub name: String,
-	pub thumbnail: Option<String>,
-	#[serde(rename = "englishName")]
 	pub english_name: Option<String>,
-	#[serde(rename = "availableChaptersDetail")]
-	pub available_chapters_detail: Option<AvailableChaptersDetail>,
-	#[serde(rename = "lastChapterDate")]
-	pub last_chapter_date: Option<LastChapterDate>,
+	pub thumbnail: Option<String>,
+	pub is_adult: Option<bool>,
+	pub description: Option<String>,
+	pub authors: Option<Vec<String>>,
+	pub genres: Option<Vec<String>>,
+	pub tags: Option<Vec<String>>,
+	pub status: Option<String>,
+	#[serde(rename = "type")]
+	pub kind: Option<String>,
+	pub country_of_origin: Option<String>,
+	pub last_chapter_info: Option<Translations<LastChapter>>,
+	pub last_chapter_date: Option<Translations<DateParts>>,
 }
 
 impl MangaCard {
-	pub fn display_title(&self) -> &str {
-		match &self.english_name {
-			Some(name) if !name.is_empty() => name,
-			_ => &self.name,
+	pub fn into_details(mut self) -> Result<Manga> {
+		let tags = tag_names(
+			self.genres
+				.take()
+				.unwrap_or_default()
+				.into_iter()
+				.chain(self.tags.take().unwrap_or_default())
+				.collect(),
+		);
+		let mut authors: Vec<String> = Vec::new();
+		for author in self.authors.take().unwrap_or_default() {
+			let name = author.trim();
+			if !name.is_empty() && !authors.iter().any(|existing| existing == name) {
+				authors.push(name.into());
+			}
 		}
+		Ok(Manga {
+			description: self
+				.description
+				.take()
+				.and_then(|description| description_text(&description, true)),
+			authors: (!authors.is_empty()).then_some(authors),
+			status: parse_status(self.status.as_deref()),
+			content_rating: content_rating(&tags, self.is_adult),
+			viewer: viewer(
+				self.kind.as_deref(),
+				self.country_of_origin.as_deref(),
+				&tags,
+			),
+			url: Some(manga_url(&self.id)),
+			tags: (!tags.is_empty()).then_some(tags),
+			..Manga::try_from(self)?
+		})
+	}
+
+	pub fn into_featured(mut self) -> Result<Manga> {
+		let tags = tag_names(self.genres.take().unwrap_or_default());
+		let description = self
+			.description
+			.take()
+			.and_then(|description| description_text(&description, false));
+		let status = parse_status(self.status.as_deref());
+		let content_rating = content_rating(&tags, self.is_adult);
+		Ok(Manga {
+			description,
+			status,
+			content_rating,
+			tags: (!tags.is_empty()).then_some(tags),
+			..Manga::try_from(self)?
+		})
+	}
+}
+
+impl TryFrom<MangaCard> for Manga {
+	type Error = AidokuError;
+
+	fn try_from(card: MangaCard) -> Result<Self> {
+		let title = display_title(card.english_name.as_deref(), &card.name)?;
+		if card.id.trim().is_empty() {
+			bail!("Series has no key");
+		}
+		Ok(Manga {
+			title,
+			cover: cover_url(card.thumbnail.as_deref()),
+			content_rating: if card.is_adult == Some(true) {
+				ContentRating::NSFW
+			} else {
+				ContentRating::Unknown
+			},
+			key: card.id,
+			..Default::default()
+		})
 	}
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Recommendation {
-	#[serde(rename = "anyCard")]
 	pub any_card: Option<MangaCard>,
 }
 
 #[derive(Deserialize)]
-pub struct QueryPopular {
+pub struct Recommendations {
+	pub total: Option<i32>,
 	pub recommendations: Vec<Recommendation>,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PopularData {
-	#[serde(rename = "queryPopular")]
-	pub query_popular: QueryPopular,
+	pub query_popular: Recommendations,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrendingData {
+	pub query_latest_page_status: Recommendations,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RandomData {
-	#[serde(rename = "queryRandomRecommendation")]
 	pub query_random_recommendation: Option<Vec<MangaCard>>,
 }
 
 #[derive(Deserialize)]
+pub struct PageInfo {
+	pub total: Option<i32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MangaEdges {
+	pub page_info: PageInfo,
 	pub edges: Vec<MangaCard>,
 }
 
@@ -110,49 +192,52 @@ pub struct SearchData {
 	pub mangas: MangaEdges,
 }
 
-#[derive(Deserialize, Default)]
-pub struct MangaDetail {
-	#[serde(default)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdaptationsData {
+	pub season_adaptation_mangas: MangaEdges,
+}
+
+#[derive(Deserialize)]
+pub struct Tag {
 	pub name: String,
-	pub thumbnail: Option<String>,
-	pub description: Option<String>,
-	pub authors: Option<Vec<String>>,
-	pub genres: Option<Vec<String>>,
-	pub tags: Option<Vec<String>>,
-	pub status: Option<String>,
-	#[serde(rename = "englishName")]
-	pub english_name: Option<String>,
+	pub slug: String,
+}
+
+#[derive(Deserialize)]
+pub struct TagEdges {
+	pub edges: Vec<Tag>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagsData {
+	pub query_tags: TagEdges,
 }
 
 #[derive(Deserialize)]
 pub struct DetailsData {
-	pub manga: MangaDetail,
-}
-
-#[derive(Deserialize, Default)]
-pub struct ChaptersManga {
-	#[serde(rename = "availableChaptersDetail")]
-	pub available_chapters_detail: Option<AvailableChaptersDetail>,
-}
-
-#[derive(Deserialize, Default)]
-pub struct UploadDates {
-	pub sub: Option<String>,
+	pub manga: Option<MangaCard>,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChaptersManga {
+	pub available_chapters_detail: Option<Translations<Vec<String>>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EpisodeInfo {
-	#[serde(rename = "episodeIdNum")]
 	pub episode_id_num: serde_json::Value,
 	pub notes: Option<String>,
-	#[serde(rename = "uploadDates")]
-	pub upload_dates: Option<UploadDates>,
+	pub upload_dates: Option<Translations<String>>,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChaptersData {
-	pub manga: ChaptersManga,
-	#[serde(rename = "episodeInfos")]
+	pub manga: Option<ChaptersManga>,
 	pub episode_infos: Option<Vec<EpisodeInfo>>,
 }
 
@@ -173,26 +258,27 @@ impl PictureUrl {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChapterPageEdge {
-	// The reader response names the image host `serverUrl`; older payloads used
-	// `pictureUrlHead`, so accept either.
-	#[serde(rename = "serverUrl")]
-	pub server_url: Option<String>,
-	#[serde(rename = "pictureUrlHead")]
 	pub picture_url_head: Option<String>,
-	#[serde(rename = "pictureUrls")]
 	pub picture_urls: Option<Vec<PictureUrl>>,
-}
-
-impl ChapterPageEdge {
-	pub fn image_host(&self) -> Option<&str> {
-		self.server_url
-			.as_deref()
-			.or(self.picture_url_head.as_deref())
-	}
 }
 
 #[derive(Deserialize)]
 pub struct ChapterPages {
 	pub edges: Vec<ChapterPageEdge>,
+}
+
+// The reader's payload, captured with or without its GraphQL `data` wrapper
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderPayload {
+	pub chapter_pages: Option<ChapterPages>,
+	pub data: Option<ReaderData>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderData {
+	pub chapter_pages: Option<ChapterPages>,
 }

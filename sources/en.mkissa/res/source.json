@@ -1,10 +1,9 @@
 {
 	"info": {
 		"id": "en.mkissa",
-		"name": "Mkissa",
-		"version": 21,
+		"name": "MKissa",
+		"version": 50,
 		"url": "https://mkissa.to",
-		"urls": ["https://mkissa.to"],
 		"contentRating": 1,
 		"languages": ["en"],
 		"minAppVersion": "0.8.4"
@@ -14,24 +13,20 @@
 	},
 	"listings": [
 		{
-			"id": "popular_today",
-			"name": "Popular Today"
-		},
-		{
-			"id": "popular_week",
-			"name": "Popular This Week"
-		},
-		{
-			"id": "popular_month",
-			"name": "Popular This Month"
-		},
-		{
-			"id": "popular_all_time",
-			"name": "Popular All Time"
-		},
-		{
-			"id": "latest_updates",
+			"id": "latest",
 			"name": "Latest Updates"
+		},
+		{
+			"id": "trending",
+			"name": "Trending"
+		},
+		{
+			"id": "most_saved",
+			"name": "Most Saved"
+		},
+		{
+			"id": "most_boosted",
+			"name": "Most Boosted"
 		}
 	]
 }

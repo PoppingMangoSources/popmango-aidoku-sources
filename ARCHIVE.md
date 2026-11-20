@@ -60,3 +60,16 @@ including both templates, every source and template test and `scripts/test-http.
 `templates/iken` and `templates/mangathemesia` replace the earlier copies here; Scythe Scans
 was the last MangaThemesia consumer on main. Run the loopback regressions with
 `python3 scripts/test-http.py templates/iken` (or `templates/mangathemesia`, `templates/keyoapp`).
+
+## MangaTaro template, MangaTaro, Rolia Scan and MKissa
+
+PR 911 (mangataro template with MangaTaro and Rolia Scan) and PR 910 (MKissa) merged into
+canonical upstream on 2026-11-19. The complete fork snapshot is main `e4213542887d6a3744f188d8b72917a07b21608a`, including the
+template and its fixtures, every source test and MKissa's README icon. It also carries the fixes
+for the last comment on each PR (unstable tag sorts, and the image quality parameter joined with
+`&` when a url has a query), which went up again as updates on `feat/mangataro-template` and
+`feat/en.mkissa`.
+
+- `en.mangataro`
+- `en.roliascan`
+- `en.mkissa`

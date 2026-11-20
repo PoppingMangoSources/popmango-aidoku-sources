@@ -1,122 +1,50 @@
 #![no_std]
 use aidoku::{
-	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Link, LinkValue, Listing, ListingProvider, Manga,
-	MangaPageResult, MangaWithChapter, Page, PageContent, PageContext, Result, Source,
-	alloc::{String, Vec, string::ToString, vec},
-	imports::net::Request,
-	imports::std::send_partial_result,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, ImageRequestProvider,
+	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result,
+	Source,
+	alloc::{String, Vec, vec},
+	imports::{
+		net::{Request, TimeUnit, set_rate_limit},
+		std::{current_date, send_partial_result},
+	},
 	prelude::*,
 };
-use serde_json::Value;
+use core::cell::RefCell;
+use serde_json::{Map, Value, json};
 
+mod graphql;
+mod helpers;
+mod home;
 mod models;
-mod network;
-mod parsers;
+mod reader;
 mod settings;
-mod webview;
 
+use graphql::*;
+use helpers::{day_range, has_next_page, parse_chapters, season_and_year};
+use home::{Feed, browse_request};
 use models::*;
-use network::make_request;
-use parsers::*;
 
-struct Mkissa;
+const SORTS: [&str; 6] = [
+	"Top",
+	"Latest_Update",
+	"Release_Year",
+	"Name_ASC",
+	"Name_DESC",
+	"Popular",
+];
 
-fn source_content_rating() -> ContentRating {
-	if settings::show_adult() {
-		ContentRating::NSFW
-	} else {
-		ContentRating::Suggestive
-	}
+struct MKissa {
+	reader: RefCell<reader::Reader>,
 }
 
-fn json_opt_string(value: Option<String>) -> Value {
-	match value {
-		Some(s) => Value::String(s),
-		None => Value::Null,
-	}
-}
-
-fn json_string_array(values: Vec<String>) -> Value {
-	if values.is_empty() {
-		Value::Null
-	} else {
-		Value::Array(values.into_iter().map(Value::String).collect())
-	}
-}
-
-fn card_to_manga(card: MangaCard) -> Manga {
-	let title = decode_entities(card.display_title());
-	let cover = parse_thumbnail_url(card.thumbnail.as_deref());
-	Manga {
-		key: card.id,
-		title,
-		cover: Some(cover),
-		content_rating: source_content_rating(),
-		..Default::default()
-	}
-}
-
-fn card_to_link(card: MangaCard) -> Link {
-	let manga = card_to_manga(card);
-	Link {
-		title: manga.title.clone(),
-		subtitle: None,
-		image_url: manga.cover.clone(),
-		value: Some(LinkValue::Manga(manga)),
-	}
-}
-
-fn popular_cards(date_range: i32, page: i32) -> Result<(Vec<Recommendation>, bool)> {
-	let variables = serde_json::json!({
-		"type": "manga",
-		"size": LIMIT,
-		"dateRange": date_range,
-		"page": page,
-		"allowAdult": settings::show_adult(),
-		"allowUnknown": false,
-	});
-	let data: PopularData = make_request(POPULAR_QUERY, variables)?;
-	let recommendations = data.query_popular.recommendations;
-	let has_next = recommendations.len() as i32 == LIMIT;
-	Ok((recommendations, has_next))
-}
-
-fn popular_listing(date_range: i32, page: i32) -> Result<MangaPageResult> {
-	let (recommendations, has_next_page) = popular_cards(date_range, page)?;
-	let entries = recommendations
-		.into_iter()
-		.filter_map(|rec| rec.any_card)
-		.map(card_to_manga)
-		.collect();
-	Ok(MangaPageResult {
-		entries,
-		has_next_page,
-	})
-}
-
-fn latest_data(page: i32) -> Result<SearchData> {
-	let variables = serde_json::json!({
-		"search": {
-			"query": Value::Null,
-			"sortBy": Value::Null,
-			"genres": Value::Null,
-			"excludeGenres": Value::Null,
-			"isManga": true,
-			"allowAdult": settings::show_adult(),
-			"allowUnknown": false,
-		},
-		"size": LIMIT,
-		"page": page,
-		"translationType": "sub",
-		"countryOrigin": "ALL",
-	});
-	make_request(LATEST_QUERY, variables)
-}
-
-impl Source for Mkissa {
+impl Source for MKissa {
 	fn new() -> Self {
-		Self
+		// The API answers bursts with "Too many requests"
+		set_rate_limit(3, 1, TimeUnit::Seconds);
+		Self {
+			reader: RefCell::new(reader::Reader::default()),
+		}
 	}
 
 	fn get_search_manga_list(
@@ -125,66 +53,106 @@ impl Source for Mkissa {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let raw = query.unwrap_or_default();
-		let title = raw.trim();
-
-		if let Some(result) = self.resolve_direct_query(title)? {
-			return Ok(result);
+		// A pasted series link finds that series
+		if let Some(id) = query
+			.as_deref()
+			.and_then(|query| query.strip_prefix(BASE_URL))
+			.and_then(|path| path.strip_prefix("/manga/"))
+			.and_then(|path| path.split(['/', '?', '#']).next())
+			.filter(|id| !id.is_empty())
+			&& let Ok(DetailsData { manga: Some(card) }) =
+				fetch::<DetailsData>(CARD_QUERY, json!({ "id": id }))
+			&& let Ok(manga) = Manga::try_from(card)
+		{
+			return Ok(MangaPageResult {
+				entries: vec![manga],
+				has_next_page: false,
+			});
 		}
 
-		let page = page.max(1);
-		let mut sort_id: Option<String> = None;
+		// The app leaves out the default sort, and the API then sorts by latest update
+		let mut search = Map::from_iter([("sortBy".into(), SORTS[0].into())]);
 		let mut country = String::from("ALL");
-		let mut included: Vec<String> = Vec::new();
-		let mut excluded: Vec<String> = Vec::new();
-
+		let mut genres: Vec<String> = Vec::new();
+		let mut excluded_genres: Vec<String> = Vec::new();
+		if let Some(query) = query {
+			search.insert("query".into(), query.into());
+		}
 		for filter in filters {
 			match filter {
 				FilterValue::Sort { index, .. } => {
-					sort_id = match index {
-						1 => Some("Name_ASC".into()),
-						2 => Some("Name_DESC".into()),
-						_ => None,
-					};
+					if let Some(sort) = SORTS.get(index as usize) {
+						search.insert("sortBy".into(), (*sort).into());
+					}
 				}
-				FilterValue::Select { id, value } if id == "country" => {
-					country = value;
+				FilterValue::Select { id, value } => match id.as_str() {
+					"country" => country = value,
+					// A tapped tag sends its display name; magazines search by name in their own field
+					"genre" => match find_tag(&value)? {
+						Some(tag) if tag.slug.ends_with("-magazine") => {
+							search.insert("magazine".into(), tag.name.into());
+						}
+						Some(tag) => {
+							search.insert("tags".into(), vec![tag.slug].into());
+						}
+						None => genres.push(value),
+					},
+					"day" => {
+						let (start, end) = value
+							.parse()
+							.ok()
+							.map(|days_ago| day_range(days_ago, current_date()))
+							.ok_or(error!("Unknown update day"))?;
+						search.insert("dateRangeStart".into(), start.into());
+						search.insert("dateRangeEnd".into(), end.into());
+					}
+					"season" => {
+						search.insert("season".into(), value.into());
+						// The site's season picker always carries a year, the current one by default
+						search
+							.entry("year")
+							.or_insert_with(|| season_and_year(current_date()).1.into());
+					}
+					"chapters" => {
+						// Ranges read `11-50`; the last, `2001`, has no end
+						let (start, end) = value.split_once('-').unwrap_or((&value, ""));
+						for (key, bound) in [("epRangeStart", start), ("epRangeEnd", end)] {
+							if let Ok(bound) = bound.parse::<i32>() {
+								search.insert(key.into(), bound.into());
+							}
+						}
+					}
+					_ => {}
+				},
+				FilterValue::Text { id, value } if id == "year" => {
+					let year: i32 = value.trim().parse().map_err(|_| error!("Enter a year"))?;
+					search.insert("year".into(), year.into());
 				}
+				// The site's panel only includes; the API also excludes
 				FilterValue::MultiSelect {
-					id,
-					included: inc,
-					excluded: exc,
-				} if id == "genres" => {
-					included = inc;
-					excluded = exc;
+					included, excluded, ..
+				} => {
+					genres.extend(included);
+					excluded_genres.extend(excluded);
 				}
 				_ => {}
 			}
 		}
-
-		let search_input = serde_json::json!({
-			"query": json_opt_string(if title.is_empty() { None } else { Some(title.to_string()) }),
-			"sortBy": json_opt_string(sort_id),
-			"genres": json_string_array(included),
-			"excludeGenres": json_string_array(excluded),
-			"isManga": true,
-			"allowAdult": settings::show_adult(),
-			"allowUnknown": false,
-		});
-		let variables = serde_json::json!({
-			"search": search_input,
-			"size": LIMIT,
-			"page": page,
-			"translationType": "sub",
-			"countryOrigin": country,
-		});
-
-		let data: SearchData = make_request(SEARCH_QUERY, variables)?;
-		let has_next_page = data.mangas.edges.len() as i32 == LIMIT;
-		let entries = data.mangas.edges.into_iter().map(card_to_manga).collect();
+		for (field, values) in [("genres", genres), ("excludeGenres", excluded_genres)] {
+			if !values.is_empty() {
+				search.insert(field.into(), values.into());
+			}
+		}
+		let data: SearchData =
+			parse(browse_request(Value::Object(search), page, &country)?.send()?)?;
 		Ok(MangaPageResult {
-			entries,
-			has_next_page,
+			has_next_page: has_next_page(page, data.mangas.page_info.total),
+			entries: data
+				.mangas
+				.edges
+				.into_iter()
+				.filter_map(|card| Manga::try_from(card).ok())
+				.collect(),
 		})
 	}
 
@@ -194,74 +162,34 @@ impl Source for Mkissa {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let key = manga.key.clone();
-
 		if needs_details {
-			let data: DetailsData =
-				make_request(DETAILS_QUERY, serde_json::json!({ "id": key.as_str() }))?;
-			let detail = data.manga;
-
-			manga.title = decode_entities(match &detail.english_name {
-				Some(name) if !name.is_empty() => name,
-				_ => &detail.name,
-			});
-			manga.cover = Some(parse_thumbnail_url(detail.thumbnail.as_deref()));
-			if let Some(description) = &detail.description {
-				manga.description = Some(strip_html(description));
-			}
-
-			let mut genres: Vec<String> = Vec::new();
-			for genre in detail
-				.genres
-				.unwrap_or_default()
-				.into_iter()
-				.chain(detail.tags.unwrap_or_default())
-			{
-				let trimmed = genre.trim();
-				if !trimmed.is_empty() && !genres.iter().any(|g| g == trimmed) {
-					genres.push(trimmed.to_string());
-				}
-			}
-			manga.content_rating = content_rating_for_genres(&genres);
-			if !genres.is_empty() {
-				manga.tags = Some(genres);
-			}
-
-			if let Some(authors) = detail.authors {
-				let authors: Vec<String> = authors
-					.into_iter()
-					.map(|a| a.trim().to_string())
-					.filter(|a| !a.is_empty())
-					.collect();
-				if !authors.is_empty() {
-					manga.artists = Some(authors.clone());
-					manga.authors = Some(authors);
-				}
-			}
-
-			manga.status = parse_status(detail.status.as_deref());
-			manga.url = Some(format!("{DOMAIN}/manga/{key}"));
-
+			let data: DetailsData = fetch(DETAILS_QUERY, json!({ "id": manga.key }))?;
+			let details = data
+				.manga
+				.ok_or(error!("Series not found"))?
+				.into_details()?;
+			manga.copy_from(details);
 			if needs_chapters {
 				send_partial_result(&manga);
 			}
 		}
 
 		if needs_chapters {
-			let variables = serde_json::json!({
-				"id": key.as_str(),
-				"showId": format!("manga@{key}"),
-			});
-			let data: ChaptersData = make_request(CHAPTERS_QUERY, variables)?;
-			manga.chapters = Some(parse_chapters(&data, &key));
+			let data: ChaptersData = fetch(
+				CHAPTERS_QUERY,
+				json!({ "id": manga.key, "showId": format!("manga@{}", manga.key) }),
+			)?;
+			manga.chapters = Some(parse_chapters(data, &manga.key)?);
 		}
 
 		Ok(manga)
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let urls = webview::page_urls_via_webview(&manga.key, &chapter.key)?;
-		Ok(urls
+		Ok(self
+			.reader
+			.borrow_mut()
+			.page_urls(&manga.key, &chapter.key)?
 			.into_iter()
 			.map(|url| Page {
 				content: PageContent::url(url),
@@ -271,227 +199,62 @@ impl Source for Mkissa {
 	}
 }
 
-impl Mkissa {
-	fn resolve_direct_query(&self, query: &str) -> Result<Option<MangaPageResult>> {
-		let id = if query.to_lowercase().starts_with("id:") {
-			let value = query[3..].trim();
-			(!value.is_empty()).then(|| value.to_string())
-		} else if let Some(idx) = query.find("/manga/") {
-			let after = &query[idx + "/manga/".len()..];
-			let segment = after.split(['/', '?', '#']).next().unwrap_or("");
-			(!segment.is_empty()).then(|| segment.to_string())
-		} else {
-			None
-		};
-
-		let Some(id) = id else {
-			return Ok(None);
-		};
-
-		let manga = self.get_manga_update(
-			Manga {
-				key: id,
-				..Default::default()
-			},
-			true,
-			false,
-		);
-
-		match manga {
-			Ok(manga) if !manga.title.is_empty() => Ok(Some(MangaPageResult {
-				entries: vec![manga],
-				has_next_page: false,
-			})),
-			_ => Ok(None),
-		}
-	}
-}
-
-impl Home for Mkissa {
+impl Home for MKissa {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let mut components: Vec<HomeComponent> = Vec::new();
-
-		if let Ok((recommendations, _)) = popular_cards(0, 1) {
-			let entries: Vec<Manga> = recommendations
-				.into_iter()
-				.filter_map(|rec| rec.any_card)
-				.map(card_to_manga)
-				.collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Popular".into()),
-					subtitle: None,
-					value: HomeComponentValue::BigScroller {
-						entries,
-						auto_scroll_interval: Some(6.0),
-					},
-				});
-			}
-		}
-
-		for (title, id, date_range) in [
-			("Popular This Week", "popular_week", 7),
-			("Popular This Month", "popular_month", 30),
-		] {
-			if let Ok((recommendations, _)) = popular_cards(date_range, 1) {
-				let entries: Vec<Link> = recommendations
-					.into_iter()
-					.filter_map(|rec| rec.any_card)
-					.map(card_to_link)
-					.collect();
-				if !entries.is_empty() {
-					components.push(HomeComponent {
-						title: Some(title.into()),
-						subtitle: None,
-						value: HomeComponentValue::Scroller {
-							entries,
-							listing: Some(Listing {
-								id: id.into(),
-								name: title.into(),
-								..Default::default()
-							}),
-						},
-					});
-				}
-			}
-		}
-
-		if let Ok(data) = latest_data(1) {
-			let entries: Vec<MangaWithChapter> = data
-				.mangas
-				.edges
-				.into_iter()
-				.filter_map(|card| {
-					let latest = card
-						.available_chapters_detail
-						.as_ref()
-						.and_then(|detail| detail.sub.as_ref())
-						.and_then(|sub| sub.first())
-						.cloned()?;
-					let date_uploaded = card
-						.last_chapter_date
-						.as_ref()
-						.and_then(|last| date_from_parts(last.sub.as_ref()));
-					let manga = card_to_manga(card);
-					Some(MangaWithChapter {
-						manga,
-						chapter: Chapter {
-							key: latest.clone(),
-							title: Some(format!("Chapter {latest}")),
-							chapter_number: latest.parse::<f32>().ok(),
-							date_uploaded,
-							..Default::default()
-						},
-					})
-				})
-				.collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Latest Updates".into()),
-					subtitle: None,
-					value: HomeComponentValue::MangaChapterList {
-						page_size: Some(5),
-						entries,
-						listing: Some(Listing {
-							id: "latest_updates".into(),
-							name: "Latest Updates".into(),
-							..Default::default()
-						}),
-					},
-				});
-			}
-		}
-
-		if let Ok(data) = make_request::<RandomData>(
-			RANDOM_QUERY,
-			serde_json::json!({ "format": "manga", "allowAdult": settings::show_adult() }),
-		) {
-			let entries: Vec<Link> = data
-				.query_random_recommendation
-				.unwrap_or_default()
-				.into_iter()
-				.map(card_to_link)
-				.collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Recommended".into()),
-					subtitle: None,
-					value: HomeComponentValue::Scroller {
-						entries,
-						listing: None,
-					},
-				});
-			}
-		}
-
-		Ok(HomeLayout { components })
+		home::get_home()
 	}
 }
 
-impl ListingProvider for Mkissa {
+impl ListingProvider for MKissa {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let page = page.max(1);
-		match listing.id.as_str() {
-			"popular_today" => popular_listing(1, page),
-			"popular_week" => popular_listing(7, page),
-			"popular_month" => popular_listing(30, page),
-			"popular_all_time" => popular_listing(0, page),
-			"latest_updates" => {
-				let data = latest_data(page)?;
-				let has_next_page = data.mangas.edges.len() as i32 == LIMIT;
-				let entries = data.mangas.edges.into_iter().map(card_to_manga).collect();
-				Ok(MangaPageResult {
-					entries,
-					has_next_page,
-				})
-			}
-			_ => bail!("Unknown listing"),
-		}
+		Feed::from_id(&listing.id)
+			.ok_or(error!("Unknown listing"))?
+			.listing_page(page)
 	}
 }
 
-impl aidoku::ImageRequestProvider for Mkissa {
+impl ImageRequestProvider for MKissa {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?
-			.header("Referer", &format!("{DOMAIN}/"))
-			.header("Origin", DOMAIN))
+			.header("Referer", &format!("{BASE_URL}/"))
+			.header("Origin", BASE_URL))
 	}
 }
 
-impl DeepLinkHandler for Mkissa {
+impl DeepLinkHandler for MKissa {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		let Some(idx) = url.find("/manga/") else {
+		let Some((_, path)) = url.split_once("/manga/") else {
 			return Ok(None);
 		};
-		let after = &url[idx + "/manga/".len()..];
-		let mut segments = after.split('/');
-		let Some(manga_key) = segments.next().filter(|s| !s.is_empty()) else {
+		let mut segments = path.split(['/', '?', '#']);
+		let Some(manga_key) = segments.next().filter(|key| !key.is_empty()) else {
 			return Ok(None);
 		};
-
-		if let Some(chapter_segment) = segments.next() {
-			// ex: chapter-12-sub -> 12
-			if let Some(rest) = chapter_segment.strip_prefix("chapter-") {
-				let number = rest.trim_end_matches("-sub");
-				if !number.is_empty() {
-					return Ok(Some(DeepLinkResult::Chapter {
-						manga_key: manga_key.to_string(),
-						key: number.to_string(),
-					}));
-				}
-			}
+		// Chapter paths read `chapter-12-sub`
+		if let Some(number) = segments
+			.next()
+			.and_then(|segment| segment.strip_prefix("chapter-"))
+			.map(|rest| rest.trim_end_matches("-sub"))
+			.filter(|number| !number.is_empty())
+		{
+			return Ok(Some(DeepLinkResult::Chapter {
+				manga_key: manga_key.into(),
+				key: number.into(),
+			}));
 		}
-
 		Ok(Some(DeepLinkResult::Manga {
-			key: manga_key.to_string(),
+			key: manga_key.into(),
 		}))
 	}
 }
 
 register_source!(
-	Mkissa,
+	MKissa,
 	Home,
 	ListingProvider,
 	ImageRequestProvider,
 	DeepLinkHandler
 );
+
+#[cfg(test)]
+mod test;

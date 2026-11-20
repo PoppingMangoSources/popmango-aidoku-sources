@@ -1,0 +1,74 @@
+{
+	"success": true,
+	"data": [
+		{
+			"manga_id": "706055",
+			"title": "Salamander",
+			"permalink": "https://mangataro.org/read/salamander/ch5-709368",
+			"manga_permalink": "https://mangataro.org/manga/salamander",
+			"cover": "https://mangataro.org/content/media/manga-706055-cover-1793118224.jpg",
+			"chapter": "Ch. 5",
+			"time": "2 hours ago",
+			"manga_type": "Manga",
+			"manga_status": "Ongoing",
+			"last_3_chapters": [
+				{
+					"title": "Salamander Chapter 9",
+					"chapter": "9",
+					"link": "https://mangataro.org/read/salamander/ch9-708564",
+					"time": "3 days ago",
+					"is_new": false
+				},
+				{
+					"title": "Salamander Chapter 8",
+					"chapter": "8",
+					"link": "https://mangataro.org/read/salamander/ch8-707029",
+					"time": "1 week ago",
+					"is_new": false
+				},
+				{
+					"title": "Salamander Chapter 7",
+					"chapter": "7",
+					"link": "https://mangataro.org/read/salamander/ch7-706157",
+					"time": "2 weeks ago",
+					"is_new": false
+				}
+			]
+		},
+		{
+			"manga_id": "612967",
+			"title": "Sei-jun Ecstasy: XXX Shinai to Derarenai Heya de Mazoku o Buttaoshimasu",
+			"permalink": "https://mangataro.org/read/sei-jun-ecstasy-xxx-shinai-to-derarenai-heya-de-mazoku-o-buttaoshimasu/ch43-709366",
+			"manga_permalink": "https://mangataro.org/manga/sei-jun-ecstasy-xxx-shinai-to-derarenai-heya-de-mazoku-o-buttaoshimasu",
+			"cover": "https://mangataro.org/content/media/manga-612967-cover-1767501326.jpg",
+			"chapter": "Ch. 43",
+			"time": "2 hours ago",
+			"manga_type": "Manga",
+			"manga_status": "Ongoing",
+			"last_3_chapters": [
+				{
+					"title": "Sei-jun Ecstasy: XXX Shinai to Derarenai Heya de Mazoku o Buttaoshimasu Chapter 43",
+					"chapter": "43",
+					"link": "https://mangataro.org/read/sei-jun-ecstasy-xxx-shinai-to-derarenai-heya-de-mazoku-o-buttaoshimasu/ch43-709366",
+					"time": "2 hours ago",
+					"is_new": true
+				},
+				{
+					"title": "Sei-jun Ecstasy: XXX Shinai to Derarenai Heya de Mazoku o Buttaoshimasu Chapter 42",
+					"chapter": "42",
+					"link": "https://mangataro.org/read/sei-jun-ecstasy-xxx-shinai-to-derarenai-heya-de-mazoku-o-buttaoshimasu/ch42-707754",
+					"time": "1 week ago",
+					"is_new": false
+				},
+				{
+					"title": "Sei-jun Ecstasy: XXX Shinai to Derarenai Heya de Mazoku o Buttaoshimasu Chapter 41",
+					"chapter": "41",
+					"link": "https://mangataro.org/read/sei-jun-ecstasy-xxx-shinai-to-derarenai-heya-de-mazoku-o-buttaoshimasu/ch41-706322",
+					"time": "2 weeks ago",
+					"is_new": false
+				}
+			]
+		}
+	],
+	"has_more": false
+}
