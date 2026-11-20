@@ -1,0 +1,48 @@
+{
+	"info": {
+		"id": "multi.swarm",
+		"name": "Swarm",
+		"version": 1,
+		"url": "https://swarm.ws",
+		"contentRating": 1,
+		"languages": [
+			"en",
+			"ar",
+			"bg",
+			"bn",
+			"ca",
+			"cs",
+			"de",
+			"es",
+			"es-419",
+			"fa",
+			"fr",
+			"he",
+			"hi",
+			"hu",
+			"id",
+			"it",
+			"ja",
+			"ko",
+			"mn",
+			"ms",
+			"my",
+			"pl",
+			"pt",
+			"pt-BR",
+			"ro",
+			"ru",
+			"sl",
+			"th",
+			"tl",
+			"tr",
+			"uk",
+			"vi",
+			"zh"
+		],
+		"minAppVersion": "0.7.1"
+	},
+	"config": {
+		"supportsTagSearch": true
+	}
+}
