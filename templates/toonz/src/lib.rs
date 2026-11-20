@@ -20,10 +20,7 @@ pub use imp::Impl;
 pub enum Row {
 	// Featured articles, highest rated first.
 	Featured(&'static [usize]),
-	// The hero slides.
 	Hero(usize),
-	// A section's cards.
-	Cards(usize, &'static str),
 	// A section's cards, most recently added first.
 	Newest(&'static [usize], &'static str),
 	// A section's visible tab.
@@ -36,14 +33,13 @@ pub enum Row {
 
 pub struct Params {
 	pub base_url: &'static str,
-	// The catalogue, which takes every search parameter.
 	pub catalog: &'static str,
 	// The path that resolves every series and chapter.
 	pub series_path: &'static str,
 	// The paths the site files series under.
 	pub series_types: &'static [&'static str],
-	// The site's content setting values; selecting every type sends none.
 	pub rating: &'static str,
+	// Selecting every type sends none.
 	pub type_count: usize,
 	pub home_pages: &'static [&'static str],
 	pub home_rows: &'static [(&'static str, Row)],

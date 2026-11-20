@@ -72,7 +72,9 @@ const LEWD_HOME: &str = r#"<html><body>
 <section><div aria-hidden="false"><img alt="" src="/bg.webp"/><div><a aria-label="Beast" href="/webtoon/beast"><div><picture>
 <img alt="Beast" src="/uploads/covers/beast-hd.webp"/></picture><div>manhwa</div></div></a><div><span data-slot="badge">#1 Featured</span>
 <a href="/webtoon/beast"><h2>Beast</h2></a><div><span>3.3</span><span data-slot="badge">ongoing</span></div><p>Beast summary.</p>
-<a href="/webtoon/beast"><button>Read Now</button></a></div></div></div></section>
+<a href="/webtoon/beast"><button>Read Now</button></a></div></div>
+<div aria-hidden="true"><div><a aria-label="Farm" href="/webtoon/farm-429h7"><div><div>manhwa</div></div></a><div>
+<a href="/webtoon/farm-429h7"><h2>Farm</h2></a><p>Farm summary.</p></div></div></div></section>
 <section><h2>Trending Now</h2><a href="/webtoon/beast"><div><img alt="Beast" data-cover src="/b.webp"/><div>1</div></div><h3>Beast</h3></a>
 <a href="/webtoon/farm-429h7"><div><img alt="Farm" data-cover src="/f.webp"/><div>2</div></div><h3>Farm</h3></a></section>
 <section><h2>Latest Updates</h2><div><a aria-label="Divorce" href="/webtoon/divorce"></a><div><img alt="Divorce" data-cover src="/d.webp"/>
@@ -145,21 +147,24 @@ fn review_lewd_home_rows() {
 	let Some(HomeComponentValue::BigScroller { entries, .. }) = value(Row::Hero(0)) else {
 		panic!("the hero is not a big scroller");
 	};
-	assert_eq!(entries.len(), 1, "only slide headings link a series");
-	assert_eq!(entries[0].key, "beast");
+	let keys: Vec<_> = entries.iter().map(|manga| manga.key.as_str()).collect();
+	assert_eq!(
+		keys,
+		["beast", "farm-429h7"],
+		"only slide headings link a series"
+	);
 	assert_eq!(
 		entries[0].cover.as_deref(),
 		Some("https://lewdmanhwa.com/uploads/covers/beast-hd.webp")
 	);
 	assert_eq!(entries[0].description.as_deref(), Some("Beast summary."));
 	assert_eq!(entries[0].status, MangaStatus::Ongoing);
-
-	let Some(HomeComponentValue::Scroller { entries, .. }) = value(Row::Cards(0, "Trending Now"))
-	else {
-		panic!("trending now is not a scroller");
-	};
-	let keys: Vec<_> = entries.iter().map(|link| link.title.as_str()).collect();
-	assert_eq!(keys, ["Beast", "Farm"]);
+	assert_eq!(
+		entries[1].cover.as_deref(),
+		Some("https://lewdmanhwa.com/f.webp"),
+		"a slide without its own cover takes its card's"
+	);
+	assert_eq!(entries[1].description.as_deref(), Some("Farm summary."));
 
 	let Some(HomeComponentValue::MangaChapterList { entries, .. }) =
 		value(Row::Chapters(0, "Latest Updates"))
@@ -171,9 +176,9 @@ fn review_lewd_home_rows() {
 	assert_eq!(entries[0].manga.title, "Divorce");
 	assert_eq!(entries[0].chapter.key, "17-wad21");
 	assert_eq!(entries[0].chapter.chapter_number, Some(17.0));
-	assert_eq!(
-		entries[0].chapter.url.as_deref(),
-		Some("https://lewdmanhwa.com/webtoon/divorce/chapter/17-wad21")
+	assert!(
+		entries[0].chapter.url.is_none(),
+		"the app opens home chapters by key"
 	);
 }
 
@@ -230,6 +235,11 @@ fn review_links_and_ages() {
 	assert_eq!(
 		link(&TOONZ, "/manga/x/chapter/84.02?page=2"),
 		Some(("x".into(), Some("84.02".into())))
+	);
+	assert_eq!(link(&TOONZ, "/manhwa?sort=popular"), None);
+	assert_eq!(
+		link(&TOONZ, "/manhwa/solo-leveling?ref=home#chapters"),
+		Some(("solo-leveling".into(), None))
 	);
 	assert_eq!(link(&TOONZ, "/manhwa/browse"), None);
 	assert_eq!(link(&TOONZ, "/manga/trending"), None);

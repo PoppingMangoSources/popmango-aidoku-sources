@@ -79,7 +79,7 @@ fn review_home_rows_keep_the_site_order() {
 		.iter()
 		.map(|(title, _)| *title)
 		.collect();
-	assert_eq!(titles, ["Featured", "Trending Now", "Latest Updates"]);
+	assert_eq!(titles, ["Featured", "Latest Updates"]);
 }
 
 #[aidoku_test]
@@ -126,7 +126,7 @@ fn filters_narrow_the_catalogue() {
 		multi("genre", &["yaoi"], &[]),
 		multi("genre", &[], &["yaoi"]),
 		multi("type", &["manga"], &[]),
-		multi("rating", &["safe"], &[]),
+		select("rating", "safe"),
 	] {
 		let narrowed = search(None, vec![filter]);
 		assert!(!narrowed.entries.is_empty());
@@ -142,8 +142,8 @@ fn ratings_follow_the_setting_and_filter() {
 	let explicit = keys(&search(None, Vec::new()));
 	assert_ne!(safe, explicit);
 	content("safe", &TYPES, &[]);
-	// The highest rating picked applies, with every rating below it.
-	let widened = search(None, vec![multi("rating", &["safe", "pornographic"], &[])]);
+	// A level includes every level below it.
+	let widened = search(None, vec![select("rating", "pornographic")]);
 	assert_eq!(keys(&widened), explicit);
 	reset();
 }
@@ -158,11 +158,15 @@ fn settings_types_and_genres_apply_and_yield_to_search() {
 			.is_empty()
 	);
 
+	// The site answers nothing for a genre its cookie blocks, so results prove the override.
+	reset();
+	let yaoi = keys(&search(None, vec![multi("genre", &["yaoi"], &[])]));
+	assert!(!yaoi.is_empty());
 	content("pornographic", &TYPES, &["yaoi"]);
-	assert!(!keys(&search(None, Vec::new())).contains(&SERIES.into()));
 	let included = search(None, vec![multi("genre", &["yaoi"], &[])]);
-	assert!(
-		keys(&included).contains(&SERIES.into()),
+	assert_eq!(
+		keys(&included),
+		yaoi,
 		"an included tag must override its exclusion"
 	);
 	reset();
@@ -177,13 +181,14 @@ fn home_loads_every_row() {
 		.iter()
 		.filter_map(|component| component.title.as_deref())
 		.collect();
-	assert_eq!(titles, ["Featured", "Trending Now", "Latest Updates"]);
+	assert_eq!(titles, ["Featured", "Latest Updates"]);
 	for component in &layout.components {
 		match &component.value {
 			HomeComponentValue::BigScroller { entries, .. } => assert!(
-				entries
-					.iter()
-					.all(|manga| manga.description.is_some() && manga.cover.is_some())
+				entries.len() > 1
+					&& entries
+						.iter()
+						.all(|manga| manga.description.is_some() && manga.cover.is_some())
 			),
 			HomeComponentValue::MangaChapterList { entries, .. } => assert!(
 				!entries.is_empty()

@@ -24,7 +24,7 @@ fn content(rating: &str, types: &[&str], excluded: &[&str]) {
 }
 
 fn reset() {
-	content("erotica", &TYPES, &[]);
+	content("suggestive", &TYPES, &[]);
 }
 
 fn search(query: Option<&str>, filters: Vec<FilterValue>) -> MangaPageResult {
@@ -62,6 +62,12 @@ fn sort(index: i32) -> FilterValue {
 		index,
 		ascending: false,
 	}
+}
+
+#[aidoku_test]
+fn review_content_rating_defaults_to_suggestive() {
+	assert_eq!(ToonzTo.params().rating, "suggestive");
+	assert!(include_str!("../res/settings.json").contains(r#""default": "suggestive""#));
 }
 
 #[aidoku_test]
@@ -136,7 +142,7 @@ fn filters_narrow_the_catalogue() {
 		multi("genre", &["action"], &[]),
 		multi("genre", &[], &["romance"]),
 		multi("type", &["manhua"], &[]),
-		multi("rating", &["safe"], &[]),
+		select("rating", "safe"),
 	] {
 		let narrowed = search(None, vec![filter]);
 		assert!(!narrowed.entries.is_empty());
@@ -153,20 +159,14 @@ fn ratings_follow_the_setting_and_filter() {
 			.iter()
 			.all(|manga| manga.content_rating != ContentRating::NSFW)
 	);
-	// The highest rating picked applies, with every rating below it.
-	let explicit = search(
-		None,
-		vec![sort(1), multi("rating", &["safe", "pornographic"], &[])],
-	);
+	// A level includes every level below it.
+	let explicit = search(None, vec![sort(1), select("rating", "pornographic")]);
 	assert!(
 		explicit
 			.entries
 			.iter()
 			.any(|manga| manga.content_rating == ContentRating::NSFW)
 	);
-	reset();
-	let none_picked = search(None, vec![sort(1), multi("rating", &[], &[])]);
-	assert_eq!(keys(&none_picked), keys(&search(None, vec![sort(1)])));
 }
 
 #[aidoku_test]

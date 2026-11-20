@@ -1,7 +1,7 @@
-use crate::Params;
+use crate::{Params, helpers::chapter_url};
 use aidoku::{
 	Chapter,
-	alloc::{String, Vec, format},
+	alloc::{String, Vec},
 	imports::std::parse_date,
 };
 use serde::Deserialize;
@@ -45,10 +45,7 @@ impl ChapterItem {
 			.and_then(|date| date.get(..19))
 			.and_then(|date| parse_date(date.replace('T', " "), "yyyy-MM-dd HH:mm:ss"));
 		Chapter {
-			url: Some(format!(
-				"{}/{}/{manga_key}/chapter/{key}",
-				params.base_url, params.series_path
-			)),
+			url: Some(chapter_url(params, manga_key, &key)),
 			key,
 			title: self.title.filter(|title| !title.trim().is_empty()),
 			chapter_number,

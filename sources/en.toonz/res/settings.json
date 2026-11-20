@@ -20,7 +20,7 @@
 					"Erotica",
 					"Explicit"
 				],
-				"default": "erotica",
+				"default": "suggestive",
 				"refreshes": [
 					"content",
 					"listings"

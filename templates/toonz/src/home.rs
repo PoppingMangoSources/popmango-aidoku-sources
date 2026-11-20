@@ -55,22 +55,26 @@ fn featured(params: &Params, article: &Element) -> Option<(f32, Manga)> {
 				.and_then(|text| text.text())
 				.filter(|text| !text.is_empty()),
 			content_rating: rating(cover.has_attr("data-nsfw"), &tags),
-			tags: Some(tags),
+			tags: Some(tags).filter(|tags| !tags.is_empty()),
 			..Default::default()
 		},
 	))
 }
 
-// A slide's heading links its series; the cover sits beside the details.
-fn slide(params: &Params, heading: &Element) -> Option<Manga> {
+// Only the first slide's cover is in the page; the others are the same titles' cards further down.
+fn slide(params: &Params, heading: &Element, cards: &[Manga]) -> Option<Manga> {
 	let link = heading.parent()?;
 	let (key, _) = series_path(params, &link.attr("href")?)?;
 	let info = link.parent()?;
-	let cover = info.parent()?.select_first("picture img")?;
+	let cover = info
+		.parent()?
+		.select_first("picture img")
+		.and_then(|cover| cover.attr("abs:src"))
+		.or_else(|| cards.iter().find(|card| card.key == key)?.cover.clone());
 	Some(Manga {
 		key,
 		title: heading.text()?,
-		cover: cover.attr("abs:src"),
+		cover,
 		description: info
 			.select_first("p")
 			.and_then(|text| text.text())
@@ -84,13 +88,9 @@ fn slide(params: &Params, heading: &Element) -> Option<Manga> {
 	})
 }
 
-fn chapter(params: &Params, manga: Manga, key: String, number: Option<f32>) -> MangaWithChapter {
+fn chapter(manga: Manga, key: String, number: Option<f32>) -> MangaWithChapter {
 	MangaWithChapter {
 		chapter: Chapter {
-			url: Some(format!(
-				"{}/{}/{}/chapter/{key}",
-				params.base_url, params.series_path, manga.key
-			)),
 			key,
 			chapter_number: number,
 			..Default::default()
@@ -112,12 +112,11 @@ fn update(params: &Params, article: &Element) -> Option<MangaWithChapter> {
 		.as_deref()
 		.and_then(age);
 	let parsed = number.parse().ok();
-	let mut entry = chapter(params, manga, number, parsed);
+	let mut entry = chapter(manga, number, parsed);
 	entry.chapter.date_uploaded = seconds.map(|seconds| current_date() - seconds);
 	Some(entry)
 }
 
-// Cards with how long ago each was added.
 fn aged_cards(params: &Params, scope: &Element) -> Vec<(i64, Manga)> {
 	scope
 		.select("img[data-cover]")
@@ -167,11 +166,11 @@ fn chapter_list(entries: Vec<MangaWithChapter>) -> Option<HomeComponentValue> {
 }
 
 pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<HomeComponentValue> {
-	let some =
+	let loaded =
 		|indices: &'static [usize]| indices.iter().filter_map(|index| pages[*index].as_ref());
 	match row {
 		Row::Featured(indices) => {
-			let mut entries: Vec<_> = some(indices)
+			let mut entries: Vec<_> = loaded(indices)
 				.flat_map(|page| {
 					page.select("section[aria-label=Featured] article")
 						.into_iter()
@@ -187,22 +186,19 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 			})
 		}
 		Row::Hero(page) => {
-			let entries: Vec<_> = pages[page]
-				.as_ref()?
+			let page = pages[page].as_ref()?;
+			let cards = cards(params, page.select("img[data-cover]"));
+			let entries: Vec<_> = page
 				.select("section h2")?
-				.filter_map(|heading| slide(params, &heading))
+				.filter_map(|heading| slide(params, &heading, &cards))
 				.collect();
 			(!entries.is_empty()).then_some(HomeComponentValue::BigScroller {
 				entries,
 				auto_scroll_interval: Some(5.0),
 			})
 		}
-		Row::Cards(page, heading) => {
-			let section = section(pages[page].as_ref()?, heading)?;
-			scroller(cards(params, section.select("img[data-cover]")))
-		}
 		Row::Newest(indices, heading) => {
-			let mut entries: Vec<_> = some(indices)
+			let mut entries: Vec<_> = loaded(indices)
 				.filter_map(|page| section(page, heading))
 				.flat_map(|section| aged_cards(params, &section))
 				.collect();
@@ -234,7 +230,7 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 							.text()
 							.as_deref()
 							.and_then(|text| text.strip_prefix("Ch.")?.trim().parse().ok());
-						Some(chapter(params, manga, chapter_key?, number))
+						Some(chapter(manga, chapter_key?, number))
 					})
 					.collect(),
 			)

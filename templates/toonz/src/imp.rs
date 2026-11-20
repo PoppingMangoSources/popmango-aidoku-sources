@@ -1,7 +1,7 @@
 use crate::{
 	Params,
 	helpers::{
-		RATINGS, SORTS, SearchParams, chapter_items, details, narrowed, reader_images, series_page,
+		SORTS, SearchParams, chapter_items, details, narrowed, reader_images, series_page,
 		series_path,
 	},
 	home,
@@ -58,9 +58,11 @@ pub trait Impl {
 						search.sort = sort;
 					}
 				}
-				FilterValue::Select { id, value } if id == "status" && !value.is_empty() => {
-					search.status = value
-				}
+				FilterValue::Select { id, value } => match id.as_str() {
+					"status" => search.status = Some(value),
+					"rating" => search.content.rating = value,
+					_ => {}
+				},
 				FilterValue::MultiSelect {
 					id,
 					included,
@@ -69,16 +71,6 @@ pub trait Impl {
 					"genre" => {
 						search.genres.extend(included);
 						search.excluded_genres.extend(excluded);
-					}
-					// The site's levels include those below, so the highest one picked applies.
-					"rating" => {
-						if let Some(level) = RATINGS
-							.iter()
-							.rev()
-							.find(|level| included.iter().any(|value| value == *level))
-						{
-							search.content.rating = String::from(*level);
-						}
 					}
 					"type" => search.content.types = narrowed(included, params.type_count),
 					_ => {}
@@ -142,11 +134,13 @@ pub trait Impl {
 			Some(images) => images,
 			// The list view prints only a number, which misses a slug with a suffix ("45-wad21").
 			None => {
-				let number = chapter.key.parse::<f32>().ok();
+				let Ok(number) = chapter.key.parse::<f32>() else {
+					bail!("Chapter not found");
+				};
 				let page = series_page(params, &manga.key)?;
 				let key = chapter_items(params, &page)?
 					.into_iter()
-					.find(|item| number.is_some() && item.number() == number)
+					.find(|item| item.number() == Some(number))
 					.map(|item| String::from(item.key()))
 					.ok_or_else(|| error!("Chapter not found"))?;
 				reader_images(params, &manga.key, &key)?

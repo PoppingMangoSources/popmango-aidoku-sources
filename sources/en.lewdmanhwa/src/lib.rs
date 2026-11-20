@@ -25,7 +25,6 @@ impl Impl for LewdManhwa {
 			home_pages: &["/home"],
 			home_rows: &[
 				("Featured", Row::Hero(0)),
-				("Trending Now", Row::Cards(0, "Trending Now")),
 				("Latest Updates", Row::Chapters(0, "Latest Updates")),
 			],
 		}

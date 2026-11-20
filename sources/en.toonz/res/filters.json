@@ -446,17 +446,18 @@
 		]
 	},
 	{
-		"type": "multi-select",
+		"type": "select",
 		"id": "rating",
 		"title": "Content Rating",
-		"canExclude": false,
 		"options": [
+			"Any",
 			"Safe",
 			"Suggestive",
 			"Erotica",
 			"Explicit"
 		],
 		"ids": [
+			"",
 			"safe",
 			"suggestive",
 			"erotica",

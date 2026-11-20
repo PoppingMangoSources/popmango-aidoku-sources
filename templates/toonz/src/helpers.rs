@@ -29,9 +29,6 @@ const TYPE_PAGES: [&str; 5] = [
 // Sorts in `filters.json` order.
 pub const SORTS: [&str; 4] = ["latest", "popular", "rating", "a-z"];
 
-// Each level shows its own titles and every level before it.
-pub const RATINGS: [&str; 4] = ["safe", "suggestive", "erotica", "pornographic"];
-
 // The site reads no types as every type; an unknown one matches nothing.
 pub fn narrowed(types: Vec<String>, count: usize) -> Vec<String> {
 	if types.is_empty() {
@@ -88,17 +85,13 @@ impl Content {
 			&format!("reader_prefs={}", encode_uri_component(prefs)),
 		))
 	}
-
-	pub fn html(&self, url: &str) -> Result<Document> {
-		Ok(check(self.request(url)?.send()?)?.get_html()?)
-	}
 }
 
 #[derive(Default)]
 pub struct SearchParams {
 	pub query: Option<String>,
 	pub sort: &'static str,
-	pub status: String,
+	pub status: Option<String>,
 	pub author: Option<String>,
 	pub genres: Vec<String>,
 	pub excluded_genres: Vec<String>,
@@ -121,8 +114,8 @@ impl SearchParams {
 			query.push("search", self.query.as_deref());
 		}
 		query.push_encoded("sort", Some(self.sort));
-		if !self.status.is_empty() {
-			query.push_encoded("status", Some(&self.status));
+		if self.status.is_some() {
+			query.push_encoded("status", self.status.as_deref());
 		}
 		if let Some(author) = &self.author {
 			query.push("author", Some(&slugify(author)));
@@ -134,9 +127,8 @@ impl SearchParams {
 			query.push_encoded("excludeGenres", Some(&self.excluded_genres.join(",")));
 		}
 		query.push_encoded("page", Some(&page.to_string()));
-		let document = self
-			.content
-			.html(&format!("{}/{}?{query}", params.base_url, params.catalog))?;
+		let url = format!("{}/{}?{query}", params.base_url, params.catalog);
+		let document = check(self.content.request(&url)?.send()?)?.get_html()?;
 		Ok(MangaPageResult {
 			entries: cards(params, document.select("img[data-cover]")),
 			has_next_page: document
@@ -148,7 +140,7 @@ impl SearchParams {
 
 // Series keys are slugs, which the series path resolves for series and chapters alike.
 pub fn series_path(params: &Params, path: &str) -> Option<(String, Option<String>)> {
-	let mut parts = path.trim_matches('/').split(['/', '?', '#']);
+	let mut parts = path.split(['?', '#']).next()?.trim_matches('/').split('/');
 	let kind = parts.next()?;
 	let slug = parts.next().filter(|slug| !slug.is_empty())?;
 	if !params.series_types.contains(&kind) || TYPE_PAGES.contains(&slug) {
@@ -161,13 +153,12 @@ pub fn series_path(params: &Params, path: &str) -> Option<(String, Option<String
 	Some((slug.into(), chapter))
 }
 
-// A cover's card is the nearest ancestor that is or holds a series link.
+// LewdManhwa's series link is an empty overlay beside the cover, not around it.
 pub fn card(params: &Params, image: &Element) -> Option<(Element, Manga)> {
 	let mut node = image.parent()?;
 	for _ in 0..5 {
-		let key = (node.has_attr("href"))
-			.then(|| node.attr("href"))
-			.flatten()
+		let key = node
+			.attr("href")
 			.into_iter()
 			.chain(
 				node.select("a[href]")
@@ -261,7 +252,6 @@ pub fn age(text: &str) -> Option<i64> {
 	Some(number.parse::<i64>().ok()? * unit)
 }
 
-// The site's author slugs drop punctuation and join words with hyphens.
 pub fn slugify(name: &str) -> String {
 	let mut slug = String::new();
 	for c in name.trim().to_lowercase().chars() {
@@ -272,6 +262,13 @@ pub fn slugify(name: &str) -> String {
 		}
 	}
 	slug.trim_matches('-').into()
+}
+
+pub fn chapter_url(params: &Params, manga_key: &str, key: &str) -> String {
+	format!(
+		"{}/{}/{manga_key}/chapter/{key}",
+		params.base_url, params.series_path
+	)
 }
 
 pub fn series_page(params: &Params, key: &str) -> Result<Document> {
@@ -296,17 +293,15 @@ pub fn chapter_items(params: &Params, page: &Document) -> Result<Vec<ChapterItem
 		.chapters)
 }
 
-// The chapter route's reader data, without the page around it; `None` for an unknown route.
+// The chapter route's reader data, without the page around it.
 pub fn reader_images(
 	params: &Params,
 	manga_key: &str,
 	chapter_key: &str,
 ) -> Result<Option<Vec<ReaderImage>>> {
-	let url = format!(
-		"{}/{}/{manga_key}/chapter/{chapter_key}",
-		params.base_url, params.series_path
-	);
-	let response = Request::get(url)?.header("RSC", "1").send()?;
+	let response = Request::get(chapter_url(params, manga_key, chapter_key))?
+		.header("RSC", "1")
+		.send()?;
 	if response.status_code() == 404 {
 		return Ok(None);
 	}

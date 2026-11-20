@@ -151,6 +151,7 @@ def check_filters_json(path: Path, rating: object = None) -> None:
         note(path, "the sort filter is not first; reviewers ask for it first")
 
 
+ADULT_LEVELS = {"erotica", "pornographic", "explicit", "nsfw", "adult", "18+"}
 ADULT_SWITCH = re.compile(r"^(hide|show)\w*(adult|nsfw|18)", re.I)
 
 
@@ -173,6 +174,9 @@ def check_settings_json(path: Path, rating: object) -> None:
         check_commercial_control(path, item)
         if item.get("key") == "labelNovels" and item.get("default") is not True:
             fail(path, "Label Novels defaults on")
+        if (rating == 1 and item.get("type") == "select" and "rating" in str(item.get("key", "")).lower()
+                and str(item.get("default", "")).lower() in ADULT_LEVELS):
+            fail(path, f"select {item.get('key')!r} defaults to {item.get('default')!r} with contentRating 1; default to a level that hides adult titles or rate the source 2")
         if item.get("type") != "switch":
             continue
         key = str(item.get("key", ""))

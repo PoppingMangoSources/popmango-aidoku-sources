@@ -24,9 +24,9 @@ impl Impl for ToonzTo {
 			series_path: "comic",
 			// `/comic/` redirects to the series' type.
 			series_types: &["manhwa", "manga", "manhua", "webtoon", "comic", "western"],
-			rating: "erotica",
+			rating: "suggestive",
 			type_count: 5,
-			// The manhwa and manga home pages, then the all-type list, which shows update times.
+			// Only the all-type list shows update times.
 			home_pages: &["/manhwa", "/manga", "/comics?sort=latest&view=list"],
 			home_rows: &[
 				("Top Rated This Month", Row::Featured(&[MANHWA, MANGA])),

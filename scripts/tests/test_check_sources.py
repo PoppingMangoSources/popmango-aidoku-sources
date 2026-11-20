@@ -570,6 +570,12 @@ class SurvivingMutantTests(unittest.TestCase):
         self.assert_rule(checks.check_filters_json, self.write('c.json', json.dumps([check]) + '\n'),
                          self.write('d.json', json.dumps([{**check, 'hideFromHeader': True}]) + '\n'), expect='hideFromHeader')
 
+    def test_rating_select_hides_adult_levels_on_a_source_rated_one(self):
+        item = {'type': 'select', 'key': 'contentRating', 'values': ['safe', 'suggestive', 'erotica']}
+        self.assert_rule(checks.check_settings_json, self.write('a.json', json.dumps([{**item, 'default': 'erotica'}]) + '\n'),
+                         self.write('b.json', json.dumps([{**item, 'default': 'suggestive'}]) + '\n'), 1, expect='contentRating 1')
+        self.assertEqual(self.outcome(checks.check_settings_json, self.write('c.json', json.dumps([{**item, 'default': 'erotica'}]) + '\n'), 2), [])
+
     def test_label_novels_defaults_on(self):
         item = {'type': 'switch', 'key': 'labelNovels', 'title': 'Label Novels'}
         self.assert_rule(checks.check_settings_json, self.write('a.json', json.dumps([{**item, 'default': False}]) + '\n'),
