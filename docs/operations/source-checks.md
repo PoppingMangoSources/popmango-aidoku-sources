@@ -42,7 +42,7 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: 2534d58
+verified_at: 4932162
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -173,7 +173,7 @@ printed, never failing.
 > `note()` off in turn left 38 of 85 rules passing every test, the source.json, icon, README
 > row and Rust line rules among them; `SurvivingMutantTests` now covers the general ones.
 > `scripts/check-rule-tests.py` repeats that run and fails on any new survivor, and
-> `scripts/ci-gates.py` runs it when the checker or its tests change. It must delete
+> `scripts/ci-gates.py` and the pre-push hook run it when the checker or its tests change. It must delete
 > `__pycache__` before each run: two same-size mutants written in one second share a cached
 > `.pyc` and read as survivors, which put the first count at 36 with the wrong rules.
 
