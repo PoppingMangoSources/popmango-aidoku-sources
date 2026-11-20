@@ -37,7 +37,7 @@ sources:
   - ext: https://github.com/Aidoku-Community/sources/pull/865
   - ext: https://github.com/Aidoku-Community/sources/pull/824
   - ext: https://github.com/Aidoku-Community/sources/pull/666
-verified_at: 76098d2
+verified_at: 2cc379c
 ---
 
 Keyoapp and all ten consumers merged in [888](https://github.com/Aidoku-Community/sources/pull/888)

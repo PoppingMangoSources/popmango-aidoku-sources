@@ -2,7 +2,7 @@
 title: README art and the install page
 type: operation
 created: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-20
 sources:
   - code: README.md
   - code: media/banner.svg
@@ -10,7 +10,7 @@ sources:
   - code: public/index.html
   - code: public/main.js
   - code: public/styles.css
-verified_at: f082439
+verified_at: 2cc379c
 ---
 
 # README art and the install page
@@ -70,18 +70,19 @@ window holds the repository url, and the sources are "routes" on a Route Select 
   `media/heat-<contentRating>.svg`). Each card keeps the two `.aix` links and the `.aix (vN)` label
   that `scripts/bump.sh` rewrites and `scripts/check-sources.py` reads, and `scripts/new-source.sh`
   prints a card in the same shape.
-- `media/badge-sources.svg` and the README's "**N routes**" line do hardcode the count, so
+- `media/badge-sources.svg` and the README's `<b>N routes</b>` line under Route select do hardcode the count, so
   they change whenever a source joins or leaves `main` (a merge upstream removes it).
 
 > ⚠️ The README loads its header images by relative path (`media/banner.svg`), not through
 > jsDelivr. jsDelivr caches `@main` files for days and ignores a query string, and GitHub's
 > image proxy then caches whatever it was served under that url, so the sources badge kept
-> showing 25 after the file said 16. A relative path is served from the commit itself. The
-> source icons further down still use jsDelivr; an icon rarely changes.
+> showing 25 after the file said 16. A relative path is served from the commit itself, and the
+> source icons in the route cards are relative too (`sources/<id>/res/icon.png`), so the README
+> loads nothing through jsDelivr.
 
 > ⚠️ `bump.sh` stops unless a source has exactly two `.aix` links in the README. A source shown in
-> both lists (ValirScans carries comics and novels) links only from its first card; the second
-> card says it is the same source.
+> two cards links only from its first; the second says it is the same source. ValirScans
+> (comics and novels) was the case until it left main; none is now.
 
 > ⚠️ The install page only reaches GitHub Pages when **Build source list** (`build.yaml`) runs,
 > since it deploys `public/` to `gh-pages`. Its push paths must keep `public/**`: without it, two

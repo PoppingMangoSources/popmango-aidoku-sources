@@ -14,7 +14,7 @@ sources:
   - code: sources/en.vymanga/res/source.json
   - ext: https://mangavyvy.com/search
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/vyvymanga
-verified_at: d585318
+verified_at: 2cc379c
 ---
 
 VyManga (`mangavyvy.com`, mirror `mangavyvy.net`) is server-rendered HTML with no API and no

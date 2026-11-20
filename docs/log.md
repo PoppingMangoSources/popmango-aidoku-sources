@@ -215,3 +215,10 @@ Added multi.yaoime: the settings cookie the site applies on the server, browse p
 grouped tag filters, chapter variants with the clean list, and the signed, sealed reader, all in
 [[yaoime]]. Narrowed the commercial-control check to skip tag lists, which name tags like
 "Salesman", and made new-source.sh pass each language to the CLI separately.
+
+## 2026-11-20 docs sync after the instruction split
+
+Synced seven stale pages. [[source-checks]] gains the site address step and where the hooks now
+read section 3 and the home rules; [[yaoime]] gains its Discover section; [[readme-and-site]]
+drops the jsDelivr icons and ValirScans; [[mangathemesia-consumers]] runs the loopback suite for
+its template alone. [[vymanga]], [[toonz]] and [[swarm]] still held.

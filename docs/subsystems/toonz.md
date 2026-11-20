@@ -23,7 +23,7 @@ sources:
   - code: sources/en.lewdmanhwa/res/settings.json
   - ext: https://toonz.to/comics
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/toonz
-verified_at: 5d866a5
+verified_at: 2cc379c
 ---
 
 Toonz (`toonz.to`), Toonx (`toonx.to`) and LewdManhwa (`lewdmanhwa.com`) are one Next.js

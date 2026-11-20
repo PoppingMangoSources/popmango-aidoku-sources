@@ -2,7 +2,7 @@
 title: yaoi.me (multi.yaoime)
 type: subsystem
 created: 2026-11-17
-updated: 2026-11-17
+updated: 2026-11-20
 sources:
   - code: sources/multi.yaoime/src/lib.rs
   - code: sources/multi.yaoime/src/browse.rs
@@ -17,7 +17,7 @@ sources:
   - code: sources/multi.yaoime/res/settings.json
   - ext: https://yaoi.me/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/yaoime
-verified_at: 9d55a75
+verified_at: 2cc379c
 ---
 
 yaoi.me is a Next.js site rendered on the server, so the source reads its HTML; the only JSON
@@ -73,6 +73,25 @@ into `sources/multi.yaoime/src/tags.rs` (ten groups, 1330 tags on 2026-11-17).
 
 > ⚠️ A new tag the rules don't know lands in OTHER until `tags.rs` is refreshed from the
 > site's script; `review_tag_groups` pins samples of each group.
+
+## Discover
+
+One request renders the home page: the source writes the wanted section ids into the
+settings cookie's `home` list, then each one that is turned off and the site sections it does
+not show (`continue`, `reviews`, `creators`, `about`) prefixed with `-`, and reads each row
+under its `h2.section-title` (`sources/multi.yaoime/src/home.rs:85`). The order is the owner's:
+Popular Updates, Most Bookmarked, Latest Releases (a chapter list of five), Trending Now, Top
+Rated, Rising, Most Talked About (a ranked list of four), Hidden Gems and Binge-Worthy, every
+other row a scroller (`sources/multi.yaoime/src/home.rs:21`, pinned by `review_home_layout`).
+
+> ⚠️ The site renders the sections in the order the cookie lists them and drops the ones it
+> leaves out, so a section missing from both the wanted and the `-` lists comes back in its
+> default place and can push a row out of order. Every id in `SECTIONS` and `SITE_SECTIONS` must
+> be named one way or the other.
+
+> ⚠️ Headings are matched ignoring case because the site writes them in sentence case
+> ("Trending now"); a renamed heading drops its row silently rather than failing the page.
+> Popular Updates has no listing page on the site, so it is the one row without a listing.
 
 ## Series and chapters
 

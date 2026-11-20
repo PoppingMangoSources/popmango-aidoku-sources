@@ -2,7 +2,7 @@
 title: MangaThemesia consumers
 type: subsystem
 created: 2026-11-07
-updated: 2026-11-15
+updated: 2026-11-20
 sources:
   - code: templates/mangathemesia/src/imp.rs
   - code: templates/mangathemesia/src/helpers.rs
@@ -26,7 +26,7 @@ sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.madarascans/src/test.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/ce4c29829e74a69ca10d9061551ef968a0fe6c1f/sources/en.evascans/src/test.rs
   - ext: https://github.com/Aidoku/Aidoku/blob/main/Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
-verified_at: 8244562
+verified_at: 2cc379c
 ---
 
 > ⚠️ Scythe Scans, the template's last consumer on main, moved to
@@ -232,7 +232,8 @@ merged consumers' `Comic`. Source-specific display labels should follow site evi
 > Image request providers return an unsent request for the host to execute and keep their
 > existing image headers. A Cloudflare challenge must not look like an empty catalogue.
 
-`scripts/test-http.py` exercises both live-tested templates against a local fixture.
+`scripts/test-http.py` exercises the template against a local fixture; since Iken left main it is
+the only template the workflow runs it for (`.github/workflows/test.yaml`).
 The MangaThemesia regression checks every request path above for 403/404/429/503 before
 parsing, plus successful 2xx responses and bounded diagnostic output. It is separate from
 live-site suites and needs no external site.

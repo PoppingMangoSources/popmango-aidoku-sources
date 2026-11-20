@@ -16,7 +16,7 @@ sources:
   - code: sources/multi.swarm/res/source.json
   - ext: https://swarm.ws/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/swarm
-verified_at: 24fb7b5
+verified_at: 2cc379c
 ---
 
 Swarm (`swarm.ws`) is a Next.js site over a JSON API, reachable from the sandbox; the live
