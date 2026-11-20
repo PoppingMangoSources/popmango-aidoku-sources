@@ -125,6 +125,23 @@ class AgentHookTests(unittest.TestCase):
             self.assertEqual(out['permissionDecision'], 'deny', command)
             self.assertIn('scripts/commit.sh', out['permissionDecisionReason'])
 
+    def test_commit_is_refused_even_when_the_rules_are_unreadable(self):
+        # The temporary root has no AGENTS.md, so the rules text cannot be read.
+        out = json.loads(run(hooks.pre_bash, {'tool_input': {'command': 'git commit -m x'}}))
+        self.assertEqual(out['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def test_broken_stop_check_blocks_once_per_turn(self):
+        def main(event):
+            with mock.patch.object(hooks.sys, 'argv', ['agent-hooks.py', 'stop']), \
+                    mock.patch.object(hooks.sys, 'stdin', io.StringIO(json.dumps(event))), \
+                    mock.patch.object(hooks, 'stop', side_effect=RuntimeError('broken')):
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                    hooks.main()
+                return out.getvalue()
+        self.assertIn('"block"', main({}))
+        self.assertEqual(main({'stop_hook_active': True}), '')
+
     def test_commit_inside_a_script_is_refused(self):
         self.write_rules()
         script = self.root / 'pad/release.sh'

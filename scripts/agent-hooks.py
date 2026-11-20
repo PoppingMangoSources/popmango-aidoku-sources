@@ -156,11 +156,13 @@ def pre_bash(event: dict) -> None:
     command = event.get("tool_input", {}).get("command", "")
     commits = [where for where, text in commands_run(command) if GIT_COMMIT.search(text)]
     if commits:
-        reason = (
-            f"Refused: {', '.join(commits)} runs git commit directly. Commit with "
-            "scripts/commit.sh -m \"<subject>\" -m \"<body>\" instead.\n\n"
-            + section("## 0. Hard rules", "\n---")
-        )
+        reason = (f"Refused: {', '.join(commits)} runs git commit directly. Commit with "
+                  "scripts/commit.sh -m \"<subject>\" -m \"<body>\" instead.")
+        # The refusal must not depend on the rules text still being readable.
+        try:
+            reason += "\n\n" + section("## 0. Hard rules", "\n---")
+        except (OSError, ValueError):
+            pass
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason,
         }}))
@@ -249,12 +251,14 @@ def main() -> int:
     hooks = {"pre-edit": pre_edit, "pre-bash": pre_bash, "stop": stop}
     if command in hooks:
         # A hook that breaks must not stop edits, commands or the end of a turn.
+        event = {}
         try:
             event = json.loads(sys.stdin.read() or "{}")
             hooks[command](event)
         except Exception as error:  # noqa: BLE001
             print(f"agent-hooks {command}: {error}", file=sys.stderr)
-            if command == "stop":
+            # A broken check blocks once per turn, as a failing one does, rather than every retry.
+            if command == "stop" and not event.get("stop_hook_active"):
                 print(json.dumps({"decision": "block", "reason": f"Workflow validation could not run: {error}"}))
     elif command == "stamp" and len(sys.argv) == 4:
         stamp(sys.argv[2], sys.argv[3])
