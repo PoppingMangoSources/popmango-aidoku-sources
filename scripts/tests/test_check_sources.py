@@ -297,6 +297,7 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cards(self.path, 'format!("{BASE_URL}/search?{query}")\n')
         checks.check_cards(self.path, 'format!("{CDN_URL}/{path}{separator}w={quality}")\n')
         checks.check_cards(self.path, 'format!("{}/{}?{query}", params.base_url, params.catalog)\n')
+        checks.check_cards(self.path, '// Both paths are fixed, so the query starts here.\nlet url = format!("{API_URL}/{path}?{query}");\n')
         self.assertEqual(checks.notes, [])
 
     def test_top_level_items_need_blank_lines(self):

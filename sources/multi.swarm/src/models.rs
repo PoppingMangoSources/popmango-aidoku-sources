@@ -1,6 +1,6 @@
 use crate::{
 	api::BASE_URL,
-	helpers::{app_language, cover_url},
+	helpers::{app_language, cover_url, names},
 };
 use aidoku::{
 	AidokuError, Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
@@ -218,19 +218,15 @@ impl Title {
 			tags.extend(self.tags);
 			tags.sort_unstable();
 			tags.dedup();
-			let mut authors = self.authors;
-			if authors.is_empty() {
-				authors.extend(self.author.filter(|name| !name.trim().is_empty()));
-			}
 			manga.url = Some(format!("{BASE_URL}/comic/{}", self.url));
 			manga.description = self
 				.description
 				.filter(|text| !text.trim().is_empty())
 				.map(|text| text.escape_markdown());
-			manga.authors = Some(authors).filter(|authors| !authors.is_empty());
-			manga.artists = Some(self.artists).filter(|artists| !artists.is_empty());
+			manga.authors = names(self.authors).or_else(|| names(self.author));
+			manga.artists = names(self.artists);
 			manga.status = status(self.status.as_deref());
-			manga.tags = Some(tags);
+			manga.tags = Some(tags).filter(|tags| !tags.is_empty());
 		}
 		manga.key = self.url;
 		manga.title = title;
@@ -323,9 +319,9 @@ impl ChapterItem {
 				"{BASE_URL}/comic/{slug}/chapter/{}{query}",
 				self.number
 			)),
-			title: self
-				.title
-				.filter(|title| *title != format!("Chapter {}", self.number)),
+			title: self.title.filter(|title| {
+				!title.trim().is_empty() && *title != format!("Chapter {}", self.number)
+			}),
 			chapter_number: number,
 			date_uploaded: date(self.published_date.as_deref()),
 			scanlators,
@@ -426,7 +422,7 @@ impl Novel {
 				.take()
 				.filter(|text| !text.trim().is_empty())
 				.map(|text| text.escape_markdown()),
-			authors: self.author.take().map(|author| vec![author]),
+			authors: names(self.author.take()),
 			status: status(self.status.as_deref()),
 			viewer: Viewer::Unknown,
 			chapters: Some(chapters),

@@ -51,16 +51,21 @@ fn feed_url(feed: Feed, content: &Content) -> String {
 	}
 }
 
-// The update feeds list one row per chapter, in the site's order.
-fn updates(updates: Vec<Update>, content: &Content) -> Vec<Update> {
+// The update feeds list one row per chapter; each series keeps its first, in the site's order.
+// A blocked uploader also blocks its numbered copies, as in the chapter list.
+pub fn updates(updates: Vec<Update>, content: &Content) -> Vec<Update> {
 	let blocked = settings::blocked_uploaders();
 	let mut kept: Vec<Update> = Vec::new();
 	for update in updates {
+		let uploader = update.uploader().to_lowercase();
+		let group = uploader.trim_end_matches(|c: char| c.is_ascii_digit());
 		if content
 			.languages
 			.iter()
 			.any(|code| code == app_language(&update.lang))
-			&& !blocked.contains(&update.uploader().to_lowercase())
+			&& !blocked
+				.iter()
+				.any(|name| *name == uploader || name == group)
 			&& !kept.iter().any(|other| other.url == update.url)
 		{
 			kept.push(update);

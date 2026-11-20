@@ -274,6 +274,18 @@ fn details_chapters_and_pages() {
 		)
 		.unwrap();
 	assert!(pages.len() > 10);
+
+	// A home row keyed by the number alone still opens the suffixed chapter.
+	let by_number = source
+		.get_page_list(
+			manga(SERIES),
+			Chapter {
+				key: "45".into(),
+				..Default::default()
+			},
+		)
+		.unwrap();
+	assert_eq!(by_number.len(), pages.len());
 }
 
 #[aidoku_test]

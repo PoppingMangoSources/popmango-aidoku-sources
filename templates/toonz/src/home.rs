@@ -50,7 +50,10 @@ fn featured(params: &Params, article: &Element) -> Option<(f32, Manga)> {
 			key,
 			title: link.text()?,
 			cover: cover.attr("abs:src"),
-			description: article.select_first("h2 + p").and_then(|text| text.text()),
+			description: article
+				.select_first("h2 + p")
+				.and_then(|text| text.text())
+				.filter(|text| !text.is_empty()),
 			content_rating: rating(cover.has_attr("data-nsfw"), &tags),
 			tags: Some(tags),
 			..Default::default()
@@ -68,7 +71,10 @@ fn slide(params: &Params, heading: &Element) -> Option<Manga> {
 		key,
 		title: heading.text()?,
 		cover: cover.attr("abs:src"),
-		description: info.select_first("p").and_then(|text| text.text()),
+		description: info
+			.select_first("p")
+			.and_then(|text| text.text())
+			.filter(|text| !text.is_empty()),
 		status: info
 			.select("[data-slot=badge]")?
 			.filter_map(|badge| badge.text())
@@ -173,6 +179,7 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 				})
 				.filter_map(|article| featured(params, &article))
 				.collect();
+			// Stable, so equal ratings keep the page's order.
 			entries.sort_by(|(a, _), (b, _)| b.total_cmp(a));
 			(!entries.is_empty()).then(|| HomeComponentValue::BigScroller {
 				entries: entries.into_iter().map(|(_, manga)| manga).collect(),
@@ -199,6 +206,7 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 				.filter_map(|page| section(page, heading))
 				.flat_map(|section| aged_cards(params, &section))
 				.collect();
+			// Stable, so cards of the same age keep the site's order.
 			entries.sort_by_key(|(seconds, _)| *seconds);
 			scroller(entries.into_iter().map(|(_, manga)| manga).collect())
 		}

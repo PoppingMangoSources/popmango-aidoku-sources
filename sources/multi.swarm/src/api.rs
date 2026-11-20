@@ -174,6 +174,7 @@ impl SearchParams {
 		} else {
 			"manga/filtered"
 		};
+		// Both paths are fixed, so the query starts here.
 		let response: Listing<Title> = get(&format!("{API_URL}/{path}?{query}"))?;
 		// With a filter set, the total is only the offset plus one page.
 		let has_next_page = !response.data.is_empty()
@@ -197,6 +198,7 @@ impl SearchParams {
 
 // The comic page carries the series and every upload as `initialData`.
 pub fn comic_page(slug: &str) -> Result<ComicPage> {
+	// A series key is a bare slug, so the query starts here.
 	let response = Request::get(format!("{BASE_URL}/comic/{slug}?_rsc"))?
 		.header("RSC", "1")
 		.send()?;
@@ -205,16 +207,16 @@ pub fn comic_page(slug: &str) -> Result<ComicPage> {
 		bail!("Swarm returned status {status}");
 	}
 	let body = response.get_string()?;
+	// The first `initialData` that reads as a comic page; another object can carry the name.
 	let marker = r#""initialData":"#;
-	let start = body
-		.find(marker)
-		.ok_or_else(|| error!("Series not found"))?;
-	Ok(
-		serde_json::Deserializer::from_str(&body[start + marker.len()..])
-			.into_iter::<ComicPage>()
-			.next()
-			.ok_or_else(|| error!("Series not found"))??,
-	)
+	body.match_indices(marker)
+		.find_map(|(start, _)| {
+			serde_json::Deserializer::from_str(&body[start + marker.len()..])
+				.into_iter::<ComicPage>()
+				.next()?
+				.ok()
+		})
+		.ok_or_else(|| error!("Series not found"))
 }
 
 pub fn site_headers(request: Request) -> Request {

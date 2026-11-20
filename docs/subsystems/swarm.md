@@ -57,3 +57,13 @@ suite runs. Probed on 2026-11-19.
 > `app_language` maps them to the app's. Large series list thousands of uploads (Solo Leveling
 > 4,716), one per uploader copy (`official2` is a second copy of `official`); the site's own pick is the
 > lowest rank letter, then the first copy, which deduplication follows.
+
+> ⚠️ A blocked uploader blocks its numbered copies too, in the chapter list (`models.rs`
+> `chapter_list`) and in the Hot and New Updates rows (`home.rs` `updates`), which keep each
+> series' first chapter in the site's order; `review_home_updates_follow_languages_and_blocked_uploaders`
+> holds the home side.
+
+> ⚠️ The Content Rating filter mirrors the site's All, Safe and NSFW with nothing picked, so the
+> setting applies until one is; All, or Safe and NSFW together, is the site's All
+> (`lib.rs`, `ratings_follow_the_setting_and_filter`). Aidoku never sends a multi-select with
+> nothing picked, so an empty selection needs no arm.

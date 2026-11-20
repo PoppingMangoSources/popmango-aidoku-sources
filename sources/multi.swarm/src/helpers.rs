@@ -35,6 +35,18 @@ pub fn app_language(code: &str) -> &str {
 		.unwrap_or(code)
 }
 
+// Credits trimmed, without blanks or repeats, in the site's order; `None` when none remain.
+pub fn names(list: impl IntoIterator<Item = String>) -> Option<Vec<String>> {
+	let mut names: Vec<String> = Vec::new();
+	for name in list {
+		let name = name.trim();
+		if !name.is_empty() && !names.iter().any(|kept| kept == name) {
+			names.push(name.into());
+		}
+	}
+	(!names.is_empty()).then_some(names)
+}
+
 // The site serves its own covers under /covers/ and proxies every other host.
 pub fn cover_url(cover: &str) -> Option<String> {
 	if cover.is_empty() {

@@ -208,7 +208,12 @@ without a width, and an Option that is unwrapped and wrapped again
 > (`QUERY_APPEND`), from kkantan's comment on #910 that MKissa's image helper "assumes the url
 > doesn't already have query parameters". A constant base (`{BASE_URL}/search?`) or an
 > anonymous `{}` placeholder is not matched, and a variable that is only a path segment can be
-> (`{slug}?`); read each note and either join with `&` or say why the url never has a query.
+> (`{slug}?`); read each note and either join with `&` or say why the url never has a query in
+> a `//` comment above that mentions the query, which clears the note (Swarm's fixed paths do).
+
+> ⚠️ With `--base`, every template the push changes also gets the per-file Rust rules
+> (`check_rust`), as its sources do; the toonz template's stable sorts were missed before. Untouched
+> upstream templates are not checked, so their backlog stays out of a run.
 > 10 merged sources match (calibrated on 2026-11-20), so it is a note
 > (`test_query_appended_to_a_url_variable_is_noted`).
 

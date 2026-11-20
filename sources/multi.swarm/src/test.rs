@@ -7,7 +7,7 @@ use aidoku::{
 	imports::defaults::{DefaultValue, defaults_set},
 };
 use aidoku_test::aidoku_test;
-use models::{ChapterItem, Title};
+use models::{ChapterItem, Title, Update};
 
 const SERIES: &str = "solo-leveling";
 const NOVEL: &str = "novel/lord-of-mysteries-2-circle-of-inevitability";
@@ -109,6 +109,33 @@ fn review_home_rows_keep_the_requested_order() {
 			"Most Followed New Comics",
 			"Novels",
 		]
+	);
+}
+
+#[aidoku_test]
+fn review_home_updates_follow_languages_and_blocked_uploaders() {
+	reset();
+	defaults_set("blockedUploaders", strings(&["official"]));
+	let feed: Vec<Update> = serde_json::from_str(
+		r#"[
+			{"title": "A", "url": "a", "chapter_id": "1", "number": "2", "lang": "en", "source_name": "official2"},
+			{"title": "A", "url": "a", "chapter_id": "2", "number": "1", "lang": "en", "source_name": "groupa"},
+			{"title": "A", "url": "a", "chapter_id": "3", "number": "1", "lang": "en", "source_name": "groupb"},
+			{"title": "B", "url": "b", "chapter_id": "4", "number": "5", "lang": "fr", "source_name": "groupa"},
+			{"title": "C", "url": "c", "chapter_id": "5", "number": "9", "lang": "en"}
+		]"#,
+	)
+	.unwrap();
+	let kept: Vec<_> = home::updates(feed, &api::Content::new())
+		.into_iter()
+		.filter_map(Update::into_chapter)
+		.map(|(manga, chapter)| (manga.key, chapter.key))
+		.collect();
+	reset();
+	// A numbered copy of a blocked uploader is blocked too, and each series keeps its first row.
+	assert_eq!(
+		kept,
+		[("a".to_string(), "2".to_string()), ("c".into(), "5".into())]
 	);
 }
 
@@ -390,6 +417,34 @@ fn details_and_chapters_follow_languages_and_deduplication() {
 		)
 		.unwrap();
 	assert!(!pages.is_empty());
+
+	let only = source
+		.get_manga_update(
+			Manga {
+				key: SERIES.into(),
+				..Default::default()
+			},
+			false,
+			true,
+		)
+		.unwrap();
+	assert!(
+		only.title.is_empty(),
+		"a chapters-only update filled details"
+	);
+	assert_eq!(only.chapters.unwrap().len(), all.len());
+	assert!(
+		source
+			.get_manga_update(
+				Manga {
+					key: "zzzxqv-no-such-series".into(),
+					..Default::default()
+				},
+				true,
+				true,
+			)
+			.is_err()
+	);
 }
 
 #[aidoku_test]

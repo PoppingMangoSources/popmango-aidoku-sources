@@ -26,13 +26,18 @@ pub struct ReaderImage {
 }
 
 impl ChapterItem {
+	// The chapter route takes the slug after "chapter-", as written ("2.1", "45-wad21").
+	pub fn key(&self) -> &str {
+		self.slug.strip_prefix("chapter-").unwrap_or(&self.slug)
+	}
+
+	pub fn number(&self) -> Option<f32> {
+		self.chapter_number.parse().ok()
+	}
+
 	pub fn into_chapter(self, params: &Params, manga_key: &str) -> Chapter {
-		// The chapter route takes the slug after "chapter-", as written ("2.1", "45-wad21").
-		let key: String = self
-			.slug
-			.strip_prefix("chapter-")
-			.unwrap_or(&self.slug)
-			.into();
+		let key = String::from(self.key());
+		let chapter_number = self.number();
 		// Avoid quoted literals, which the runner does not parse.
 		let date_uploaded = self
 			.date
@@ -46,7 +51,7 @@ impl ChapterItem {
 			)),
 			key,
 			title: self.title.filter(|title| !title.trim().is_empty()),
-			chapter_number: self.chapter_number.parse().ok(),
+			chapter_number,
 			date_uploaded,
 			..Default::default()
 		}

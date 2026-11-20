@@ -1,4 +1,8 @@
-use crate::{Params, settings};
+use crate::{
+	Params,
+	models::{ChapterItem, ChapterList, ReaderImage},
+	settings,
+};
 use aidoku::{
 	ContentRating, Manga, MangaPageResult, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, format, string::ToString, vec},
@@ -281,6 +285,47 @@ pub fn comic_id(page: &Document) -> Result<String> {
 		.ok_or_else(|| error!("Series not found"))
 }
 
+pub fn chapter_items(params: &Params, page: &Document) -> Result<Vec<ChapterItem>> {
+	let url = format!(
+		"{}/api/comics/{}/chapters",
+		params.base_url,
+		comic_id(page)?
+	);
+	Ok(check(Request::get(url)?.send()?)?
+		.get_json_owned::<ChapterList>()?
+		.chapters)
+}
+
+// The chapter route's reader data, without the page around it; `None` for an unknown route.
+pub fn reader_images(
+	params: &Params,
+	manga_key: &str,
+	chapter_key: &str,
+) -> Result<Option<Vec<ReaderImage>>> {
+	let url = format!(
+		"{}/{}/{manga_key}/chapter/{chapter_key}",
+		params.base_url, params.series_path
+	);
+	let response = Request::get(url)?.header("RSC", "1").send()?;
+	if response.status_code() == 404 {
+		return Ok(None);
+	}
+	let body = check(response)?.get_string()?;
+	// The first "images" array that reads as pages; another can come first.
+	let marker = r#""images":"#;
+	Ok(Some(
+		body.match_indices(marker)
+			.find_map(|(start, _)| {
+				serde_json::Deserializer::from_str(&body[start + marker.len()..])
+					.into_iter::<Vec<ReaderImage>>()
+					.next()?
+					.ok()
+					.filter(|images| !images.is_empty())
+			})
+			.unwrap_or_default(),
+	))
+}
+
 fn texts(list: Option<ElementList>) -> impl Iterator<Item = String> {
 	list.into_iter()
 		.flatten()
@@ -305,12 +350,13 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 	manga.description = page
 		.select_first("p.whitespace-pre-line")
 		.and_then(|text| text.text())
+		.filter(|text| !text.is_empty())
 		.map(|text| text.escape_markdown());
 	manga.url = page
 		.select_first("link[rel=canonical]")
 		.and_then(|link| link.attr("href"));
 	manga.content_rating = rating(nsfw, &tags);
-	manga.tags = Some(tags);
+	manga.tags = Some(tags).filter(|tags| !tags.is_empty());
 
 	// One layout lists these in a table, the other as badges and author links.
 	let mut status_text = None;

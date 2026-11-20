@@ -1,16 +1,16 @@
 use crate::{
 	Params,
 	helpers::{
-		RATINGS, SORTS, SearchParams, check, comic_id, details, narrowed, series_page, series_path,
+		RATINGS, SORTS, SearchParams, chapter_items, details, narrowed, reader_images, series_page,
+		series_path,
 	},
 	home,
-	models::{ChapterList, ReaderImage},
 };
 use aidoku::{
 	Chapter, DeepLinkResult, FilterValue, HomeLayout, Listing, Manga, MangaPageResult, Page,
 	PageContent, Result,
 	alloc::{String, Vec, format, vec},
-	imports::{net::Request, std::send_partial_result},
+	imports::std::send_partial_result,
 	prelude::*,
 };
 
@@ -126,16 +126,8 @@ pub trait Impl {
 		}
 
 		if needs_chapters {
-			let url = format!(
-				"{}/api/comics/{}/chapters",
-				params.base_url,
-				comic_id(&page)?
-			);
-			let chapters = check(Request::get(url)?.send()?)?
-				.get_json_owned::<ChapterList>()?
-				.chapters;
 			manga.chapters = Some(
-				chapters
+				chapter_items(params, &page)?
 					.into_iter()
 					.map(|chapter| chapter.into_chapter(params, &manga.key))
 					.collect(),
@@ -146,20 +138,21 @@ pub trait Impl {
 	}
 
 	fn get_page_list(&self, params: &Params, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let url = format!(
-			"{}/{}/{}/chapter/{}",
-			params.base_url, params.series_path, manga.key, chapter.key
-		);
-		// The reader's data, without the page around it.
-		let body = check(Request::get(url)?.header("RSC", "1").send()?)?.get_string()?;
-		let marker = r#""images":"#;
-		let start = body
-			.find(marker)
-			.ok_or_else(|| error!("Chapter not found"))?;
-		let images = serde_json::Deserializer::from_str(&body[start + marker.len()..])
-			.into_iter::<Vec<ReaderImage>>()
-			.next()
-			.ok_or_else(|| error!("Chapter not found"))??;
+		let images = match reader_images(params, &manga.key, &chapter.key)? {
+			Some(images) => images,
+			// The list view prints only a number, which misses a slug with a suffix ("45-wad21").
+			None => {
+				let number = chapter.key.parse::<f32>().ok();
+				let page = series_page(params, &manga.key)?;
+				let key = chapter_items(params, &page)?
+					.into_iter()
+					.find(|item| number.is_some() && item.number() == number)
+					.map(|item| String::from(item.key()))
+					.ok_or_else(|| error!("Chapter not found"))?;
+				reader_images(params, &manga.key, &key)?
+					.ok_or_else(|| error!("Chapter not found"))?
+			}
+		};
 		if images.is_empty() || images.iter().any(|image| image.filename.is_empty()) {
 			bail!("This chapter has missing pages");
 		}

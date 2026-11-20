@@ -253,6 +253,9 @@ def check_cards(path: Path, text: str) -> None:
             line = text.count("\n", 0, sort.start()) + 1
             note(path, f"line {line} sorts stably; use sort_unstable unless equal elements must keep their order, and say so in a comment")
     for query in QUERY_APPEND.finditer(text):
+        before = text[: query.start()].rsplit("\n", 2)
+        if len(before) > 1 and "query" in before[-2].lower() and before[-2].strip().startswith("//"):
+            continue
         line = text.count("\n", 0, query.start()) + 1
         note(path, f"line {line} appends `?` to `{{{query.group(1)}}}`, which assumes it has no query yet; join with `&` when it does, or say why it never has one")
     for trimmed in TRIMMED_TEXT.finditer(text):
@@ -710,6 +713,14 @@ def main() -> int:
             failures.append(result.stdout.strip() or result.stderr.strip())
     for name in names:
         check_source(name, args.base, args.upstream)
+
+    # A template a push changes gets the same per-file Rust rules as its sources; untouched
+    # upstream templates keep their backlog out of the run.
+    if args.base:
+        changed = git("diff", "--name-only", f"{args.base}...HEAD", "--", "templates").split()
+        for template in sorted({Path(name).parts[1] for name in changed if len(Path(name).parts) > 2}):
+            if (ROOT / "templates" / template / "src").is_dir():
+                check_rust(ROOT / "templates" / template, False)
 
     for template in ("keyoapp", "mangathemesia", "iken"):
         if any(template in template_dependencies(SOURCES / name)

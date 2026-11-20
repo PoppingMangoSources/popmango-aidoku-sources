@@ -54,10 +54,11 @@ Everything below was probed live on 2026-11-19 unless marked.
   LewdManhwa `/home` (hero slides, Trending Now, Latest Updates), each in one `send_all`.
 
 > ⚠️ The content setting is the `reader_prefs` cookie (`{"rating","types","blockedGenres"}`),
-> and every page reads it, home included. The URL `rating` and `types` can only narrow the
-> cookie, never widen it, and an included genre the cookie blocks returns nothing. So each
-> request builds the cookie from the effective values, with search filters replacing the
-> settings (`helpers.rs` `Content::request`).
+> and every page reads it, home included. The site's own URL `rating` and `types` can only
+> narrow the cookie, never widen it, and an included genre the cookie blocks returns nothing. So
+> the source never sends those URL parameters: each request writes the cookie itself from the
+> effective values, with search filters replacing the settings, which lets a filter widen as
+> well as narrow (`helpers.rs` `Content::request`).
 
 > ⚠️ `rating` is a level ("Erotica and below"), not a set: Safe, Suggestive, Erotica, Explicit
 > (`pornographic`). The setting is a select; the Content Rating filter is a multi-select with
@@ -68,6 +69,13 @@ Everything below was probed live on 2026-11-19 unless marked.
 > ⚠️ Toonx's catalogue is all Explicit comics: any lower rating or another type in the cookie
 > returns nothing, so it has no rating or type controls and always sends `pornographic`
 > (`sources/en.toonx/src/lib.rs`). Its excluded genres still apply.
+
+> ⚠️ The list view prints a chapter number but no chapter link, so Recently Updated keys its
+> chapter by that number. A slug with a suffix (`chapter-45-wad21`) answers 404 for the bare
+> number (probed on LewdManhwa, 2026-11-20), so `get_page_list` then reads the series' chapter
+> list once and retries with the real key (`imp.rs`); the LewdManhwa suite reads chapter 45 by
+> its number. The reader takes the first `"images"` array that parses as pages, not merely the
+> first one named so (`helpers.rs` `reader_images`).
 
 > ⚠️ A cleared Types setting sends `types:["none"]`, which the site answers with nothing; a
 > full selection sends `[]` (`helpers.rs` `narrowed`).

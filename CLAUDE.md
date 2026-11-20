@@ -1135,7 +1135,8 @@ went in one of these ways, and new ones go in the same way:
   that defaults its key, a `parse_date` of month or day names without a locale, a response body
   parsed with `serde_json` rather than `json_owned`, a Rust genre multi-select without
   `uses_tag_style: true`, a remapped `Request` error, a "Show Locked" switch on by default
-  without a login, and a chapter escaped whole into one `PageContent::text`. It notes `!included.is_empty()` and slicing off a prefix by its length, both
+  without a login, and a chapter escaped whole into one `PageContent::text`. With `--base`, a template
+  the push changes gets the same per-file Rust rules as its sources. It notes `!included.is_empty()` and slicing off a prefix by its length, both
   in recent merges (`multi.xcomic`, `multi.sumidoku`, `multi.mangadex`).
 - `scripts/review-contracts.py --repo <candidate> [--crate sources/<id> | --base <ref>]`
   runs portable Keyoapp/MangaThemesia contracts against the candidate's actual template and
