@@ -2,7 +2,7 @@
 title: VyManga (en.vymanga)
 type: subsystem
 created: 2026-11-17
-updated: 2026-11-17
+updated: 2026-11-20
 sources:
   - code: sources/en.vymanga/src/lib.rs
   - code: sources/en.vymanga/src/helpers.rs
@@ -14,7 +14,7 @@ sources:
   - code: sources/en.vymanga/res/source.json
   - ext: https://mangavyvy.com/search
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/vyvymanga
-verified_at: 2cc379c
+verified_at: dd0863c
 ---
 
 VyManga (`mangavyvy.com`, mirror `mangavyvy.net`) is server-rendered HTML with no API and no
@@ -75,7 +75,13 @@ changed the page count or order), so `hidesFiltersWhileSearching` stays unset.
 > therefore its name as the site prints it, with `#2`, `#3` counted from the oldest when a name
 > repeats. `get_page_list` reads the series page again and follows the fresh link of the
 > chapter with that key. Keying by the link, as versions up to 9 did, changed every key on
-> every refresh.
+> every refresh. For the same reason `get_manga_update` stores no chapter url (from v13): the
+> library kept a link that stopped opening within hours (`sources/en.vymanga/src/lib.rs:93`).
+
+> ⚠️ Four genre ids carry the site's raw whitespace (`Adventure\n'`, `MONSTERS\nACTION`,
+> `Shounen\nType`, `Sci-fi  Shounen`), while a home slide's tag text is normalised. The Popular
+> Manga filter compares names word by word (`sources/en.vymanga/src/home.rs:64`); an exact
+> comparison never hid those genres.
 
 Names come as "Chapter 212 : Ch 212 : S2 Finale", "Chapter 211 : Ch 211", "Vol.15 Chapter
 136: Hometown Song", "Vol.2 Fifth Course: …" and bare names such as "Extra". The volume and

@@ -10,7 +10,7 @@ sources:
   - code: .claude/skills/aidoku-archive/SKILL.md
   - code: scripts/sync-agent-docs.py
   - code: scripts/agent-hooks.py
-verified_at: 2534d58
+verified_at: 91a1a43
 ---
 
 # ADR: a short hub, three workflow skills and one shared reference set
