@@ -228,12 +228,7 @@ def stamp(name: str, status: str) -> None:
 
 def checklist(compact: bool = False) -> None:
     """Section 3's rules; compact keeps each rule's first sentence, so a hook's output stays inline."""
-    standards = ROOT / REFERENCES / "standards.md"
-    if standards.is_file():
-        section = standards.read_text()
-    else:
-        text = (ROOT / "AGENTS.md").read_text()  # identical to CLAUDE.md
-        section = text[text.index("## 3. Review feedback"):text.index("## 4. ")]
+    section = (ROOT / REFERENCES / "standards.md").read_text()
     rows = re.findall(r"^\| (?!What was flagged|---)(.+?) \| (.+?) \|", section, re.M)
     bullets = re.findall(r"^- \*\*(.+?)\*\*", section, re.M)
     print("Read each against the diff (AGENTS.md / CLAUDE.md section 3):")

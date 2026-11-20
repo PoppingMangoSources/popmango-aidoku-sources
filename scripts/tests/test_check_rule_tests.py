@@ -1,4 +1,5 @@
 import importlib.util
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -53,11 +54,12 @@ class RuleTestGateTests(unittest.TestCase):
         self.assertEqual(len(found), 1, found)
         self.assertIn('note("uncovered rule")', found[0])
 
-    def test_push_and_ci_both_run_the_gate(self):
-        root = SCRIPTS.parent
-        for gate in (root / '.githooks/pre-push', SCRIPTS / 'ci-gates.py'):
-            with self.subTest(gate=gate.name):
-                self.assertIn('check-rule-tests.py', gate.read_text())
+    def test_push_hook_runs_every_ci_gate(self):
+        # The two lists are kept by hand; a gate added to CI alone once let an untested rule reach a push.
+        ci = set(re.findall(r'scripts/[\w-]+\.(?:py|sh)', (SCRIPTS / 'ci-gates.py').read_text()))
+        hook = (SCRIPTS.parent / '.githooks/pre-push').read_text()
+        self.assertIn('scripts/check-rule-tests.py', ci)
+        self.assertEqual(sorted(gate for gate in ci if gate not in hook), [])
 
 
 if __name__ == '__main__':

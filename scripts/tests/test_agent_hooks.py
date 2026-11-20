@@ -109,10 +109,14 @@ class AgentHookTests(unittest.TestCase):
     def write_rules(self):
         (self.root / 'AGENTS.md').write_text(
             '## 0. Hard rules\n\n- Commit with scripts/commit.sh.\n\n---\n\n'
-            '## 3. Review feedback\n\n| What was flagged | The rule |\n|---|---|\n'
-            '| Search returned tags | Cards carry key, title and cover. |\n\n## 4. Next\n\n'
             '### Home components\n\n- Rows are cards.\n\n### Global mutable state\n\n'
             "## 9. This repo's workflow\n\n- Work on main.\n- Commits are unsigned.\n\n### How a rule\n"
+        )
+        standards = self.root / hooks.REFERENCES / 'standards.md'
+        standards.parent.mkdir(parents=True, exist_ok=True)
+        standards.write_text(
+            '# Review feedback\n\n| What was flagged | The rule |\n|---|---|\n'
+            '| Search returned tags | Cards carry key, title and cover. |\n'
         )
 
     def bash(self, command):
@@ -195,10 +199,12 @@ class AgentHookTests(unittest.TestCase):
         self.assertIn('Commit with scripts/commit.sh.', out.getvalue())
         self.assertNotIn('Review feedback', out.getvalue())
 
-    def test_checklist_reads_section_three(self):
-        (self.root / 'AGENTS.md').write_text(
-            '## 3. Review feedback\n\n| What was flagged | The rule |\n|---|---|\n'
-            '| Search returned tags | Cards carry key, title and cover. |\n\n- **Tag order:** sort.\n\n## 4. Next\n'
+    def test_checklist_reads_the_standards_reference(self):
+        standards = self.root / hooks.REFERENCES / 'standards.md'
+        standards.parent.mkdir(parents=True)
+        standards.write_text(
+            '# Standards\n\n| What was flagged | The rule |\n|---|---|\n'
+            '| Search returned tags | Cards carry key, title and cover. |\n\n- **Tag order:** sort.\n'
         )
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
