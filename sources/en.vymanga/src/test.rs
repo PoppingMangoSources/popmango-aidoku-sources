@@ -259,7 +259,7 @@ fn review_search_url_applies_settings() {
 		QueryParameters::new(),
 		1,
 		&[ACTION.into()],
-		vec!["Drama-4-drama".into()],
+		&["Drama-4-drama".into()],
 	);
 	assert!(url.contains("genre%5B%5D=Action-1-action"));
 	assert!(!url.contains("exclude_genre%5B%5D=Action-1-action"));
@@ -372,22 +372,18 @@ fn every_sort_and_direction_changes_the_order() {
 }
 
 #[aidoku_test]
-fn status_filter_matches_the_cards() {
+fn status_filter_narrows_the_results() {
 	reset();
 	let completed = search(None, vec![select("status", "1")]);
 	let ongoing = search(None, vec![select("status", "0")]);
 	assert!(!completed.entries.is_empty() && !ongoing.entries.is_empty());
+	assert_ne!(completed.entries[0].key, ongoing.entries[0].key);
+	// Cards leave the status to the series page, whose badge the site keeps correct.
 	assert!(
 		completed
 			.entries
 			.iter()
-			.all(|manga| manga.status == MangaStatus::Completed)
-	);
-	assert!(
-		ongoing
-			.entries
-			.iter()
-			.all(|manga| manga.status == MangaStatus::Ongoing)
+			.all(|manga| manga.status == MangaStatus::Unknown)
 	);
 }
 

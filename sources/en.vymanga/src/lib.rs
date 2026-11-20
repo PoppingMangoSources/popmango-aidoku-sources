@@ -70,7 +70,7 @@ impl Source for VyManga {
 				_ => {}
 			}
 		}
-		let url = search_url(qs, page, &included_genres, excluded_genres);
+		let url = search_url(qs, page, &included_genres, &excluded_genres);
 		Ok(parse_page(&get_html(&url)?))
 	}
 
@@ -88,7 +88,7 @@ impl Source for VyManga {
 			manga = parse_manga(manga.key, &info)?;
 		}
 		if needs_chapters {
-			// A chapter's link expires within hours, so none is stored; get_page_list reads a fresh one.
+			// Its link expires within hours.
 			manga.chapters = Some(
 				parse_chapters(&html)
 					.into_iter()

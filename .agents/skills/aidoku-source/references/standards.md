@@ -362,6 +362,19 @@ kkantan approved and merged it on 2026-11-19 (`eb4f68c`) with one comment, read 
 |---|---|---|
 | `tags.sort()` before `tags.dedup()` ("stable sorting usually isn't necessary and is more expensive, for future reference", suggesting `tags.sort_unstable()`) | Sort with `sort_unstable` (`_by`, `_by_key`) unless equal elements must keep their order; then keep the stable sort and say why in a comment above it, as the toonz template does for equal ratings. Names that compare equal are identical, so a stable sort of strings buys nothing. `check-sources.py` notes a stable sort without such a comment; 27 merged sources still use one, so it is a note. | N |
 
+### From #913 (`en.vymanga`) and #916 (`multi.yaoime`)
+
+kkantan requested changes on both on 2026-11-20, with inline comments only.
+
+| What was flagged | The rule | |
+|---|---|---|
+| Listing cards marked Completed from the catalogue badge ("this seems incorrect sometimes, for example with `Hyakujuu Kingdom` ... we should probably trust the website's series detail page") | Set a card's status only from data that agrees with the series page; when a listing badge can disagree, leave the card's status unset and let details fill it. | R |
+| `excluded: Vec<String>` on a function that only reads it ("generally you should prefer not using owned values in function parameters ... it's just a best practice recommendation") | Take `&[T]` or `&str` for a parameter the function only reads; chain borrowed iterators rather than taking ownership. | R |
+| `url` on a home `MangaChapterList` chapter ("I don't think there's any reason to set this, as it doesn't seem like the app uses it") | Leave `Chapter::url` unset on home chapter rows; the app opens them by key. | R |
+| A `for` loop pushing to a mutable `Vec` with `let ... else { continue }` ("cleaner to collect ... and use a `filter_map` so that you can use the `?` operator") | Build a list with `filter_map` and `?` rather than a loop of `continue`s pushing to a `Vec`. | R |
+| `parse_date` on an ISO timestamp ending in `Z` ("this parses in the user's time zone ... more correct to use `parse_date_with_options` with the time zone set to UTC") | A timestamp the site gives in UTC is parsed with `parse_date_with_options(date, format, "en_US_POSIX", "UTC")`, as `ja.rawdevart` and `ja.soraraw` do. | R |
+| A settings footer explaining "Official chapters only" at length, and deduplication not saying it drops extras ("a little long winded and confusing") | Keep setting footers to one short sentence per option, naming what the option removes. | R |
+
 ### From #878, #894, #909 and #912 (other contributors, November 18-19)
 
 Read on 2026-11-20 from the review comments API; every review body was empty, so the inline

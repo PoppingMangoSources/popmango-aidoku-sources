@@ -301,6 +301,15 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cards(self.path, '// Both paths are fixed, so the query starts here.\nlet url = format!("{API_URL}/{path}?{query}");\n')
         self.assertEqual(checks.notes, [])
 
+    def test_utc_timestamp_parsed_in_local_time_is_noted(self):
+        checks.notes.clear()
+        checks.check_api_use(self.path, ".and_then(|date| parse_date(date, \"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'\"))\n")
+        self.assertEqual(len(checks.notes), 1)
+        checks.notes.clear()
+        checks.check_api_use(self.path, "parse_date_with_options(date, \"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'\", \"en_US_POSIX\", \"UTC\")\n")
+        checks.check_api_use(self.path, 'parse_date(date, "dd/MM/yyyy")\n')
+        self.assertEqual(checks.notes, [])
+
     def test_top_level_items_need_blank_lines(self):
         path = checks.ROOT / 'sources/es.eternalmangas/src/models.rs'
         checks.failures.clear()

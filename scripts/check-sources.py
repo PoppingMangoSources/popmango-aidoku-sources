@@ -299,6 +299,7 @@ BARE_PUSH = re.compile(r'\.push\(\s*"([^"]+)"\s*,\s*None\s*\)')
 DEFAULT_KEY_FROM = re.compile(r"^impl\s+From<[^\n]+>\s+for\s+(?:Manga|Chapter)\b.*?^\}", re.M | re.S)
 DEFAULT_KEY = re.compile(r"\bkey\b[^\n]*\.unwrap_or_default\(\)")
 NAMED_DATE = re.compile(r'\bparse_date\(\s*[^,()]+(?:\([^()]*\))?[^,()]*,\s*"([^"]*(?:MMM|EEE)[^"]*)"')
+UTC_DATE = re.compile(r"""\bparse_date\([^;]*?"[^"]*'Z'"\s*\)""")
 STRING_BODY = re.compile(r"let (\w+)\s*=[^;]*\.(?:string|data)\(\)\?;")
 INLINE_STRING_JSON = re.compile(r"serde_json::from_(?:str|slice)\([^;]*\.(?:string|data)\(\)\?")
 MULTI_SELECT = re.compile(r"\bMultiSelectFilter\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
@@ -347,6 +348,9 @@ def check_api_use(path: Path, text: str) -> None:
             fail(path, f"line {line(match)} defaults a missing key in From; make it TryFrom with an error")
     for match in NAMED_DATE.finditer(text):
         fail(path, f"line {line(match)} parses {match.group(1)!r} in the device's locale; use parse_date_with_options with \"en_US_POSIX\"")
+    # kkantan on #916; merged sources still do this, so it is a note.
+    for match in UTC_DATE.finditer(text):
+        note(path, f"line {line(match)} parses a UTC timestamp in the device's time zone; use parse_date_with_options with \"UTC\"")
     for name in STRING_BODY.findall(text):
         for match in re.finditer(rf"serde_json::from_(?:str|slice)\(\s*&?{name}\b", text):
             fail(path, f"line {line(match)} parses a response body with serde_json; use .json_owned()")
