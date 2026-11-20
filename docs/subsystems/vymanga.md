@@ -20,7 +20,8 @@ verified_at: dd0863c
 VyManga (`mangavyvy.com`, mirror `mangavyvy.net`) is server-rendered HTML with no API and no
 theme template. The sandbox reaches it with plain requests, so everything below was probed
 live on 2026-11-17 and the source's live tests run. Both hosts serve the same pages; the
-reader picks one through the app's base url select (`urls` in `source.json`).
+reader picks one through the app's base url select (`urls` in `source.json`). It is submitted
+upstream from `feat/en.vymanga`, cut from `upstream/main`.
 
 ## Pages
 

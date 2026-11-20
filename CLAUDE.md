@@ -5,9 +5,9 @@ the Kagane rework (PR 827) merged into Aidoku-Community sources, plus what kkant
 other contributors. Written down so the next source doesn't have to relearn it.
 
 `AGENTS.md` and `CLAUDE.md` are identical copies of this file. It is the hub: the hard rules,
-the upstream rules, the workflow, templates and where to look. Every numbered section keeps its
-heading, so "section 6" anywhere in the repository still leads somewhere; a section whose detail
-moved says where it went. Three workflow skills split the work at its natural hand-offs; Codex
+the upstream rules, the workflow, templates and where to look. A section whose detail moved is
+listed under "Sections that moved", so a section number anywhere in the repository still leads
+somewhere. Three workflow skills split the work at its natural hand-offs; Codex
 reads the same files under `.agents/skills/` (for example
 [.agents/skills/aidoku-source/SKILL.md](.agents/skills/aidoku-source/SKILL.md)):
 
@@ -160,42 +160,27 @@ are in [`.claude/skills/aidoku-source/references/testing.md`](.claude/skills/aid
 
 ---
 
-## 2. The aidoku-rs API in practice
+## Sections that moved
 
-Moved whole to [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md). In short: `Source` and its four functions, `register_source!`, errors, requests, HTML, tag and author
-search and the other `source.json` keys.
+Each keeps its number and heading where it now lives, so "section 6" anywhere still leads
+somewhere.
 
-## 3. Review feedback
-
-Moved whole to [`.claude/skills/aidoku-source/references/standards.md`](.claude/skills/aidoku-source/references/standards.md). In short: Every rule a review comment, an owner's correction or our own miss put in place, each with the
-comment quoted and marked **F** (fails `check-sources.py`), **N** (a note) or **R** (read in
-review). Read it against the diff, row by row, before every push of a source; the push hook
-prints it as a checklist. A new review comment becomes a row there in the same commit as its fix.
-
-## 4. Reviewing behaviour and request cost, not just shape
-
-Moved whole to [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md). In short: Count the requests per operation, check pagination, filtering, ratings, locked chapters, pasted
-links and errors, and probe before concluding. No per-card fan-out.
-
-## 5. Paperback/Inkdex habits, what transfers to Rust
-
-Moved whole to [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md). In short: Which Inkdex habits apply in Rust (inlining, self-sufficient ids, no fan-out, no caches) and which do not.
-
-## 6. Conventions seen across the community sources
-
-Moved whole to [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md). In short: Site type picks the merged sources to compare against; module layout; compact search payloads;
-urls; settings against filters; dynamic settings; home components; global state.
-`scripts/upstream-usage.py <id>` names the newest merged sources doing each feature a source has.
-
-## 7. Framework defaults that bite (all verified in aidoku-rs)
-
-Moved whole to [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md). In short: Sort, multi-select and header defaults, `languageSelectType`, `parse_date` locales, key-only
-query parameters, dynamic setting defaults, `None` against `Some(vec![])`, and the app versions imports need.
-
-## 8. Comment and naming style
-
-Moved whole to [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md). In short: Terse comments that explain a non-obvious why, no decorative dividers, clean names, the merged
-constant names, values used once written inline, and dead code deleted rather than silenced.
+| Section | Now in |
+|---|---|
+| 2. The aidoku-rs API in practice | [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md) |
+| 3. Review feedback | [`.claude/skills/aidoku-source/references/standards.md`](.claude/skills/aidoku-source/references/standards.md) |
+| 4. Reviewing behaviour and request cost, not just shape | [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md) |
+| 5. Paperback/Inkdex habits, what transfers to Rust | [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md) |
+| 6. Conventions seen across the community sources | [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md) |
+| 7. Framework defaults that bite | [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md) |
+| 8. Comment and naming style | [`.claude/skills/aidoku-source/references/conventions.md`](.claude/skills/aidoku-source/references/conventions.md) |
+| 10. xcomic specifics | [`docs/subsystems/xcomic.md`](docs/subsystems/xcomic.md) |
+| 11. Toonkotsu specifics | [`docs/subsystems/toonkotsu.md`](docs/subsystems/toonkotsu.md) |
+| 14. Kagane specifics | [`docs/subsystems/kagane.md`](docs/subsystems/kagane.md) |
+| 16. Atsumaru specifics | [`docs/subsystems/atsumaru.md`](docs/subsystems/atsumaru.md) |
+| MangaBall | [`docs/subsystems/mangaball.md`](docs/subsystems/mangaball.md) |
+| VyManga | [`docs/subsystems/vymanga.md`](docs/subsystems/vymanga.md) |
+| Iken maintenance | [`docs/subsystems/iken-template.md`](docs/subsystems/iken-template.md) |
 
 ---
 
@@ -279,14 +264,6 @@ commands to remember: `python3 scripts/ci-gates.py --base origin/main` for the o
 `scripts/review-source.sh <id>` for one source's whole review.
 
 ---
-
-## 10. xcomic specifics
-
-Moved to [`docs/subsystems/xcomic.md`](docs/subsystems/xcomic.md). XCOMIC's GraphQL API, editions, feeds and filters; it lives upstream only.
-
-## 11. Toonkotsu specifics
-
-Moved to [`docs/subsystems/toonkotsu.md`](docs/subsystems/toonkotsu.md). Toonkotsu's JSON API, content ratings, the web view reader and read limits; upstream only.
 
 ## 12. Templates
 
@@ -373,11 +350,6 @@ review comments is the fastest way to predict what they'll ask for — the patte
 in section 3 came from doing exactly that.
 
 
----
-## 14. Kagane specifics
-
-Moved to [`docs/subsystems/kagane.md`](docs/subsystems/kagane.md). Kagane's mirrors, chapter index, ratings and search body; upstream only.
-
 ## 15. Evidence before submission
 
 Read [references/aidoku-host.md](.claude/skills/aidoku-source/references/aidoku-host.md) for
@@ -413,36 +385,6 @@ Live CI failures retain their raw logs. `scripts/test-sources.py` runs non-revie
 contracts and reports observed Cloudflare 403/HTTP 522 evidence without suppressing failures.
 An unknown-series test accepting any error can pass on a blocked request; that pass does not
 establish correct missing-series handling.
-
-## 16. Atsumaru specifics
-
-Moved to [`docs/subsystems/atsumaru.md`](docs/subsystems/atsumaru.md). Atsumaru's Typesense search, feeds, ratings, deduplication and novel keys; upstream only.
-
-## MangaBall
-
-`multi.mangaball` (mangaball.com) is a JSON API behind Cloudflare, which refuses the sandbox:
-its live tests have not run, and its models were checked against the owner's captures. The
-endpoints, content modes, language codes and every unverified parameter are in
-`docs/subsystems/mangaball.md`; read it before changing the source. It is rated 1 because the
-site has a Hentai theme. It merged upstream as #902 on 2026-11-14 and then left `main` for
-`merged-sources` (section 17), with its tests; it matched the merged source apart from its
-version, `src/test.rs` and the tests' `serde_json` dependency. A later change starts from
-`upstream/main` and goes up with `pr-branch.sh multi.mangaball --update …`.
-
-## VyManga
-
-`en.vymanga` (mangavyvy.com, mirror mangavyvy.net) is plain server-rendered HTML that the
-sandbox reaches, so its live tests run. Its chapter links are encrypted anew on every load and
-expire, so chapters are keyed by name and `get_page_list` reads a fresh link from the series
-page. The probed search parameters, the ignored `search_po`, the genre lists and the icon's
-origin are in `docs/subsystems/vymanga.md`; read it before changing the source. Its catalogue
-rating is 2, the owner's explicit request on November 17; per-title ratings still come from the
-site's adult flag and genres. A submission
-branch, `feat/en.vymanga`, is kept from `upstream/main` while it is prepared for a PR.
-
-## Iken maintenance
-
-Moved to [`docs/subsystems/iken-template.md`](docs/subsystems/iken-template.md). The template, its six consumers and EternalMangas are on `merged-sources`; later work starts from upstream.
 
 ## 17. Sources kept off `main` while upstream
 

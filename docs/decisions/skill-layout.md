@@ -10,7 +10,7 @@ sources:
   - code: .claude/skills/aidoku-archive/SKILL.md
   - code: scripts/sync-agent-docs.py
   - code: scripts/agent-hooks.py
-verified_at: 91a1a43
+verified_at: abc6d6a
 ---
 
 # ADR: a short hub, three workflow skills and one shared reference set
@@ -49,7 +49,7 @@ repo has one skill per task (`mana-extension`, `mana-images`, `mana-port`, `veri
 
 ## Evaluation
 
-Line counts from `wc -l` on 2026-11-20: root file 1781 to about 450; `aidoku-source` 354 to 230,
+Line counts from `wc -l` on 2026-11-20: root file 1781 to 394 (after the moved sections became one table); `aidoku-source` 354 to 230,
 with `aidoku-submit` at 96 and `aidoku-archive` at 24. The skill review (meta-dev reviewer,
 skill standard) scored the single-skill layout 2/5 on structure and named this split. Trigger
 accuracy in practice was not measured.

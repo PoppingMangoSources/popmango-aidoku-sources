@@ -42,7 +42,7 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: 4932162
+verified_at: abc6d6a
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -247,11 +247,11 @@ without a width, and an Option that is unwrapped and wrapped again
 check (`scripts/check-site-url.py`, failing when `source.json`'s url redirects to another host;
 `scripts/review-source.sh:23`), `upstream-usage.py`, the upstream scope of the source's branch,
 and prints the section 3 rules as a checklist, then stamps the result with a hash of the
-source's files (`scripts/agent-hooks.py:220`). Both
+source's files (`scripts/agent-hooks.py:222`). Both
 `.claude/settings.json` and `.codex/hooks.json` call `agent-hooks.py`: `pre-edit` points the first
 edit of each source or template per session at the workflow, and `stop` blocks the end of a turn
 while a changed source fails this checker or has no passing stamp for its current files
-(`scripts/agent-hooks.py:194`). The pre-push hook runs each changed source or template's `review_` tests, including a template's test-module clippy gate. `pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
+(`scripts/agent-hooks.py:196`). The pre-push hook runs each changed source or template's `review_` tests, including a template's test-module clippy gate. `pre-bash` refuses a `git commit` outside `scripts/commit.sh`, prints section 3 before a push
 or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 
 > ⚠️ A commit inside a helper script is invisible to a check on the command line alone: a
@@ -269,7 +269,7 @@ or `pr-branch.sh`, and `digest` prints section 0 after a compaction.
 > ⚠️ Section 3 and the section 6 home rules now live in the skill's `references/standards.md` and
 > `references/conventions.md`, not in `AGENTS.md`. The hooks look a heading up in `AGENTS.md`
 > first and then in those references (`scripts/agent-hooks.py:115`), and the push checklist reads
-> `standards.md` (`scripts/agent-hooks.py:227`); renaming one of those headings silently breaks
+> `standards.md` (`scripts/agent-hooks.py:229`); renaming one of those headings silently breaks
 > the hook that prints it, so `scripts/tests/test_agent_hooks.py` must keep reading them.
 
 > ⚠️ A rebuilt submission branch sits on a newer `upstream/main`, so a push's `before..after`
