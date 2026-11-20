@@ -23,12 +23,6 @@ pub struct ReaderProps {
 }
 
 #[derive(Deserialize)]
-pub struct ReaderPageProps {
-	#[serde(rename = "pagesUrl")]
-	pub pages_url: String,
-}
-
-#[derive(Deserialize)]
 pub struct SeriesRef {
 	pub href: String,
 }

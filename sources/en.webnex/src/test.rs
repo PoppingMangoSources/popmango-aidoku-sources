@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::{ReaderPageProps, ReaderPages};
+use crate::models::ReaderPages;
 use aidoku::{
 	ContentRating, Home, HomeComponentValue, LinkValue, Viewer, alloc::string::ToString,
 	imports::html::Html,
@@ -171,9 +171,6 @@ fn review_key_only_links_and_complete_page_lists() {
 	.unwrap();
 	let decoded: ReaderProps = parse_flight_value(&doc, "{\"chapter\":").unwrap();
 	assert_eq!(decoded.series.href, "/manga/story");
-	let decoded: ReaderPageProps = parse_flight_value(&doc, "{\"chapter\":").unwrap();
-	assert_eq!(decoded.pages_url, "/read/canonical/pages");
-
 	let result = |urls: &[&str]| {
 		Vec::<Page>::try_from(ReaderPages {
 			pages: urls.iter().map(|s| (*s).into()).collect(),
