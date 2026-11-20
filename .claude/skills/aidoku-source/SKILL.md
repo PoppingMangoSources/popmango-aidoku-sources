@@ -116,6 +116,10 @@ that shipped:
       multi-select arm, no trait registered just to return `Unimplemented`
 - [ ] A per-page failure fails the page list or leaves the page unprocessed, never drops it
 - [ ] Regexes compiled once in a `static`; fixed sets as arrays
+- [ ] `sort_unstable` (`_by`, `_by_key`) unless ties must keep their order, and then a comment
+      above the stable sort says so (kkantan on #911)
+- [ ] A helper that adds a query parameter to a url it did not build joins with `&` when the url
+      already has a `?`, or a comment says why it never does (kkantan on #910)
 - [ ] A rebranded site keeps its id and sets `breakingChangeVersion` in `config`
 - [ ] Separate Rust items and methods with blank lines; rustfmt alone does not insert them
 - [ ] Preserve isGenre when rewriting genre options, IDs or select types

@@ -622,7 +622,8 @@ and the five consumers on `main` matched the merged crates apart from tests and 
 
 ### From #910 (`en.mkissa`)
 
-kkantan requested changes on 2026-11-18, read from the PR page.
+kkantan requested changes on 2026-11-18, read from the PR page, then approved the fix commit and
+merged it on 2026-11-19 (`f0e2e49`) with one more comment, the last row.
 
 | What was flagged | The rule | |
 |---|---|---|
@@ -630,6 +631,15 @@ kkantan requested changes on 2026-11-18, read from the PR page.
 | A local offset from parsing one date with `parse_date` and `parse_local_date` ("is this the same result as `get_utc_offset` from aidoku-rs? if you're already using chrono I'm a little confused why `parse_date` is being used") | Use `get_utc_offset()`: seconds of UTC minus local time, in AidokuRunner (`-secondsFromGMT`) and the test runner alike. Where chrono is already a dependency, build a timestamp from date parts with chrono rather than formatting a string for `parse_date`. | R |
 | `escape_markdown` on details descriptions ("why are we escaping markdown? don't we want to display markdown in descriptions?") | Sample real descriptions before escaping. MKissa's carry Markdown (`**Links:**`, `[Official Twitter](…)`, `___`) and HTML `<b>`/`<i>`; escaping showed every marker. Keep the Markdown, turn bold and italic tags into it and keep line breaks hard; the big scroller still gets plain text. | R |
 | "this source seems rather unreliable, with chapters taking quite a bit of time to load and failing a multiple times" | A web-view reader is judged in the app, where the reviewer reads it. Time and retry several chapters of several series on a device before submitting; the test runner stubs web views. | R |
+| `apply_image_quality` appended `?w=` to a CDN path ("this function assumes the url doesn't already have query parameters, which is likely fine for the existing urls, but would be good to either handle for correctness or to make a note of", approval) | A helper that adds a parameter to a url it did not build joins with `&` when the url already has a `?`, or a comment says why it never does. MKissa now picks the separator and a `review_` test passes a url with a query. `check-sources.py` notes a `?` written straight after a url variable in `format!`; 10 merged sources do that, so it is a note. | N |
+
+### From #911 (mangataro template)
+
+kkantan approved and merged it on 2026-11-19 (`eb4f68c`) with one comment, read from the PR page.
+
+| What was flagged | The rule | |
+|---|---|---|
+| `tags.sort()` before `tags.dedup()` ("stable sorting usually isn't necessary and is more expensive, for future reference", suggesting `tags.sort_unstable()`) | Sort with `sort_unstable` (`_by`, `_by_key`) unless equal elements must keep their order; then keep the stable sort and say why in a comment above it, as the toonz template does for equal ratings. Names that compare equal are identical, so a stable sort of strings buys nothing. `check-sources.py` notes a stable sort without such a comment; 27 merged sources still use one, so it is a note. | N |
 
 ### From #843 (`en.atsumaru`)
 
@@ -1119,7 +1129,8 @@ went in one of these ways, and new ones go in the same way:
   lock in #807; ours move when a source is next edited (`cargo update -p aidoku -p aidoku-test`),
   since a sweep would first need each old source's backlog fixed. It notes the section 3 **N** rows (page-size names,
   own-field wrappers, single-call helpers used once, full-path calls, a sort filter that isn't
-  first, an unsized image scroller, an Option unwrapped and wrapped again) and a non-genre multi-select that leaves `canExclude` unstated.
+  first, an unsized image scroller, an Option unwrapped and wrapped again, a stable sort without a comment saying why, a `?` appended
+  to a url variable) and a non-genre multi-select that leaves `canExclude` unstated.
   From sections 3 and 7 it also fails a `push(name, None)`, a `From` into `Manga` or `Chapter`
   that defaults its key, a `parse_date` of month or day names without a locale, a response body
   parsed with `serde_json` rather than `json_owned`, a Rust genre multi-select without
@@ -1362,12 +1373,17 @@ probes or captures unless marked.
 
 ## 12. Templates
 
-Eighteen of them live in `templates/` upstream, for sites that share a common
-engine or theme:
+Twenty-two of them live in `templates/` upstream (counted 2026-11-20), for sites that share a
+common engine or theme:
 
 `madara`, `wpcomics`, `gigaviewer`, `mangathemesia`, `iken`, `mangareader`,
 `libgroup`, `mangabox`, `liliana`, `guya`, `mmrcms`, `tukutema`, `ezmanhwa`,
-`pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`.
+`pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`, `keyoapp`, `mangak`,
+`mangataro`, `zaimanhua`.
+
+`toonz` (Toonz, Toonx and LewdManhwa) is ours alone so far, on `feat/toonz-template`;
+`mangataro` merged with #911 and left `main` for `merged-sources` with MangaTaro and Rolia Scan
+(section 17).
 
 Most templates track upstream. `madara` and `madtheme` carry additions our sources use
 (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and

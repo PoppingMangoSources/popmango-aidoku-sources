@@ -2,7 +2,7 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-17
+updated: 2026-11-20
 sources:
   - code: scripts/check-sources.py
   - code: scripts/test-http.py
@@ -197,6 +197,20 @@ without a width, and an Option that is unwrapped and wrapped again
 > only comment on #902 was "we should match the titles from the site", and VyManga's
 > listings ("Latest Update", "New Release") are the site's. Read the note as "check what
 > the site calls it" (`test_long_listing_name_is_noted`).
+
+> ⚠️ `check_cards` notes a stable sort (`sort`, `sort_by`, `sort_by_key`) unless the line above
+> it says why with the word "stable", from kkantan's suggestion on #911 ("stable sorting usually
+> isn't necessary and is more expensive"). Ties that must keep the page's order are the reason
+> to keep one, as in the toonz template's featured and newest rows. 27 merged sources sort
+> stably (calibrated on 2026-11-20), so it stays a note (`test_stable_sort_is_noted`).
+
+> ⚠️ It also notes a `?` written straight after a lowercase url variable inside `format!`
+> (`QUERY_APPEND`), from kkantan's comment on #910 that MKissa's image helper "assumes the url
+> doesn't already have query parameters". A constant base (`{BASE_URL}/search?`) or an
+> anonymous `{}` placeholder is not matched, and a variable that is only a path segment can be
+> (`{slug}?`); read each note and either join with `&` or say why the url never has a query.
+> 10 merged sources match (calibrated on 2026-11-20), so it is a note
+> (`test_query_appended_to_a_url_variable_is_noted`).
 
 > ⚠️ The sort-first rule is a note, not a failure: 47 merged sources put the sort later,
 > including en.hentai2read, which kkantan approved this month. Don't promote it without a

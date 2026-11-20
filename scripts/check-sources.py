@@ -247,6 +247,14 @@ def check_cards(path: Path, text: str) -> None:
     for rewrap in OPTIONAL_REWRAP.finditer(text):
         line = text.count("\n", 0, rewrap.start()) + 1
         note(path, f"line {line} unwraps an Option and wraps it again; pass the Option through, as `if x.is_some() {{ qs.push(name, x.as_deref()) }}`")
+    for sort in STABLE_SORT.finditer(text):
+        before = text[: sort.start()].rsplit("\n", 2)
+        if len(before) < 2 or "stable" not in before[-2].lower():
+            line = text.count("\n", 0, sort.start()) + 1
+            note(path, f"line {line} sorts stably; use sort_unstable unless equal elements must keep their order, and say so in a comment")
+    for query in QUERY_APPEND.finditer(text):
+        line = text.count("\n", 0, query.start()) + 1
+        note(path, f"line {line} appends `?` to `{{{query.group(1)}}}`, which assumes it has no query yet; join with `&` when it does, or say why it never has one")
     for trimmed in TRIMMED_TEXT.finditer(text):
         line = text.count("\n", 0, trimmed.start()) + 1
         note(path, f"line {line} trims the result of text(), which is already trimmed")
@@ -258,6 +266,8 @@ def check_cards(path: Path, text: str) -> None:
 # Vortex Scans set 1920 (iken review); an image scroller wider than the phone loads oversized images
 BANNER_WIDTH = re.compile(r"\b(?:banner_)?width:\s*Some\((\d+)\)")
 # `if let Some(query) = query { qs.push("search", Some(&query)) }` (kkantan, #908 and #905)
+STABLE_SORT = re.compile(r"\.sort(\(\)|_by\(|_by_key\(|_by_cached_key\()")
+QUERY_APPEND = re.compile(r'format!\("[^"\n]*\{([a-z_][a-z0-9_]*)\}\?')
 OPTIONAL_REWRAP = re.compile(r"if let Some\((\w+)\) = \1 \{\n[^\n]*\bSome\(&?\1\)")
 # `text()` returns normalized, trimmed text (es.eternalmangas review)
 TRIMMED_TEXT = re.compile(r"\.text\(\)\)?\s*\.(?:map|filter)\(\|(\w+)(?::[^|]*)?\|\s*!?\1\.trim\(\)")

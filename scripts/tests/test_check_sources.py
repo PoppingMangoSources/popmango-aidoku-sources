@@ -278,6 +278,27 @@ class CardRuleTests(unittest.TestCase):
         checks.check_cards(self.path, 'if let Some(query) = query {\n\tqs.push("search", Some(&query.to_lowercase()));\n}\n')
         self.assertEqual(checks.notes, [])
 
+    def test_stable_sort_is_noted(self):
+        checks.notes.clear()
+        checks.check_cards(self.path, 'let mut tags = names();\ntags.sort();\n')
+        checks.check_cards(self.path, 'let mut rows = list();\nrows.sort_by_key(|row| row.age);\n')
+        self.assertEqual(len(checks.notes), 2)
+        checks.notes.clear()
+        checks.check_cards(self.path, 'let mut tags = names();\ntags.sort_unstable();\n')
+        checks.check_cards(self.path, '// Stable, so equal ages keep the page order.\nrows.sort_by_key(|row| row.age);\n')
+        self.assertEqual(checks.notes, [])
+
+    def test_query_appended_to_a_url_variable_is_noted(self):
+        checks.notes.clear()
+        checks.check_cards(self.path, 'format!("{CDN_URL}/{path}?w={quality}")\n')
+        checks.check_cards(self.path, 'format!("{url}?page={page}")\n')
+        self.assertEqual(len(checks.notes), 2)
+        checks.notes.clear()
+        checks.check_cards(self.path, 'format!("{BASE_URL}/search?{query}")\n')
+        checks.check_cards(self.path, 'format!("{CDN_URL}/{path}{separator}w={quality}")\n')
+        checks.check_cards(self.path, 'format!("{}/{}?{query}", params.base_url, params.catalog)\n')
+        self.assertEqual(checks.notes, [])
+
     def test_top_level_items_need_blank_lines(self):
         path = checks.ROOT / 'sources/es.eternalmangas/src/models.rs'
         checks.failures.clear()

@@ -8,7 +8,7 @@ use aidoku::{
 	},
 };
 use aidoku_test::aidoku_test;
-use helpers::{parse_page_urls, tag_name};
+use helpers::{apply_image_quality, parse_page_urls, tag_name};
 use home::{Feed, HomeData, layout};
 
 fn card(id: &str, extra: Value) -> MangaCard {
@@ -652,4 +652,21 @@ fn adult_titles_follow_the_setting() {
 			.iter()
 			.any(|manga| manga.content_rating == ContentRating::NSFW)
 	);
+}
+
+#[aidoku_test]
+fn review_image_quality_keeps_an_existing_query() {
+	assert_eq!(
+		apply_image_quality("https://host.example/a/001.webp#top", "800"),
+		format!("{CDN_URL}/host.example/a/001.webp?w=800")
+	);
+	assert_eq!(
+		apply_image_quality("https://host.example/a/001.webp?v=2", "800"),
+		format!("{CDN_URL}/host.example/a/001.webp?v=2&w=800")
+	);
+	assert_eq!(
+		apply_image_quality("https://host.example/a/001.webp?v=2", "original"),
+		"https://host.example/a/001.webp?v=2"
+	);
+	assert_eq!(apply_image_quality("/a/001.webp", "800"), "/a/001.webp");
 }

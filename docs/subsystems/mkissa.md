@@ -2,7 +2,7 @@
 title: MKissa (en.mkissa)
 type: subsystem
 created: 2026-11-15
-updated: 2026-11-18
+updated: 2026-11-20
 verified_at: db1ade7
 sources:
   - code: sources/en.mkissa/src/graphql.rs
@@ -131,6 +131,11 @@ in `graphql.rs`, as merged GraphQL sources keep them; response types stay in `mo
 > Toonkotsu loads an empty document under
 > the site's origin, so its wait costs nothing. `sleep` takes whole seconds, so polling adds up to
 > a second after the pages are captured.
+
+> ⚠️ Image quality is a `w=` parameter on the CDN (`helpers.rs` `apply_image_quality`). It joins
+> with `&` when the page url already has a query, since kkantan's approval of #910 pointed out
+> that appending `?w=` assumed it had none; `review_image_quality_keeps_an_existing_query` covers
+> both shapes and the Original setting.
 
 Home rows, in the order the owner set: Popular Weekly (big scroller from the popular feed's own
 description, genres and status), Manga {year}, Trending, Random, Latest Updates (newest chapter
