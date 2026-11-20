@@ -228,3 +228,13 @@ its template alone. [[vymanga]], [[toonz]] and [[swarm]] still held.
 Added [[webnex]]: the home shelves in the site's order with the Manhwa, Manga and Manhua rows,
 the browse parameters that alias (`tag`/`genre`), the first-value-wins chapters parameter, the
 client-side year presets, why genres stay static and why the reader still needs a web view.
+
+
+## 2026-11-20 WebNex presets, section controls and review
+
+Updated [[webnex]] for the owner's Discover order, five-row Latest Updates, selectable
+chapter/year presets without Any, and section visibility. The reader uses plain requests
+and the script cookie following the latest main update; the earlier web-view note is
+obsolete. Preserved synopsis markup and gate-retry HTTP errors, added arbitrary tag
+search and source/checker regressions, and compared the code against current merged
+implementations and live browser/filter evidence.

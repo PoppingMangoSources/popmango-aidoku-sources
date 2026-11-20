@@ -1,11 +1,15 @@
 use crate::{
 	BASE_URL,
-	helpers::{date, parse_flight_value, parse_key, parse_relative_date, text},
+	helpers::{date, markdown, parse_flight_value, parse_key, parse_relative_date, text},
 	settings::Groups,
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Page, PageContent, Result, Viewer,
-	alloc::{String, Vec, collections::BTreeMap, vec},
+	alloc::{
+		String, Vec,
+		collections::{BTreeMap, BTreeSet},
+		vec,
+	},
 	imports::html::{Document, Element},
 	prelude::*,
 };
@@ -77,12 +81,11 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 			.collect::<Vec<_>>()
 	};
 	let credits = |selector| {
-		let mut names = Vec::new();
-		for name in texts(selector) {
-			if !names.contains(&name) {
-				names.push(name);
-			}
-		}
+		let mut seen = BTreeSet::new();
+		let names: Vec<_> = texts(selector)
+			.into_iter()
+			.filter(|name| seen.insert(name.clone()))
+			.collect();
 		Some(names).filter(|names| !names.is_empty())
 	};
 	let title = root
@@ -130,7 +133,20 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 			.and_then(|e| e.attr("abs:src")),
 		authors: credits(".series-credits a[href*=author]"),
 		artists: credits(".series-credits a[href*=artist]"),
-		description: Some(texts(".series-desc p").join("\n\n")).filter(|text| !text.is_empty()),
+		description: Some(
+			root.select(".series-desc p")
+				.into_iter()
+				.flatten()
+				.map(|paragraph| {
+					let mut text = String::new();
+					markdown(&paragraph, &mut text);
+					text.trim().into()
+				})
+				.filter(|text: &String| !text.is_empty())
+				.collect::<Vec<_>>()
+				.join("\n\n"),
+		)
+		.filter(|text| !text.is_empty()),
 		tags: Some(tags),
 		viewer,
 		status,

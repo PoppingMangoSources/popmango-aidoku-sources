@@ -214,6 +214,13 @@
 		]
 	},
 	{
+		"type": "text",
+		"id": "tags",
+		"title": "Tags",
+		"placeholder": "Tag, -excluded tag",
+		"hideFromHeader": true
+	},
+	{
 		"type": "select",
 		"id": "match",
 		"title": "Match Genres and Tags",
@@ -240,7 +247,6 @@
 		"title": "Released",
 		"hideFromHeader": true,
 		"options": [
-			"Any",
 			"This Year",
 			"Last 5 Years",
 			"2010s",
@@ -248,35 +254,14 @@
 			"Before 2000"
 		],
 		"ids": [
-			"",
 			"this-year",
 			"last-5-years",
 			"2010s",
 			"2000s",
 			"before-2000"
-		]
-	},
-	{
-		"type": "select",
-		"id": "chapters",
-		"title": "Chapters",
-		"options": [
-			"Any",
-			"Readable Now",
-			"10 or More",
-			"50 or More",
-			"100 or More",
-			"200 or More"
 		],
-		"ids": [
-			"",
-			"1",
-			"10",
-			"50",
-			"100",
-			"200"
-		],
-		"hideFromHeader": true
+		"default": "",
+		"usesTagStyle": true
 	},
 	{
 		"type": "text",
@@ -284,6 +269,28 @@
 		"title": "Minimum Chapters",
 		"placeholder": "Any number",
 		"hideFromHeader": true
+	},
+	{
+		"type": "select",
+		"id": "chapters",
+		"title": "Chapters",
+		"options": [
+			"Readable Now",
+			"10 or More",
+			"50 or More",
+			"100 or More",
+			"200 or More"
+		],
+		"ids": [
+			"1",
+			"10",
+			"50",
+			"100",
+			"200"
+		],
+		"hideFromHeader": true,
+		"default": "",
+		"usesTagStyle": true
 	},
 	{
 		"type": "text",

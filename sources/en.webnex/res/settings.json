@@ -104,6 +104,60 @@
 	},
 	{
 		"type": "group",
+		"title": "Discover",
+		"footer": "Filtered Catalogue replaces the shelves when selected content ratings skip a lower rating.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "homeSections",
+				"title": "Sections",
+				"values": [
+					"popular",
+					"taste",
+					"new",
+					"trending",
+					"latest",
+					"manhwa",
+					"manga",
+					"manhua",
+					"finished",
+					"added",
+					"filtered"
+				],
+				"titles": [
+					"Popular This Week",
+					"Readers Favourites",
+					"New This Year",
+					"Recently Popular",
+					"Latest Updates",
+					"Manhwa",
+					"Manga",
+					"Manhua",
+					"Finished",
+					"Just Added",
+					"Filtered Catalogue"
+				],
+				"default": [
+					"popular",
+					"taste",
+					"new",
+					"trending",
+					"latest",
+					"manhwa",
+					"manga",
+					"manhua",
+					"finished",
+					"added",
+					"filtered"
+				],
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
 		"title": "Chapters",
 		"items": [
 			{

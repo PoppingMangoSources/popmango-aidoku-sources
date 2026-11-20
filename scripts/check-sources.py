@@ -149,6 +149,16 @@ def check_filters_json(path: Path, rating: object = None) -> None:
     kinds = [item.get("type") for item in filters if isinstance(item, dict)]
     if "sort" in kinds and kinds[0] != "sort":
         note(path, "the sort filter is not first; reviewers ask for it first")
+    if path.parent.parent.name == "en.webnex":
+        controls = {item.get("id"): item for item in filters if isinstance(item, dict)}
+        ids = [item.get("id") for item in filters if isinstance(item, dict)]
+        presets = [controls.get(key, {}) for key in ("chapters", "released")]
+        if ("minChapters" not in ids or "chapters" not in ids
+                or ids.index("chapters") != ids.index("minChapters") + 1
+                or any(item.get("default") != "" or item.get("usesTagStyle") is not True
+                       or "Any" in item.get("options", []) or "" in item.get("ids", [])
+                       for item in presets)):
+            fail(path, "WebNex presets follow the numeric input, omit Any and use tag style with an empty default outside their ids")
 
 
 ADULT_LEVELS = {"erotica", "pornographic", "explicit", "nsfw", "adult", "18+"}

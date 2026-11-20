@@ -5,9 +5,9 @@ use crate::{
 use aidoku::{
 	FilterValue, Manga, MangaPageResult, Result,
 	alloc::{String, Vec, collections::BTreeMap, string::ToString, vec},
-	helpers::uri::QueryParameters,
+	helpers::{string::PlainText, uri::QueryParameters},
 	imports::{
-		html::{Document, Element, Html},
+		html::{Document, Element, Html, Kind},
 		net::{Request, Response},
 		std::{current_date, parse_date_with_options},
 	},
@@ -40,7 +40,11 @@ pub fn parse_response(response: &Response) -> Result<Document> {
 			.ok_or_else(|| error!("WebNex returned no series URL"))?;
 		let cookie =
 			script_cookie(&doc).ok_or_else(|| error!("WebNex did not open this series"))?;
-		return Ok(Request::get(url)?.header("Cookie", &cookie).html()?);
+		let response = Request::get(url)?.header("Cookie", &cookie).send()?;
+		if !(200..300).contains(&response.status_code()) {
+			bail!("WebNex returned HTTP {}", response.status_code());
+		}
+		return Ok(response.get_html()?);
 	}
 	Ok(doc)
 }
@@ -75,6 +79,53 @@ pub fn parse_key<'a>(url: &'a str, prefix: &str) -> Option<&'a str> {
 
 pub fn text(el: &Element, selector: &str) -> Option<String> {
 	el.select_first(selector)?.text().filter(|s| !s.is_empty())
+}
+
+pub fn markdown(element: &Element, output: &mut String) {
+	// Pair text nodes with element children; the runner cannot cast element nodes.
+	let mut children = element.children();
+	for node in element.child_nodes() {
+		match node.kind() {
+			Kind::TextNode => output.extend(node.text().map(|text| text.escape_markdown())),
+			Kind::Element => {
+				let Some(child) = children.next() else {
+					continue;
+				};
+				if child.tag_name().as_deref() == Some("br") {
+					output.push_str("  \n");
+					continue;
+				}
+				let mut inner = String::new();
+				markdown(&child, &mut inner);
+				let marker = match child.tag_name().as_deref() {
+					Some("strong" | "b") => "**",
+					Some("em" | "i") => "*",
+					_ => "",
+				};
+				let text = inner.trim();
+				if text.is_empty() {
+					output.push_str(&inner);
+					continue;
+				}
+				let start = inner.len() - inner.trim_start().len();
+				output.push_str(&inner[..start]);
+				if child.tag_name().as_deref() == Some("a")
+					&& let Some(url) = child.attr("abs:href")
+				{
+					output.push_str(&format!(
+						"[{text}]({})",
+						url.replace('(', "%28").replace(')', "%29")
+					));
+				} else {
+					output.push_str(marker);
+					output.push_str(text);
+					output.push_str(marker);
+				}
+				output.push_str(&inner[start + text.len()..]);
+			}
+			_ => {}
+		}
+	}
 }
 
 pub fn chunks(doc: &Document) -> BTreeMap<String, Element> {
@@ -170,7 +221,7 @@ pub fn search_params(
 	page: i32,
 	filters: Vec<FilterValue>,
 	prefs: &mut Catalogue,
-) -> QueryParameters {
+) -> Result<QueryParameters> {
 	let mut p = QueryParameters::new();
 	let (mut chapters, mut min_chapters) = (None, None);
 	let (mut years, mut released) = ((None, None), (None, None));
@@ -234,9 +285,35 @@ pub fn search_params(
 				}
 			}
 			FilterValue::Select { id, value } if id == "match" => p.push(&id, Some(&value)),
+			FilterValue::Text { id, value } if id == "tags" => {
+				for tag in value
+					.split(',')
+					.map(str::trim)
+					.filter(|tag| !tag.is_empty())
+				{
+					let (name, tag) = tag
+						.strip_prefix('-')
+						.map_or(("tag", tag), |tag| ("xtag", tag.trim()));
+					if !tag.is_empty() {
+						if name == "tag" {
+							prefs
+								.hidden_genres
+								.retain(|genre| !genre.eq_ignore_ascii_case(tag));
+						}
+						p.push(name, Some(tag));
+					}
+				}
+			}
 			FilterValue::Select { id, value } if id == "chapters" => chapters = Some(value),
 			FilterValue::Text { id, value } if id == "minChapters" => {
-				min_chapters = value.trim().parse::<u32>().ok().map(|n| n.to_string())
+				let n = value
+					.trim()
+					.parse::<u32>()
+					.map_err(|_| error!("Enter a minimum chapter count from 1 to 10000"))?;
+				if !(1..=10_000).contains(&n) {
+					bail!("Enter a minimum chapter count from 1 to 10000");
+				}
+				min_chapters = Some(n.to_string());
 			}
 			FilterValue::Range { id, from, to } if id == "year" => {
 				years = (from.map(|v| v as i32), to.map(|v| v as i32))
@@ -280,7 +357,7 @@ pub fn search_params(
 	if let Some(r) = prefs.ceiling() {
 		p.push("rating", Some(r));
 	}
-	p
+	Ok(p)
 }
 
 pub fn browse(
@@ -289,7 +366,7 @@ pub fn browse(
 	filters: Vec<FilterValue>,
 	mut prefs: Catalogue,
 ) -> Result<MangaPageResult> {
-	let params = search_params(query, page, filters, &mut prefs);
+	let params = search_params(query, page, filters, &mut prefs)?;
 	let Some(rating) = prefs.ceiling().filter(|_| !prefs.types.is_empty()) else {
 		return Ok(Default::default());
 	};

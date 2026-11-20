@@ -1,11 +1,11 @@
 use crate::{
 	BASE_URL, WebNex,
 	helpers::{browse, card, chunks, expand, get_html, parse_key, parse_relative_date, text},
-	settings::{CONTENT_RATINGS, Catalogue},
+	settings::{self, CONTENT_RATINGS, Catalogue},
 };
 use aidoku::{
 	Chapter, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, MangaWithChapter, Result,
-	alloc::{Vec, string::ToString, vec},
+	alloc::{String, Vec, string::ToString, vec},
 	imports::{
 		html::{Document, Html},
 		std::current_date,
@@ -13,21 +13,24 @@ use aidoku::{
 	prelude::*,
 };
 
-pub fn layout(doc: &Document, now: i64) -> HomeLayout {
+pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout {
 	let mut chunks = chunks(doc);
 	let mut components = Vec::new();
 	for (id, selector) in [
 		("popular", "section[aria-labelledby=popular-heading]"),
 		("taste", "section[aria-labelledby=taste-heading]"),
-		("latest", "section[aria-labelledby=latest-heading]"),
-		("trending", "section[aria-labelledby=trending-heading]"),
 		("new", "section[aria-labelledby=new-heading]"),
+		("trending", "section[aria-labelledby=trending-heading]"),
+		("latest", "section[aria-labelledby=latest-heading]"),
 		("manhwa", "section[aria-labelledby=manhwa-heading]"),
 		("manga", "section[aria-labelledby=manga-heading]"),
 		("manhua", "section[aria-labelledby=manhua-heading]"),
 		("finished", "[role=tabpanel][id$=-finished]"),
 		("added", "[role=tabpanel][id$=-added]"),
 	] {
+		if shown.is_some_and(|shown| !shown.iter().any(|value| value == id)) {
+			continue;
+		}
 		let Some(section) = doc.select_first(selector) else {
 			continue;
 		};
@@ -96,7 +99,7 @@ pub fn layout(doc: &Document, now: i64) -> HomeLayout {
 				}
 				HomeComponentValue::MangaChapterList {
 					entries,
-					page_size: Some(4),
+					page_size: Some(5),
 					listing: None,
 				}
 			}
@@ -122,6 +125,10 @@ pub fn layout(doc: &Document, now: i64) -> HomeLayout {
 
 impl Home for WebNex {
 	fn get_home(&self) -> Result<HomeLayout> {
+		let shown = settings::home_sections();
+		if shown.as_ref().is_some_and(|shown| shown.is_empty()) {
+			return Ok(HomeLayout::default());
+		}
 		let prefs = Catalogue::load();
 		let Some(max) = prefs.ceiling().filter(|_| !prefs.types.is_empty()) else {
 			return Ok(HomeLayout::default());
@@ -132,6 +139,12 @@ impl Home for WebNex {
 			.take_while(|s| **s != max)
 			.any(|r| !prefs.ratings.iter().any(|v| v == r))
 		{
+			if shown
+				.as_ref()
+				.is_some_and(|shown| !shown.iter().any(|id| id == "filtered"))
+			{
+				return Ok(HomeLayout::default());
+			}
 			let result = browse(None, 1, vec![], prefs)?;
 			return Ok(HomeLayout {
 				components: vec![HomeComponent {
@@ -145,7 +158,7 @@ impl Home for WebNex {
 			});
 		}
 		let doc = get_html(BASE_URL, Some(&prefs.cookie(max)))?;
-		let home = layout(&doc, current_date());
+		let home = layout(&doc, current_date(), shown.as_deref());
 		if home.components.is_empty() && doc.select_first(".home-section").is_none() {
 			bail!("WebNex did not return the home page");
 		}

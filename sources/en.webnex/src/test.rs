@@ -30,7 +30,7 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		html.push_str(&format!("<div role='tabpanel' id='x-{tab}'>{side}</div>"));
 	}
 	let doc = Html::parse_with_url(html, BASE_URL).unwrap();
-	let rows = home::layout(&doc, 8000).components;
+	let rows = home::layout(&doc, 8000, None).components;
 	assert_eq!(
 		rows.iter()
 			.map(|r| r.title.as_deref().unwrap())
@@ -38,9 +38,9 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		[
 			"Popular This Week",
 			"Readers Favourites",
-			"Latest Updates",
-			"Recently Popular",
 			"New in 2026",
+			"Recently Popular",
+			"Latest Updates",
 			"Manhwa",
 			"Manga",
 			"Manhua",
@@ -55,14 +55,132 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		matches!(&rows[1].value,HomeComponentValue::Scroller{entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
 	);
 	assert!(
-		matches!(&rows[2].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(4),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
+		matches!(&rows[4].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(5),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
 	);
+	let shown = vec!["new".into(), "taste".into()];
+	assert_eq!(
+		home::layout(&doc, 0, Some(&shown))
+			.components
+			.iter()
+			.filter_map(|c| c.title.as_deref())
+			.collect::<Vec<_>>(),
+		["Readers Favourites", "New in 2026"]
+	);
+	assert!(home::layout(&doc, 0, Some(&[])).components.is_empty());
+}
+
+#[aidoku_test]
+fn review_preset_controls_and_section_defaults() {
+	let filters: serde_json::Value =
+		serde_json::from_str(include_str!("../res/filters.json")).unwrap();
+	let filters = filters.as_array().unwrap();
+	let position = |id| filters.iter().position(|f| f["id"] == id).unwrap();
+	assert_eq!(position("chapters"), position("minChapters") + 1);
+	for (id, first) in [("chapters", "1"), ("released", "this-year")] {
+		let f = &filters[position(id)];
+		assert_eq!(f["default"], "");
+		assert_eq!(f["usesTagStyle"], true);
+		assert_eq!(f["ids"][0], first);
+		assert_eq!(
+			f["options"].as_array().unwrap().len(),
+			f["ids"].as_array().unwrap().len()
+		);
+		assert!(!f["options"].as_array().unwrap().iter().any(|v| v == "Any"));
+	}
+	let settings: serde_json::Value =
+		serde_json::from_str(include_str!("../res/settings.json")).unwrap();
+	let sections = &settings[1]["items"][0];
+	assert_eq!(sections["key"], "homeSections");
+	assert_eq!(sections["default"], sections["values"]);
+	assert_eq!(
+		sections["values"]
+			.as_array()
+			.unwrap()
+			.iter()
+			.filter_map(|v| v.as_str())
+			.collect::<Vec<_>>(),
+		[
+			"popular", "taste", "new", "trending", "latest", "manhwa", "manga", "manhua",
+			"finished", "added", "filtered"
+		]
+	);
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	defaults_set("homeSections", DefaultValue::StringArray(vec![]));
+	assert!(WebNex.get_home().unwrap().components.is_empty());
+	defaults_set(
+		"homeSections",
+		DefaultValue::StringArray(vec!["popular".into()]),
+	);
+	defaults_set(
+		"contentRatings",
+		DefaultValue::StringArray(vec!["erotica".into()]),
+	);
+	assert!(WebNex.get_home().unwrap().components.is_empty());
+	defaults_set(
+		"homeSections",
+		DefaultValue::StringArray(
+			sections["values"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|v| v.as_str().unwrap().into())
+				.collect(),
+		),
+	);
+	for key in ["contentRatings", "contentTypes"] {
+		defaults_set(key, DefaultValue::StringArray(vec![]));
+		assert!(
+			WebNex
+				.get_search_manga_list(None, 1, vec![])
+				.unwrap()
+				.entries
+				.is_empty()
+		);
+		assert!(WebNex.get_home().unwrap().components.is_empty());
+		let values = if key == "contentRatings" {
+			&settings::CONTENT_RATINGS[..2]
+		} else {
+			&settings::CONTENT_TYPES[..]
+		};
+		defaults_set(
+			key,
+			DefaultValue::StringArray(values.iter().map(|v| (*v).into()).collect()),
+		);
+	}
+}
+
+#[aidoku_test]
+fn review_details_preserve_prose_emphasis_links_and_credit_order() {
+	let doc = Html::parse_with_url("<h1 class='series-title'>Story</h1><p class='series-credits'><a href='?author=A'>A</a><a href='?author=A'>A</a><a href='?author=B'>B</a><a href='?artist=C'>C</a></p><div class='series-desc'><p>[A] * B <strong>bold <i>and italic</i></strong><br>Next <a href='https://example.com'>link</a>.</p><p>Second.</p></div>", BASE_URL).unwrap();
+	let details = models::details(&doc, "story").unwrap();
+	assert_eq!(details.authors.unwrap(), ["A", "B"]);
+	assert_eq!(details.artists.unwrap(), ["C"]);
+	let text = details.description.unwrap();
+	assert!(
+		text.contains("\\[A\\] \\* B")
+			&& text.contains("**bold *and italic***")
+			&& text.contains("[link](https://example.com/)"),
+		"{text}"
+	);
+	assert!(
+		text.contains("  \nNext") && text.ends_with("\n\nSecond\\."),
+		"{text}"
+	);
+	for html in ["", "<div class='series-desc'><p></p></div>"] {
+		let doc = Html::parse(format!("<h1 class='series-title'>Story</h1>{html}")).unwrap();
+		assert!(
+			models::details(&doc, "story")
+				.unwrap()
+				.description
+				.is_none()
+		);
+	}
 }
 
 #[aidoku_test]
 fn review_finished_reassembles_nested_titles_and_side_rows() {
 	let doc = Html::parse_with_url("<div role='tabpanel' id='x-finished'><ol class='side-list'><li><a class='side-row' href='/manga/first'><template id='P:a'></template></a></li><template id='P:b'></template></ol></div><div id='S:b'><li><a class='side-row' href='/manga/second'><template id='P:c'></template></a></li></div><div id='S:c'><span class='side-title'>Second</span></div><div id='S:a'><span class='side-title'>First</span></div>", BASE_URL).unwrap();
-	let rows = home::layout(&doc, 0).components;
+	let rows = home::layout(&doc, 0, None).components;
 	let HomeComponentValue::Scroller { entries, .. } = &rows[0].value else {
 		panic!()
 	};
@@ -99,6 +217,7 @@ fn review_catalogue_defaults_overrides_and_clearing() {
 		],
 		&mut prefs,
 	)
+	.unwrap()
 	.to_string();
 	assert!(
 		qs.contains("rated=erotica")
@@ -127,7 +246,9 @@ fn review_filters_send_tags_typed_chapters_and_release_presets() {
 		value: value.into(),
 	};
 	let query = |filters, prefs: &mut Catalogue| {
-		helpers::search_params(None, 1, filters, prefs).to_string()
+		helpers::search_params(None, 1, filters, prefs)
+			.unwrap()
+			.to_string()
 	};
 	let qs = query(
 		vec![
@@ -138,6 +259,7 @@ fn review_filters_send_tags_typed_chapters_and_release_presets() {
 			},
 			select("genre", "Isekai"),
 			select("chapters", "50"),
+			text("tags", " Betrayal, -Conspiracy, , - "),
 			text("minChapters", " 37 "),
 			select("released", "2010s"),
 			FilterValue::Range {
@@ -152,6 +274,8 @@ fn review_filters_send_tags_typed_chapters_and_release_presets() {
 		"tag=Magic",
 		"xtag=Zombies",
 		"tag=Isekai",
+		"tag=Betrayal",
+		"xtag=Conspiracy",
 		"chapters=37",
 		"from=2012",
 		"to=2019",
@@ -160,16 +284,33 @@ fn review_filters_send_tags_typed_chapters_and_release_presets() {
 	}
 	assert!(!qs.contains("chapters=50") && !qs.contains("genre="));
 	let qs = query(
-		vec![
-			select("chapters", "1"),
-			text("minChapters", "many"),
-			select("released", "before-2000"),
-		],
+		vec![select("chapters", "1"), select("released", "before-2000")],
 		&mut prefs,
 	);
 	assert!(qs.contains("chapters=1") && qs.contains("to=1999") && !qs.contains("from="));
+	for value in ["many", "0", "10001"] {
+		assert!(
+			helpers::search_params(None, 1, vec![text("minChapters", value)], &mut prefs).is_err()
+		);
+	}
 	let qs = query(vec![select("genre", "Manhua")], &mut prefs);
 	assert!(!qs.contains("tag=") && prefs.types == ["manhua"]);
+	for n in ["1", "10", "50", "100", "200"] {
+		assert!(query(vec![select("chapters", n)], &mut prefs).contains(&format!("chapters={n}")));
+	}
+	for (preset, expected) in [
+		("this-year", "from="),
+		("last-5-years", "from="),
+		("2010s", "from=2010&to=2019"),
+		("2000s", "from=2000&to=2009"),
+		("before-2000", "to=1999"),
+	] {
+		assert!(query(vec![select("released", preset)], &mut prefs).contains(expected));
+	}
+	let cleared = query(vec![], &mut prefs);
+	assert!(
+		!cleared.contains("chapters=") && !cleared.contains("from=") && !cleared.contains("to=")
+	);
 }
 
 #[aidoku_test]
@@ -202,6 +343,22 @@ fn review_group_selection_keeps_parts_and_excludes_before_ranking() {
 		models::select_chapters(models::uploads(&doc, &groups, 0).unwrap(), &groups)[0].key,
 		"a-first"
 	);
+	groups.hidden.clear();
+	groups.preferred.clear();
+	let row = |key| {
+		format!(
+			"<li class='ch-row'><a class='ch-link' href='/read/{key}'><span class='ch-num'>1</span></a><span class='ch-source'>{key}</span></li>"
+		)
+	};
+	for rows in [
+		format!("{}{}", row("z"), row("a")),
+		format!("{}{}", row("a"), row("z")),
+	] {
+		let doc = Html::parse(format!("<ol>{rows}</ol>")).unwrap();
+		let chosen = models::select_chapters(models::uploads(&doc, &groups, 0).unwrap(), &groups);
+		assert_eq!(chosen.len(), 1);
+		assert_eq!(chosen[0].key, "a");
+	}
 }
 
 #[aidoku_test]
@@ -466,6 +623,86 @@ fn live_typed_minimum_and_release_presets_narrow_the_catalogue() {
 		assert!(!narrowed.is_empty());
 		assert_ne!(narrowed, all);
 	}
+}
+
+#[aidoku_test]
+fn live_sorts_and_tag_exclusions_match_details() {
+	for index in 0..6 {
+		let result = WebNex
+			.get_search_manga_list(
+				None,
+				1,
+				vec![FilterValue::Sort {
+					id: "sort".into(),
+					index,
+					ascending: false,
+				}],
+			)
+			.unwrap();
+		assert!(!result.entries.is_empty(), "sort {index}");
+		assert!(
+			result
+				.entries
+				.iter()
+				.all(|m| !m.key.is_empty() && !m.title.is_empty()),
+			"sort {index}"
+		);
+	}
+	for (id, tag) in [
+		("genre", "Action"),
+		("format", "Long Strip"),
+		("theme", "Magic"),
+	] {
+		for exclude in [false, true] {
+			let result = WebNex
+				.get_search_manga_list(
+					None,
+					1,
+					vec![FilterValue::MultiSelect {
+						id: id.into(),
+						included: if exclude { vec![] } else { vec![tag.into()] },
+						excluded: if exclude { vec![tag.into()] } else { vec![] },
+					}],
+				)
+				.unwrap();
+			assert!(!result.entries.is_empty(), "{id} {tag} excluded={exclude}");
+			let manga = WebNex
+				.get_manga_update(result.entries.into_iter().next().unwrap(), true, false)
+				.unwrap();
+			assert_eq!(
+				manga.tags.unwrap().iter().any(|t| t == tag),
+				!exclude,
+				"{id} {tag} excluded={exclude}"
+			);
+		}
+	}
+	let found = WebNex
+		.get_search_manga_list(
+			Some("Hell Login".into()),
+			1,
+			vec![FilterValue::Select {
+				id: "chapters".into(),
+				value: "1".into(),
+			}],
+		)
+		.unwrap();
+	assert!(
+		found
+			.entries
+			.iter()
+			.any(|m| m.key == "hell-login-gocnsptt2v")
+	);
+	let impossible = WebNex
+		.get_search_manga_list(
+			Some("Hell Login".into()),
+			1,
+			vec![FilterValue::Text {
+				id: "minChapters".into(),
+				value: "10000".into(),
+			}],
+		)
+		.unwrap();
+	assert!(impossible.entries.is_empty());
 }
 
 #[aidoku_test]

@@ -128,6 +128,29 @@ class CardRuleTests(unittest.TestCase):
         self.assertEqual(checks.failures, [])
         self.assertEqual(checks.notes, [])
 
+    def test_webnex_preset_layout_and_sendable_first_choice(self):
+        path = checks.ROOT / 'sources/en.webnex/res/filters.json'
+        path.parent.mkdir(parents=True)
+        good = [{"type": "text", "id": "minChapters"}] + [
+            {"type": "select", "id": key, "default": "", "usesTagStyle": True,
+             "options": [label], "ids": [value]}
+            for key, label, value in [("chapters", "Readable Now", "1"), ("released", "This Year", "this-year")]]
+        invalid = []
+        for change in [{"default": "1"}, {"usesTagStyle": False}, {"options": ["Any", "Readable Now"]}, {"ids": ["", "1"]}]:
+            invalid.append([good[0], {**good[1], **change}, good[2]])
+        invalid.extend([[good[1], good[0], good[2]], [good[0], good[2]]])
+        for data, fails in [(good, False)] + [(data, True) for data in invalid]:
+            checks.failures.clear()
+            path.write_text(json.dumps(data, indent='\t') + '\n')
+            checks.check_filters_json(path)
+            self.assertEqual(any('WebNex presets' in failure for failure in checks.failures), fails)
+
+    def test_other_sources_can_keep_neutral_select_choices(self):
+        path = self.source / 'res/filters.json'
+        path.write_text(json.dumps([{"type": "select", "id": "chapters", "options": ["Any", "Readable"]}], indent='\t') + '\n')
+        checks.check_filters_json(path)
+        self.assertEqual(checks.failures, [])
+
     def test_unstated_exclusion_is_noted(self):
         checks.notes.clear()
         path = self.source / 'res/filters.json'

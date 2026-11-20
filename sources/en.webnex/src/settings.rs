@@ -8,6 +8,10 @@ use aidoku::{
 pub const CONTENT_RATINGS: [&str; 4] = ["safe", "suggestive", "erotica", "pornographic"];
 pub const CONTENT_TYPES: [&str; 3] = ["manga", "manhwa", "manhua"];
 
+pub fn home_sections() -> Option<Vec<String>> {
+	defaults_get("homeSections")
+}
+
 pub struct Catalogue {
 	pub ratings: Vec<String>,
 	pub types: Vec<String>,
