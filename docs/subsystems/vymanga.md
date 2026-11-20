@@ -14,7 +14,7 @@ sources:
   - code: sources/en.vymanga/res/source.json
   - ext: https://mangavyvy.com/search
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/vyvymanga
-verified_at: dd0863c
+verified_at: afbc5da
 ---
 
 VyManga (`mangavyvy.com`, mirror `mangavyvy.net`) is server-rendered HTML with no API and no
@@ -34,6 +34,9 @@ upstream from `feat/en.vymanga`, cut from `upstream/main`.
 
 A card (`.comic-item`) carries the link, title, cover (`img[data-src]`), a `.comic-completed`
 marker and the latest chapter's name. A series is Completed or Ongoing, nothing else.
+
+> ⚠️ The card's `.comic-completed` marker can disagree with the series page (Hyakujuu Kingdom,
+> kkantan on #913), so cards set no status and details read it from the series page.
 
 Requests need no headers: every page, the reader chain, covers and page images answered 200
 without a browser user agent or a Referer.

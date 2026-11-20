@@ -17,7 +17,7 @@ sources:
   - code: sources/multi.yaoime/res/settings.json
   - ext: https://yaoi.me/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/yaoime
-verified_at: a953638
+verified_at: afbc5da
 ---
 
 yaoi.me is a Next.js site rendered on the server, so the source reads its HTML; the only JSON

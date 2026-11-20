@@ -42,7 +42,7 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: abc6d6a
+verified_at: afbc5da
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -220,6 +220,12 @@ without a width, and an Option that is unwrapped and wrapped again
 > anonymous `{}` placeholder is not matched, and a variable that is only a path segment can be
 > (`{slug}?`); read each note and either join with `&` or say why the url never has a query in
 > a `//` comment above that mentions the query, which clears the note (Swarm's fixed paths do).
+
+> ⚠️ `parse_date` with a format ending in `'Z'` is noted (`UTC_DATE`, kkantan on #916): it parses
+> a UTC timestamp in the device's time zone, and `parse_date_with_options(..., "en_US_POSIX",
+> "UTC")` is correct. Merged Asura Scans, NovelBuddy and our own NovelArchive and Kagane still do
+> it, so it is a note. A rating select (`contentRating`-style key) that defaults to Erotica,
+> Explicit or another adult level on a source rated 1 fails; the switch rule alone missed Toonz.
 
 > ⚠️ With `--base`, every template the push changes also gets the per-file Rust rules
 > (`check_rust`), as its sources do; the toonz template's stable sorts were missed before. Untouched

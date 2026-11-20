@@ -2,7 +2,7 @@
 title: Toonz template (en.toonz, en.toonx, en.lewdmanhwa)
 type: subsystem
 created: 2026-11-19
-updated: 2026-11-19
+updated: 2026-11-20
 sources:
   - code: templates/toonz/src/lib.rs
   - code: templates/toonz/src/imp.rs
@@ -23,7 +23,7 @@ sources:
   - code: sources/en.lewdmanhwa/res/settings.json
   - ext: https://toonz.to/comics
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/toonz
-verified_at: 2cc379c
+verified_at: afbc5da
 ---
 
 Toonz (`toonz.to`), Toonx (`toonx.to`) and LewdManhwa (`lewdmanhwa.com`) are one Next.js
@@ -51,7 +51,12 @@ Everything below was probed live on 2026-11-19 unless marked.
 - Pages: the chapter route with `RSC: 1`, reading the `"images"` array (`{filename}` under
   `/uploads/`), as keiyoushi's client does.
 - Home: Toonz reads `/manhwa`, `/manga` and the list view, Toonx `/` and the list view, and
-  LewdManhwa `/home` (hero slides, Trending Now, Latest Updates), each in one `send_all`.
+  LewdManhwa `/home` (hero slides and Latest Updates; its Trending Now repeats the slides), each
+  in one `send_all`.
+
+> ⚠️ LewdManhwa's hero renders only its first slide's cover (a `<picture>`); the other slides
+> arrive with an empty cover box, so a slide takes its cover from the same title's card on the
+> page (`templates/toonz/src/home.rs`). Requiring the picture showed one Featured title.
 
 > ⚠️ The content setting is the `reader_prefs` cookie (`{"rating","types","blockedGenres"}`),
 > and every page reads it, home included. The site's own URL `rating` and `types` can only
@@ -61,10 +66,10 @@ Everything below was probed live on 2026-11-19 unless marked.
 > well as narrow (`helpers.rs` `Content::request`).
 
 > ⚠️ `rating` is a level ("Erotica and below"), not a set: Safe, Suggestive, Erotica, Explicit
-> (`pornographic`). The setting is a select; the Content Rating filter is a multi-select with
-> nothing picked by default, so a search can override the setting with any level, and the
-> highest level picked applies (`imp.rs`). No cookie means Erotica on Toonz, the setting's
-> default there; LewdManhwa defaults to Explicit, the whole catalogue.
+> (`pornographic`). The setting and the Content Rating filter are both selects, as the site's
+> own control is single-choice; the filter's first option, Any, is omitted by the app, so the
+> setting applies until a level is picked (`imp.rs`). Toonz defaults to Suggestive, as a source
+> rated 1 must; LewdManhwa defaults to Explicit, the whole catalogue, and is rated 2.
 
 > ⚠️ Toonx's catalogue is all Explicit comics: any lower rating or another type in the cookie
 > returns nothing, so it has no rating or type controls and always sends `pornographic`
@@ -105,6 +110,8 @@ Everything below was probed live on 2026-11-19 unless marked.
 > (inferred from `AidokuRunner.swift` `modify`).
 
 Genres are static per consumer, generated from each site's `/api/genres` (Toonz 199, Toonx
-607 including X-Ray, LewdManhwa 78), because settings need static lists. The live
+607 including X-Ray, LewdManhwa 78). Merged `en.toonkotsu` shows they could be fetched instead
+(`DynamicFilters` and `DynamicSettings`), which would drop about 3,400 JSON lines (unverified
+whether Toonz's `/api/genres` answers through Cloudflare). The live
 `details_chapters_and_pages` test fails on Toonz in the sandbox on the challenge page and needs
 an in-app check; Toonx and LewdManhwa run their whole suites.
