@@ -80,7 +80,8 @@ impl Source for VyManga {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let html = get_html(&manga_url(&manga.key))?;
+		let url = manga_url(&manga.key);
+		let html = get_html(&url)?;
 		if needs_details {
 			let Some(info) = html.select_first(".div-manga") else {
 				bail!("Missing series details");
@@ -88,12 +89,12 @@ impl Source for VyManga {
 			manga = parse_manga(manga.key, &info)?;
 		}
 		if needs_chapters {
-			// Its link expires within hours.
+			// Chapter links expire within hours, so they open the series.
 			manga.chapters = Some(
 				parse_chapters(&html)
 					.into_iter()
 					.map(|chapter| Chapter {
-						url: None,
+						url: Some(url.clone()),
 						..chapter
 					})
 					.collect(),

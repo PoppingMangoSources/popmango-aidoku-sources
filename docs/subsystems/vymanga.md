@@ -79,8 +79,9 @@ changed the page count or order), so `hidesFiltersWhileSearching` stays unset.
 > therefore its name as the site prints it, with `#2`, `#3` counted from the oldest when a name
 > repeats. `get_page_list` reads the series page again and follows the fresh link of the
 > chapter with that key. Keying by the link, as versions up to 9 did, changed every key on
-> every refresh. For the same reason `get_manga_update` stores no chapter url (from v13): the
-> library kept a link that stopped opening within hours (`sources/en.vymanga/src/lib.rs:93`).
+> every refresh. For the same reason `get_manga_update` sets each chapter's url to the series
+> page (from v15; v13 and v14 set none): the chapter link stopped opening within hours
+> (`sources/en.vymanga/src/lib.rs:97`).
 
 > ⚠️ Four genre ids carry the site's raw whitespace (`Adventure\n'`, `MONSTERS\nACTION`,
 > `Shounen\nType`, `Sci-fi  Shounen`), while a home slide's tag text is normalised. The Popular

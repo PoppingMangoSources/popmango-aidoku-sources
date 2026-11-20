@@ -540,8 +540,12 @@ fn details_and_chapters() {
 	assert_eq!(finale.chapter_number, Some(212.0));
 	assert_eq!(finale.title.as_deref(), Some("Ch 212 : S2 Finale"));
 	assert!(chapters.iter().any(|chapter| chapter.key == "Extra#2"));
-	// Their links expire within hours, so the library keeps none.
-	assert!(chapters.iter().all(|chapter| chapter.url.is_none()));
+	let series = manga_url(SERIES);
+	assert!(
+		chapters
+			.iter()
+			.all(|chapter| chapter.url.as_ref() == Some(&series))
+	);
 }
 
 #[aidoku_test]
