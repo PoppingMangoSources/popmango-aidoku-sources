@@ -71,8 +71,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
                 ;;
             *) python3 "$tooling/scripts/check-sources.py" "${source_checks[@]}" ;;
         esac
-        if git diff --name-only "$base" "$local_sha" -- .github | grep -q .; then
-            python3 "$tooling/scripts/check-workflows.py" --offline
+        # About 20 seconds, so only when a rule or its tests changed, as ci-gates.py does.
+        if git diff --name-only "$base" "$local_sha" -- scripts/check-sources.py scripts/tests/test_check_sources.py | grep -q .; then
+            python3 "$tooling/scripts/check-rule-tests.py"
         fi
     fi
 done <<< "$updates"
