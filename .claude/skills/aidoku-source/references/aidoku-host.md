@@ -132,7 +132,15 @@ filter doesn't count.
   - `BigScroller`: cover, title, **authors, description, tags**, and a content rating badge
     for suggestive and NSFW. This is the component for details. The description is drawn with
     `Text(description)`, which shows a string as it is, so Markdown escapes appear as backslashes.
-  - `Scroller`: cover, title and the link's `subtitle`.
+  - `Scroller`: cover, title and the link's `subtitle` (`HomeScrollerView`, `entry.subtitle`).
+    aidoku-rs's doc comment on the variant says subtitles are not used; the app's view is what
+    runs, which is why cards stay compact.
+  - `ImageScroller`: only each link's image and value, at `width` by `height` (140 when unset),
+    turning every `auto_scroll_interval` seconds (`HomeImageScrollerView`). Banner artwork.
+  - `Filters`: one button per `FilterItem`, opening a search with its `values`, or, without
+    values, the genre filter whose option matches the item's title (`HomeFiltersView`,
+    `openFilteredPage`); no values and no matching genre searches with no filters.
+  - `Links`: each link's title, opening its value (`HomeLinksView`).
   - `MangaList`: cover, title, `subtitle` and **the manga's tags** when the link's manga has
     any. A row is only compact when the manga carries no tags.
   - `MangaChapterList`: the manga plus the chapter's formatted title and a relative
@@ -160,7 +168,8 @@ filter doesn't count.
   node of a paragraph into one SwiftUI `Text` with `+`. A paragraph of about a thousand nodes
   (text runs and line breaks) overflows the main thread's stack and crashes the app, so give
   each line of a chapter its own paragraph. MarkdownUI maps cmark's text nodes one to one
-  (`Parser/MarkdownParser.swift`), and cmark ends a text node at every backslash escape, so each
+  (`Parser/MarkdownParser.swift` in the swift-markdown-ui package the app depends on, not in the
+  app itself), and cmark ends a text node at every backslash escape, so each
   escaped character costs two nodes: escaping all punctuation with `escape_markdown` multiplies
   a long line's depth. The paged reader parses with Apple's
   `AttributedString(markdown:)` instead (`Features/Reader/Readers/Text/Paged/TextPaginator.swift`).
@@ -257,18 +266,21 @@ d9456ed9d5341567021c7625c93c2c08ff36f9cb Sources/AidokuRunner/SettingsStore.swif
 a7f13d1bf76bcef7fd4b21ff06151757dab38a1b Sources/AidokuRunner/Utilities/NetRequest.swift
 7fcdbfcee44d8104d01568a97066896fc55f501b Sources/AidokuRunner/Utilities/WebViewHandler.swift
 910439e66800b775462dade4469b93db22473c25 Sources/AidokuRunner/Extensions/WKWebsiteDataStore.swift
-repo https://github.com/Aidoku/Aidoku ceee58b29d4f48106cf63042ca0cb075a8ac22b4
-456b537a372cd9101fc9b7866da4e4bc6ca5ae14 Aidoku/Features/Source/SourceHomeContentView.swift
+repo https://github.com/Aidoku/Aidoku 95d1468d599a154f03d6a1dd06bf839d3ff3f7bd
+7d9f5f6a81769be98cc03fb51b3ac1d6ebf8d26f Aidoku/Features/Source/Home/HomeComponents/HomeFiltersView.swift
+82a36b9abca2c99877581a5edeaa3960abc8d557 Aidoku/Features/Source/Home/HomeComponents/HomeImageScrollerView.swift
+cac512083426001fc26d2a93c9cec366027bd90f Aidoku/Features/Source/Home/HomeComponents/HomeLinksView.swift
+b7f04d8084da4655b53346f08ca0fb35f80c2276 Aidoku/Features/Source/SourceHomeContentView.swift
 43eddb85cc3a0f0c1f50f0a5e9b8a8f6011a0c3b Aidoku/Features/Source/Home/HomeComponents/HomeBigScrollerView.swift
-17ca5ba3857f2d725f63eacc3153859076cdfca1 Aidoku/Features/Reader/Page/MarkdownView.swift
+106e673cf1c35ee77c505ac9124d4b6c38e0a8ff Aidoku/Features/Reader/Page/MarkdownView.swift
 ac8939bd5c22da56cbcbcd09f380ca786b402f03 Aidoku/Features/Reader/Readers/Text/Paged/TextPaginator.swift
 cb4a00225a980b7ffa21e0fa16b7e877784ecce8 Aidoku/Features/Source/Home/HomeComponents/HomeScrollerView.swift
-62beb2cf461ae8db0d0f5890b10d54e7cc5ec6a2 Aidoku/Features/Source/Home/HomeComponents/HomeListView.swift
-e24fec29263bfd01716e8120ee4727a0e6bcc817 Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
+ac955beebf13264602ecf3b8fd43c519e07a7d44 Aidoku/Features/Source/Home/HomeComponents/HomeListView.swift
+1f4b1fc3ed161217780a8081f10b6b921ac4edc5 Aidoku/Features/Source/Home/HomeComponents/HomeChapterListView.swift
 e160171316736af6ad3c6be5f383230db3a05f6b Aidoku/Features/Source/Filter/CheckFilterView.swift
 7ce4dd8a31e06f9937a45d4f7e7337e7762170d2 Aidoku/Features/Source/Filter/SelectFilterView.swift
 8bb91994eeb7619b6b65194951e7e40ad1425292 Aidoku/Features/Source/Filter/MultiSelectFilterView.swift
-a3b36574aad3d06b73c00d285746aaf038f168a6 Aidoku/Features/Manga/MangaView+ViewModel.swift
+6edb7eedfb83b332050635021209b4bde64cb4cc Aidoku/Features/Manga/MangaView+ViewModel.swift
 repo https://github.com/Aidoku/aidoku-rs ae6485e3c14ecd1fd5497d170eae884c68d04a87
 b3c58d9fb5bc71481e0e77b935438b6621a74fd9 crates/lib/src/macros/mod.rs
 dd864db00a2da689d35fb3af362bcf295741cb36 crates/lib/src/imports/std.rs

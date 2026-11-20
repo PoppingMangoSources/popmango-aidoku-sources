@@ -2,7 +2,7 @@
 title: VineTheme template and consumers
 type: subsystem
 created: 2026-11-13
-updated: 2026-11-17
+updated: 2026-11-20
 sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/lib.rs
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/38322e3397255b719c9952de186b3bd0119e1c14/templates/vinetheme/src/imp.rs
@@ -245,3 +245,19 @@ Kayn's icon now uses an opaque white background. Valir's sharper icon comes from
 official `/icon-192.png`, normalized to 128px with margin. Final local evidence includes
 passing Valir and Kayn homes and description-reference contracts; Diva's local live suite
 still receives substituted Site Unavailable HTML, so its live rendering remains unverified.
+
+## Maintenance rules
+
+Empty HTML
+synopses remain optional; validate nonempty chapter text at the reader boundary. A failed
+pasted-link lookup falls through to ordinary search. Borrow decoded raw Flight text instead
+of cloning a whole reader body through a single-use wrapper. Select the actual
+reader object rather than chapter metadata; resolve byte-length Flight text rows, preserve
+legacy comic keys and typed novel paths, and test home order/deduplication without per-card
+requests. Run the portable Vine contracts against clean submission worktrees as well as main.
+Keep the Iken review rules in [[iken-template]]: standard test scaffolds, isGenre, separated Rust items,
+scoped selectors and independently scoped migrations.
+
+> ⚠️ Vine consumers keep contentRating 1 without an adult visibility switch or local adult filtering,
+> matching the sites. Do not invent a Show 18+ Content control when the site has none; retain
+> per-title content ratings. The owner explicitly chose this over the general toggle-default policy.

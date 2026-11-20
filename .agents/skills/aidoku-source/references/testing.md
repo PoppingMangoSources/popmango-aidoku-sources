@@ -68,3 +68,9 @@ Running them:
 For behaviour only the app shows, `aidoku logcat` starts a log server; enter its url in the
 app's Advanced settings under Log Server and every `println!` from a device on the same
 network streams to the terminal.
+
+Treat live HTTP diagnostics as evidence, not a reason to skip a failure. Source tests keeps
+offline `review_` contracts separate from live suites, preserves logs and reports observed
+Cloudflare challenges/origin timeouts while retaining nonzero exits. Compare direct requests
+with fresh page evidence before changing a parser or declaring a site globally offline.
+Do not claim a live test passed when network access or WebView support prevented execution.

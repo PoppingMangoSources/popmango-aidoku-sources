@@ -5,6 +5,8 @@ created: 2026-10-31
 updated: 2026-11-20
 sources:
   - code: scripts/check-sources.py
+  - code: scripts/check-rule-tests.py
+  - code: scripts/tests/test_check_rule_tests.py
   - code: scripts/test-http.py
   - code: scripts/review-contracts.py
   - code: scripts/review-contracts/vinetheme.rs
@@ -40,7 +42,7 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: 09bbfe7
+verified_at: 889f387
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -166,6 +168,14 @@ printed, never failing.
 > catches and one legitimate case it lets through. The pass case is what stops the rule
 > from widening later. The tests share module-level `failures` and `notes` lists; a test
 > asserting on notes must clear them first, as `test_unstated_exclusion_is_noted` does.
+
+> ⚠️ A test that exists can still be unable to fail. On 2026-11-20, switching each `fail()` and
+> `note()` off in turn left 38 of 85 rules passing every test, the source.json, icon, README
+> row and Rust line rules among them; `SurvivingMutantTests` now covers the general ones.
+> `scripts/check-rule-tests.py` repeats that run and fails on any new survivor, and
+> `scripts/ci-gates.py` runs it when the checker or its tests change. It must delete
+> `__pycache__` before each run: two same-size mutants written in one second share a cached
+> `.pyc` and read as survivors, which put the first count at 36 with the wrong rules.
 
 ## Filter rules
 

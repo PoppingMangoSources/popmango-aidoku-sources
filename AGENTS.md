@@ -248,8 +248,9 @@ went in one of these ways, and new ones go in the same way:
    them (both clone anonymously) and cite the file. "Set `can_exclude` to false" on #824 read
    like "the default is true", but the decoder says `false`.
 3. **If it can be detected without the network, add it to `check-sources.py` with a test in
-   `scripts/tests/test_check_sources.py`** — one case it fails and one legitimate case it
-   passes.
+   `scripts/tests/test_check_sources.py`**, one case it fails and one legitimate case it
+   passes. `scripts/check-rule-tests.py` switches each rule off in turn and fails when no test
+   notices; `ci-gates.py` runs it whenever the checker or its tests change.
 4. **Calibrate it**: `scripts/calibrate-rules.sh "<rule text>"`. If it fails merged upstream
    code, look at what it fails. Old code kkantan never reviewed is backlog; a recent merge
    that kkantan approved means the rule is too broad, so narrow it (the silenced-warning rule
@@ -266,7 +267,7 @@ went in one of these ways, and new ones go in the same way:
 
 Every repository check (`ci-gates.py`, the hooks, `review-source.sh`, `check-sources.py`,
 `review-contracts.py`, `check-workflows.py`, `calibrate-rules.sh`, `upstream-usage.py`,
-`check-site-url.py`, `check-host-reference.py`, `source-lints.sh`) and the whole submission
+`check-site-url.py`, `check-host-reference.py`, `check-rule-tests.py`, `source-lints.sh`) and the whole submission
 workflow (`pr-branch.sh`, review rounds, updates after a merge, template PRs, scope checks,
 rebuilds and leased force-pushes) are in [`.claude/skills/aidoku-source/references/submission.md`](.claude/skills/aidoku-source/references/submission.md). The two
 commands to remember: `python3 scripts/ci-gates.py --base origin/main` for the offline gates and

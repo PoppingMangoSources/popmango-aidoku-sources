@@ -316,39 +316,3 @@ frontmatter `code:` citations with pinned external references so the wiki retain
 Run `scripts/check-archives.py --base <before-removal>` before publishing main; CI and the
 push hook run it as well. Later maintenance starts from current upstream, restoring only
 needed tests from the archive. Archive branches do not publish packages or need release bumps.
-
-Treat live HTTP diagnostics as evidence, not a reason to skip a failure. Source tests keeps
-offline `review_` contracts separate from live suites, preserves logs and reports observed
-Cloudflare challenges/origin timeouts while retaining nonzero exits. Compare direct requests
-with fresh page evidence before changing a parser or declaring a site globally offline.
-Do not claim a live test passed when network access or WebView support prevented execution.
-
-
-Commercial price, sale, discount and purchasing controls are omitted from source forms,
-filters and settings. Chapter visibility controls remain useful: Show Locked Chapters
-uses `showLocked`, defaults off and only appears where chapter lock metadata exists.
-Mixed comic/novel catalogues use `labelNovels`, default on, to append `(Novel)` without
-changing keys or reader routing. Eternal has novels but no locked chapters; its novel
-catalogue form uses `type=novel`.
-
-Iken keeps Latest Releases and New Releases, excluding the separate paid Latest Updates
-section. Excluded headings still bound their neighbors. Featured carousels use all metadata
-already available from home HTML and existing responses, without per-card requests. True
-banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
-BigScroller. Vortex banners show at 340 by 124 (the artwork runs about 2.75:1) and request a 680px image; Hive keeps its custom script banners local, at 340 by 128.
-
-When a shared template adds a dependency, synchronize its own lockfile and every consumer lockfile. Verify the complete graphs with `cargo metadata --locked --filter-platform wasm32-unknown-unknown`. Upstream peer-consumer changes limited to Cargo.lock may retain their versions; behavior or source/resource changes still require the normal bump. Fork publication rules remain unchanged.
-
-For VineTheme maintenance, read `docs/subsystems/vinetheme-template.md`. Empty HTML
-synopses remain optional; validate nonempty chapter text at the reader boundary. A failed
-pasted-link lookup falls through to ordinary search. Borrow decoded raw Flight text instead
-of cloning a whole reader body through a single-use wrapper. Select the actual
-reader object rather than chapter metadata; resolve byte-length Flight text rows, preserve
-legacy comic keys and typed novel paths, and test home order/deduplication without per-card
-requests. Run the portable Vine contracts against clean submission worktrees as well as main.
-Keep the Iken review rules above: standard test scaffolds, isGenre, separated Rust items,
-scoped selectors and independently scoped migrations.
-
-Vine consumers keep contentRating 1 without an adult visibility switch or local adult filtering,
-matching the sites. Do not invent a Show 18+ Content control when the site has none; retain
-per-title content ratings. The owner explicitly chose this over the general toggle-default policy.

@@ -88,6 +88,11 @@ upstream, is reviewed and is updated after a merge.
   step once failed on that. `check.yaml` runs it on every push and
   **Action runtimes** (`action-runtimes.yaml`) every Monday, since deprecations arrive without a
   push. Its tests are in `scripts/tests/test_check_workflows.py`.
+- `scripts/check-rule-tests.py` disables each `fail()` and `note()` in `check-sources.py` in turn
+  and runs its tests; a rule whose tests still pass has no case that can fail, and the script
+  fails naming it. Rules for single reviewed sources archived off main are listed in its
+  `ARCHIVED`. `ci-gates.py` runs it when the checker or `test_check_sources.py` changes (about
+  20 seconds); its own test is `scripts/tests/test_check_rule_tests.py`.
 - `scripts/calibrate-rules.sh [rule text]` runs `check-sources.py` over every merged upstream
   source and counts failures per rule (or lists the sources one rule fails). CI's
   `check.yaml` prints it in the job summary on every push.
