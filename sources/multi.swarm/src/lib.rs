@@ -70,7 +70,7 @@ impl Source for Swarm {
 				FilterValue::MultiSelect { id, included, .. } => match id.as_str() {
 					"genre" => search.genres.extend(included),
 					"type" => search.content.types = Some(included),
-					// Both ratings are the site's "All".
+					// As on the site, All or both ratings mean every title.
 					"rating" => {
 						search.content.rating = match included.as_slice() {
 							[only] => only.clone(),

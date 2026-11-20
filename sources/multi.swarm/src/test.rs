@@ -307,13 +307,15 @@ fn ratings_follow_the_setting_and_filter() {
 			.iter()
 			.all(|manga| manga.content_rating == ContentRating::NSFW)
 	);
-	// Both ratings are the site's "All".
-	let all = search(None, vec![multi("rating", &["safe", "nsfw"])]);
+	// All, or both ratings, is the site's "All".
+	let all = search(None, vec![multi("rating", &["all"])]);
 	assert!(
 		all.entries
 			.iter()
 			.any(|manga| manga.content_rating != ContentRating::Safe)
 	);
+	let both = search(None, vec![multi("rating", &["safe", "nsfw"])]);
+	assert_eq!(keys(&all), keys(&both));
 	defaults_set("languages", strings(&[]));
 	assert!(search(None, Vec::new()).entries.is_empty());
 	assert!(Swarm::new().get_home().unwrap().components.is_empty());

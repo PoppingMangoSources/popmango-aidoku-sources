@@ -15,10 +15,12 @@
 		"title": "Content Rating",
 		"canExclude": false,
 		"options": [
+			"All",
 			"Safe",
 			"NSFW"
 		],
 		"ids": [
+			"all",
 			"safe",
 			"nsfw"
 		]
