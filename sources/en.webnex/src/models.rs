@@ -187,6 +187,7 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 		let mut upload = |link: Element,
 		                  group: Option<String>,
 		                  when,
+		                  official,
 		                  warning,
 		                  likes: Option<String>|
 		 -> Result<()> {
@@ -208,7 +209,13 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 					title: title.clone(),
 					chapter_number: number,
 					date_uploaded: when,
-					scanlators: group.map(|s| vec![s]),
+					scanlators: group.map(|name| {
+						vec![if official {
+							format!("{name} ✓")
+						} else {
+							name
+						}]
+					}),
 					url: Some(format!("{BASE_URL}/read/{key}")),
 					..Default::default()
 				},
@@ -220,22 +227,24 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 			});
 			Ok(())
 		};
-		let link = row
-			.select_first("a.ch-link")
-			.ok_or_else(|| error!("WebNex returned a chapter without a link"))?;
-		upload(
-			link,
-			text(&row, ".ch-source-name, .ch-source"),
-			row.select_first("time.ch-time").and_then(|e| date(&e)),
-			false,
-			text(&row, ".ch-likes"),
-		)?;
+		if let Some(link) = row.select_first("a.ch-link") {
+			upload(
+				link,
+				text(&row, ".ch-source-name, .ch-credit-group")
+					.or_else(|| text(&row, ".ch-source")),
+				row.select_first("time.ch-time").and_then(|e| date(&e)),
+				row.select_first(".ch-source .verified-mark, .ch-source-trigger .verified-mark, .ch-sources-item.is-current .verified-mark").is_some(),
+				false,
+				text(&row, ".ch-likes"),
+			)?;
+		}
 		for link in row.select("a.ch-sources-item").into_iter().flatten() {
 			let name = text(&link, ".ch-sources-name");
 			let time = text(&link, ".ch-sources-time").and_then(|v| parse_relative_date(&v, now));
 			let warning = link.select_first(".dot-warn").is_some();
+			let official = link.select_first(".verified-mark").is_some();
 			let likes = text(&link, ".ch-sources-likes");
-			upload(link, name, time, warning, likes)?;
+			upload(link, name, time, official, warning, likes)?;
 		}
 		// priority breaks every tie by key, so the unstable sort gives one order.
 		uploads.sort_unstable_by(|a, b| a.priority(groups, b));

@@ -16,7 +16,7 @@ mod models;
 mod reader;
 mod settings;
 
-use helpers::{browse, get_html, parse_flight_value, parse_key, parse_response};
+use helpers::{browse, chapter_list, get_html, parse_flight_value, parse_key, parse_response};
 use models::ReaderProps;
 use settings::{Catalogue, Groups};
 
@@ -82,6 +82,7 @@ impl Source for WebNex {
 			manga.copy_from(models::details(&doc, &manga.key)?);
 		}
 		if needs_chapters {
+			let doc = chapter_list(&doc)?;
 			let last = doc
 				.select("a[href*='page='][href$='#chapters']")
 				.into_iter()
@@ -109,7 +110,7 @@ impl Source for WebNex {
 					.map(|page| Request::get(format!("{url}?page={page}")))
 					.collect::<core::result::Result<Vec<_>, _>>()?;
 				for response in Request::send_all(reqs) {
-					let page = parse_response(&response?)?;
+					let page = chapter_list(&parse_response(&response?)?)?;
 					if page.select_first(".ch-row").is_none() {
 						bail!("WebNex did not return the requested chapter page");
 					}

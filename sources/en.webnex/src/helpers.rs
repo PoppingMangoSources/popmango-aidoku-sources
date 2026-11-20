@@ -80,9 +80,9 @@ pub fn chunks(doc: &Document) -> BTreeMap<String, Element> {
 		.collect()
 }
 
-// React streams both whole cards and fragments inside a card.
+// React streams both whole entries and fragments inside an entry.
 pub fn expand(row: &Element, chunks: &mut BTreeMap<String, Element>) -> Option<String> {
-	let mut html = row.html()?;
+	let mut html = row.html().unwrap_or_default();
 	for slot in row.select("template[id^='P:']").into_iter().flatten() {
 		let id = slot.attr("id")?;
 		if let Some(chunk) = chunks.remove(id.strip_prefix("P:")?) {
@@ -90,6 +90,15 @@ pub fn expand(row: &Element, chunks: &mut BTreeMap<String, Element>) -> Option<S
 		}
 	}
 	Some(html)
+}
+
+pub fn chapter_list(doc: &Document) -> Result<Document> {
+	let section = doc
+		.select_first("section#chapters")
+		.ok_or_else(|| error!("WebNex did not return a chapter section"))?;
+	let html = expand(&section, &mut chunks(doc))
+		.ok_or_else(|| error!("WebNex did not return the chapter list"))?;
+	Ok(Html::parse_with_url(html, BASE_URL)?)
 }
 
 pub fn card(el: &Element) -> Option<Manga> {

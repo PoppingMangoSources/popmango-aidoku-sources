@@ -142,6 +142,55 @@ fn review_group_selection_keeps_parts_and_excludes_before_ranking() {
 }
 
 #[aidoku_test]
+fn review_streamed_chapters_keep_links_pagination_and_official_credits() {
+	let doc = Html::parse(concat!(
+		"<section id='chapters'><ol class='ch-list'><li class='ch-row'>",
+		"<template id='P:5'></template><template id='P:6'></template></li>",
+		"<template id='P:8'></template></ol><template id='P:9'></template><template id='P:a'></template></section>",
+		"<div hidden id='S:5'><a class='ch-link' href='/read/official'><span class='ch-num'>",
+		"<span aria-hidden='true'>Ch. </span><span class='visually-hidden'>Chapter </span>21</span></a></div>",
+		"<div hidden id='S:6'><div class='ch-meta'><button class='ch-source-trigger'>",
+		"<span class='ch-source-name'>WEBTOON</span><span class='verified-mark' aria-label='Official translation'></span></button>",
+		"<div class='ch-sources-menu'><a class='ch-sources-item' href='/read/alternate'>",
+		"<span class='ch-sources-name'>Fan Group</span></a></div></div></div>",
+		"<div hidden id='S:8'><li class='ch-row'><a class='ch-link' href='/read/next'>",
+		"<span class='ch-num'>20</span></a><span class='ch-source'><span class='ch-credit-group'>Other Group</span></span></li></div>",
+		"<div hidden id='S:9'><ol class='pagination-pages'><li><a href='?page=3#chapters'>3</a></li></ol></div>",
+		"<div hidden id='S:a'></div>"
+	)).unwrap();
+	let doc = chapter_list(&doc).unwrap();
+	assert!(doc.select_first("a[href='?page=3#chapters']").is_some());
+	let mut groups = Groups {
+		hidden: vec![],
+		preferred: vec![],
+		one_per_chapter: false,
+	};
+	let chapters = models::select_chapters(models::uploads(&doc, &groups, 0).unwrap(), &groups);
+	assert_eq!(chapters.len(), 3);
+	let official = chapters
+		.iter()
+		.find(|chapter| chapter.key == "official")
+		.unwrap();
+	assert_eq!(official.chapter_number, Some(21.0));
+	assert_eq!(official.scanlators.as_deref().unwrap(), ["WEBTOON ✓"]);
+	let alternate = chapters
+		.iter()
+		.find(|chapter| chapter.key == "alternate")
+		.unwrap();
+	assert_eq!(alternate.scanlators.as_deref().unwrap(), ["Fan Group"]);
+
+	groups.hidden.push("webtoon".into());
+	let chapters = models::select_chapters(models::uploads(&doc, &groups, 0).unwrap(), &groups);
+	assert_eq!(
+		chapters
+			.iter()
+			.map(|chapter| chapter.key.as_str())
+			.collect::<Vec<_>>(),
+		["alternate", "next"]
+	);
+}
+
+#[aidoku_test]
 fn review_key_only_links_and_complete_page_lists() {
 	assert_eq!(
 		WebNex
