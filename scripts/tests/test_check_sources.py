@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -490,6 +491,144 @@ class CardRuleTests(unittest.TestCase):
             self.assertTrue(any('silences' in failure for failure in checks.failures), attribute)
 
 
+
+
+class SurvivingMutantTests(unittest.TestCase):
+    """One failing and one passing case for each rule a mutation run showed no test could catch."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        checks.ROOT = Path(self.temp.name)
+        sources = patch.object(checks, 'SOURCES', checks.ROOT / 'sources')
+        sources.start()
+        self.addCleanup(sources.stop)
+        checks.failures.clear()
+        checks.notes.clear()
+        self.source = checks.SOURCES / 'en.example'
+        (self.source / 'res').mkdir(parents=True)
+        (self.source / 'src').mkdir()
+
+    def outcome(self, check, *args):
+        checks.failures.clear()
+        check(*args)
+        return list(checks.failures)
+
+    def write(self, name, text):
+        path = self.source / name
+        path.write_text(text)
+        return path
+
+    def assert_rule(self, check, bad, good, *args, expect=None):
+        failures = self.outcome(check, bad, *args)
+        self.assertTrue(failures, f'{bad} should fail')
+        if expect:
+            self.assertTrue(any(expect in failure for failure in failures), failures)
+        self.assertEqual(self.outcome(check, good, *args), [], f'{good} should pass')
+
+    def test_text_and_json_format(self):
+        self.assert_rule(checks.check_text_file, self.write('a.txt', 'x'), self.write('b.txt', 'x\n'), expect='newline')
+        self.assert_rule(checks.check_json, self.write('a.json', '{\n'), self.write('b.json', '{}\n'), expect='not valid JSON')
+        self.assert_rule(checks.check_json, self.write('c.json', '{\n  "a": 1\n}\n'), self.write('d.json', '{\n\t"a": 1\n}\n'), expect='spaces')
+
+    def test_source_json_fields(self):
+        good = {'id': 'en.example', 'minAppVersion': '0.7.1', 'languages': ['en']}
+        cases = [
+            ({**good, 'breakingChangeVersion': 2}, 'top-level config'),
+            ({key: value for key, value in good.items() if key != 'minAppVersion'}, 'minAppVersion'),
+            ({**good, 'id': 'en.other'}, 'info.id'),
+            ({**good, 'languages': ['multi']}, 'lists "multi"'),
+        ]
+        for info, expect in cases:
+            with self.subTest(expect=expect):
+                path = self.write('res/source.json', json.dumps({'info': info}) + '\n')
+                self.assertTrue(any(expect in failure for failure in self.outcome(checks.check_source_json, path, 'en.example')))
+        for document, expect in [({'info': good, 'config': {'languageSelectType': 'multi'}}, 'languageSelectType'),
+                                 ({'info': good, 'listings': [{'id': 'a'}, {'id': 'a'}]}, 'repeat')]:
+            with self.subTest(expect=expect):
+                path = self.write('res/source.json', json.dumps(document) + '\n')
+                self.assertTrue(any(expect in failure for failure in self.outcome(checks.check_source_json, path, 'en.example')))
+        path = self.write('res/source.json', json.dumps({'info': good, 'config': {'languageSelectType': 'single'}}) + '\n')
+        self.assertEqual(self.outcome(checks.check_source_json, path, 'en.example'), [])
+
+    def test_filter_defaults_and_header(self):
+        sort = {'type': 'sort', 'id': 'sort', 'options': ['A']}
+        self.assert_rule(checks.check_filters_json,
+                         self.write('a.json', json.dumps([{**sort, 'default': {'index': 0, 'ascending': False}}]) + '\n'),
+                         self.write('b.json', json.dumps([{**sort, 'default': {'index': 1, 'ascending': False}}]) + '\n'),
+                         expect='framework already uses')
+        check = {'type': 'check', 'id': 'completed', 'name': 'Completed'}
+        self.assert_rule(checks.check_filters_json, self.write('c.json', json.dumps([check]) + '\n'),
+                         self.write('d.json', json.dumps([{**check, 'hideFromHeader': True}]) + '\n'), expect='hideFromHeader')
+
+    def test_label_novels_defaults_on(self):
+        item = {'type': 'switch', 'key': 'labelNovels', 'title': 'Label Novels'}
+        self.assert_rule(checks.check_settings_json, self.write('a.json', json.dumps([{**item, 'default': False}]) + '\n'),
+                         self.write('b.json', json.dumps([{**item, 'default': True}]) + '\n'), 1, expect='Label Novels')
+
+    def test_icon_must_be_a_128_png(self):
+        def png(width, height):
+            return b'\x89PNG\r\n\x1a\n' + b'\0' * 8 + width.to_bytes(4, 'big') + height.to_bytes(4, 'big')
+        icon = self.source / 'res/icon.png'
+        self.assertTrue(any('is missing' in failure for failure in self.outcome(checks.check_icon, icon)))
+        icon.write_bytes(b'GIF89a' + b'\0' * 20)
+        self.assertTrue(any('not a PNG' in failure for failure in self.outcome(checks.check_icon, icon)))
+        icon.write_bytes(png(256, 256))
+        self.assertTrue(any('128x128' in failure for failure in self.outcome(checks.check_icon, icon)))
+        icon.write_bytes(png(128, 128))
+        self.assertEqual(self.outcome(checks.check_icon, icon), [])
+
+    def test_inline_response_json(self):
+        path = self.source / 'src/lib.rs'
+        bad = 'let x: T = serde_json::from_str(&Request::get(url)?.string()?)?;\n'
+        self.assertTrue(self.outcome(checks.check_api_use, path, bad))
+        self.assertEqual(self.outcome(checks.check_api_use, path, 'let x: T = Request::get(url)?.json_owned()?;\n'), [])
+
+    def test_rust_line_rules(self):
+        (self.source / 'src/settings.rs').write_text('fn a() {}\n')
+        lib = self.source / 'src/lib.rs'
+        cases = [
+            ('// ----- Helpers -----\n', 'decorative divider'),
+            ('let c = HomeComponentValue::MangaList { page_size: Some(10) };\n', 'page_size 10'),
+            ('let c = Chapter { language: Some("en".into()) };\n', 'chapter language'),
+            ('let a = defaults_get::<String>("a");\n', 'outside settings.rs'),
+            ('bail!(AidokuError::Unimplemented);\n', 'Unimplemented'),
+        ]
+        for line, expect in cases:
+            with self.subTest(expect=expect):
+                lib.write_text(line)
+                self.assertTrue(any(expect in failure for failure in self.outcome(checks.check_rust, self.source, True)))
+        lib.write_text('// Explains why.\nlet c = HomeComponentValue::MangaList { page_size: Some(5) };\n')
+        self.assertEqual(self.outcome(checks.check_rust, self.source, True), [])
+        lib.write_text('let c = Chapter { language: Some("en".into()) };\n')
+        self.assertEqual(self.outcome(checks.check_rust, self.source, False), [])
+
+    def test_lock_lists_every_path_dependency(self):
+        (self.source / 'Cargo.toml').write_text('[dependencies]\ntheme = { path = "../../templates/theme" }\n')
+        template = checks.ROOT / 'templates/theme'
+        template.mkdir(parents=True)
+        (template / 'Cargo.toml').write_text('[package]\nname = "theme"\nversion = "0.1.0"\n')
+        lock = self.source / 'Cargo.lock'
+        lock.write_text('version = 4\n')
+        self.assertTrue(any("'theme' is missing" in failure for failure in self.outcome(checks.check_template_locks, self.source)))
+        lock.write_text('version = 4\n[[package]]\nname = "theme"\nversion = "0.1.0"\n')
+        self.assertEqual(self.outcome(checks.check_template_locks, self.source), [])
+
+    def test_readme_row_and_version(self):
+        (self.source / 'Cargo.toml').write_text('[package]\nname = "example"\n')
+        self.write('res/source.json', json.dumps({'info': {'id': 'en.example', 'version': 3, 'minAppVersion': '0.7.1', 'languages': ['en']}}) + '\n')
+        readme = checks.ROOT / 'README.md'
+        link = 'sources/en.example-v{0}.aix">.aix (v{0})</a> sources/en.example-v{0}.aix'
+        for text, expect in [('', 'has no row'), (link.format(2), 'links v2'),
+                             (link.format(3) + ' sources/en.example-v2.aix', 'more than one version')]:
+            with self.subTest(expect=expect):
+                readme.write_text(text + '\n')
+                failures = self.outcome(checks.check_source, 'en.example', None)
+                self.assertTrue(any(expect in failure for failure in failures), failures)
+        readme.write_text(link.format(3) + '\n')
+        failures = self.outcome(checks.check_source, 'en.example', None)
+        self.assertFalse([failure for failure in failures if 'README' in failure], failures)
+        self.assertTrue(any('has no .cargo/config.toml' in failure for failure in failures), failures)
 
 
 class KeyoappHttpTests(unittest.TestCase):

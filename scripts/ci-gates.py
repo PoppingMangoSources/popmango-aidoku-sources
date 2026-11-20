@@ -31,6 +31,10 @@ def main():
         run(sys.executable, "scripts/check-archives.py", "--base", base)
         run(sys.executable, "scripts/sync-agent-docs.py", "--check")
         run(sys.executable, "-m", "unittest", "discover", "-s", "scripts/tests", "-v")
+        # About 20 seconds, so only when a rule or its tests changed.
+        if subprocess.check_output(["git", "diff", "--name-only", base, "--", "scripts/check-sources.py",
+                                    "scripts/tests/test_check_sources.py"], cwd=ROOT, text=True).strip():
+            run(sys.executable, "scripts/check-rule-tests.py")
         run(sys.executable, "scripts/check-workflows.py", "--offline")
         branch = os.environ.get("GITHUB_REF") or subprocess.check_output(
             ["git", "branch", "--show-current"], cwd=ROOT, text=True).strip()
