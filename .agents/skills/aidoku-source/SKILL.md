@@ -5,11 +5,21 @@ description: Create, fix or submit an Aidoku source in this repo. Use when addin
 
 # Building Aidoku sources
 
-`AGENTS.md` and the identical full `CLAUDE.md` holds the rules and why they exist. This skill is the
-order to apply them in. Work in phases; each depends on facts the one before established.
+`AGENTS.md` (identical to `CLAUDE.md`) is the hub: hard rules, upstream rules, workflow and
+templates. The detail lives beside this skill. This skill is the order to apply it in. Work in
+phases; each depends on facts the one before established.
 The physical `.agents/skills/aidoku-source` copy must match this tree; run
 `python3 scripts/sync-agent-docs.py` after editing and `--check` before committing.
-Read [source-review.md](references/source-review.md) for official references and the test matrix.
+
+| Read | When |
+|---|---|
+| [standards.md](references/standards.md) | before every push: every review rule with its evidence (AGENTS.md / CLAUDE.md section 3) |
+| [conventions.md](references/conventions.md) | before writing code: API in practice, request cost, merged conventions, framework defaults, comments and naming (sections 2, 4 to 8) |
+| [aidoku-host.md](references/aidoku-host.md) | for anything about what the app does with a source |
+| [console-probes.md](references/console-probes.md) | when the sandbox cannot reach a site |
+| [testing.md](references/testing.md) | before writing or running tests |
+| [source-review.md](references/source-review.md) | official references, reviewer permalinks and the test matrix |
+| [submission.md](references/submission.md) | every gate, and how a source goes upstream (section 9) |
 
 Before coding, declare the destination: fork publication (`main`) or upstream submission
 (`feat/<id>`/`fix/<id>` from canonical upstream). Never create a submission by branching

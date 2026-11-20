@@ -47,6 +47,10 @@ _(none yet)_
 - [[yaoime]] -- yaoi.me's settings cookie, browse parameters, chapter variants and the signed reader
 - [[toonz]] -- the toonz template: its content cookie, streamed pages, home rows per site and the challenged Toonz pages
 - [[swarm]] -- Swarm's API, local exclusions, encrypted page request, languages and uploads
+- [[xcomic]] -- XCOMIC's GraphQL API, editions, feeds and filters (upstream only)
+- [[toonkotsu]] -- Toonkotsu's JSON API, ratings, web view reader and read limits (upstream only)
+- [[kagane]] -- Kagane's mirrors, chapter index, ratings and search body (upstream only)
+- [[atsumaru]] -- Atsumaru's Typesense search, feeds, ratings, deduplication and novel keys (upstream only)
 
 ## decisions
 
@@ -60,6 +64,7 @@ _(none yet)_
 
 - [[source-checks]] -- what `scripts/check-sources.py` checks, where it runs, fail vs note
 - [[readme-and-site]] -- the README art, the install page, and why images load from the repo
+- [[archives]] -- sources kept off main: the archive procedure and every archived source's last copy
 
 ## history
 

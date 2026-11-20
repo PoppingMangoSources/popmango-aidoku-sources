@@ -109,10 +109,18 @@ def pre_edit(event: dict) -> None:
                                                  "additionalContext": "\n\n".join(messages)}}))
 
 
+REFERENCES = ".claude/skills/aidoku-source/references"
+
+
 def section(heading: str, end: str) -> str:
-    text = (ROOT / "AGENTS.md").read_text()  # identical to CLAUDE.md
-    start = text.index(heading)
-    return text[start:text.index(end, start + len(heading))].strip()
+    """A section of AGENTS.md (identical to CLAUDE.md), or of the skill reference it moved to."""
+    root = ROOT / "AGENTS.md"  # identical to CLAUDE.md
+    for path in (root, ROOT / REFERENCES / "conventions.md", ROOT / REFERENCES / "standards.md"):
+        text = path.read_text() if path.is_file() else ""
+        if heading in text:
+            start = text.index(heading)
+            return text[start:text.index(end, start + len(heading))].strip()
+    raise ValueError(f"no section {heading!r}")
 
 
 GIT_COMMIT = re.compile(r"(?:^|[\s;&|(`])git(?:\s+-[cC]\s+\S+)*\s+commit(?![\w-])", re.M)
@@ -218,8 +226,12 @@ def stamp(name: str, status: str) -> None:
 
 def checklist(compact: bool = False) -> None:
     """Section 3's rules; compact keeps each rule's first sentence, so a hook's output stays inline."""
-    text = (ROOT / "AGENTS.md").read_text()  # identical to CLAUDE.md
-    section = text[text.index("## 3. Review feedback"):text.index("## 4. ")]
+    standards = ROOT / REFERENCES / "standards.md"
+    if standards.is_file():
+        section = standards.read_text()
+    else:
+        text = (ROOT / "AGENTS.md").read_text()  # identical to CLAUDE.md
+        section = text[text.index("## 3. Review feedback"):text.index("## 4. ")]
     rows = re.findall(r"^\| (?!What was flagged|---)(.+?) \| (.+?) \|", section, re.M)
     bullets = re.findall(r"^- \*\*(.+?)\*\*", section, re.M)
     print("Read each against the diff (AGENTS.md / CLAUDE.md section 3):")

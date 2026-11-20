@@ -305,3 +305,38 @@ kkantan approved on 2026-11-15.
 - `src/lib.rs`: a suggestion to write `if query.is_some() { qs.push("search", query.as_deref()); }`, which kkantan then pushed as `refactor(es.eternalmangas): avoid optional rewrap`
 
 kkantan approved on 2026-11-15 and left a final comment review on 2026-11-16 with no text.
+
+## Maintenance notes (from the root guide)
+
+The template, its six consumers and EternalMangas left `main` for `merged-sources` once #900
+merged (section 17); start later work from upstream's crates. What they taught stays below.
+
+Hive, Nyx, Vortex, Magus, Hijala and Sana use Iken with numeric API series and chapter keys. Home links
+arrive as `/series/<slug>` and resolve before returning details or deep links. A numeric
+chapter-only update skips the details lookup; the reader requests the chapter by id alone.
+`/api/post` may contain no chapters, so collect `/api/chapters` with `skip`/`take` until
+`totalChapterCount` is reached. Empty pages before completion and any repeated chapter id,
+including overlaps later in a page or within the same page, are errors.
+Treat independent lock flags independently; an explicit accessible response overrides only
+the price fallback. Keep Hive's custom script banners local to that consumer. Novel imports
+require app 0.8.3 for every consumer. See `docs/subsystems/iken-template.md`.
+
+Home also loads compact New Releases (createdAt descending) and Novels (seriesType=NOVEL)
+rows concurrently with the HTML. isNovel is ignored by the current APIs; do not use it as a
+novel filter. Omit empty rows and keep successful components on a partial failure.
+
+Eternal uses its current HTML catalogue/details/chapters and the old API only to resolve legacy numeric keys.
+Hijala and Sana expose verified genre exclusions, chapter/year ranges and multiple types.
+Sana uses 30 results per page and filename page ordering; other consumers keep their defaults.
+
+EternalMangas' catalogue rating is 2, explicitly requested by the owner on November 12,
+superseding the earlier rating-1 instruction; per-title
+NSFW classification is separate. Keep its site-specific migration in its own PR on `fix-eternal`, with only necessary shared-template compatibility changes in the Iken commits.
+
+The owner requested `fix-iken` for the template and `fix-eternal` for the independent EternalMangas update. Both are explicit branch-name exceptions recognized by scope checks and push gates. Validate restored consumers on fork main with their live suites, then prepare the submission from canonical upstream with fork tests removed.
+
+Iken keeps Latest Releases and New Releases, excluding the separate paid Latest Updates
+section. Excluded headings still bound their neighbors. Featured carousels use all metadata
+already available from home HTML and existing responses, without per-card requests. True
+banner artwork uses ImageScroller and known dimensions; portrait-cover hero slides remain
+BigScroller. Vortex banners show at 340 by 124 (the artwork runs about 2.75:1) and request a 680px image; Hive keeps its custom script banners local, at 340 by 128.
