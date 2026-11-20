@@ -17,7 +17,7 @@ sources:
   - code: sources/multi.yaoime/res/settings.json
   - ext: https://yaoi.me/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/yaoime
-verified_at: 2cc379c
+verified_at: a953638
 ---
 
 yaoi.me is a Next.js site rendered on the server, so the source reads its HTML; the only JSON
@@ -52,6 +52,10 @@ page request (`SiteSettings::cookie`).
 > included tag that is also hidden answers nothing.
 - `chapterClean` (dedupe and clean order) is applied by the site's client, not the server, so
   the source reimplements it (`clean_list`, from the site's own function in its chapter bundle).
+
+> ⚠️ A clean row skips a chapter only when every upload is dead, so the upload it opens must be
+> the first live one, not the first listed: up to v9 a dead first copy opened as a broken
+> chapter (`sources/multi.yaoime/src/models.rs:281`, pinned in `review_clean_chapter_list`).
 
 ## Browse
 
