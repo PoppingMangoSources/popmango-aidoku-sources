@@ -4,7 +4,7 @@ use crate::{
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, MangaWithChapter, Result, Viewer,
-	alloc::{String, Vec, format, string::ToString},
+	alloc::{String, Vec, collections::BTreeSet, format, string::ToString},
 	helpers::string::PlainText,
 	imports::{
 		html::{Document, Element, Html},
@@ -292,7 +292,7 @@ pub fn reader(key: &str) -> Result<ReaderChapter> {
 }
 
 pub fn parse_chapter_list(root: &Element) -> Vec<MangaWithChapter> {
-	let mut seen = Vec::new();
+	let mut seen = BTreeSet::new();
 	root.select("div.grid > div")
 		.into_iter()
 		.flatten()
@@ -303,10 +303,9 @@ pub fn parse_chapter_list(root: &Element) -> Vec<MangaWithChapter> {
 			else {
 				return None;
 			};
-			if seen.contains(&manga.key) {
+			if !seen.insert(manga.key.clone()) {
 				return None;
 			}
-			seen.push(manga.key.clone());
 			let (chapter_number, title) = link
 				.text()
 				.map_or((None, None), |label| split_label(&label));
@@ -321,7 +320,7 @@ pub fn parse_chapter_list(root: &Element) -> Vec<MangaWithChapter> {
 						.and_then(|date| {
 							parse_date_with_options(
 								date,
-								"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+								"yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
 								"en_US_POSIX",
 								"UTC",
 							)
