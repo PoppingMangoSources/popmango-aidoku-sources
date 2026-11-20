@@ -91,12 +91,19 @@ impl Source for YaoiMe {
 	}
 
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let chapter = reader(&chapter.key)?;
-		let hashes = match &chapter.sealed {
-			Some(sealed) => cipher::unseal(sealed)?,
-			None => chapter.pages.iter().map(|page| page.hash.clone()).collect(),
+		let mut chapter = reader(&chapter.key)?;
+		let hashes = match chapter.sealed.take() {
+			Some(sealed) => cipher::unseal(&sealed)?,
+			None => chapter
+				.pages
+				.iter_mut()
+				.map(|page| core::mem::take(&mut page.hash))
+				.collect(),
 		};
-		if hashes.len() != chapter.pages.len() || hashes.iter().any(|hash| hash.is_empty()) {
+		if chapter.pages.is_empty()
+			|| hashes.len() != chapter.pages.len()
+			|| hashes.iter().any(|hash| hash.is_empty())
+		{
 			bail!("This chapter has missing pages");
 		}
 		Ok(chapter
@@ -108,6 +115,7 @@ impl Source for YaoiMe {
 					.w
 					.and_then(|w| IMAGE_WIDTHS.iter().find(|width| **width >= w));
 				let url = match width {
+					// A page hash is plain hex, so this url has no query before ours.
 					Some(width) => format!("{BASE_URL}/i/p/{hash}?w={width}"),
 					None => format!("{BASE_URL}/i/p/{hash}"),
 				};

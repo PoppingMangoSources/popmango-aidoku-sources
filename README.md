@@ -77,7 +77,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 </tr>
 <tr>
 <td align="center" width="50%"><img src="sources/en.webnex/res/icon.png" width="64"/><br/><b>WebNex</b><br/><sub><a href="https://webnex.cc">webnex.cc</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v4.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v4.aix">.aix (v4)</a></sub></td>
-<td align="center" width="50%"><img src="media/sources/yaoime.png" width="64"/><br/><b>yaoi.me</b><br/><sub><a href="https://yaoi.me">yaoi.me</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v9.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v9.aix">.aix (v9)</a></sub></td>
+<td align="center" width="50%"><img src="media/sources/yaoime.png" width="64"/><br/><b>yaoi.me</b><br/><sub><a href="https://yaoi.me">yaoi.me</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v10.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v10.aix">.aix (v10)</a></sub></td>
 </tr>
 </table>
 

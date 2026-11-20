@@ -278,7 +278,7 @@ fn clean_list(groups: &[Group], languages: &[String]) -> Vec<Chapter> {
 			let first = members
 				.iter()
 				.min_by(|a, b| a.num.partial_cmp(&b.num).unwrap_or(Ordering::Equal))?;
-			let variant = first.variants.first()?;
+			let variant = first.variants.iter().find(|variant| !variant.is_dead())?;
 			let volumes = buckets.iter().filter(|((_, n), _)| n == number).count();
 			Some(Chapter {
 				chapter_number: Some(*number as f32),

@@ -193,6 +193,7 @@ fn synopsis(document: &Document) -> Option<String> {
 	let lines: Vec<String> = fragment
 		.select("p")?
 		.filter_map(|line| line.text())
+		.filter(|line| !line.is_empty())
 		.map(|line| line.escape_markdown())
 		.collect();
 	Some(lines.join("\n\n")).filter(|text| !text.is_empty())

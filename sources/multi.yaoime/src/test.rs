@@ -344,6 +344,19 @@ fn review_clean_chapter_list() {
 	}))
 	.unwrap();
 	assert_eq!(chapter_list(only_extras, &languages, &names, true).len(), 1);
+
+	// A dead upload is never the one a clean row opens.
+	let mut dead = variant(7, 50, "en");
+	dead["d"] = json!(true);
+	let first_dead: ChapterData = serde_json::from_value(json!({
+		"groups": [group("Ch.5", Some(5.0), None, false, &[dead, variant(8, 51, "en")])],
+	}))
+	.unwrap();
+	let keys: Vec<String> = chapter_list(first_dead, &languages, &names, true)
+		.into_iter()
+		.map(|chapter| chapter.key)
+		.collect();
+	assert_eq!(keys, ["8/51"]);
 }
 
 #[aidoku_test]
@@ -395,7 +408,7 @@ fn review_links() {
 		Some(Link::Series(key)) if key == "4578"
 	));
 	assert!(matches!(
-		helpers::parse_link("https://yaoi.me/chapter/196432/5488437?on=kagane"),
+		helpers::parse_link("https://yaoi.me/chapter/196432/5488437?from=home"),
 		Some(Link::Chapter(key)) if key == "196432/5488437"
 	));
 	assert!(helpers::parse_link("https://yaoi.me/author/Pibi").is_none());
