@@ -126,7 +126,7 @@ class AgentHookTests(unittest.TestCase):
             self.assertIn('scripts/commit.sh', out['permissionDecisionReason'])
 
     def test_commit_is_refused_even_when_the_rules_are_unreadable(self):
-        # The temporary root has no AGENTS.md, so the rules text cannot be read.
+        # The temporary root has neither AGENTS.md nor CLAUDE.md, so the rules text cannot be read.
         out = json.loads(run(hooks.pre_bash, {'tool_input': {'command': 'git commit -m x'}}))
         self.assertEqual(out['hookSpecificOutput']['permissionDecision'], 'deny')
 
