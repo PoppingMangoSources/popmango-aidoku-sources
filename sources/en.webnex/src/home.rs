@@ -78,7 +78,6 @@ pub fn layout(doc: &Document, now: i64) -> HomeLayout {
 						Some(MangaWithChapter {
 							manga: card(el)?,
 							chapter: Chapter {
-								url: Some(format!("{BASE_URL}/read/{key}")),
 								key,
 								chapter_number: n,
 								title: n.is_none().then_some(label),

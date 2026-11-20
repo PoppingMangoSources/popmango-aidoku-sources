@@ -226,7 +226,7 @@ pub fn search_params(
 					prefs.types = vec![kind];
 					continue;
 				}
-				// Tag taps only carry the label. Use the same genre options as advanced search.
+				// Tag taps only carry the label.
 				let is_genre =
 					serde_json::from_str::<serde_json::Value>(include_str!("../res/filters.json"))
 						.ok()

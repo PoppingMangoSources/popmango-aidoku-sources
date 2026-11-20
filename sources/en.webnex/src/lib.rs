@@ -35,7 +35,7 @@ impl Source for WebNex {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		// A pasted link that fails to resolve falls back to an ordinary search for its text.
+		// A link that fails to resolve is searched as text.
 		if let Some(url) = query.as_deref().filter(|url| {
 			url.strip_prefix(BASE_URL)
 				.is_some_and(|path| path.starts_with('/'))

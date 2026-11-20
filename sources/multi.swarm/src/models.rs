@@ -262,10 +262,6 @@ impl Update {
 
 	pub fn into_chapter(mut self) -> Option<(Manga, Chapter)> {
 		let chapter = Chapter {
-			url: Some(format!(
-				"{BASE_URL}/comic/{}/chapter/{}",
-				self.url, self.number
-			)),
 			key: core::mem::take(&mut self.chapter_id),
 			chapter_number: self.number.parse().ok(),
 			date_uploaded: date(self.released.as_deref()),

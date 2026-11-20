@@ -21,7 +21,6 @@ const PAGE_SIZE: usize = 50;
 // Browse answers `created` with an error; `newest` is the same sort.
 pub const SORTS: [&str; 3] = ["last_updated", "title", "newest"];
 
-// What the reader's settings let through.
 #[derive(Default)]
 pub struct Content {
 	pub rating: String,

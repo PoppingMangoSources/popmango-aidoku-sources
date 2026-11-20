@@ -74,7 +74,6 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 			.filter(|s| !s.is_empty())
 			.collect::<Vec<_>>()
 	};
-	// Each role in the site's order, once, and None when the site names nobody.
 	let credits = |selector| {
 		let mut names = Vec::new();
 		for name in texts(selector) {

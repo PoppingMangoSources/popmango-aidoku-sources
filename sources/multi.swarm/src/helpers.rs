@@ -35,7 +35,6 @@ pub fn app_language(code: &str) -> &str {
 		.unwrap_or(code)
 }
 
-// Credits trimmed, without blanks or repeats, in the site's order; `None` when none remain.
 pub fn names(list: impl IntoIterator<Item = String>) -> Option<Vec<String>> {
 	let mut names: Vec<String> = Vec::new();
 	for name in list {
