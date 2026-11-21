@@ -141,20 +141,11 @@ fn review_preset_controls_and_section_defaults() {
 			.collect::<Vec<_>>(),
 		[
 			"popular", "taste", "yours", "new", "trending", "latest", "manhwa", "manga", "manhua",
-			"finished", "added", "filtered"
+			"finished", "added"
 		]
 	);
 	use aidoku::imports::defaults::{DefaultValue, defaults_set};
 	defaults_set("homeSections", DefaultValue::StringArray(vec![]));
-	assert!(Webnex.get_home().unwrap().components.is_empty());
-	defaults_set(
-		"homeSections",
-		DefaultValue::StringArray(vec!["popular".into()]),
-	);
-	defaults_set(
-		"contentRatings",
-		DefaultValue::StringArray(vec!["erotica".into()]),
-	);
 	assert!(Webnex.get_home().unwrap().components.is_empty());
 	defaults_set(
 		"homeSections",
@@ -880,4 +871,51 @@ fn live_view_all_lists_continue_their_discover_rows() {
 		checked += 1;
 	}
 	assert!(checked >= 6, "only {checked} rows had a listing");
+}
+
+#[aidoku_test]
+fn live_skipped_ratings_keep_the_rows_browse_can_match() {
+	use aidoku::imports::defaults::{DefaultValue, defaults_set};
+	defaults_set(
+		"contentRatings",
+		DefaultValue::StringArray(vec![
+			"safe".into(),
+			"suggestive".into(),
+			"pornographic".into(),
+		]),
+	);
+	let rows = Webnex.get_home().unwrap().components;
+	let year = helpers::current_year();
+	assert_eq!(
+		rows.iter()
+			.filter_map(|r| r.title.clone())
+			.collect::<Vec<_>>(),
+		[
+			"Popular This Week".into(),
+			format!("New in {year}"),
+			"Latest Updates".into(),
+			"Manhwa".into(),
+			"Manga".into(),
+			"Manhua".into()
+		]
+	);
+	assert!(
+		matches!(&rows[0].value, HomeComponentValue::BigScroller { entries, .. } if !entries.is_empty())
+	);
+	assert!(rows[1..].iter().all(|r| matches!(&r.value,
+		HomeComponentValue::Scroller { entries, listing: Some(l) } if !entries.is_empty() && l.id.starts_with("/browse?"))));
+	defaults_set(
+		"homeSections",
+		DefaultValue::StringArray(vec!["taste".into(), "manga".into()]),
+	);
+	assert_eq!(
+		Webnex
+			.get_home()
+			.unwrap()
+			.components
+			.iter()
+			.filter_map(|r| r.title.as_deref())
+			.collect::<Vec<_>>(),
+		["Manga"]
+	);
 }

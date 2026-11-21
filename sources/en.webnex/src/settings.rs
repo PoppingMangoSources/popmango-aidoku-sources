@@ -12,6 +12,7 @@ pub fn home_sections() -> Option<Vec<String>> {
 	defaults_get("homeSections")
 }
 
+#[derive(Clone)]
 pub struct Catalogue {
 	pub ratings: Vec<String>,
 	pub types: Vec<String>,

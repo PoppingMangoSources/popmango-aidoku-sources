@@ -17,7 +17,7 @@ mod reader;
 mod rsc;
 mod settings;
 
-use helpers::{SORTS, browse, chapter_url, get_html, manga_url, parse_key, parse_response};
+use helpers::{browse, chapter_url, get_html, link_filters, manga_url, parse_key, parse_response};
 use models::ReaderProps;
 use rsc::{chapter_list, extract};
 use settings::{Catalogue, Groups};
@@ -157,39 +157,9 @@ impl DeepLinkHandler for Webnex {
 	}
 }
 
-// The listing id is the row's "View all" link, read as the browse filters it sets.
 impl ListingProvider for Webnex {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let query = listing.id.split_once('?').map_or("", |(_, query)| query);
-		let filters = query
-			.split('&')
-			.filter(|pair| !pair.is_empty())
-			.map(|pair| {
-				Ok(match pair.split_once('=') {
-					Some(("sort", value))
-						if let Some(index) = SORTS.iter().position(|s| *s == value) =>
-					{
-						FilterValue::Sort {
-							id: "sort".into(),
-							index: index as i32,
-							ascending: false,
-						}
-					}
-					Some(("kind", value)) => FilterValue::MultiSelect {
-						id: "kind".into(),
-						included: vec![value.into()],
-						excluded: vec![],
-					},
-					Some(("from", value)) => FilterValue::Range {
-						id: "year".into(),
-						from: value.parse().ok(),
-						to: None,
-					},
-					_ => bail!("Unknown listing"),
-				})
-			})
-			.collect::<Result<Vec<_>>>()?;
-		self.get_search_manga_list(None, page, filters)
+		self.get_search_manga_list(None, page, link_filters(&listing.id)?)
 	}
 }
 

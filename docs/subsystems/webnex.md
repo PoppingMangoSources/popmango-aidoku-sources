@@ -61,9 +61,19 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > Today and This month tabs are `/?popular=day` and `/?popular=month`, and `/browse` ignores
 > a `popular` parameter.
 
+> ⚠️ The home page only takes a rating ceiling, and its cards carry no rating, so they
+> can't be filtered by rating locally the way Toonkotsu filters its rows. When the chosen
+> ratings skip one (Safe, Suggestive and Pornographic), Discover keeps the rows whose View
+> all pages Browse can rebuild with every chosen rating, one parallel request each, as
+> MangaDex sends its ratings with every row's request: Popular This Week, New in the
+> current year, Latest Updates, Manhwa, Manga and Manhua
+> (`sources/en.webnex/src/home.rs:163`). Browse cards name no chapter to open, so Latest
+> Updates is a plain row there. Readers Favourites, Your Taste, Recently Popular, Finished
+> and Just Added have no Browse version and are left out (owner's choice, v23, replacing a
+> single Filtered Catalogue row).
+
 > ⚠️ Sections is a static multi-select like Atsumaru/Toonkotsu. An unset value enables
-> every section; a cleared value returns before making a request. Filtered Catalogue
-> is a separate option for the existing nonconsecutive-rating fallback. Disabling a
+> every section; a cleared value returns before making a request. Disabling a
 > shelf skips its parsing, but enabled shelves share one home request. Latest Updates
 > carries no group metadata, so hidden/preferred groups apply to the full chapter list,
 > not home previews. Never add per-card detail requests to compensate.

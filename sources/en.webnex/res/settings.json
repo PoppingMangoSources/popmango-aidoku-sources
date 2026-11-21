@@ -105,7 +105,7 @@
 	{
 		"type": "group",
 		"title": "Discover",
-		"footer": "If your content ratings leave a gap, like Safe and Erotica without Suggestive, Discover shows a single Filtered Catalogue row instead of these sections.",
+		"footer": "If your content ratings skip one, like Pornographic without Erotica, Readers Favourites, Your Taste, Recently Popular, Finished and Just Added are hidden, because only the other sections can match your ratings exactly.",
 		"items": [
 			{
 				"type": "multi-select",
@@ -122,8 +122,7 @@
 					"manga",
 					"manhua",
 					"finished",
-					"added",
-					"filtered"
+					"added"
 				],
 				"titles": [
 					"Popular This Week",
@@ -136,8 +135,7 @@
 					"Manga",
 					"Manhua",
 					"Finished",
-					"Just Added",
-					"Filtered Catalogue"
+					"Just Added"
 				],
 				"default": [
 					"popular",
@@ -150,8 +148,7 @@
 					"manga",
 					"manhua",
 					"finished",
-					"added",
-					"filtered"
+					"added"
 				],
 				"refreshes": [
 					"content"

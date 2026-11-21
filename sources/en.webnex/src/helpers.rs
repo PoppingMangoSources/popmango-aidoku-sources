@@ -261,7 +261,7 @@ pub fn search_params(
 				years = (from.map(|v| v as i32), to.map(|v| v as i32))
 			}
 			FilterValue::Select { id, value } if id == "released" => {
-				let year = DateTime::from_timestamp(current_date(), 0).map_or(1970, |d| d.year());
+				let year = current_year();
 				released = match value.as_str() {
 					"this-year" => (Some(year), None),
 					"last-5-years" => (Some(year - 4), None),
@@ -304,20 +304,73 @@ pub fn search_params(
 	Ok(p)
 }
 
+// A listing id is a "View all" link, read back as the browse filters it sets.
+pub fn link_filters(link: &str) -> Result<Vec<FilterValue>> {
+	let query = link.split_once('?').map_or("", |(_, query)| query);
+	query
+		.split('&')
+		.filter(|pair| !pair.is_empty())
+		.map(|pair| {
+			Ok(match pair.split_once('=') {
+				Some(("sort", value))
+					if let Some(index) = SORTS.iter().position(|s| *s == value) =>
+				{
+					FilterValue::Sort {
+						id: "sort".into(),
+						index: index as i32,
+						ascending: false,
+					}
+				}
+				Some(("kind", value)) => FilterValue::MultiSelect {
+					id: "kind".into(),
+					included: vec![value.into()],
+					excluded: vec![],
+				},
+				Some(("from", value)) => FilterValue::Range {
+					id: "year".into(),
+					from: value.parse().ok(),
+					to: None,
+				},
+				_ => bail!("Unknown listing"),
+			})
+		})
+		.collect()
+}
+
+pub fn current_year() -> i32 {
+	DateTime::from_timestamp(current_date(), 0).map_or(1970, |d| d.year())
+}
+
 pub fn browse(
 	query: Option<&str>,
 	page: i32,
 	filters: Vec<FilterValue>,
-	mut prefs: Catalogue,
+	prefs: Catalogue,
 ) -> Result<MangaPageResult> {
+	match browse_request(query, page, filters, prefs)? {
+		Some(request) => browse_page(&request.send()?),
+		None => Ok(Default::default()),
+	}
+}
+
+pub fn browse_request(
+	query: Option<&str>,
+	page: i32,
+	filters: Vec<FilterValue>,
+	mut prefs: Catalogue,
+) -> Result<Option<Request>> {
 	let params = search_params(query, page, filters, &mut prefs)?;
 	let Some(rating) = prefs.ceiling().filter(|_| !prefs.types.is_empty()) else {
-		return Ok(Default::default());
+		return Ok(None);
 	};
-	let doc = get_html(
-		&format!("{BASE_URL}/browse?{params}"),
-		Some(&prefs.cookie(rating)),
-	)?;
+	Ok(Some(
+		Request::get(format!("{BASE_URL}/browse?{params}"))?
+			.header("Cookie", &prefs.cookie(rating)),
+	))
+}
+
+pub fn browse_page(response: &Response) -> Result<MangaPageResult> {
+	let doc = parse_response(response)?;
 	if let Some(error) = doc.select_first(".notice-error").and_then(|e| e.text()) {
 		bail!("{error}");
 	}

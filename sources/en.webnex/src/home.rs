@@ -1,6 +1,9 @@
 use crate::{
 	BASE_URL, Webnex,
-	helpers::{browse, card, get_html, parse_key, parse_relative_date, text},
+	helpers::{
+		browse_page, browse_request, card, current_year, get_html, link_filters, parse_key,
+		parse_relative_date, text,
+	},
 	rsc::{chunks, expand},
 	settings::{self, CONTENT_RATINGS, Catalogue},
 };
@@ -10,6 +13,7 @@ use aidoku::{
 	alloc::{String, Vec, string::ToString, vec},
 	imports::{
 		html::{Document, Html},
+		net::Request,
 		std::current_date,
 	},
 	prelude::*,
@@ -154,6 +158,93 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 	HomeLayout { components }
 }
 
+// The rows whose "View all" pages take every chosen rating, each sent with them as merged
+// sources send their ratings with each row's request.
+fn browse_rows(shown: Option<&[String]>, prefs: &Catalogue) -> Result<HomeLayout> {
+	let year = current_year();
+	let rows: Vec<(&str, String, String)> = [
+		(
+			"popular",
+			"Popular This Week".into(),
+			"/browse?sort=popular".into(),
+		),
+		(
+			"new",
+			format!("New in {year}"),
+			format!("/browse?from={year}&sort=updated"),
+		),
+		(
+			"latest",
+			"Latest Updates".into(),
+			"/browse?sort=updated".into(),
+		),
+		(
+			"manhwa",
+			"Manhwa".into(),
+			"/browse?kind=manhwa&sort=updated".into(),
+		),
+		(
+			"manga",
+			"Manga".into(),
+			"/browse?kind=manga&sort=updated".into(),
+		),
+		(
+			"manhua",
+			"Manhua".into(),
+			"/browse?kind=manhua&sort=updated".into(),
+		),
+	]
+	.into_iter()
+	.filter(|(id, ..)| shown.is_none_or(|shown| shown.iter().any(|value| value == id)))
+	.collect();
+	let requests = rows
+		.iter()
+		.map(|(.., link)| {
+			browse_request(None, 1, link_filters(link)?, prefs.clone())?
+				.ok_or_else(|| error!("Choose a content rating and a type"))
+		})
+		.collect::<Result<Vec<_>>>()?;
+	let mut components = Vec::new();
+	let mut failure = None;
+	for ((id, title, link), response) in rows.into_iter().zip(Request::send_all(requests)) {
+		let entries = match response
+			.map_err(Into::into)
+			.and_then(|response| browse_page(&response))
+		{
+			Ok(page) if !page.entries.is_empty() => page.entries,
+			Ok(_) => continue,
+			Err(error) => {
+				failure = Some(error);
+				continue;
+			}
+		};
+		let value = if id == "popular" {
+			HomeComponentValue::BigScroller {
+				entries,
+				auto_scroll_interval: Some(5.0),
+			}
+		} else {
+			HomeComponentValue::Scroller {
+				entries: entries.into_iter().map(Link::from).collect(),
+				listing: Some(Listing {
+					id: link,
+					name: title.clone(),
+					..Default::default()
+				}),
+			}
+		};
+		components.push(HomeComponent {
+			title: Some(title),
+			subtitle: None,
+			value,
+		});
+	}
+	match failure {
+		Some(error) if components.is_empty() => Err(error),
+		_ => Ok(HomeLayout { components }),
+	}
+}
+
 impl Home for Webnex {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let shown = settings::home_sections();
@@ -170,23 +261,7 @@ impl Home for Webnex {
 			.take_while(|s| **s != max)
 			.any(|r| !prefs.ratings.iter().any(|v| v == r))
 		{
-			if shown
-				.as_ref()
-				.is_some_and(|shown| !shown.iter().any(|id| id == "filtered"))
-			{
-				return Ok(HomeLayout::default());
-			}
-			let result = browse(None, 1, vec![], prefs)?;
-			return Ok(HomeLayout {
-				components: vec![HomeComponent {
-					title: Some("Filtered Catalogue".into()),
-					subtitle: None,
-					value: HomeComponentValue::Scroller {
-						entries: result.entries.into_iter().map(Link::from).collect(),
-						listing: None,
-					},
-				}],
-			});
+			return browse_rows(shown.as_deref(), &prefs);
 		}
 		let doc = get_html(BASE_URL, Some(&prefs.cookie(max)))?;
 		let home = layout(&doc, current_date(), shown.as_deref());
