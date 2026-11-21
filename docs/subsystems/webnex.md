@@ -61,11 +61,11 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > The home page carries no description or genres for the Popular cards (cover, title and type
 > only, checked in its HTML and flight data on 2026-11-21). Browse's table view
 > (`/browse?view=list&sort=popular`) is the same weekly chart and names each row's type and
-> first three genres, so the hero comes from it, one parallel request beside the home page,
-> cut to the shelf's slot count (16) rather than its parsed cards, since the shelf sometimes
-> streams short; if it fails the shelf's own cards stay
-> (`sources/en.webnex/src/home.rs:272`). Descriptions exist only on series pages, one request
-> per card, so the hero has none.
+> first three genres. It is requested in parallel with the home page and each shelf card takes
+> the tags of its table row by key, as merged Atsumaru fills its featured cards from one lookup
+> ("Feeds omit featured metadata"); if the table fails the shelf keeps its type-only tags
+> (`sources/en.webnex/src/home.rs:295`). Descriptions exist only on series pages, one request
+> per card (which CuuTruyen does and our rules forbid), so the hero has none.
 
 > ⚠️ Browse's Popular sort is the same weekly chart as home's Popular shelf; the shelf's
 > Today and This month tabs are `/?popular=day` and `/?popular=month`, and `/browse` ignores

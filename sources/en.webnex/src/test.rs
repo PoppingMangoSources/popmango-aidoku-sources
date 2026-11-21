@@ -593,8 +593,6 @@ fn live_discover_and_chapter_link() {
 	let HomeComponentValue::BigScroller { entries: shelf, .. } = &shelf[0].value else {
 		panic!("the home page should have its popular shelf");
 	};
-	// The shelf sometimes streams short, so only the cards both lists have are compared.
-	assert!(entries.len() >= shelf.len());
 	assert!(
 		entries
 			.iter()

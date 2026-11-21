@@ -292,18 +292,18 @@ impl Home for Webnex {
 		if home.components.is_empty() && doc.select_first(".home-section").is_none() {
 			bail!("Webnex did not return the home page");
 		}
-		// The shelf and browse's popular table are the same weekly chart; only the table has genres.
-		if let Some(Ok(table)) = responses
+		// Shelf cards omit genres; browse's popular table is the same weekly chart with them.
+		if let Some(Ok(mut table)) = responses
 			.next()
 			.map(|response| response.map_err(Into::into).and_then(|r| browse_table(&r)))
-			&& !table.is_empty()
 			&& let Some(HomeComponentValue::BigScroller { entries, .. }) =
 				home.components.first_mut().map(|c| &mut c.value)
 		{
-			let slots = doc
-				.select("section[aria-labelledby=popular-heading] template[id^='P:']")
-				.map_or(0, Iterator::count);
-			*entries = table.into_iter().take(slots.max(entries.len())).collect();
+			for manga in entries {
+				if let Some(index) = table.iter().position(|row| row.key == manga.key) {
+					manga.tags = table.swap_remove(index).tags;
+				}
+			}
 		}
 		Ok(home)
 	}
