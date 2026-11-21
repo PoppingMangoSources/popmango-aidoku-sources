@@ -152,6 +152,7 @@
 		"type": "multi-select",
 		"id": "format",
 		"title": "Formats",
+		"isGenre": true,
 		"canExclude": true,
 		"options": [
 			"4-Koma",
@@ -172,6 +173,7 @@
 		"type": "multi-select",
 		"id": "theme",
 		"title": "Themes",
+		"isGenre": true,
 		"canExclude": true,
 		"options": [
 			"Aliens",

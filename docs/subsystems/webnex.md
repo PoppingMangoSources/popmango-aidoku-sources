@@ -21,6 +21,13 @@ with React streaming chunks (`div[id^='S:']` filling `template[id^='P:']`), whic
 `helpers::expand` splices back before parsing. Everything below was probed live on
 2026-11-20 with plain requests and Chromium.
 
+> ⚠️ The site spells itself "Webnex" (page titles, the logo's label), so `source.json`'s name and
+> the struct follow it (v15); the id stays `en.webnex`.
+
+> ⚠️ `Element::html()` is `None` for an empty element, and the site streams empty `S:` chunks,
+> so `rsc::expand` treats a missing html as empty rather than failing
+> (`sources/en.webnex/src/rsc.rs:21`).
+
 ## Home
 
 The source reads the home page's own shelves. The owner's order is Popular This Week,

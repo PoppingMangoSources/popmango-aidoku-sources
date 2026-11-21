@@ -107,7 +107,7 @@ fn review_preset_controls_and_section_defaults() {
 	);
 	use aidoku::imports::defaults::{DefaultValue, defaults_set};
 	defaults_set("homeSections", DefaultValue::StringArray(vec![]));
-	assert!(WebNex.get_home().unwrap().components.is_empty());
+	assert!(Webnex.get_home().unwrap().components.is_empty());
 	defaults_set(
 		"homeSections",
 		DefaultValue::StringArray(vec!["popular".into()]),
@@ -116,7 +116,7 @@ fn review_preset_controls_and_section_defaults() {
 		"contentRatings",
 		DefaultValue::StringArray(vec!["erotica".into()]),
 	);
-	assert!(WebNex.get_home().unwrap().components.is_empty());
+	assert!(Webnex.get_home().unwrap().components.is_empty());
 	defaults_set(
 		"homeSections",
 		DefaultValue::StringArray(
@@ -131,13 +131,13 @@ fn review_preset_controls_and_section_defaults() {
 	for key in ["contentRatings", "contentTypes"] {
 		defaults_set(key, DefaultValue::StringArray(vec![]));
 		assert!(
-			WebNex
+			Webnex
 				.get_search_manga_list(None, 1, vec![])
 				.unwrap()
 				.entries
 				.is_empty()
 		);
-		assert!(WebNex.get_home().unwrap().components.is_empty());
+		assert!(Webnex.get_home().unwrap().components.is_empty());
 		let values = if key == "contentRatings" {
 			&settings::CONTENT_RATINGS[..2]
 		} else {
@@ -193,6 +193,27 @@ fn review_finished_reassembles_nested_titles_and_side_rows() {
 		})
 		.collect();
 	assert_eq!(titles, ["First", "Second"]);
+}
+
+#[aidoku_test]
+fn review_full_type_selection_sends_no_kind() {
+	let mut prefs = Catalogue {
+		ratings: vec!["safe".into()],
+		types: vec!["manga".into(), "manhwa".into(), "manhua".into()],
+		hidden_genres: vec![],
+	};
+	let qs = helpers::search_params(None, 1, vec![], &mut prefs)
+		.unwrap()
+		.to_string();
+	assert!(!qs.contains("kind="), "{qs}");
+	prefs.types.pop();
+	let qs = helpers::search_params(None, 1, vec![], &mut prefs)
+		.unwrap()
+		.to_string();
+	assert!(
+		qs.contains("kind=manga") && qs.contains("kind=manhwa"),
+		"{qs}"
+	);
 }
 
 #[aidoku_test]
@@ -416,7 +437,7 @@ fn review_streamed_chapters_keep_links_pagination_and_official_credits() {
 #[aidoku_test]
 fn review_key_only_links_and_complete_page_lists() {
 	assert_eq!(
-		WebNex
+		Webnex
 			.handle_deep_link(format!("{BASE_URL}/manga/story?source=group"))
 			.unwrap(),
 		Some(DeepLinkResult::Manga {
@@ -424,7 +445,7 @@ fn review_key_only_links_and_complete_page_lists() {
 		})
 	);
 	assert_eq!(
-		WebNex
+		Webnex
 			.handle_deep_link("https://www.webnex.cc/manga/story".into())
 			.unwrap(),
 		Some(DeepLinkResult::Manga {
@@ -477,7 +498,7 @@ fn review_key_only_links_and_complete_page_lists() {
 #[aidoku_test]
 fn live_pasted_links_resolve_or_fall_back_to_search() {
 	let pasted = |url: String| {
-		WebNex
+		Webnex
 			.get_search_manga_list(Some(url), 1, vec![])
 			.unwrap()
 			.entries
@@ -492,13 +513,13 @@ fn live_pasted_links_resolve_or_fall_back_to_search() {
 
 #[aidoku_test]
 fn live_search_pages_and_series_updates() {
-	let first = WebNex.get_search_manga_list(None, 1, vec![]).unwrap();
-	let next = WebNex.get_search_manga_list(None, 2, vec![]).unwrap();
+	let first = Webnex.get_search_manga_list(None, 1, vec![]).unwrap();
+	let next = Webnex.get_search_manga_list(None, 2, vec![]).unwrap();
 	assert!(first.has_next_page);
 	assert_ne!(first.entries[0].key, next.entries[0].key);
 	let key = "hell-login-gocnsptt2v";
 	for (details, chapters) in [(true, false), (false, true), (true, true)] {
-		let m = WebNex
+		let m = Webnex
 			.get_manga_update(
 				Manga {
 					key: key.into(),
@@ -526,7 +547,7 @@ fn live_search_pages_and_series_updates() {
 
 #[aidoku_test]
 fn live_discover_and_chapter_link() {
-	let rows = WebNex.get_home().unwrap().components;
+	let rows = Webnex.get_home().unwrap().components;
 	assert!(
 		rows.iter()
 			.any(|c| matches!(c.value, HomeComponentValue::BigScroller { .. }))
@@ -540,7 +561,7 @@ fn live_discover_and_chapter_link() {
 		"{titles:?}"
 	);
 	assert_eq!(
-		WebNex
+		Webnex
 			.handle_deep_link(format!("{BASE_URL}/read/gocnsptt2v-wii518ji"))
 			.unwrap(),
 		Some(DeepLinkResult::Chapter {
@@ -552,7 +573,7 @@ fn live_discover_and_chapter_link() {
 
 #[aidoku_test]
 fn live_chapters_include_the_last_page() {
-	let manga = WebNex
+	let manga = Webnex
 		.get_manga_update(
 			Manga {
 				key: "revenge-of-the-iron-blooded-sword-hound-47ankmbtbo".into(),
@@ -584,9 +605,9 @@ fn live_exact_ratings_override_the_default() {
 			included: vec![rating.into()],
 			excluded: vec![],
 		};
-		let result = WebNex.get_search_manga_list(None, 1, vec![filter]).unwrap();
+		let result = Webnex.get_search_manga_list(None, 1, vec![filter]).unwrap();
 		let title = result.entries.into_iter().next().unwrap();
-		let details = WebNex.get_manga_update(title, true, false).unwrap();
+		let details = Webnex.get_manga_update(title, true, false).unwrap();
 		assert_eq!(
 			details.content_rating, expected,
 			"{rating}: {}",
@@ -598,7 +619,7 @@ fn live_exact_ratings_override_the_default() {
 #[aidoku_test]
 fn live_typed_minimum_and_release_presets_narrow_the_catalogue() {
 	let keys = |filters| {
-		WebNex
+		Webnex
 			.get_search_manga_list(None, 1, filters)
 			.unwrap()
 			.entries
@@ -626,7 +647,7 @@ fn live_typed_minimum_and_release_presets_narrow_the_catalogue() {
 #[aidoku_test]
 fn live_sorts_and_tag_exclusions_match_details() {
 	for index in 0..6 {
-		let result = WebNex
+		let result = Webnex
 			.get_search_manga_list(
 				None,
 				1,
@@ -652,7 +673,7 @@ fn live_sorts_and_tag_exclusions_match_details() {
 		("theme", "Magic"),
 	] {
 		for exclude in [false, true] {
-			let result = WebNex
+			let result = Webnex
 				.get_search_manga_list(
 					None,
 					1,
@@ -664,7 +685,7 @@ fn live_sorts_and_tag_exclusions_match_details() {
 				)
 				.unwrap();
 			assert!(!result.entries.is_empty(), "{id} {tag} excluded={exclude}");
-			let manga = WebNex
+			let manga = Webnex
 				.get_manga_update(result.entries.into_iter().next().unwrap(), true, false)
 				.unwrap();
 			assert_eq!(
@@ -674,7 +695,7 @@ fn live_sorts_and_tag_exclusions_match_details() {
 			);
 		}
 	}
-	let found = WebNex
+	let found = Webnex
 		.get_search_manga_list(
 			Some("Hell Login".into()),
 			1,
@@ -690,7 +711,7 @@ fn live_sorts_and_tag_exclusions_match_details() {
 			.iter()
 			.any(|m| m.key == "hell-login-gocnsptt2v")
 	);
-	let impossible = WebNex
+	let impossible = Webnex
 		.get_search_manga_list(
 			Some("Hell Login".into()),
 			1,
@@ -709,7 +730,7 @@ fn live_page_list_loads_from_the_chapter_cookie() {
 		key: "gocnsptt2v-wii518ji".into(),
 		..Default::default()
 	};
-	let pages = WebNex.get_page_list(Manga::default(), chapter).unwrap();
+	let pages = Webnex.get_page_list(Manga::default(), chapter).unwrap();
 	assert!(pages.len() > 1);
 	assert!(pages.iter().all(
 		|p| matches!(&p.content, aidoku::PageContent::Url(url, _) if url.starts_with("https://"))

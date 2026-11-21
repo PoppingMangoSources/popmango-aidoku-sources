@@ -27,7 +27,7 @@ pub fn get_html(url: &str, cookie: Option<&str>) -> Result<Document> {
 fn checked(response: &Response) -> Result<()> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
-		bail!("WebNex returned HTTP {status}");
+		bail!("Webnex returned HTTP {status}");
 	}
 	Ok(())
 }
@@ -43,9 +43,9 @@ pub fn parse_response(response: &Response) -> Result<Document> {
 	{
 		let url = response
 			.get_url()
-			.ok_or_else(|| error!("WebNex returned no series URL"))?;
+			.ok_or_else(|| error!("Webnex returned no series URL"))?;
 		let cookie =
-			script_cookie(&doc).ok_or_else(|| error!("WebNex did not open this series"))?;
+			script_cookie(&doc).ok_or_else(|| error!("Webnex did not open this series"))?;
 		let response = Request::get(url)?.header("Cookie", &cookie).send()?;
 		checked(&response)?;
 		return Ok(response.get_html()?);
@@ -66,6 +66,14 @@ pub fn script_cookie(doc: &Document) -> Option<String> {
 			let pair = data[start..].split(['"', ';']).next()?;
 			pair.contains('=').then(|| pair.into())
 		})
+}
+
+pub fn manga_url(key: &str) -> String {
+	format!("{BASE_URL}/manga/{key}")
+}
+
+pub fn chapter_url(key: &str) -> String {
+	format!("{BASE_URL}/read/{key}")
 }
 
 pub fn parse_key<'a>(url: &'a str, prefix: &str) -> Option<&'a str> {
@@ -285,8 +293,10 @@ pub fn search_params(
 	for r in &prefs.ratings {
 		p.push_encoded("rated", Some(r));
 	}
-	for kind in &prefs.types {
-		p.push_encoded("kind", Some(kind));
+	if prefs.types.len() < CONTENT_TYPES.len() {
+		for kind in &prefs.types {
+			p.push_encoded("kind", Some(kind));
+		}
 	}
 	if let Some(r) = prefs.ceiling() {
 		p.push_encoded("rating", Some(r));
@@ -313,9 +323,9 @@ pub fn browse(
 	}
 	let section = doc
 		.select_first("section.browse")
-		.ok_or_else(|| error!("WebNex did not return the catalogue"))?;
+		.ok_or_else(|| error!("Webnex did not return the catalogue"))?;
 	let html = expand(&section, &mut chunks(&doc))
-		.ok_or_else(|| error!("WebNex returned an unreadable catalogue"))?;
+		.ok_or_else(|| error!("Webnex returned an unreadable catalogue"))?;
 	let doc = Html::parse_with_url(html, BASE_URL)?;
 	Ok(MangaPageResult {
 		entries: doc

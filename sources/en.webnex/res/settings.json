@@ -100,12 +100,12 @@
 				]
 			}
 		],
-		"footer": "Discover uses the site’s shelves. Selecting a higher rating while skipping a lower one shows the exact matches from Browse."
+		"footer": "Selecting a higher rating while skipping a lower one shows exact matches from Browse."
 	},
 	{
 		"type": "group",
 		"title": "Discover",
-		"footer": "Filtered Catalogue replaces the shelves when selected content ratings skip a lower rating.",
+		"footer": "Filtered Catalogue replaces the shelves when content ratings skip a lower rating.",
 		"items": [
 			{
 				"type": "multi-select",

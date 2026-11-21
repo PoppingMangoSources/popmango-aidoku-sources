@@ -1,5 +1,5 @@
 use crate::{
-	BASE_URL, WebNex,
+	BASE_URL, Webnex,
 	helpers::{browse, card, get_html, parse_key, parse_relative_date, text},
 	rsc::{chunks, expand},
 	settings::{self, CONTENT_RATINGS, Catalogue},
@@ -81,7 +81,7 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 						let link = el.select_first(".card-chapters a[href^='/read/']")?;
 						let key = parse_key(&link.attr("href")?, "/read/")?.to_string();
 						let label = text(&link, ".card-ch-label")?;
-						let n = label.trim_start_matches("Ch.").trim().parse().ok();
+						let n = label.trim_start_matches("Ch.").parse().ok();
 						Some(MangaWithChapter {
 							manga: card(el)?,
 							chapter: Chapter {
@@ -124,7 +124,7 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 	HomeLayout { components }
 }
 
-impl Home for WebNex {
+impl Home for Webnex {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let shown = settings::home_sections();
 		if shown.as_ref().is_some_and(|shown| shown.is_empty()) {
@@ -161,7 +161,7 @@ impl Home for WebNex {
 		let doc = get_html(BASE_URL, Some(&prefs.cookie(max)))?;
 		let home = layout(&doc, current_date(), shown.as_deref());
 		if home.components.is_empty() && doc.select_first(".home-section").is_none() {
-			bail!("WebNex did not return the home page");
+			bail!("Webnex did not return the home page");
 		}
 		Ok(home)
 	}

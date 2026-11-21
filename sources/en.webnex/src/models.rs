@@ -1,6 +1,6 @@
 use crate::{
 	BASE_URL,
-	helpers::{date, markdown, parse_key, parse_relative_date, text},
+	helpers::{chapter_url, date, manga_url, markdown, parse_key, parse_relative_date, text},
 	rsc::extract,
 	settings::Groups,
 };
@@ -14,6 +14,7 @@ use aidoku::{
 	imports::html::{Document, Element},
 	prelude::*,
 };
+use core::cmp::{Ordering, Reverse};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -50,7 +51,7 @@ impl TryFrom<ReaderPages> for Vec<Page> {
 				"{}",
 				data.message
 					.as_deref()
-					.unwrap_or("WebNex returned no pages for this chapter")
+					.unwrap_or("Webnex returned no pages for this chapter")
 			);
 		}
 		data.pages
@@ -61,7 +62,7 @@ impl TryFrom<ReaderPages> for Vec<Page> {
 				} else if url.starts_with("https://") {
 					url
 				} else {
-					bail!("WebNex returned an invalid page URL");
+					bail!("Webnex returned an invalid page URL");
 				};
 				Ok(Page {
 					content: PageContent::url(url),
@@ -93,7 +94,7 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 		.select_first("h1.series-title")
 		.and_then(|e| e.text())
 		.filter(|s| !s.is_empty())
-		.ok_or_else(|| error!("WebNex returned no series title"))?;
+		.ok_or_else(|| error!("Webnex returned no series title"))?;
 	let mut tags = texts(".series-badges a[href*=kind], .series-badges a[href*=demographic]");
 	if let Some(taxonomy) = extract::<Taxonomy>(root, &["genres", "tags"]) {
 		tags.extend(taxonomy.genres);
@@ -152,10 +153,20 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 		viewer,
 		status,
 		content_rating: rating,
-		url: Some(format!("{BASE_URL}/manga/{key}")),
+		url: Some(manga_url(key)),
 		..Default::default()
 	})
 }
+
+// A chapter link with its group, date, official mark, warning dot and likes.
+type Candidate = (
+	Element,
+	Option<String>,
+	Option<i64>,
+	bool,
+	bool,
+	Option<String>,
+);
 
 pub struct Upload {
 	chapter: Chapter,
@@ -166,7 +177,7 @@ pub struct Upload {
 }
 
 impl Upload {
-	fn priority(&self, groups: &Groups, other: &Self) -> core::cmp::Ordering {
+	fn priority(&self, groups: &Groups, other: &Self) -> Ordering {
 		let rank = |u: &Self| {
 			(
 				groups
@@ -175,7 +186,7 @@ impl Upload {
 					.position(|g| u.group.as_ref() == Some(g))
 					.unwrap_or(usize::MAX),
 				u.warning,
-				core::cmp::Reverse(u.likes),
+				Reverse(u.likes),
 			)
 		};
 		rank(self)
@@ -200,81 +211,80 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 					.ok()
 			});
 		let title = text(&row, ".ch-title");
-		let mut uploads = Vec::new();
-		let mut upload = |link: Element,
-		                  group: Option<String>,
-		                  when,
-		                  official,
-		                  warning,
-		                  likes: Option<String>|
-		 -> Result<()> {
-			let Some(href) = link.attr("href") else {
-				return Ok(());
-			};
-			let key = parse_key(&href, "/read/")
-				.ok_or_else(|| error!("WebNex returned an invalid chapter link"))?;
-			let name = group.as_deref().map(str::to_lowercase);
-			if name
-				.as_ref()
-				.is_some_and(|name| groups.hidden.contains(name))
-			{
-				return Ok(());
-			}
-			uploads.push(Upload {
-				chapter: Chapter {
-					key: key.into(),
-					title: title.clone(),
-					chapter_number: number,
-					date_uploaded: when,
-					scanlators: group.map(|name| {
-						vec![if official {
-							format!("{name} ✓")
-						} else {
-							name
-						}]
-					}),
-					url: Some(format!("{BASE_URL}/read/{key}")),
-					..Default::default()
-				},
-				group: name,
-				warning,
-				likes: likes
-					.and_then(|s| s.split_whitespace().next()?.parse().ok())
-					.unwrap_or_default(),
-			});
-			Ok(())
-		};
-		if let Some(link) = row.select_first("a.ch-link") {
-			upload(
-				link,
-				text(&row, ".ch-source-name, .ch-credit-group")
-					.or_else(|| text(&row, ".ch-source")),
-				row.select_first("time.ch-time").and_then(|e| date(&e)),
-				row.select_first(".ch-source .verified-mark, .ch-source-trigger .verified-mark, .ch-sources-item.is-current .verified-mark").is_some(),
-				false,
-				text(&row, ".ch-likes"),
-			)?;
-		}
-		for link in row.select("a.ch-sources-item").into_iter().flatten() {
-			let name = text(&link, ".ch-sources-name");
-			let time = text(&link, ".ch-sources-time").and_then(|v| parse_relative_date(&v, now));
-			let warning = link.select_first(".dot-warn").is_some();
-			let official = link.select_first(".verified-mark").is_some();
-			let likes = text(&link, ".ch-sources-likes");
-			upload(link, name, time, official, warning, likes)?;
-		}
+		let verified = ".ch-source .verified-mark, .ch-source-trigger .verified-mark, \
+			.ch-sources-item.is-current .verified-mark";
+		let mut candidates: Vec<Candidate> = row
+			.select_first("a.ch-link")
+			.map(|link| {
+				let group = text(&row, ".ch-source-name, .ch-credit-group")
+					.or_else(|| text(&row, ".ch-source"));
+				let when = row.select_first("time.ch-time").and_then(|e| date(&e));
+				let official = row.select_first(verified).is_some();
+				(link, group, when, official, false, text(&row, ".ch-likes"))
+			})
+			.into_iter()
+			.collect();
+		candidates.extend(
+			row.select("a.ch-sources-item")
+				.into_iter()
+				.flatten()
+				.map(|link| {
+					let group = text(&link, ".ch-sources-name");
+					let when =
+						text(&link, ".ch-sources-time").and_then(|v| parse_relative_date(&v, now));
+					let official = link.select_first(".verified-mark").is_some();
+					let warning = link.select_first(".dot-warn").is_some();
+					let likes = text(&link, ".ch-sources-likes");
+					(link, group, when, official, warning, likes)
+				}),
+		);
+		let mut uploads = candidates
+			.into_iter()
+			.filter_map(|(link, group, when, official, warning, likes)| {
+				let href = link.attr("href")?;
+				let Some(key) = parse_key(&href, "/read/") else {
+					return Some(Err(error!("Webnex returned an invalid chapter link")));
+				};
+				let name = group.as_deref().map(str::to_lowercase);
+				if name
+					.as_ref()
+					.is_some_and(|name| groups.hidden.contains(name))
+				{
+					return None;
+				}
+				let scanlator = group.map(|name| {
+					if official {
+						format!("{name} ✓")
+					} else {
+						name
+					}
+				});
+				Some(Ok(Upload {
+					chapter: Chapter {
+						key: key.into(),
+						title: title.clone(),
+						chapter_number: number,
+						date_uploaded: when,
+						scanlators: scanlator.map(|name| vec![name]),
+						url: Some(chapter_url(key)),
+						..Default::default()
+					},
+					group: name,
+					warning,
+					likes: likes
+						.and_then(|s| s.split_whitespace().next()?.parse().ok())
+						.unwrap_or_default(),
+				}))
+			})
+			.collect::<Result<Vec<_>>>()?;
 		// priority breaks every tie by key, so the unstable sort gives one order.
 		uploads.sort_unstable_by(|a, b| a.priority(groups, b));
-		let mut seen = Vec::new();
-		for u in uploads {
-			if let Some(group) = &u.group {
-				if number.is_some() && seen.contains(group) {
-					continue;
-				}
-				seen.push(group.clone());
-			}
-			result.push(u);
-		}
+		let mut seen = BTreeSet::new();
+		result.extend(uploads.into_iter().filter(|u| {
+			u.group
+				.as_ref()
+				.is_none_or(|group| seen.insert(group.clone()) || number.is_none())
+		}));
 	}
 	Ok(result)
 }

@@ -17,16 +17,16 @@ mod reader;
 mod rsc;
 mod settings;
 
-use helpers::{browse, get_html, parse_key, parse_response};
+use helpers::{browse, chapter_url, get_html, manga_url, parse_key, parse_response};
 use models::ReaderProps;
 use rsc::{chapter_list, extract};
 use settings::{Catalogue, Groups};
 
 const BASE_URL: &str = "https://webnex.cc";
 
-struct WebNex;
+struct Webnex;
 
-impl Source for WebNex {
+impl Source for Webnex {
 	fn new() -> Self {
 		Self
 	}
@@ -51,8 +51,7 @@ impl Source for WebNex {
 				content_rating,
 				status,
 				..
-			}) = get_html(&format!("{BASE_URL}/manga/{key}"), None)
-				.and_then(|doc| models::details(&doc, &key))
+			}) = get_html(&manga_url(&key), None).and_then(|doc| models::details(&doc, &key))
 		{
 			return Ok(MangaPageResult {
 				entries: vec![Manga {
@@ -75,10 +74,10 @@ impl Source for WebNex {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let url = format!("{BASE_URL}/manga/{}", manga.key);
+		let url = manga_url(&manga.key);
 		let doc = get_html(&url, None)?;
 		if doc.select_first("h1.series-title").is_none() {
-			bail!("WebNex could not load this series");
+			bail!("Webnex could not load this series");
 		}
 		if needs_details {
 			manga.copy_from(models::details(&doc, &manga.key)?);
@@ -114,7 +113,7 @@ impl Source for WebNex {
 				for response in Request::send_all(reqs) {
 					let page = chapter_list(&parse_response(&response?)?)?;
 					if page.select_first(".ch-row").is_none() {
-						bail!("WebNex did not return the requested chapter page");
+						bail!("Webnex did not return the requested chapter page");
 					}
 					uploads.extend(models::uploads(&page, &groups, now)?);
 				}
@@ -129,7 +128,7 @@ impl Source for WebNex {
 	}
 }
 
-impl DeepLinkHandler for WebNex {
+impl DeepLinkHandler for Webnex {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
 		// The app only passes this source's own links, so any host is fine here.
 		let Some(path) = url
@@ -145,10 +144,10 @@ impl DeepLinkHandler for WebNex {
 			return Ok(None);
 		};
 		let reader = extract::<ReaderProps>(
-			&get_html(&format!("{BASE_URL}/read/{key}"), None)?,
+			&get_html(&chapter_url(key), None)?,
 			&["chapter", "series", "pagesUrl"],
 		)
-		.ok_or_else(|| error!("WebNex did not identify the chapter's series"))?;
+		.ok_or_else(|| error!("Webnex did not identify the chapter's series"))?;
 		Ok(
 			parse_key(&reader.series.href, "/manga/").map(|s| DeepLinkResult::Chapter {
 				manga_key: s.into(),
@@ -158,13 +157,13 @@ impl DeepLinkHandler for WebNex {
 	}
 }
 
-impl ImageRequestProvider for WebNex {
+impl ImageRequestProvider for Webnex {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
 	}
 }
 
-register_source!(WebNex, Home, ImageRequestProvider, DeepLinkHandler);
+register_source!(Webnex, Home, ImageRequestProvider, DeepLinkHandler);
 
 #[cfg(test)]
 mod test;
