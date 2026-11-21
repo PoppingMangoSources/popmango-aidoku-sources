@@ -19,7 +19,7 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 	let mut components = Vec::new();
 	for (id, selector) in [
 		("popular", "section[aria-labelledby=popular-heading]"),
-		("taste", "section[aria-labelledby=taste-heading]"),
+		("taste", "section[aria-labelledby$=-heading]"),
 		("new", "section[aria-labelledby=new-heading]"),
 		("trending", "section[aria-labelledby=trending-heading]"),
 		("latest", "section[aria-labelledby=latest-heading]"),
@@ -32,7 +32,13 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 		if shown.is_some_and(|shown| !shown.iter().any(|value| value == id)) {
 			continue;
 		}
-		let Some(section) = doc.select_first(selector) else {
+		// Signed-in pages label "Your taste" taste-heading too, so the shared row goes by its title.
+		let Some(section) = doc.select(selector).into_iter().flatten().find(|s| {
+			id != "taste"
+				|| s.select_first("h2")
+					.and_then(|h| h.text())
+					.is_some_and(|t| t.starts_with("Readers"))
+		}) else {
 			continue;
 		};
 		let Some(row) = expand(&section, &mut chunks)

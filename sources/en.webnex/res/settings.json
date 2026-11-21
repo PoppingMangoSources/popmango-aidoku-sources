@@ -105,7 +105,7 @@
 	{
 		"type": "group",
 		"title": "Discover",
-		"footer": "Filtered Catalogue replaces the shelves when content ratings skip a lower rating.",
+		"footer": "If your content ratings leave a gap, like Safe and Erotica without Suggestive, Discover shows a single Filtered Catalogue row instead of these sections.",
 		"items": [
 			{
 				"type": "multi-select",
@@ -159,6 +159,7 @@
 	{
 		"type": "group",
 		"title": "Chapters",
+		"footer": "One per Chapter keeps one upload of each chapter, taken from your Preferred Groups in list order, otherwise the most liked. Group names aren't case sensitive.",
 		"items": [
 			{
 				"type": "select",

@@ -2,7 +2,7 @@
 title: WebNex (en.webnex)
 type: subsystem
 created: 2026-11-20
-updated: 2026-11-20
+updated: 2026-11-21
 sources:
   - code: sources/en.webnex/src/lib.rs
   - code: sources/en.webnex/src/helpers.rs
@@ -36,6 +36,11 @@ Manhua, Finished and Just Added (`sources/en.webnex/src/home.rs:21`). Latest Upd
 uses five rows per carousel page. The site itself puts Latest Updates before Recently
 Popular and New in 2026; the source order is an explicit owner override.
 Reader shelves, Busiest groups and Latest comments are not series lists and are skipped.
+
+> ⚠️ Readers Favourites is found by its "Readers…" heading, not by `taste-heading`: a
+> signed-in page (the app shares the in-app browser's cookies) gives "Your taste" that id,
+> while an anonymous page streams Readers' favourites under it and "Your taste" is only the
+> loading skeleton (`sources/en.webnex/src/home.rs:35`).
 
 > ⚠️ Readers Favourites and Finished are ranked lists of three per page (owner's choice, v16).
 > The home page carries no description or genres for the Popular cards (cover, title and type

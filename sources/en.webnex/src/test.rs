@@ -11,11 +11,12 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 	let c = "<li class='card-item'><a class='card-link' href='/manga/story'><img class='cover-img' src='/cover/story'><h3 class='card-title'>A story</h3></a><span class='card-rank'>1</span><p class='card-meta'><span>Manhwa</span><span>202 readers</span></p><ul class='card-chapters'><li><a href='/read/upload'><span class='card-ch-label'>Ch.12.5</span><span class='card-ch-time'>2h ago</span></a></li></ul></li>";
 	let side = "<ol class='side-list'><li><a class='side-row' href='/manga/story'><span class='side-title'>A story</span></a></li></ol>";
 	let mut html = format!(
-		"<div id='S:8' hidden>{c}</div><section aria-labelledby='popular-heading'><template id='P:8'></template></section>"
+		"<div id='S:8' hidden>{c}</div><section aria-labelledby='popular-heading'><template id='P:8'></template></section><section aria-labelledby='taste-heading'><h2>Your taste</h2><ol>{}</ol></section>",
+		c.replace("/manga/story", "/manga/personal")
 	);
 	for (id, title) in [
 		("manhua", "Manhua"),
-		("taste", "Readers’ favourites"),
+		("favourites", "Readers’ favourites"),
 		("latest", "Latest updates"),
 		("manga", "Manga"),
 		("trending", "Recently popular"),
