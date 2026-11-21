@@ -44,6 +44,14 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > exists, the "Your taste" row is shown under that title rather than mislabelled (owner's
 > choice, v20). The signed-in markup is inferred from the owner's screenshots, not captured.
 
+> ⚠️ Rows with a site "View all" link (Latest Updates, New in 2026, Recently Popular, Manhwa,
+> Manga, Manhua) carry it as their `Listing` id, as VineTheme does, and `ListingProvider` reads
+> its `sort`, `kind` and `from` back into browse filters so the catalogue settings still apply
+> (`sources/en.webnex/src/lib.rs:160`). An unknown parameter fails the list rather than
+> widening it. The site's View all pages do not start with the row's titles (Latest Updates
+> and `/browse?sort=updated` differ on the site itself), so the live test compares the listing
+> with the site's View all page, not with the row.
+
 > ⚠️ Readers Favourites and Finished are ranked lists of three per page (owner's choice, v16).
 > The home page carries no description or genres for the Popular cards (cover, title and type
 > only, checked in its HTML and flight data on 2026-11-21); either needs each series page, one

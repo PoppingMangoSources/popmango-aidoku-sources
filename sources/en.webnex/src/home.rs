@@ -5,7 +5,8 @@ use crate::{
 	settings::{self, CONTENT_RATINGS, Catalogue},
 };
 use aidoku::{
-	Chapter, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, MangaWithChapter, Result,
+	Chapter, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing, MangaWithChapter,
+	Result,
 	alloc::{String, Vec, string::ToString, vec},
 	imports::{
 		html::{Document, Html},
@@ -70,6 +71,14 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 			"added" => Some("Just Added".into()),
 			_ => row.select_first("h2").and_then(|el| el.text()),
 		};
+		let listing = row
+			.select_first("a.see-all[href^='/browse']")
+			.and_then(|a| a.attr("href"))
+			.map(|id| Listing {
+				id,
+				name: title.clone().unwrap_or_default(),
+				..Default::default()
+			});
 		let value = match id {
 			"popular" => {
 				let entries: Vec<_> = elements
@@ -117,7 +126,7 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 				HomeComponentValue::MangaChapterList {
 					entries,
 					page_size: Some(5),
-					listing: None,
+					listing,
 				}
 			}
 			_ => {
@@ -130,13 +139,10 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 						ranking: true,
 						page_size: Some(3),
 						entries,
-						listing: None,
+						listing,
 					}
 				} else {
-					HomeComponentValue::Scroller {
-						entries,
-						listing: None,
-					}
+					HomeComponentValue::Scroller { entries, listing }
 				}
 			}
 		};

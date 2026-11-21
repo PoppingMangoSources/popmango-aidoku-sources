@@ -1,7 +1,7 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Manga,
-	MangaPageResult, Page, PageContext, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Listing,
+	ListingProvider, Manga, MangaPageResult, Page, PageContext, Result, Source,
 	alloc::{String, Vec, vec},
 	imports::{
 		net::Request,
@@ -17,7 +17,7 @@ mod reader;
 mod rsc;
 mod settings;
 
-use helpers::{browse, chapter_url, get_html, manga_url, parse_key, parse_response};
+use helpers::{SORTS, browse, chapter_url, get_html, manga_url, parse_key, parse_response};
 use models::ReaderProps;
 use rsc::{chapter_list, extract};
 use settings::{Catalogue, Groups};
@@ -157,13 +157,55 @@ impl DeepLinkHandler for Webnex {
 	}
 }
 
+// The listing id is the row's "View all" link, read as the browse filters it sets.
+impl ListingProvider for Webnex {
+	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
+		let query = listing.id.split_once('?').map_or("", |(_, query)| query);
+		let filters = query
+			.split('&')
+			.filter(|pair| !pair.is_empty())
+			.map(|pair| {
+				Ok(match pair.split_once('=') {
+					Some(("sort", value))
+						if let Some(index) = SORTS.iter().position(|s| *s == value) =>
+					{
+						FilterValue::Sort {
+							id: "sort".into(),
+							index: index as i32,
+							ascending: false,
+						}
+					}
+					Some(("kind", value)) => FilterValue::MultiSelect {
+						id: "kind".into(),
+						included: vec![value.into()],
+						excluded: vec![],
+					},
+					Some(("from", value)) => FilterValue::Range {
+						id: "year".into(),
+						from: value.parse().ok(),
+						to: None,
+					},
+					_ => bail!("Webnex changed the {} list", listing.name),
+				})
+			})
+			.collect::<Result<Vec<_>>>()?;
+		browse(None, page, filters, Catalogue::load())
+	}
+}
+
 impl ImageRequestProvider for Webnex {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
 	}
 }
 
-register_source!(Webnex, Home, ImageRequestProvider, DeepLinkHandler);
+register_source!(
+	Webnex,
+	Home,
+	ListingProvider,
+	ImageRequestProvider,
+	DeepLinkHandler
+);
 
 #[cfg(test)]
 mod test;

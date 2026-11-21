@@ -24,7 +24,7 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		("manhwa", "Manhwa"),
 	] {
 		html.push_str(&format!(
-			"<section aria-labelledby='{id}-heading'><h2>{title}</h2><ol>{c}</ol></section>"
+			"<section aria-labelledby='{id}-heading'><h2>{title}</h2><a class='see-all' href='/browse?kind={id}&amp;sort=updated'>View all</a><ol>{c}</ol></section>"
 		));
 	}
 	for tab in ["added", "finished"] {
@@ -69,6 +69,12 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 	));
 	assert!(
 		matches!(&rows[4].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(5),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
+	);
+	assert!(
+		matches!(&rows[4].value,HomeComponentValue::MangaChapterList{listing:Some(l),..} if l.id=="/browse?kind=latest&sort=updated" && l.name=="Latest Updates")
+	);
+	assert!(
+		matches!(&rows[5].value,HomeComponentValue::Scroller{listing:Some(l),..} if l.id=="/browse?kind=manhwa&sort=updated" && l.name=="Manhwa")
 	);
 	let shown = vec!["new".into(), "taste".into()];
 	assert_eq!(
@@ -805,4 +811,66 @@ fn live_long_strips_labelled_manga_open_as_webtoons() {
 			"{key}"
 		);
 	}
+}
+
+#[aidoku_test]
+fn review_unknown_listing_links_fail_instead_of_widening() {
+	let listing = Listing {
+		id: "/browse?shelf=staff&sort=updated".into(),
+		name: "Staff Picks".into(),
+		..Default::default()
+	};
+	assert!(Webnex.get_manga_list(listing, 1).is_err());
+}
+
+#[aidoku_test]
+fn live_view_all_lists_continue_their_discover_rows() {
+	let mut checked = 0;
+	for row in Webnex.get_home().unwrap().components {
+		let (keys, listing): (Vec<_>, _) = match row.value {
+			HomeComponentValue::Scroller {
+				entries,
+				listing: Some(listing),
+			} => (
+				entries
+					.into_iter()
+					.filter_map(|e| match e.value {
+						Some(LinkValue::Manga(m)) => Some(m.key),
+						_ => None,
+					})
+					.collect(),
+				listing,
+			),
+			HomeComponentValue::MangaChapterList {
+				entries,
+				listing: Some(listing),
+				..
+			} => (entries.into_iter().map(|e| e.manga.key).collect(), listing),
+			_ => continue,
+		};
+		assert!(!keys.is_empty());
+		// The site's own View all page, unfiltered, is what the listing must reproduce.
+		let site = helpers::get_html(&format!("{BASE_URL}{}", listing.id), None)
+			.unwrap_or_else(|e| panic!("{}: {e:?}", listing.id));
+		let section = site.select_first("section.browse").unwrap();
+		let html = rsc::expand(&section, &mut rsc::chunks(&site)).unwrap();
+		let expected: Vec<_> = Html::parse_with_url(html, BASE_URL)
+			.unwrap()
+			.select("li.card-item")
+			.unwrap()
+			.filter_map(|el| helpers::card(&el))
+			.map(|m| m.key)
+			.take(6)
+			.collect();
+		let name = listing.name.clone();
+		let list = Webnex.get_manga_list(listing, 1).unwrap();
+		assert!(list.has_next_page, "{name}");
+		let listed: Vec<_> = list.entries.into_iter().map(|m| m.key).collect();
+		assert!(
+			expected.iter().filter(|k| listed.contains(k)).count() >= 4,
+			"{name}: {expected:?} mostly missing from {listed:?}"
+		);
+		checked += 1;
+	}
+	assert!(checked >= 6, "only {checked} rows had a listing");
 }

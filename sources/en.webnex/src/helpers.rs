@@ -177,6 +177,15 @@ pub fn parse_relative_date(label: &str, now: i64) -> Option<i64> {
 	now.checked_sub(n.checked_mul(unit)?)
 }
 
+pub const SORTS: [&str; 6] = [
+	"popular",
+	"relevance",
+	"updated",
+	"year_newest",
+	"year_oldest",
+	"title",
+];
+
 pub fn search_params(
 	query: Option<&str>,
 	page: i32,
@@ -195,16 +204,7 @@ pub fn search_params(
 	for f in filters {
 		match f {
 			FilterValue::Sort { index, .. } => {
-				if let Some(sort) = [
-					"popular",
-					"relevance",
-					"updated",
-					"year_newest",
-					"year_oldest",
-					"title",
-				]
-				.get(index as usize)
-				{
+				if let Some(sort) = SORTS.get(index as usize) {
 					p.push_encoded("sort", Some(sort));
 				}
 			}
