@@ -57,7 +57,7 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		matches!(&rows[2].value,HomeComponentValue::MangaList{ranking:true,page_size:Some(3),entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
 	);
 	assert!(
-		matches!(&rows[1].value,HomeComponentValue::Scroller{entries,listing:None} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.key=="personal"))
+		matches!(&rows[1].value,HomeComponentValue::MangaList{ranking:true,page_size:Some(3),entries,listing:None} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.key=="personal"))
 	);
 	assert!(matches!(
 		&rows[9].value,

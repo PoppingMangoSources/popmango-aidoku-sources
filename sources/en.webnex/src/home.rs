@@ -137,7 +137,7 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 				if entries.is_empty() {
 					continue;
 				}
-				if matches!(id, "taste" | "finished") {
+				if matches!(id, "yours" | "taste" | "finished") {
 					HomeComponentValue::MangaList {
 						ranking: true,
 						page_size: Some(3),

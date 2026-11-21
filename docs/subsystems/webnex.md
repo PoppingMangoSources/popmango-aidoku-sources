@@ -42,10 +42,12 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > favourites under it and "Your taste" is only the loading skeleton
 > (`sources/en.webnex/src/home.rs:41`). The owner got Your taste in the app without signing
 > in, so the site personalises on something other than an account (unverified what; a reading
-> history in curl set no cookie). Personalised, both rows are shown,
-> Readers Favourites and a separate Your Taste row with its own Sections switch, as merged
-> MangaDotNet keeps Most Tracked beside its For You row (owner's choice, v22). Your Taste is a
-> plain row straight below the hero, above the ranked Readers Favourites (owner's order, v24). The personalised markup is inferred from the owner's screenshots, not captured.
+> history in curl set no cookie, and the site's scripts write no taste cookie, so likely by
+> IP). The site fills one slot with either row, never both: the owner's app showed Your
+> taste and no Readers' favourites (v25 screenshot), and no other route or Browse sort lists
+> Readers' favourites, so the source can't add the missing one. Each row keeps its own
+> Sections switch, as merged MangaDotNet keeps Most Tracked beside its For You row (v22).
+> Both are ranked lists of three straight below the hero (owner's order, v26).
 
 > ⚠️ Rows with a site "View all" link (Latest Updates, New in 2026, Recently Popular, Manhwa,
 > Manga, Manhua) carry it as their `Listing` id, as VineTheme does, and `ListingProvider` reads
