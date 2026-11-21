@@ -113,8 +113,8 @@
 				"title": "Sections",
 				"values": [
 					"popular",
-					"taste",
 					"yours",
+					"taste",
 					"new",
 					"trending",
 					"latest",
@@ -126,8 +126,8 @@
 				],
 				"titles": [
 					"Popular This Week",
-					"Readers Favourites",
 					"Your Taste",
+					"Readers Favourites",
 					"New This Year",
 					"Recently Popular",
 					"Latest Updates",
@@ -139,8 +139,8 @@
 				],
 				"default": [
 					"popular",
-					"taste",
 					"yours",
+					"taste",
 					"new",
 					"trending",
 					"latest",

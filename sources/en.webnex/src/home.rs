@@ -24,8 +24,8 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 	let mut components = Vec::new();
 	for (id, selector) in [
 		("popular", "section[aria-labelledby=popular-heading]"),
-		("taste", "section[aria-labelledby$=-heading]"),
 		("yours", "section[aria-labelledby$=-heading]"),
+		("taste", "section[aria-labelledby$=-heading]"),
 		("new", "section[aria-labelledby=new-heading]"),
 		("trending", "section[aria-labelledby=trending-heading]"),
 		("latest", "section[aria-labelledby=latest-heading]"),
@@ -158,8 +158,6 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 	HomeLayout { components }
 }
 
-// The rows whose "View all" pages take every chosen rating, each sent with them as merged
-// sources send their ratings with each row's request.
 fn browse_rows(shown: Option<&[String]>, prefs: &Catalogue) -> Result<HomeLayout> {
 	let year = current_year();
 	let rows: Vec<(&str, String, String)> = [

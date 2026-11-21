@@ -215,7 +215,6 @@ pub fn search_params(
 			} => match id.as_str() {
 				"rating" => prefs.ratings = included,
 				"kind" => prefs.types = included,
-				// The site matches genres, formats and themes as tags.
 				"genre" | "format" | "theme" => {
 					if id == "genre" {
 						prefs.hidden_genres.clear();
@@ -304,7 +303,6 @@ pub fn search_params(
 	Ok(p)
 }
 
-// A listing id is a "View all" link, read back as the browse filters it sets.
 pub fn link_filters(link: &str) -> Result<Vec<FilterValue>> {
 	let query = link.split_once('?').map_or("", |(_, query)| query);
 	query

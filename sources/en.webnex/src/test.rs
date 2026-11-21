@@ -38,8 +38,8 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 			.collect::<Vec<_>>(),
 		[
 			"Popular This Week",
-			"Readers Favourites",
 			"Your Taste",
+			"Readers Favourites",
 			"New in 2026",
 			"Recently Popular",
 			"Latest Updates",
@@ -54,10 +54,10 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		matches!(&rows[0].value,HomeComponentValue::BigScroller{entries,..} if entries[0].key=="story" && entries[0].description.is_none() && entries[0].tags.as_ref().unwrap()[0]=="Manhwa")
 	);
 	assert!(
-		matches!(&rows[1].value,HomeComponentValue::MangaList{ranking:true,page_size:Some(3),entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
+		matches!(&rows[2].value,HomeComponentValue::MangaList{ranking:true,page_size:Some(3),entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
 	);
 	assert!(
-		matches!(&rows[2].value,HomeComponentValue::Scroller{entries,listing:None} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.key=="personal"))
+		matches!(&rows[1].value,HomeComponentValue::Scroller{entries,listing:None} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.key=="personal"))
 	);
 	assert!(matches!(
 		&rows[9].value,
@@ -140,7 +140,7 @@ fn review_preset_controls_and_section_defaults() {
 			.filter_map(|v| v.as_str())
 			.collect::<Vec<_>>(),
 		[
-			"popular", "taste", "yours", "new", "trending", "latest", "manhwa", "manga", "manhua",
+			"popular", "yours", "taste", "new", "trending", "latest", "manhwa", "manga", "manhua",
 			"finished", "added"
 		]
 	);

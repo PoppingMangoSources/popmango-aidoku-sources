@@ -40,14 +40,15 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > ⚠️ Readers Favourites is found by its "Readers…" heading, not by `taste-heading`: a
 > signed-in page (the app shares the in-app browser's cookies) gives "Your taste" that id,
 > while an anonymous page streams Readers' favourites under it and "Your taste" is only the
-> loading skeleton (`sources/en.webnex/src/home.rs:35`). Signed in, both rows are shown,
+> loading skeleton (`sources/en.webnex/src/home.rs:41`). Signed in, both rows are shown,
 > Readers Favourites and a separate Your Taste row with its own Sections switch, as merged
-> MangaDotNet keeps Most Tracked beside its For You row (owner's choice, v22). The signed-in markup is inferred from the owner's screenshots, not captured.
+> MangaDotNet keeps Most Tracked beside its For You row (owner's choice, v22). Your Taste is a
+> plain row straight below the hero, above the ranked Readers Favourites (owner's order, v24). The signed-in markup is inferred from the owner's screenshots, not captured.
 
 > ⚠️ Rows with a site "View all" link (Latest Updates, New in 2026, Recently Popular, Manhwa,
 > Manga, Manhua) carry it as their `Listing` id, as VineTheme does, and `ListingProvider` reads
 > its `sort`, `kind` and `from` back into browse filters so the catalogue settings still apply
-> (`sources/en.webnex/src/lib.rs:160`). An unknown parameter fails the list rather than
+> (`sources/en.webnex/src/lib.rs:159`). An unknown parameter fails the list rather than
 > widening it. The site's View all pages do not start with the row's titles (Latest Updates
 > and `/browse?sort=updated` differ on the site itself), so the live test compares the listing
 > with the site's View all page, not with the row.
@@ -67,7 +68,7 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > all pages Browse can rebuild with every chosen rating, one parallel request each, as
 > MangaDex sends its ratings with every row's request: Popular This Week, New in the
 > current year, Latest Updates, Manhwa, Manga and Manhua
-> (`sources/en.webnex/src/home.rs:163`). Browse cards name no chapter to open, so Latest
+> (`sources/en.webnex/src/home.rs:161`). Browse cards name no chapter to open, so Latest
 > Updates is a plain row there. Readers Favourites, Your Taste, Recently Popular, Finished
 > and Just Added have no Browse version and are left out (owner's choice, v23, replacing a
 > single Filtered Catalogue row).
