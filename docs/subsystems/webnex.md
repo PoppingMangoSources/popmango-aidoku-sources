@@ -38,12 +38,14 @@ Popular and New in 2026; the source order is an explicit owner override.
 Reader shelves, Busiest groups and Latest comments are not series lists and are skipped.
 
 > ⚠️ Readers Favourites is found by its "Readers…" heading, not by `taste-heading`: a
-> signed-in page (the app shares the in-app browser's cookies) gives "Your taste" that id,
-> while an anonymous page streams Readers' favourites under it and "Your taste" is only the
-> loading skeleton (`sources/en.webnex/src/home.rs:41`). Signed in, both rows are shown,
+> personalised page gives "Your taste" that id, while a plain curl request streams Readers'
+> favourites under it and "Your taste" is only the loading skeleton
+> (`sources/en.webnex/src/home.rs:41`). The owner got Your taste in the app without signing
+> in, so the site personalises on something other than an account (unverified what; a reading
+> history in curl set no cookie). Personalised, both rows are shown,
 > Readers Favourites and a separate Your Taste row with its own Sections switch, as merged
 > MangaDotNet keeps Most Tracked beside its For You row (owner's choice, v22). Your Taste is a
-> plain row straight below the hero, above the ranked Readers Favourites (owner's order, v24). The signed-in markup is inferred from the owner's screenshots, not captured.
+> plain row straight below the hero, above the ranked Readers Favourites (owner's order, v24). The personalised markup is inferred from the owner's screenshots, not captured.
 
 > ⚠️ Rows with a site "View all" link (Latest Updates, New in 2026, Recently Popular, Manhwa,
 > Manga, Manhua) carry it as their `Listing` id, as VineTheme does, and `ListingProvider` reads

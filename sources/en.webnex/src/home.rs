@@ -38,7 +38,7 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 		if shown.is_some_and(|shown| !shown.iter().any(|value| value == id)) {
 			continue;
 		}
-		// Signed-in pages give "Your taste" the taste-heading id, so these two go by their titles.
+		// Personalised pages give "Your taste" the taste-heading id, so these two go by their titles.
 		let Some(section) = (match id {
 			"taste" | "yours" => {
 				let prefix = if id == "taste" { "Readers" } else { "Your" };

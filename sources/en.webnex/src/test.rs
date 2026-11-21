@@ -90,7 +90,7 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		["Readers Favourites", "New in 2026"]
 	);
 	assert!(home::layout(&doc, 0, Some(&[])).components.is_empty());
-	// Signed out, "Your taste" is only a loading skeleton and the stream fills in favourites.
+	// Unpersonalised, "Your taste" is only a loading skeleton and the stream fills in favourites.
 	let anonymous = Html::parse_with_url(
 		format!(
 			"<section aria-label='Your taste'><h2>Your taste</h2><ol>{c}</ol></section><div hidden id='S:3'><section aria-labelledby='taste-heading'><h2>Readers’ favourites</h2><ol>{c}</ol></section></div>"
