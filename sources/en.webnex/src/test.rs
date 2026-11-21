@@ -179,6 +179,26 @@ fn review_details_preserve_prose_emphasis_links_and_credit_order() {
 		text.contains("  \nNext") && text.ends_with("\n\nSecond\\."),
 		"{text}"
 	);
+	for (badges, tags, viewer) in [
+		("<li>Manga</li><li>Japanese</li>", "", Viewer::RightToLeft),
+		(
+			"<li>Manga</li><li>Japanese</li>",
+			"<a class='chip'>Longstrip</a>",
+			Viewer::Webtoon,
+		),
+		("<li>Manga</li><li>Korean</li>", "", Viewer::Webtoon),
+		("<li>Manhwa</li>", "", Viewer::Webtoon),
+	] {
+		let doc = Html::parse(format!(
+			"<h1 class='series-title'>Story</h1><ul class='series-badges'>{badges}</ul><div class='detail-list'>{tags}</div>"
+		))
+		.unwrap();
+		assert_eq!(
+			models::details(&doc, "story").unwrap().viewer,
+			viewer,
+			"{badges} {tags}"
+		);
+	}
 	for html in ["", "<div class='series-desc'><p></p></div>"] {
 		let doc = Html::parse(format!("<h1 class='series-title'>Story</h1>{html}")).unwrap();
 		assert!(
@@ -747,4 +767,28 @@ fn live_page_list_loads_from_the_chapter_cookie() {
 	assert!(pages.iter().all(
 		|p| matches!(&p.content, aidoku::PageContent::Url(url, _) if url.starts_with("https://"))
 	));
+}
+
+#[aidoku_test]
+fn live_long_strips_labelled_manga_open_as_webtoons() {
+	for (key, viewer) in [
+		(
+			"having-turned-back-time-i-want-to-live-a-different-life-uwo9f4cgvs",
+			Viewer::Webtoon,
+		),
+		(
+			"after-being-called-a-hero-the-unrivaled-man-starts-a-family-qy8l11uog6",
+			Viewer::RightToLeft,
+		),
+	] {
+		let manga = Manga {
+			key: key.into(),
+			..Default::default()
+		};
+		assert_eq!(
+			Webnex.get_manga_update(manga, true, false).unwrap().viewer,
+			viewer,
+			"{key}"
+		);
+	}
 }

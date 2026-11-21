@@ -112,6 +112,13 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 		ContentRating::Safe
 	};
 	let mut viewer = Viewer::Unknown;
+	// The site labels many long strips "Manga"; their tags or original language give them away.
+	let mut strip = tags.iter().any(|tag| {
+		matches!(
+			tag.to_ascii_lowercase().as_str(),
+			"long strip" | "longstrip" | "webtoon" | "webtoons"
+		)
+	});
 	let mut status = MangaStatus::Unknown;
 	for fact in facts {
 		match fact.to_ascii_lowercase().as_str() {
@@ -121,6 +128,7 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 			"dropped" | "cancelled" => status = MangaStatus::Cancelled,
 			"manga" => viewer = Viewer::RightToLeft,
 			"manhwa" | "manhua" => viewer = Viewer::Webtoon,
+			"korean" | "chinese" | "chinese (hong kong)" => strip = true,
 			"safe" => rating = ContentRating::Safe,
 			"suggestive" => rating = ContentRating::Suggestive,
 			"18+" | "erotica" | "pornographic" => rating = ContentRating::NSFW,
@@ -150,7 +158,7 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 		)
 		.filter(|text| !text.is_empty()),
 		tags: Some(tags),
-		viewer,
+		viewer: if strip { Viewer::Webtoon } else { viewer },
 		status,
 		content_rating: rating,
 		url: Some(manga_url(key)),

@@ -26,13 +26,13 @@ with React streaming chunks (`div[id^='S:']` filling `template[id^='P:']`), whic
 
 > ⚠️ `Element::html()` is `None` for an empty element, and the site streams empty `S:` chunks,
 > so `rsc::expand` treats a missing html as empty rather than failing
-> (`sources/en.webnex/src/rsc.rs:21`).
+> (`sources/en.webnex/src/rsc.rs:22`).
 
 ## Home
 
 The source reads the home page's own shelves. The owner's order is Popular This Week,
 Readers Favourites, New in 2026, Recently Popular, Latest Updates, Manhwa, Manga,
-Manhua, Finished and Just Added (`sources/en.webnex/src/home.rs:20`). Latest Updates
+Manhua, Finished and Just Added (`sources/en.webnex/src/home.rs:21`). Latest Updates
 uses five rows per carousel page. The site itself puts Latest Updates before Recently
 Popular and New in 2026; the source order is an explicit owner override.
 Reader shelves, Busiest groups and Latest comments are not series lists and are skipped.
@@ -56,7 +56,7 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 ## Browse parameters
 
 > ⚠️ `tag=` and `genre=` match the same series (and `xtag=` and `xgenre=`), so genres,
-> formats, themes and tag taps all send `tag`/`xtag` (`sources/en.webnex/src/helpers.rs:202`).
+> formats, themes and tag taps all send `tag`/`xtag` (`sources/en.webnex/src/helpers.rs:218`).
 > "User Created" matches nothing and is not offered.
 
 > ⚠️ The site reads only the first `chapters` value and ignores one that is not a number,
@@ -84,12 +84,21 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > (`겨울잎 / Jeokbal, purik`), so splitting would duplicate people. Credits stay whole and are
 > only deduplicated (checked on 166 links across 25 popular series, 2026-11-21).
 
+> ⚠️ The site types many long strips "Manga": of five popular Manga titles three had pages
+> 800 wide and 3,000 to 4,000 tall (2026-11-21), Korean ones and Japanese ones alike. Each of
+> those carries a "Long Strip"/"Longstrip" (or "Webtoon") tag, and the paged one carried none,
+> so `details` opens a title as a webtoon when its tags say so or its original language is
+> Korean or Chinese, and otherwise keeps the type's viewer (v17).
+
+> ⚠️ Without the web view, the newest imports are `child_nodes`, `kind` and `get_url`, so
+> `minAppVersion` is 0.8.3 (v17); it was 0.8.4 only for the old reader's `add_user_script`.
+
 ## Chapters
 
 > ⚠️ Chapter `datetime` attributes are UTC (`2026-09-19T23:40:35.000Z`). `helpers::date`
 > reshapes them to `yyyy-MM-dd HH:mm:ss`, which the test runner can parse, and passes "UTC"
 > to `parse_date_with_options`; plain `parse_date` read them in the reader's zone before v9
-> (`sources/en.webnex/src/helpers.rs:139`).
+> (`sources/en.webnex/src/helpers.rs:155`).
 
 ## Reader
 
@@ -98,7 +107,7 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > `<script data-wnx-reader>`, and only for a page request: `Accept: text/html` (or
 > `Sec-Fetch-Mode: navigate` with `Sec-Fetch-Dest: document`); without either the script is
 > absent. The list then needs that cookie and the chapter page as `Referer`
-> (`sources/en.webnex/src/reader.rs:8`). No web view is involved.
+> (`sources/en.webnex/src/reader.rs:9`). No web view is involved.
 
 > ⚠️ The "Opening series" interstitial sets a `wnx_` cookie the same way and reloads;
 > `helpers::parse_response` retries with it. It could not be reproduced on 2026-11-20, so
