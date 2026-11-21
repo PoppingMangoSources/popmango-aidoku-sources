@@ -196,7 +196,6 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 			.and_then(|el| el.text())
 			.and_then(|s| {
 				s.trim_start_matches(|c: char| !c.is_ascii_digit())
-					.trim()
 					.parse()
 					.ok()
 			});

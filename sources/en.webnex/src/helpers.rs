@@ -182,7 +182,7 @@ pub fn search_params(
 		p.push("q", query);
 	}
 	if page > 1 {
-		p.push("page", Some(&page.to_string()));
+		p.push_encoded("page", Some(&page.to_string()));
 	}
 	for f in filters {
 		match f {
@@ -197,7 +197,7 @@ pub fn search_params(
 				]
 				.get(index as usize)
 				{
-					p.push("sort", Some(sort));
+					p.push_encoded("sort", Some(sort));
 				}
 			}
 			FilterValue::MultiSelect {
@@ -221,7 +221,7 @@ pub fn search_params(
 				}
 				"status" | "demographic" | "language" => {
 					for v in included {
-						p.push(&id, Some(&v));
+						p.push_encoded(&id, Some(&v));
 					}
 				}
 				_ => {}
@@ -237,7 +237,7 @@ pub fn search_params(
 					p.push("tag", Some(&value));
 				}
 			}
-			FilterValue::Select { id, value } if id == "match" => p.push(&id, Some(&value)),
+			FilterValue::Select { id, value } if id == "match" => p.push_encoded(&id, Some(&value)),
 			FilterValue::Select { id, value } if id == "chapters" => chapters = Some(value),
 			FilterValue::Text { id, value } if id == "minChapters" => {
 				let n = value
@@ -272,24 +272,24 @@ pub fn search_params(
 		}
 	}
 	if let Some(n) = min_chapters.or(chapters) {
-		p.push("chapters", Some(&n));
+		p.push_encoded("chapters", Some(&n));
 	}
 	for (name, year) in [
 		("from", years.0.or(released.0)),
 		("to", years.1.or(released.1)),
 	] {
 		if let Some(year) = year {
-			p.push(name, Some(&year.to_string()));
+			p.push_encoded(name, Some(&year.to_string()));
 		}
 	}
 	for r in &prefs.ratings {
-		p.push("rated", Some(r));
+		p.push_encoded("rated", Some(r));
 	}
 	for kind in &prefs.types {
-		p.push("kind", Some(kind));
+		p.push_encoded("kind", Some(kind));
 	}
 	if let Some(r) = prefs.ceiling() {
-		p.push("rating", Some(r));
+		p.push_encoded("rating", Some(r));
 	}
 	Ok(p)
 }

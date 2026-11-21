@@ -64,6 +64,14 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > action, a POST to `/browse` with a build-specific `next-action` id, so it is not fetched;
 > the static genres, formats and themes in `filters.json` matched the panel exactly.
 
+## Details
+
+> ⚠️ Each author or artist link is one credit as the site defines it: its `href` searches that
+> whole string. Some hold separators, but `/` joins one person's native and romanized names
+> (`오솟 / Osot` on A Painter Who Draws Dungeons) and commas mix with them
+> (`겨울잎 / Jeokbal, purik`), so splitting would duplicate people. Credits stay whole and are
+> only deduplicated (checked on 166 links across 25 popular series, 2026-11-21).
+
 ## Chapters
 
 > ⚠️ Chapter `datetime` attributes are UTC (`2026-09-19T23:40:35.000Z`). `helpers::date`
