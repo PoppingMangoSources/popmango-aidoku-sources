@@ -109,9 +109,18 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 				if entries.is_empty() {
 					continue;
 				}
-				HomeComponentValue::Scroller {
-					entries,
-					listing: None,
+				if matches!(id, "taste" | "finished") {
+					HomeComponentValue::MangaList {
+						ranking: true,
+						page_size: Some(3),
+						entries,
+						listing: None,
+					}
+				} else {
+					HomeComponentValue::Scroller {
+						entries,
+						listing: None,
+					}
 				}
 			}
 		};

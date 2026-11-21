@@ -37,6 +37,11 @@ uses five rows per carousel page. The site itself puts Latest Updates before Rec
 Popular and New in 2026; the source order is an explicit owner override.
 Reader shelves, Busiest groups and Latest comments are not series lists and are skipped.
 
+> ⚠️ Readers Favourites and Finished are ranked lists of three per page (owner's choice, v16).
+> The home page carries no description or genres for the Popular cards (cover, title and type
+> only, checked in its HTML and flight data on 2026-11-21); either needs each series page, one
+> request per card (16 on the week's shelf), so the hero shows neither.
+
 > ⚠️ Browse's Popular sort is the same weekly chart as home's Popular shelf; the shelf's
 > Today and This month tabs are `/?popular=day` and `/?popular=month`, and `/browse` ignores
 > a `popular` parameter.

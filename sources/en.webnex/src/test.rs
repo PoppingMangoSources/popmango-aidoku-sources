@@ -52,8 +52,20 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		matches!(&rows[0].value,HomeComponentValue::BigScroller{entries,..} if entries[0].key=="story" && entries[0].description.is_none() && entries[0].tags.as_ref().unwrap()[0]=="Manhwa")
 	);
 	assert!(
-		matches!(&rows[1].value,HomeComponentValue::Scroller{entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
+		matches!(&rows[1].value,HomeComponentValue::MangaList{ranking:true,page_size:Some(3),entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
 	);
+	assert!(matches!(
+		&rows[8].value,
+		HomeComponentValue::MangaList {
+			ranking: true,
+			page_size: Some(3),
+			..
+		}
+	));
+	assert!(matches!(
+		&rows[9].value,
+		HomeComponentValue::Scroller { .. }
+	));
 	assert!(
 		matches!(&rows[4].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(5),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
 	);
@@ -182,7 +194,7 @@ fn review_details_preserve_prose_emphasis_links_and_credit_order() {
 fn review_finished_reassembles_nested_titles_and_side_rows() {
 	let doc = Html::parse_with_url("<div role='tabpanel' id='x-finished'><ol class='side-list'><li><a class='side-row' href='/manga/first'><template id='P:a'></template></a></li><template id='P:b'></template></ol></div><div id='S:b'><li><a class='side-row' href='/manga/second'><template id='P:c'></template></a></li></div><div id='S:c'><span class='side-title'>Second</span></div><div id='S:a'><span class='side-title'>First</span></div>", BASE_URL).unwrap();
 	let rows = home::layout(&doc, 0, None).components;
-	let HomeComponentValue::Scroller { entries, .. } = &rows[0].value else {
+	let HomeComponentValue::MangaList { entries, .. } = &rows[0].value else {
 		panic!()
 	};
 	let titles: Vec<_> = entries
