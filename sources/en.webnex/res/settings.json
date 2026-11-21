@@ -114,6 +114,7 @@
 				"values": [
 					"popular",
 					"taste",
+					"yours",
 					"new",
 					"trending",
 					"latest",
@@ -127,6 +128,7 @@
 				"titles": [
 					"Popular This Week",
 					"Readers Favourites",
+					"Your Taste",
 					"New This Year",
 					"Recently Popular",
 					"Latest Updates",
@@ -140,6 +142,7 @@
 				"default": [
 					"popular",
 					"taste",
+					"yours",
 					"new",
 					"trending",
 					"latest",

@@ -185,11 +185,11 @@ impl ListingProvider for Webnex {
 						from: value.parse().ok(),
 						to: None,
 					},
-					_ => bail!("Webnex changed the {} list", listing.name),
+					_ => bail!("Unknown listing"),
 				})
 			})
 			.collect::<Result<Vec<_>>>()?;
-		browse(None, page, filters, Catalogue::load())
+		self.get_search_manga_list(None, page, filters)
 	}
 }
 

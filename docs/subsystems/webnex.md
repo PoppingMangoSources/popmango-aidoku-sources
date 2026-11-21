@@ -40,9 +40,9 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > ⚠️ Readers Favourites is found by its "Readers…" heading, not by `taste-heading`: a
 > signed-in page (the app shares the in-app browser's cookies) gives "Your taste" that id,
 > while an anonymous page streams Readers' favourites under it and "Your taste" is only the
-> loading skeleton (`sources/en.webnex/src/home.rs:35`). When no Readers' favourites row
-> exists, the "Your taste" row is shown under that title rather than mislabelled (owner's
-> choice, v20). The signed-in markup is inferred from the owner's screenshots, not captured.
+> loading skeleton (`sources/en.webnex/src/home.rs:35`). Signed in, both rows are shown,
+> Readers Favourites and a separate Your Taste row with its own Sections switch, as merged
+> MangaDotNet keeps Most Tracked beside its For You row (owner's choice, v22). The signed-in markup is inferred from the owner's screenshots, not captured.
 
 > ⚠️ Rows with a site "View all" link (Latest Updates, New in 2026, Recently Popular, Manhwa,
 > Manga, Manhua) carry it as their `Listing` id, as VineTheme does, and `ListingProvider` reads

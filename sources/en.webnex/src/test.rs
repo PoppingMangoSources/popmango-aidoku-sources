@@ -39,6 +39,7 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		[
 			"Popular This Week",
 			"Readers Favourites",
+			"Your Taste",
 			"New in 2026",
 			"Recently Popular",
 			"Latest Updates",
@@ -55,8 +56,11 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 	assert!(
 		matches!(&rows[1].value,HomeComponentValue::MangaList{ranking:true,page_size:Some(3),entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
 	);
+	assert!(
+		matches!(&rows[2].value,HomeComponentValue::Scroller{entries,listing:None} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.key=="personal"))
+	);
 	assert!(matches!(
-		&rows[8].value,
+		&rows[9].value,
 		HomeComponentValue::MangaList {
 			ranking: true,
 			page_size: Some(3),
@@ -64,17 +68,17 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		}
 	));
 	assert!(matches!(
-		&rows[9].value,
+		&rows[10].value,
 		HomeComponentValue::Scroller { .. }
 	));
 	assert!(
-		matches!(&rows[4].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(5),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
+		matches!(&rows[5].value,HomeComponentValue::MangaChapterList{entries,page_size:Some(5),..} if entries[0].chapter.chapter_number==Some(12.5) && entries[0].chapter.date_uploaded==Some(800) && entries[0].chapter.key=="upload")
 	);
 	assert!(
-		matches!(&rows[4].value,HomeComponentValue::MangaChapterList{listing:Some(l),..} if l.id=="/browse?kind=latest&sort=updated" && l.name=="Latest Updates")
+		matches!(&rows[5].value,HomeComponentValue::MangaChapterList{listing:Some(l),..} if l.id=="/browse?kind=latest&sort=updated" && l.name=="Latest Updates")
 	);
 	assert!(
-		matches!(&rows[5].value,HomeComponentValue::Scroller{listing:Some(l),..} if l.id=="/browse?kind=manhwa&sort=updated" && l.name=="Manhwa")
+		matches!(&rows[6].value,HomeComponentValue::Scroller{listing:Some(l),..} if l.id=="/browse?kind=manhwa&sort=updated" && l.name=="Manhwa")
 	);
 	let shown = vec!["new".into(), "taste".into()];
 	assert_eq!(
@@ -86,18 +90,21 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		["Readers Favourites", "New in 2026"]
 	);
 	assert!(home::layout(&doc, 0, Some(&[])).components.is_empty());
-	let personal = Html::parse_with_url(
+	// Signed out, "Your taste" is only a loading skeleton and the stream fills in favourites.
+	let anonymous = Html::parse_with_url(
 		format!(
-			"<section aria-labelledby='taste-heading'><h2>Your taste</h2><ol>{c}</ol></section>"
+			"<section aria-label='Your taste'><h2>Your taste</h2><ol>{c}</ol></section><div hidden id='S:3'><section aria-labelledby='taste-heading'><h2>Readers’ favourites</h2><ol>{c}</ol></section></div>"
 		),
 		BASE_URL,
 	)
 	.unwrap();
 	assert_eq!(
-		home::layout(&personal, 0, None).components[0]
-			.title
-			.as_deref(),
-		Some("Your Taste")
+		home::layout(&anonymous, 0, None)
+			.components
+			.iter()
+			.filter_map(|c| c.title.as_deref())
+			.collect::<Vec<_>>(),
+		["Readers Favourites"]
 	);
 }
 
@@ -133,7 +140,7 @@ fn review_preset_controls_and_section_defaults() {
 			.filter_map(|v| v.as_str())
 			.collect::<Vec<_>>(),
 		[
-			"popular", "taste", "new", "trending", "latest", "manhwa", "manga", "manhua",
+			"popular", "taste", "yours", "new", "trending", "latest", "manhwa", "manga", "manhua",
 			"finished", "added", "filtered"
 		]
 	);
