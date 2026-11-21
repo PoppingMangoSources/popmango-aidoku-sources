@@ -32,12 +32,22 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 		if shown.is_some_and(|shown| !shown.iter().any(|value| value == id)) {
 			continue;
 		}
-		// Signed-in pages label "Your taste" taste-heading too, so the shared row goes by its title.
-		let Some(section) = doc.select(selector).into_iter().flatten().find(|s| {
-			id != "taste"
-				|| s.select_first("h2")
-					.and_then(|h| h.text())
-					.is_some_and(|t| t.starts_with("Readers"))
+		// Signed-in pages label "Your taste" taste-heading too, so that row goes by its own title.
+		let mut taste = None;
+		let Some(section) = (if id == "taste" {
+			[("Readers", "Readers Favourites"), ("Your", "Your Taste")]
+				.into_iter()
+				.find_map(|(prefix, name)| {
+					let section = doc.select(selector)?.into_iter().find(|s| {
+						s.select_first("h2")
+							.and_then(|h| h.text())
+							.is_some_and(|t| t.starts_with(prefix))
+					})?;
+					taste = Some(name);
+					Some(section)
+				})
+		} else {
+			doc.select_first(selector)
 		}) else {
 			continue;
 		};
@@ -53,7 +63,7 @@ pub fn layout(doc: &Document, now: i64, shown: Option<&[String]>) -> HomeLayout 
 			.collect();
 		let title = match id {
 			"popular" => Some("Popular This Week".into()),
-			"taste" => Some("Readers Favourites".into()),
+			"taste" => taste.map(Into::into),
 			"latest" => Some("Latest Updates".into()),
 			"trending" => Some("Recently Popular".into()),
 			"finished" => Some("Finished".into()),

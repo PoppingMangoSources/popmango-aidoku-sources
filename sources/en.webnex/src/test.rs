@@ -80,6 +80,19 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		["Readers Favourites", "New in 2026"]
 	);
 	assert!(home::layout(&doc, 0, Some(&[])).components.is_empty());
+	let personal = Html::parse_with_url(
+		format!(
+			"<section aria-labelledby='taste-heading'><h2>Your taste</h2><ol>{c}</ol></section>"
+		),
+		BASE_URL,
+	)
+	.unwrap();
+	assert_eq!(
+		home::layout(&personal, 0, None).components[0]
+			.title
+			.as_deref(),
+		Some("Your Taste")
+	);
 }
 
 #[aidoku_test]
