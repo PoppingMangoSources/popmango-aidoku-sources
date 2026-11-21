@@ -598,10 +598,27 @@ fn live_search_pages_and_series_updates() {
 #[aidoku_test]
 fn live_discover_and_chapter_link() {
 	let rows = Webnex.get_home().unwrap().components;
-	assert!(
-		rows.iter()
-			.any(|c| matches!(c.value, HomeComponentValue::BigScroller { .. }))
-	);
+	let HomeComponentValue::BigScroller { entries, .. } = &rows[0].value else {
+		panic!("Discover should open with the popular hero");
+	};
+	let doc = helpers::get_html(BASE_URL, None).unwrap();
+	let shelf = home::layout(&doc, 0, Some(&["popular".into()])).components;
+	let HomeComponentValue::BigScroller { entries: shelf, .. } = &shelf[0].value else {
+		panic!("the home page should have its popular shelf");
+	};
+	let keys = |list: &[Manga]| {
+		list.iter()
+			.take(3)
+			.map(|m| m.key.clone())
+			.collect::<Vec<_>>()
+	};
+	assert_eq!(keys(entries), keys(shelf));
+	assert_eq!(entries.len(), shelf.len());
+	assert!(entries.iter().all(|m| {
+		m.tags
+			.as_ref()
+			.is_some_and(|tags| tags.len() > 1 && tags.windows(2).all(|pair| pair[0] < pair[1]))
+	}));
 	let titles: Vec<_> = rows.iter().filter_map(|c| c.title.as_deref()).collect();
 	let position = |title| titles.iter().position(|t| *t == title).unwrap();
 	assert!(

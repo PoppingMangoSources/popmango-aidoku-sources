@@ -345,7 +345,7 @@ pub fn browse(
 	filters: Vec<FilterValue>,
 	prefs: Catalogue,
 ) -> Result<MangaPageResult> {
-	match browse_request(query, page, filters, prefs)? {
+	match browse_request(query, page, filters, prefs, None)? {
 		Some(request) => browse_page(&request.send()?),
 		None => Ok(Default::default()),
 	}
@@ -356,11 +356,15 @@ pub fn browse_request(
 	page: i32,
 	filters: Vec<FilterValue>,
 	mut prefs: Catalogue,
+	view: Option<&str>,
 ) -> Result<Option<Request>> {
-	let params = search_params(query, page, filters, &mut prefs)?;
+	let mut params = search_params(query, page, filters, &mut prefs)?;
 	let Some(rating) = prefs.ceiling().filter(|_| !prefs.types.is_empty()) else {
 		return Ok(None);
 	};
+	if view.is_some() {
+		params.push_encoded("view", view);
+	}
 	Ok(Some(
 		Request::get(format!("{BASE_URL}/browse?{params}"))?
 			.header("Cookie", &prefs.cookie(rating)),
@@ -368,16 +372,7 @@ pub fn browse_request(
 }
 
 pub fn browse_page(response: &Response) -> Result<MangaPageResult> {
-	let doc = parse_response(response)?;
-	if let Some(error) = doc.select_first(".notice-error").and_then(|e| e.text()) {
-		bail!("{error}");
-	}
-	let section = doc
-		.select_first("section.browse")
-		.ok_or_else(|| error!("Webnex did not return the catalogue"))?;
-	let html = expand(&section, &mut chunks(&doc))
-		.ok_or_else(|| error!("Webnex returned an unreadable catalogue"))?;
-	let doc = Html::parse_with_url(html, BASE_URL)?;
+	let doc = browse_doc(response)?;
 	Ok(MangaPageResult {
 		entries: doc
 			.select("li.card-item")
@@ -387,4 +382,44 @@ pub fn browse_page(response: &Response) -> Result<MangaPageResult> {
 			.collect(),
 		has_next_page: doc.select_first("a[aria-label='Next page']").is_some(),
 	})
+}
+
+// The table view names each series' type and first genres, which the cards leave out.
+pub fn browse_table(response: &Response) -> Result<Vec<Manga>> {
+	Ok(browse_doc(response)?
+		.select("table.series-table tbody tr")
+		.into_iter()
+		.flatten()
+		.filter_map(|row| {
+			let link = row.select_first("a.table-series")?;
+			let mut tags: Vec<String> = text(&row, "td.col-type").into_iter().collect();
+			if let Some(genres) = text(&link, ".table-genres") {
+				tags.extend(genres.split(", ").map(Into::into));
+			}
+			tags.sort_unstable();
+			tags.dedup();
+			Some(Manga {
+				key: parse_key(&link.attr("href")?, "/manga/")?.into(),
+				title: text(&link, ".table-title")?,
+				cover: link
+					.select_first("img.cover-img")
+					.and_then(|img| img.attr("abs:src")),
+				tags: Some(tags).filter(|tags| !tags.is_empty()),
+				..Default::default()
+			})
+		})
+		.collect())
+}
+
+fn browse_doc(response: &Response) -> Result<Document> {
+	let doc = parse_response(response)?;
+	if let Some(error) = doc.select_first(".notice-error").and_then(|e| e.text()) {
+		bail!("{error}");
+	}
+	let section = doc
+		.select_first("section.browse")
+		.ok_or_else(|| error!("Webnex did not return the catalogue"))?;
+	let html = expand(&section, &mut chunks(&doc))
+		.ok_or_else(|| error!("Webnex returned an unreadable catalogue"))?;
+	Ok(Html::parse_with_url(html, BASE_URL)?)
 }

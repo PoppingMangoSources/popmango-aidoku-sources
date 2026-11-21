@@ -1,8 +1,8 @@
 use crate::{
 	BASE_URL, Webnex,
 	helpers::{
-		browse_page, browse_request, card, current_year, get_html, link_filters, parse_key,
-		parse_relative_date, text,
+		browse_page, browse_request, browse_table, card, current_year, link_filters, parse_key,
+		parse_relative_date, parse_response, text,
 	},
 	rsc::{chunks, expand},
 	settings::{self, CONTENT_RATINGS, CONTENT_TYPES, Catalogue},
@@ -200,7 +200,9 @@ fn browse_rows(shown: Option<&[String]>, prefs: &Catalogue) -> Result<HomeLayout
 	.collect();
 	let mut pending = Vec::new();
 	for row in rows {
-		if let Some(request) = browse_request(None, 1, link_filters(&row.2)?, prefs.clone())? {
+		let view = (row.0 == "popular").then_some("list");
+		if let Some(request) = browse_request(None, 1, link_filters(&row.2)?, prefs.clone(), view)?
+		{
 			pending.push((row, request));
 		}
 	}
@@ -208,11 +210,14 @@ fn browse_rows(shown: Option<&[String]>, prefs: &Catalogue) -> Result<HomeLayout
 	let mut components = Vec::new();
 	let mut failure = None;
 	for ((id, title, link), response) in rows.into_iter().zip(Request::send_all(requests)) {
-		let entries = match response
-			.map_err(Into::into)
-			.and_then(|response| browse_page(&response))
-		{
-			Ok(page) if !page.entries.is_empty() => page.entries,
+		let entries = match response.map_err(Into::into).and_then(|response| {
+			if id == "popular" {
+				browse_table(&response)
+			} else {
+				browse_page(&response).map(|page| page.entries)
+			}
+		}) {
+			Ok(entries) if !entries.is_empty() => entries,
 			Ok(_) => continue,
 			Err(error) => {
 				failure = Some(error);
@@ -264,10 +269,39 @@ impl Home for Webnex {
 		{
 			return browse_rows(shown.as_deref(), &prefs);
 		}
-		let doc = get_html(BASE_URL, Some(&prefs.cookie(max)))?;
-		let home = layout(&doc, current_date(), shown.as_deref());
+		let mut requests = vec![Request::get(BASE_URL)?.header("Cookie", &prefs.cookie(max))];
+		if shown
+			.as_ref()
+			.is_none_or(|shown| shown.iter().any(|id| id == "popular"))
+		{
+			requests.extend(browse_request(
+				None,
+				1,
+				link_filters("/browse?sort=popular")?,
+				prefs,
+				Some("list"),
+			)?);
+		}
+		let mut responses = Request::send_all(requests).into_iter();
+		let doc = parse_response(
+			&responses
+				.next()
+				.ok_or_else(|| error!("Webnex did not answer"))??,
+		)?;
+		let mut home = layout(&doc, current_date(), shown.as_deref());
 		if home.components.is_empty() && doc.select_first(".home-section").is_none() {
 			bail!("Webnex did not return the home page");
+		}
+		// The shelf and browse's popular table are the same weekly chart; only the table has genres.
+		if let Some(Ok(table)) = responses
+			.next()
+			.map(|response| response.map_err(Into::into).and_then(|r| browse_table(&r)))
+			&& !table.is_empty()
+			&& let Some(HomeComponentValue::BigScroller { entries, .. }) =
+				home.components.first_mut().map(|c| &mut c.value)
+		{
+			let count = entries.len();
+			*entries = table.into_iter().take(count).collect();
 		}
 		Ok(home)
 	}

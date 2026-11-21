@@ -59,8 +59,12 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 
 > ⚠️ Readers Favourites and Finished are ranked lists of three per page (owner's choice, v16).
 > The home page carries no description or genres for the Popular cards (cover, title and type
-> only, checked in its HTML and flight data on 2026-11-21); either needs each series page, one
-> request per card (16 on the week's shelf), so the hero shows neither.
+> only, checked in its HTML and flight data on 2026-11-21). Browse's table view
+> (`/browse?view=list&sort=popular`) is the same weekly chart and names each row's type and
+> first three genres, so the hero comes from it, one parallel request beside the home page,
+> cut to the shelf's length; if it fails the shelf's own cards stay
+> (`sources/en.webnex/src/home.rs:272`). Descriptions exist only on series pages, one request
+> per card, so the hero has none.
 
 > ⚠️ Browse's Popular sort is the same weekly chart as home's Popular shelf; the shelf's
 > Today and This month tabs are `/?popular=day` and `/?popular=month`, and `/browse` ignores
