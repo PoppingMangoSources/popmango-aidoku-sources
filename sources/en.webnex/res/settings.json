@@ -159,7 +159,7 @@
 	{
 		"type": "group",
 		"title": "Chapters",
-		"footer": "One per Chapter keeps one upload of each chapter, taken from your Preferred Groups in list order, otherwise the most liked. Group names aren't case sensitive.",
+		"footer": "One per Chapter keeps one upload of each chapter, taken from your Preferred Groups in list order, otherwise the most liked one without a warning. Group names aren't case sensitive.",
 		"items": [
 			{
 				"type": "select",

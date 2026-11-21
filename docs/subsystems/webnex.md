@@ -73,7 +73,9 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > MangaDex sends its ratings with every row's request: Popular This Week, New in the
 > current year, Latest Updates, Manhwa, Manga and Manhua
 > (`sources/en.webnex/src/home.rs:161`). Browse cards name no chapter to open, so Latest
-> Updates is a plain row there. Readers Favourites, Your Taste, Recently Popular, Finished
+> Updates is a plain row there. A row's `kind` filter replaces the Types setting for that
+> request, so the Manhwa, Manga and Manhua rows are dropped for hidden types first, as the
+> site's hide-types cookie drops them from the home page (v27). Readers Favourites, Your Taste, Recently Popular, Finished
 > and Just Added have no Browse version and are left out (owner's choice, v23, replacing a
 > single Filtered Catalogue row).
 

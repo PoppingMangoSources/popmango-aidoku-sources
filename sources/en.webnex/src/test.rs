@@ -822,7 +822,7 @@ fn review_unknown_listing_links_fail_instead_of_widening() {
 }
 
 #[aidoku_test]
-fn live_view_all_lists_continue_their_discover_rows() {
+fn live_view_all_lists_match_the_sites_view_all_pages() {
 	let mut checked = 0;
 	for row in Webnex.get_home().unwrap().components {
 		let (keys, listing): (Vec<_>, _) = match row.value {
@@ -906,7 +906,11 @@ fn live_skipped_ratings_keep_the_rows_browse_can_match() {
 		HomeComponentValue::Scroller { entries, listing: Some(l) } if !entries.is_empty() && l.id.starts_with("/browse?"))));
 	defaults_set(
 		"homeSections",
-		DefaultValue::StringArray(vec!["taste".into(), "manga".into()]),
+		DefaultValue::StringArray(vec!["taste".into(), "manga".into(), "manhwa".into()]),
+	);
+	defaults_set(
+		"contentTypes",
+		DefaultValue::StringArray(vec!["manga".into(), "manhua".into()]),
 	);
 	assert_eq!(
 		Webnex

@@ -5,7 +5,7 @@ use crate::{
 		parse_relative_date, text,
 	},
 	rsc::{chunks, expand},
-	settings::{self, CONTENT_RATINGS, Catalogue},
+	settings::{self, CONTENT_RATINGS, CONTENT_TYPES, Catalogue},
 };
 use aidoku::{
 	Chapter, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing, MangaWithChapter,
@@ -193,15 +193,18 @@ fn browse_rows(shown: Option<&[String]>, prefs: &Catalogue) -> Result<HomeLayout
 		),
 	]
 	.into_iter()
-	.filter(|(id, ..)| shown.is_none_or(|shown| shown.iter().any(|value| value == id)))
+	.filter(|(id, ..)| {
+		shown.is_none_or(|shown| shown.iter().any(|value| value == id))
+			&& (!CONTENT_TYPES.contains(id) || prefs.types.iter().any(|kind| kind == id))
+	})
 	.collect();
-	let requests = rows
-		.iter()
-		.map(|(.., link)| {
-			browse_request(None, 1, link_filters(link)?, prefs.clone())?
-				.ok_or_else(|| error!("Choose a content rating and a type"))
-		})
-		.collect::<Result<Vec<_>>>()?;
+	let mut pending = Vec::new();
+	for row in rows {
+		if let Some(request) = browse_request(None, 1, link_filters(&row.2)?, prefs.clone())? {
+			pending.push((row, request));
+		}
+	}
+	let (rows, requests): (Vec<_>, Vec<_>) = pending.into_iter().unzip();
 	let mut components = Vec::new();
 	let mut failure = None;
 	for ((id, title, link), response) in rows.into_iter().zip(Request::send_all(requests)) {
