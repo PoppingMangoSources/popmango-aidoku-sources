@@ -88,7 +88,10 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > 800 wide and 3,000 to 4,000 tall (2026-11-21), Korean ones and Japanese ones alike. Each of
 > those carries a "Long Strip"/"Longstrip" (or "Webtoon") tag, and the paged one carried none,
 > so `details` opens a title as a webtoon when its tags say so or its original language is
-> Korean or Chinese, and otherwise keeps the type's viewer (v17).
+> Korean or Chinese, and otherwise keeps the type's viewer (v17). Merged MKissa uses the same
+> tags but its country only when a title has no type; here the origin overrides "Manga",
+> because an untagged Korean "Manga" title measured 800 by 14,941. An untagged Japanese strip
+> (800 by 5,000) still opens right to left: nothing on its page tells it from the paged ones.
 
 > ⚠️ Without the web view, the newest imports are `child_nodes`, `kind` and `get_url`, so
 > `minAppVersion` is 0.8.3 (v17); it was 0.8.4 only for the old reader's `add_user_script`.

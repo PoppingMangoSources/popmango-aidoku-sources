@@ -11,7 +11,7 @@ use aidoku::{
 		collections::{BTreeMap, BTreeSet},
 		vec,
 	},
-	imports::html::{Document, Element},
+	imports::html::Document,
 	prelude::*,
 };
 use core::cmp::{Ordering, Reverse};
@@ -114,10 +114,9 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 	let mut viewer = Viewer::Unknown;
 	// The site labels many long strips "Manga"; their tags or original language give them away.
 	let mut strip = tags.iter().any(|tag| {
-		matches!(
-			tag.to_ascii_lowercase().as_str(),
-			"long strip" | "longstrip" | "webtoon" | "webtoons"
-		)
+		["Long Strip", "Longstrip", "Webtoon", "Webtoons"]
+			.iter()
+			.any(|name| tag.eq_ignore_ascii_case(name))
 	});
 	let mut status = MangaStatus::Unknown;
 	for fact in facts {
@@ -166,16 +165,6 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 	})
 }
 
-// A chapter link with its group, date, official mark, warning dot and likes.
-type Candidate = (
-	Element,
-	Option<String>,
-	Option<i64>,
-	bool,
-	bool,
-	Option<String>,
-);
-
 pub struct Upload {
 	chapter: Chapter,
 	// Lowercased, to match the group settings.
@@ -221,33 +210,29 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 		let title = text(&row, ".ch-title");
 		let verified = ".ch-source .verified-mark, .ch-source-trigger .verified-mark, \
 			.ch-sources-item.is-current .verified-mark";
-		let mut candidates: Vec<Candidate> = row
-			.select_first("a.ch-link")
+		let picked = row.select_first("a.ch-link").map(|link| {
+			let group = text(&row, ".ch-source-name, .ch-credit-group")
+				.or_else(|| text(&row, ".ch-source"));
+			let when = row.select_first("time.ch-time").and_then(|e| date(&e));
+			let official = row.select_first(verified).is_some();
+			(link, group, when, official, false, text(&row, ".ch-likes"))
+		});
+		let others = row
+			.select("a.ch-sources-item")
+			.into_iter()
+			.flatten()
 			.map(|link| {
-				let group = text(&row, ".ch-source-name, .ch-credit-group")
-					.or_else(|| text(&row, ".ch-source"));
-				let when = row.select_first("time.ch-time").and_then(|e| date(&e));
-				let official = row.select_first(verified).is_some();
-				(link, group, when, official, false, text(&row, ".ch-likes"))
-			})
+				let group = text(&link, ".ch-sources-name");
+				let when =
+					text(&link, ".ch-sources-time").and_then(|v| parse_relative_date(&v, now));
+				let official = link.select_first(".verified-mark").is_some();
+				let warning = link.select_first(".dot-warn").is_some();
+				let likes = text(&link, ".ch-sources-likes");
+				(link, group, when, official, warning, likes)
+			});
+		let mut uploads = picked
 			.into_iter()
-			.collect();
-		candidates.extend(
-			row.select("a.ch-sources-item")
-				.into_iter()
-				.flatten()
-				.map(|link| {
-					let group = text(&link, ".ch-sources-name");
-					let when =
-						text(&link, ".ch-sources-time").and_then(|v| parse_relative_date(&v, now));
-					let official = link.select_first(".verified-mark").is_some();
-					let warning = link.select_first(".dot-warn").is_some();
-					let likes = text(&link, ".ch-sources-likes");
-					(link, group, when, official, warning, likes)
-				}),
-		);
-		let mut uploads = candidates
-			.into_iter()
+			.chain(others)
 			.filter_map(|(link, group, when, official, warning, likes)| {
 				let href = link.attr("href")?;
 				let Some(key) = parse_key(&href, "/read/") else {
