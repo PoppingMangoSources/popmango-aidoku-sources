@@ -151,6 +151,8 @@ def check_filters_json(path: Path, rating: object = None) -> None:
         note(path, "the sort filter is not first; reviewers ask for it first")
     if path.parent.parent.name == "en.webnex":
         controls = {item.get("id"): item for item in filters if isinstance(item, dict)}
+        if controls.get("tags", {}).get("type") == "text":
+            fail(path, "WebNex's typed Tags search was removed by the owner; retain selectable genres, formats and themes")
         ids = [item.get("id") for item in filters if isinstance(item, dict)]
         presets = [controls.get(key, {}) for key in ("chapters", "released")]
         if ("minChapters" not in ids or "chapters" not in ids

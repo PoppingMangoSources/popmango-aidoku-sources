@@ -74,6 +74,7 @@ fn review_preset_controls_and_section_defaults() {
 	let filters: serde_json::Value =
 		serde_json::from_str(include_str!("../res/filters.json")).unwrap();
 	let filters = filters.as_array().unwrap();
+	assert!(!filters.iter().any(|f| f["id"] == "tags"));
 	let position = |id| filters.iter().position(|f| f["id"] == id).unwrap();
 	assert_eq!(position("chapters"), position("minChapters") + 1);
 	for (id, first) in [("chapters", "1"), ("released", "this-year")] {
@@ -259,7 +260,6 @@ fn review_filters_send_tags_typed_chapters_and_release_presets() {
 			},
 			select("genre", "Isekai"),
 			select("chapters", "50"),
-			text("tags", " Betrayal, -Conspiracy, , - "),
 			text("minChapters", " 37 "),
 			select("released", "2010s"),
 			FilterValue::Range {
@@ -274,8 +274,6 @@ fn review_filters_send_tags_typed_chapters_and_release_presets() {
 		"tag=Magic",
 		"xtag=Zombies",
 		"tag=Isekai",
-		"tag=Betrayal",
-		"xtag=Conspiracy",
 		"chapters=37",
 		"from=2012",
 		"to=2019",

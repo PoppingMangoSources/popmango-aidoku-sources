@@ -12,7 +12,7 @@ sources:
   - code: sources/en.webnex/res/filters.json
   - ext: https://webnex.cc/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/webnex
-verified_at: 771560f6
+verified_at: 88ccce31
 ---
 
 WebNex (`webnex.cc`) is a Next.js app without a general catalogue JSON API: every page is server-rendered HTML
@@ -88,8 +88,8 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 Browser inspection confirmed 16 cards per main shelf, 15 Latest Updates cards and eight
 entries in each side tab. The combined `/browse?from=2010&to=2019&chapters=50` request
 showed 3,746 matches; clearing returned to `/browse`. Firecrawl independently read the
-browse control labels. Genres, Formats, Themes and arbitrary Tags support inclusion
-and exclusion; the Tags text filter accepts comma-separated names and `-name` exclusions.
+browse control labels. Genres, Formats and Themes support inclusion and exclusion. The owner removed the
+typed Tags advanced-search control; arbitrary tags remain tappable on series details.
 Reader shelves, groups, comments and grid/table presentation have no corresponding
 series-reading control to port. Popular also offers Today and This Month on the site;
 the source deliberately retains the owner's Popular This Week selection.
@@ -118,3 +118,6 @@ clearing/overrides, tags/exclusions, official credits, complete page lists, pros
 and reversed-input deduplication ties. Live tests also exercise every sort and enabled
 genre/format/theme exclusion through the source decoder. App filter layout and image
 rendering still require device verification.
+
+
+The complete attachment/source coverage recheck is recorded in [[webnex-audit]].

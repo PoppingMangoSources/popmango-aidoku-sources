@@ -285,25 +285,6 @@ pub fn search_params(
 				}
 			}
 			FilterValue::Select { id, value } if id == "match" => p.push(&id, Some(&value)),
-			FilterValue::Text { id, value } if id == "tags" => {
-				for tag in value
-					.split(',')
-					.map(str::trim)
-					.filter(|tag| !tag.is_empty())
-				{
-					let (name, tag) = tag
-						.strip_prefix('-')
-						.map_or(("tag", tag), |tag| ("xtag", tag.trim()));
-					if !tag.is_empty() {
-						if name == "tag" {
-							prefs
-								.hidden_genres
-								.retain(|genre| !genre.eq_ignore_ascii_case(tag));
-						}
-						p.push(name, Some(tag));
-					}
-				}
-			}
 			FilterValue::Select { id, value } if id == "chapters" => chapters = Some(value),
 			FilterValue::Text { id, value } if id == "minChapters" => {
 				let n = value

@@ -214,13 +214,6 @@
 		]
 	},
 	{
-		"type": "text",
-		"id": "tags",
-		"title": "Tags",
-		"placeholder": "Tag, -excluded tag",
-		"hideFromHeader": true
-	},
-	{
 		"type": "select",
 		"id": "match",
 		"title": "Match Genres and Tags",

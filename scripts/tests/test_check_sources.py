@@ -144,6 +144,11 @@ class CardRuleTests(unittest.TestCase):
             path.write_text(json.dumps(data, indent='\t') + '\n')
             checks.check_filters_json(path)
             self.assertEqual(any('WebNex presets' in failure for failure in checks.failures), fails)
+        for control, fails in [({"type": "text", "id": "tags"}, True), ({"type": "multi-select", "id": "theme", "canExclude": True}, False)]:
+            checks.failures.clear()
+            path.write_text(json.dumps(good + [control], indent='\t') + '\n')
+            checks.check_filters_json(path)
+            self.assertEqual(any('typed Tags search' in failure for failure in checks.failures), fails)
 
     def test_other_sources_can_keep_neutral_select_choices(self):
         path = self.source / 'res/filters.json'
