@@ -376,7 +376,7 @@ fn review_streamed_chapters_keep_links_pagination_and_official_credits() {
 		"<div hidden id='S:9'><ol class='pagination-pages'><li><a href='?page=3#chapters'>3</a></li></ol></div>",
 		"<div hidden id='S:a'></div>"
 	)).unwrap();
-	let doc = chapter_list(&doc).unwrap();
+	let doc = rsc::chapter_list(&doc).unwrap();
 	assert!(doc.select_first("a[href='?page=3#chapters']").is_some());
 	let mut groups = Groups {
 		hidden: vec![],
@@ -441,7 +441,7 @@ fn review_key_only_links_and_complete_page_lists() {
 		serde_json::to_string(props).unwrap()
 	))
 	.unwrap();
-	let decoded: ReaderProps = parse_flight_value(&doc, "{\"chapter\":").unwrap();
+	let decoded: ReaderProps = rsc::extract(&doc, &["chapter", "series", "pagesUrl"]).unwrap();
 	assert_eq!(decoded.series.href, "/manga/story");
 	assert_eq!(decoded.pages_url, "/read/canonical/pages");
 	for (script, cookie) in [

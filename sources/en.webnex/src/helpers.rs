@@ -1,10 +1,11 @@
 use crate::{
 	BASE_URL,
+	rsc::{chunks, expand},
 	settings::{CONTENT_TYPES, Catalogue},
 };
 use aidoku::{
 	FilterValue, Manga, MangaPageResult, Result,
-	alloc::{String, Vec, collections::BTreeMap, string::ToString, vec},
+	alloc::{String, Vec, string::ToString, vec},
 	helpers::{string::PlainText, uri::QueryParameters},
 	imports::{
 		html::{Document, Element, Html, Kind},
@@ -14,7 +15,6 @@ use aidoku::{
 	prelude::*,
 };
 use chrono::{DateTime, Datelike};
-use serde::de::DeserializeOwned;
 
 pub fn get_html(url: &str, cookie: Option<&str>) -> Result<Document> {
 	let mut request = Request::get(url)?;
@@ -24,10 +24,16 @@ pub fn get_html(url: &str, cookie: Option<&str>) -> Result<Document> {
 	parse_response(&request.send()?)
 }
 
-pub fn parse_response(response: &Response) -> Result<Document> {
-	if !(200..300).contains(&response.status_code()) {
-		bail!("WebNex returned HTTP {}", response.status_code());
+fn checked(response: &Response) -> Result<()> {
+	let status = response.status_code();
+	if !(200..300).contains(&status) {
+		bail!("WebNex returned HTTP {status}");
 	}
+	Ok(())
+}
+
+pub fn parse_response(response: &Response) -> Result<Document> {
+	checked(response)?;
 	let doc = response.get_html()?;
 	if doc
 		.select_first("title")
@@ -41,9 +47,7 @@ pub fn parse_response(response: &Response) -> Result<Document> {
 		let cookie =
 			script_cookie(&doc).ok_or_else(|| error!("WebNex did not open this series"))?;
 		let response = Request::get(url)?.header("Cookie", &cookie).send()?;
-		if !(200..300).contains(&response.status_code()) {
-			bail!("WebNex returned HTTP {}", response.status_code());
-		}
+		checked(&response)?;
 		return Ok(response.get_html()?);
 	}
 	Ok(doc)
@@ -128,35 +132,6 @@ pub fn markdown(element: &Element, output: &mut String) {
 	}
 }
 
-pub fn chunks(doc: &Document) -> BTreeMap<String, Element> {
-	doc.select("div[id^='S:']")
-		.into_iter()
-		.flatten()
-		.filter_map(|el| Some((el.attr("id")?.strip_prefix("S:")?.into(), el)))
-		.collect()
-}
-
-// React streams both whole entries and fragments inside an entry.
-pub fn expand(row: &Element, chunks: &mut BTreeMap<String, Element>) -> Option<String> {
-	let mut html = row.html().unwrap_or_default();
-	for slot in row.select("template[id^='P:']").into_iter().flatten() {
-		let id = slot.attr("id")?;
-		if let Some(chunk) = chunks.remove(id.strip_prefix("P:")?) {
-			html = html.replacen(&slot.outer_html()?, &expand(&chunk, chunks)?, 1);
-		}
-	}
-	Some(html)
-}
-
-pub fn chapter_list(doc: &Document) -> Result<Document> {
-	let section = doc
-		.select_first("section#chapters")
-		.ok_or_else(|| error!("WebNex did not return a chapter section"))?;
-	let html = expand(&section, &mut chunks(doc))
-		.ok_or_else(|| error!("WebNex did not return the chapter list"))?;
-	Ok(Html::parse_with_url(html, BASE_URL)?)
-}
-
 pub fn card(el: &Element) -> Option<Manga> {
 	let link = el.select_first("a.card-link, a.side-row")?;
 	Some(Manga {
@@ -166,28 +141,6 @@ pub fn card(el: &Element) -> Option<Manga> {
 			.select_first("img.cover-img")
 			.and_then(|img| img.attr("abs:src")),
 		..Default::default()
-	})
-}
-
-// Next.js can split a component's props across flight chunks.
-pub fn parse_flight_value<T: DeserializeOwned>(doc: &Document, marker: &str) -> Option<T> {
-	let mut flight = String::new();
-	for script in doc.select("script").into_iter().flatten() {
-		if let Some(data) = script.html()
-			&& let Some(json) = data.trim().strip_prefix("self.__next_f.push([1,")
-			&& let Some(chunk) = serde_json::Deserializer::from_str(json)
-				.into_iter::<String>()
-				.next()
-				.and_then(|v| v.ok())
-		{
-			flight.push_str(&chunk);
-		}
-	}
-	flight.match_indices(marker).find_map(|(i, _)| {
-		serde_json::Deserializer::from_str(&flight[i..])
-			.into_iter::<T>()
-			.next()?
-			.ok()
 	})
 }
 

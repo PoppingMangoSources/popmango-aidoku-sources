@@ -9,6 +9,7 @@ sources:
   - code: sources/en.webnex/src/models.rs
   - code: sources/en.webnex/src/home.rs
   - code: sources/en.webnex/src/reader.rs
+  - code: sources/en.webnex/src/rsc.rs
   - code: sources/en.webnex/src/settings.rs
   - code: sources/en.webnex/src/test.rs
 verified_at: 88ccce31
@@ -92,7 +93,7 @@ fork-only test module/file. No generated package is included.
 | Area | Functions / contract checked |
 |---|---|
 | lib.rs | new; get_search_manga_list; get_manga_update; get_page_list; handle_deep_link; get_image_request; trait registration/test-module isolation. Compact pasted results and fallback, partial details before extra pages, source-only keys, real URLs and Referer. |
-| helpers.rs | get_html; parse_response; script_cookie; parse_key; text; markdown; chunks; expand; chapter_list; card; parse_flight_value; date; parse_relative_date; search_params; browse. Checked all matches, guards, loops, errors, query values and parser branches. Typed Tags arm removed. |
+| helpers.rs | get_html; parse_response; script_cookie; parse_key; text; markdown; card; date; parse_relative_date; search_params; browse. Checked all matches, guards, loops, errors, query values and parser branches. Typed Tags arm removed. |
 | home.rs | layout and get_home. Requested order, page size 5, real chapter keys/dates, compact rows, one homepage request, empty selection before request, rating fallback and separate visibility control. |
 | models.rs | Taxonomy/ReaderProps/SeriesRef/ReaderPages; complete Page conversion; details; Upload::priority; uploads; select_chapters. Required titles/keys, plain-text vs Markdown boundaries, raw group names vs official display marker, exclusions before ranking, parts and stable tie-breaker. |
 | settings.rs | home_sections; Catalogue::load/ceiling/cookie; Groups::load. Unset vs cleared, same-axis overrides, Rust/JSON defaults, ordered preferences. |

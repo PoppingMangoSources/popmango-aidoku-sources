@@ -1,7 +1,8 @@
 use crate::{
 	BASE_URL,
-	helpers::{parse_flight_value, parse_response, script_cookie},
+	helpers::{parse_response, script_cookie},
 	models::{ReaderPages, ReaderProps},
+	rsc::extract,
 };
 use aidoku::{Page, Result, alloc::Vec, imports::net::Request, prelude::*};
 
@@ -13,7 +14,7 @@ pub fn pages(chapter_key: &str) -> Result<Vec<Page>> {
 			.header("Accept", "text/html,application/xhtml+xml")
 			.send()?,
 	)?;
-	let Some(reader) = parse_flight_value::<ReaderProps>(&doc, "{\"chapter\":") else {
+	let Some(reader) = extract::<ReaderProps>(&doc, &["chapter", "series", "pagesUrl"]) else {
 		bail!(
 			"{}",
 			doc.select_first("section.state .notice-error, body > pre")

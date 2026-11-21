@@ -8,6 +8,7 @@ sources:
   - code: sources/en.webnex/src/helpers.rs
   - code: sources/en.webnex/src/home.rs
   - code: sources/en.webnex/src/reader.rs
+  - code: sources/en.webnex/src/rsc.rs
   - code: sources/en.webnex/src/test.rs
   - code: sources/en.webnex/res/filters.json
   - ext: https://webnex.cc/browse
@@ -106,7 +107,7 @@ comparisons and the reason for retaining site-specific code:
 | `search_params`, `browse`, `card` | MangaBall, MangaK, EternalMangas: QueryParameters and compact cards. Current site controls win over Keiyoushi's older coverage sort and User Created tag. |
 | `layout` | MangaBall, Kagane, Atsumaru: real home chapters, compact links, five-row page size. No description/genre fan-out. |
 | `chunks`, `expand`, `chapter_list` | Paperback's streamed placeholders are HTML fragments. Reassemble them in place; a generic Next.js JSON extractor cannot replace these. |
-| `parse_flight_value` | VineTheme RSC, Flame Comics, SoraRaw: decode JSON push strings and deserialize typed props. WebNex needs neither Vine's text references nor build-ID requests. |
+| `rsc.rs` (`chunks`, `expand`, `chapter_list`, `extract`) | VineTheme is the closest merged build (Next.js App Router flight data) and keeps this parsing in its own `rsc.rs`; `extract` finds an object by its required keys, as Vine's `rsc::extract` does, rather than by key order. WebNex needs neither Vine's text references nor build-ID requests. |
 | `details`, `markdown` | Flame Comics' paired text-node/element traversal, FreeWebNovel: escape prose, retain bold/italic, breaks, links and paragraph boundaries; omit empty descriptions. |
 | `uploads`, `priority`, `select_chapters` | MangaBall/Atsumaru and the reference clients: remove hidden groups first, keep winning-group parts, deterministic key tie-breaker and official display marker without changing raw group matching. |
 | `date`, `parse_relative_date` | VineTheme, EternalMangas: UTC parsing through the host; site-specific compact suffixes include `mo`. Chrono only supplies the current year for presets. |

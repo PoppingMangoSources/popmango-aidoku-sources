@@ -1,6 +1,7 @@
 use crate::{
 	BASE_URL,
-	helpers::{date, markdown, parse_flight_value, parse_key, parse_relative_date, text},
+	helpers::{date, markdown, parse_key, parse_relative_date, text},
+	rsc::extract,
 	settings::Groups,
 };
 use aidoku::{
@@ -94,7 +95,7 @@ pub fn details(root: &Document, key: &str) -> Result<Manga> {
 		.filter(|s| !s.is_empty())
 		.ok_or_else(|| error!("WebNex returned no series title"))?;
 	let mut tags = texts(".series-badges a[href*=kind], .series-badges a[href*=demographic]");
-	if let Some(taxonomy) = parse_flight_value::<Taxonomy>(root, "{\"genres\":[") {
+	if let Some(taxonomy) = extract::<Taxonomy>(root, &["genres", "tags"]) {
 		tags.extend(taxonomy.genres);
 		tags.extend(taxonomy.tags);
 	} else {

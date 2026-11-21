@@ -1,6 +1,7 @@
 use crate::{
 	BASE_URL, WebNex,
-	helpers::{browse, card, chunks, expand, get_html, parse_key, parse_relative_date, text},
+	helpers::{browse, card, get_html, parse_key, parse_relative_date, text},
+	rsc::{chunks, expand},
 	settings::{self, CONTENT_RATINGS, Catalogue},
 };
 use aidoku::{

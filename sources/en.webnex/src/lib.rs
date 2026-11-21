@@ -14,10 +14,12 @@ mod helpers;
 mod home;
 mod models;
 mod reader;
+mod rsc;
 mod settings;
 
-use helpers::{browse, chapter_list, get_html, parse_flight_value, parse_key, parse_response};
+use helpers::{browse, get_html, parse_key, parse_response};
 use models::ReaderProps;
+use rsc::{chapter_list, extract};
 use settings::{Catalogue, Groups};
 
 const BASE_URL: &str = "https://webnex.cc";
@@ -142,9 +144,9 @@ impl DeepLinkHandler for WebNex {
 		let Some(key) = parse_key(path, "/read/") else {
 			return Ok(None);
 		};
-		let reader = parse_flight_value::<ReaderProps>(
+		let reader = extract::<ReaderProps>(
 			&get_html(&format!("{BASE_URL}/read/{key}"), None)?,
-			"{\"chapter\":",
+			&["chapter", "series", "pagesUrl"],
 		)
 		.ok_or_else(|| error!("WebNex did not identify the chapter's series"))?;
 		Ok(
