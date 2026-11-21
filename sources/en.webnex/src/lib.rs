@@ -38,12 +38,9 @@ impl Source for Webnex {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		// A link that fails to resolve is searched as text.
-		if let Some(url) = query.as_deref().filter(|url| {
-			url.strip_prefix(BASE_URL)
-				.is_some_and(|path| path.starts_with('/'))
-		}) && let Ok(Some(
-			DeepLinkResult::Manga { key } | DeepLinkResult::Chapter { manga_key: key, .. },
-		)) = self.handle_deep_link(url.into())
+		if let Some(key) = query
+			.as_deref()
+			.and_then(|url| parse_key(url.strip_prefix(BASE_URL)?, "/manga/"))
 			&& let Ok(Manga {
 				key,
 				title,
@@ -51,7 +48,7 @@ impl Source for Webnex {
 				content_rating,
 				status,
 				..
-			}) = get_html(&manga_url(&key), None).and_then(|doc| models::details(&doc, &key))
+			}) = get_html(&manga_url(key), None).and_then(|doc| models::details(&doc, key))
 		{
 			return Ok(MangaPageResult {
 				entries: vec![Manga {
@@ -105,8 +102,10 @@ impl Source for Webnex {
 			let groups = Groups::load();
 			let now = current_date();
 			let mut uploads = models::uploads(&doc, &groups, now)?;
-			for start in (2..=last).step_by(4) {
-				let reqs = (start..=last.min(start + 3))
+			let pages: Vec<_> = (2..=last).collect();
+			for batch in pages.chunks(4) {
+				let reqs = batch
+					.iter()
 					// The series url has no query of its own.
 					.map(|page| Request::get(format!("{url}?page={page}")))
 					.collect::<core::result::Result<Vec<_>, _>>()?;
@@ -130,11 +129,7 @@ impl Source for Webnex {
 
 impl DeepLinkHandler for Webnex {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		// The app only passes this source's own links, so any host is fine here.
-		let Some(path) = url
-			.split_once("://")
-			.and_then(|(_, rest)| rest.find('/').map(|slash| &rest[slash..]))
-		else {
+		let Some(path) = url.strip_prefix(BASE_URL) else {
 			return Ok(None);
 		};
 		if let Some(key) = parse_key(path, "/manga/") {

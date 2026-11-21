@@ -1,6 +1,6 @@
 use crate::{
 	BASE_URL,
-	helpers::{chapter_url, date, manga_url, markdown, parse_key, parse_relative_date, text},
+	helpers::{chapter_url, manga_url, markdown, parse_key, parse_relative_date, text},
 	rsc::extract,
 	settings::Groups,
 };
@@ -11,7 +11,7 @@ use aidoku::{
 		collections::{BTreeMap, BTreeSet},
 		vec,
 	},
-	imports::html::Document,
+	imports::{html::Document, std::parse_date_with_options},
 	prelude::*,
 };
 use core::cmp::{Ordering, Reverse};
@@ -213,7 +213,17 @@ pub fn uploads(doc: &Document, groups: &Groups, now: i64) -> Result<Vec<Upload>>
 		let picked = row.select_first("a.ch-link").map(|link| {
 			let group = text(&row, ".ch-source-name, .ch-credit-group")
 				.or_else(|| text(&row, ".ch-source"));
-			let when = row.select_first("time.ch-time").and_then(|e| date(&e));
+			let when = row
+				.select_first("time.ch-time")
+				.and_then(|e| e.attr("datetime"))
+				.and_then(|date| {
+					parse_date_with_options(
+						date,
+						"yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+						"en_US_POSIX",
+						"UTC",
+					)
+				});
 			let official = row.select_first(verified).is_some();
 			(link, group, when, official, false, text(&row, ".ch-likes"))
 		});

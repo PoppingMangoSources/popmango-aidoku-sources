@@ -10,7 +10,7 @@ use aidoku::{
 	imports::{
 		html::{Document, Element, Html, Kind},
 		net::{Request, Response},
-		std::{current_date, parse_date_with_options},
+		std::current_date,
 	},
 	prelude::*,
 };
@@ -150,12 +150,6 @@ pub fn card(el: &Element) -> Option<Manga> {
 			.and_then(|img| img.attr("abs:src")),
 		..Default::default()
 	})
-}
-
-pub fn date(el: &Element) -> Option<i64> {
-	let raw = el.attr("datetime")?;
-	let utc = raw.strip_suffix('Z')?.split('.').next()?.replace('T', " ");
-	parse_date_with_options(utc, "yyyy-MM-dd HH:mm:ss", "en_US_POSIX", "UTC")
 }
 
 pub fn parse_relative_date(label: &str, now: i64) -> Option<i64> {

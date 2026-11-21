@@ -300,8 +300,10 @@ impl Home for Webnex {
 			&& let Some(HomeComponentValue::BigScroller { entries, .. }) =
 				home.components.first_mut().map(|c| &mut c.value)
 		{
-			let count = entries.len();
-			*entries = table.into_iter().take(count).collect();
+			let slots = doc
+				.select("section[aria-labelledby=popular-heading] template[id^='P:']")
+				.map_or(0, Iterator::count);
+			*entries = table.into_iter().take(slots.max(entries.len())).collect();
 		}
 		Ok(home)
 	}

@@ -62,7 +62,8 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > only, checked in its HTML and flight data on 2026-11-21). Browse's table view
 > (`/browse?view=list&sort=popular`) is the same weekly chart and names each row's type and
 > first three genres, so the hero comes from it, one parallel request beside the home page,
-> cut to the shelf's length; if it fails the shelf's own cards stay
+> cut to the shelf's slot count (16) rather than its parsed cards, since the shelf sometimes
+> streams short; if it fails the shelf's own cards stay
 > (`sources/en.webnex/src/home.rs:272`). Descriptions exist only on series pages, one request
 > per card, so the hero has none.
 
@@ -134,10 +135,12 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 
 ## Chapters
 
-> ⚠️ Chapter `datetime` attributes are UTC (`2026-09-19T23:40:35.000Z`). `helpers::date`
-> reshapes them to `yyyy-MM-dd HH:mm:ss`, which the test runner can parse, and passes "UTC"
-> to `parse_date_with_options`; plain `parse_date` read them in the reader's zone before v9
-> (`sources/en.webnex/src/helpers.rs:155`).
+> ⚠️ Chapter `datetime` attributes are UTC (`2026-09-19T23:40:35.000Z`), parsed with
+> `parse_date_with_options(date, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "en_US_POSIX", "UTC")` as
+> kkantan asked on #916 and merged `ja.rawdevart` and `ja.soraraw` do. The test runner drops
+> quoted literals and returns `None` for that format, so chapter dates are checked in the app,
+> not asserted (v29; the earlier reshaped form existed only for the runner)
+> (`sources/en.webnex/src/models.rs:220`).
 
 ## Reader
 
