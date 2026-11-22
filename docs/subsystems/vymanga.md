@@ -4,14 +4,14 @@ type: subsystem
 created: 2026-11-17
 updated: 2026-11-20
 sources:
-  - code: sources/en.vymanga/src/lib.rs
-  - code: sources/en.vymanga/src/helpers.rs
-  - code: sources/en.vymanga/src/home.rs
-  - code: sources/en.vymanga/src/settings.rs
-  - code: sources/en.vymanga/src/test.rs
-  - code: sources/en.vymanga/res/filters.json
-  - code: sources/en.vymanga/res/settings.json
-  - code: sources/en.vymanga/res/source.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/src/settings.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/res/settings.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/en.vymanga/res/source.json
   - ext: https://mangavyvy.com/search
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/vyvymanga
 verified_at: afbc5da

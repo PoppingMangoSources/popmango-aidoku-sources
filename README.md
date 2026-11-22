@@ -73,11 +73,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 </tr>
 <tr>
 <td align="center" width="50%"><img src="sources/en.toonz/res/icon.png" width="64"/><br/><b>Toonz</b><br/><sub><a href="https://toonz.to">toonz.to</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonz-v4.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonz-v4.aix">.aix (v4)</a></sub></td>
-<td align="center" width="50%"><img src="media/sources/vymanga.png" width="64"/><br/><b>VyManga</b><br/><sub><a href="https://mangavyvy.com">mangavyvy.com</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v16.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.vymanga-v16.aix">.aix (v16)</a></sub></td>
-</tr>
-<tr>
 <td align="center" width="50%"><img src="sources/en.webnex/res/icon.png" width="64"/><br/><b>Webnex</b><br/><sub><a href="https://webnex.cc">webnex.cc</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v30.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v30.aix">.aix (v30)</a></sub></td>
-<td align="center" width="50%"><img src="media/sources/yaoime.png" width="64"/><br/><b>yaoi.me</b><br/><sub><a href="https://yaoi.me">yaoi.me</a></sub><br/><img src="media/heat-2.svg" alt="18+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v12.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.yaoime-v12.aix">.aix (v12)</a></sub></td>
 </tr>
 </table>
 

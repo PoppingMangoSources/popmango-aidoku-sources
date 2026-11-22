@@ -4,17 +4,17 @@ type: subsystem
 created: 2026-11-17
 updated: 2026-11-20
 sources:
-  - code: sources/multi.yaoime/src/lib.rs
-  - code: sources/multi.yaoime/src/browse.rs
-  - code: sources/multi.yaoime/src/helpers.rs
-  - code: sources/multi.yaoime/src/home.rs
-  - code: sources/multi.yaoime/src/models.rs
-  - code: sources/multi.yaoime/src/cipher.rs
-  - code: sources/multi.yaoime/src/settings.rs
-  - code: sources/multi.yaoime/src/filters.rs
-  - code: sources/multi.yaoime/src/tags.rs
-  - code: sources/multi.yaoime/res/filters.json
-  - code: sources/multi.yaoime/res/settings.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/browse.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/cipher.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/settings.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/filters.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/src/tags.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/046a7f2a6f93f99ba3566a09a42b1ec28dd57487/sources/multi.yaoime/res/settings.json
   - ext: https://yaoi.me/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/yaoime
 verified_at: afbc5da
