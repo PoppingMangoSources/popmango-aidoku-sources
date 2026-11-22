@@ -126,7 +126,7 @@ pub trait Impl {
 			manga.chapters = Some(
 				chapter_items(params, &page)?
 					.into_iter()
-					.map(|chapter| chapter.into_chapter(params, &manga.key))
+					.filter_map(|chapter| chapter.into_chapter(params, &manga.key))
 					.collect(),
 			);
 		}
@@ -152,24 +152,19 @@ pub trait Impl {
 					.ok_or_else(|| error!("Chapter not found"))?
 			}
 		};
-		if images.is_empty()
-			|| images
-				.iter()
-				.any(|image| image.filename.trim().trim_start_matches('/').is_empty())
-		{
-			bail!("This chapter has missing pages");
-		}
-		Ok(images
+		images
 			.into_iter()
-			.map(|image| Page {
-				content: PageContent::url(format!(
-					"{}/uploads/{}",
-					params.base_url,
-					image.filename.trim().trim_start_matches('/')
-				)),
-				..Default::default()
+			.map(|image| {
+				let filename = image.filename.trim().trim_start_matches('/');
+				if filename.trim().is_empty() {
+					bail!("This chapter has missing pages");
+				}
+				Ok(Page {
+					content: PageContent::url(format!("{}/uploads/{filename}", params.base_url)),
+					..Default::default()
+				})
 			})
-			.collect())
+			.collect()
 	}
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {

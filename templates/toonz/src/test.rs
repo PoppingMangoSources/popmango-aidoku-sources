@@ -4,6 +4,7 @@ use crate::{
 	Params, Row,
 	helpers::{age, comic_id, details, narrowed, parse_series_path, slugify},
 	home::fill,
+	models::ChapterItem,
 };
 use aidoku::{
 	ContentRating, HomeComponentValue, Manga, MangaStatus, Viewer,
@@ -39,7 +40,9 @@ const SERIES_PAGE: &str = r#"<html><head><link rel="canonical" href="https://too
 <span hidden data-comic-id="1069693"></span><img data-cover data-nsfw src="/uploads/covers/example_thumb.webp"/>
 <h1>Example Series</h1><dl><div><dt>Type</dt><dd>Manhwa</dd></div><div><dt>Status</dt><dd>Completed</dd></div>
 <div><dt>Author</dt><dd><a href="/author/a">First Writer</a><a href="/author/b">Second</a><a href="/author/a">First Writer</a></dd></div></dl>
-<p class="whitespace-pre-line">A *plain* summary.</p><div><p>Genres</p><a href="/genre/romance">Romance</a><a href="/genre/drama">Drama</a></div>
+<p class="whitespace-pre-line">A *formatted* summary.
+
+[More information](https://example.com/).</p><div><p>Genres</p><a href="/genre/romance">Romance</a><a href="/genre/drama">Drama</a></div>
 </main></body></html>"#;
 
 // Badges in place of the table, and a related card's badges after them.
@@ -60,7 +63,8 @@ const MANHWA_PAGE: &str = r#"<html><body><main>
 
 const MANGA_PAGE: &str = r#"<html><body><main>
 <section><h2>New Titles</h2><a href="/manga/newer"><img data-cover src="/n.webp"/><h3>Newer</h3><span>Ch. 1</span><span>5m ago</span></a>
-<a href="/manga/older"><img data-cover src="/o.webp"/><h3>Older</h3><span>2h ago</span></a></section>
+<a href="/manga/older"><img data-cover src="/o.webp"/><h3>Older</h3><span>2h ago</span></a>
+<a href="/manga/no-date"><img data-cover src="/u.webp"/><h3>No Date</h3></a></section>
 </main></body></html>"#;
 
 const LATEST_PAGE: &str = r#"<html><body><main><article><a href="/manga/kawaisou"><div><img src="/k.webp" alt="Kawaisou"/></div></a>
@@ -79,7 +83,7 @@ const LEWD_HOME: &str = r#"<html><body>
 <section><h2>Trending Now</h2><a href="/webtoon/beast"><div><img alt="Beast" data-cover src="/b.webp"/><div>1</div></div><h3>Beast</h3></a>
 <a href="/webtoon/farm-429h7"><div><img alt="Farm" data-cover src="/f.webp"/><div>2</div></div><h3>Farm</h3></a></section>
 <section><h2>Latest Updates</h2><div><a aria-label="Divorce" href="/webtoon/divorce"></a><div><img alt="Divorce" data-cover src="/d.webp"/>
-<div><span>Manhwa</span></div></div><div><h3>Divorce</h3><div><span>223</span></div><a href="/webtoon/divorce/chapter/17-wad21">Ch. <!-- -->17</a></div></div></section>
+<div><span>Manhwa</span></div></div><div><h3>Divorce</h3><div><span>223</span></div><a href="/webtoon/divorce/chapter/17-wad21">Ch. <!-- -->17</a><a href="/webtoon/divorce/chapter/17-wad21">Read</a></div></div></section>
 </body></html>"#;
 
 fn page(html: &str, base: &str) -> Option<aidoku::imports::html::Document> {
@@ -114,7 +118,7 @@ fn review_home_rows_read_their_own_cards() {
 		panic!("new titles is not a scroller");
 	};
 	let new: Vec<_> = entries.iter().map(|link| link.title.as_str()).collect();
-	assert_eq!(new, ["Newer", "Older"]);
+	assert_eq!(new, ["Newer", "Older", "No Date"]);
 
 	let Some(HomeComponentValue::MangaChapterList {
 		entries, page_size, ..
@@ -210,7 +214,10 @@ fn review_details_read_the_series_page() {
 	assert_eq!(manga.status, MangaStatus::Completed);
 	assert_eq!(manga.viewer, Viewer::Webtoon);
 	assert_eq!(manga.content_rating, ContentRating::NSFW);
-	assert_eq!(manga.description.as_deref(), Some(r"A \*plain\* summary\."));
+	assert_eq!(
+		manga.description.as_deref(),
+		Some("A *formatted* summary.\n\n[More information](https://example.com/).")
+	);
 	assert_eq!(comic_id(&page).unwrap(), "1069693");
 }
 
@@ -276,4 +283,22 @@ fn review_type_selections() {
 	assert_eq!(types(&[]), ["none"]);
 	assert_eq!(types(&["manga"]), ["manga"]);
 	assert!(types(&["manga", "manhwa", "manhua"]).is_empty());
+}
+
+#[aidoku_test]
+fn review_chapter_keys_titles_and_utc_dates() {
+	let chapter = |data: &str| {
+		serde_json::from_str::<ChapterItem>(data)
+			.unwrap()
+			.into_chapter(&TOONZ, "example")
+	};
+	let dated = chapter(r#"{"chapterNumber":"12","title":"12 Days Later","slug":"chapter-12-alt","date":"2026-11-22T14:30:06.000Z"}"#).unwrap();
+	assert_eq!(dated.key, "12-alt");
+	assert_eq!(dated.title.as_deref(), Some("12 Days Later"));
+	assert_eq!(dated.date_uploaded, Some(1795357806));
+	let numbered =
+		chapter(r#"{"chapterNumber":"0","title":"Chapter 0","slug":"chapter-0"}"#).unwrap();
+	assert_eq!(numbered.key, "0");
+	assert!(numbered.title.is_none());
+	assert!(chapter(r#"{"chapterNumber":"0","slug":"chapter-"}"#).is_none());
 }

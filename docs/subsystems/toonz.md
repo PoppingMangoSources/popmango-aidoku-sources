@@ -93,6 +93,9 @@ Everything below was probed live on 2026-11-19 unless marked.
 > Updates row names the chapter without a date. Times are the site's `timeAgo` units: just
 > now, m, h, d, w, mo, y. Dates from the chapter API are parsed in UTC.
 
+> ⚠️ Series synopses can contain Markdown and paragraph breaks in the text of the HTML element.
+> Details preserve that text for the app's Markdown renderer. Discover uses the plain-text path.
+
 > ⚠️ Home rows read each page's own section: Featured (Top rated this month) merged by rating,
 > New Titles merged by age, and the visible Today panel of Trending and Popular Updates. An
 > absent section drops its row rather than borrowing another page's cards. LewdManhwa's Most

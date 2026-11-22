@@ -6,10 +6,7 @@ use crate::{
 use aidoku::{
 	ContentRating, Manga, MangaPageResult, MangaStatus, Result, Viewer,
 	alloc::{String, Vec, borrow::Cow, collections::BTreeSet, format, string::ToString, vec},
-	helpers::{
-		string::PlainText,
-		uri::{QueryParameters, encode_uri_component},
-	},
+	helpers::uri::{QueryParameters, encode_uri_component},
 	imports::{
 		html::{Document, Element, ElementList},
 		net::{Request, Response},
@@ -26,7 +23,6 @@ const TYPE_PAGES: [&str; 5] = [
 	"most-favorited",
 ];
 
-// Sorts in `filters.json` order.
 pub const SORTS: [&str; 4] = ["latest", "popular", "rating", "a-z"];
 
 // The site reads no types as every type; an unknown one matches nothing.
@@ -40,7 +36,7 @@ pub fn narrowed(types: Vec<String>, count: usize) -> Vec<String> {
 	}
 }
 
-pub fn check(response: Response) -> Result<Response> {
+pub fn check_response(response: Response) -> Result<Response> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
 		bail!("The site answered HTTP {status}");
@@ -118,7 +114,7 @@ impl SearchParams {
 		}
 		query.push_encoded("page", Some(&page.to_string()));
 		let url = format!("{}/{}?{query}", params.base_url, params.catalog);
-		let document = check(self.content.request(&url)?.send()?)?.get_html()?;
+		let document = check_response(self.content.request(&url)?.send()?)?.get_html()?;
 		Ok(MangaPageResult {
 			entries: cards(params, document.select("img[data-cover]")),
 			has_next_page: document
@@ -271,7 +267,7 @@ pub fn chapter_url(params: &Params, manga_key: &str, key: &str) -> String {
 
 pub fn series_page(params: &Params, key: &str) -> Result<Document> {
 	let url = format!("{}/{}/{key}", params.base_url, params.series_path);
-	Ok(check(Request::get(url)?.send()?)?.get_html()?)
+	Ok(check_response(Request::get(url)?.send()?)?.get_html()?)
 }
 
 pub(crate) fn comic_id(page: &Document) -> Result<String> {
@@ -283,7 +279,7 @@ pub(crate) fn comic_id(page: &Document) -> Result<String> {
 
 pub fn genres(params: &Params) -> Result<Vec<Genre>> {
 	let url = format!("{}/api/genres", params.base_url);
-	check(Request::get(url)?.send()?)?.get_json_owned()
+	check_response(Request::get(url)?.send()?)?.get_json_owned()
 }
 
 type GenreOptions = (Vec<Cow<'static, str>>, Vec<Cow<'static, str>>);
@@ -301,7 +297,7 @@ pub fn chapter_items(params: &Params, page: &Document) -> Result<Vec<ChapterItem
 		params.base_url,
 		comic_id(page)?
 	);
-	Ok(check(Request::get(url)?.send()?)?
+	Ok(check_response(Request::get(url)?.send()?)?
 		.get_json_owned::<ChapterList>()?
 		.chapters)
 }
@@ -317,20 +313,19 @@ pub fn reader_images(
 	if response.status_code() == 404 {
 		return Ok(None);
 	}
-	let body = check(response)?.get_string()?;
+	let body = check_response(response)?.get_string()?;
 	// The first "images" array that reads as pages; another can come first.
 	let marker = r#""images":"#;
-	Ok(Some(
-		body.match_indices(marker)
-			.find_map(|(start, _)| {
-				serde_json::Deserializer::from_str(&body[start + marker.len()..])
-					.into_iter::<Vec<ReaderImage>>()
-					.next()?
-					.ok()
-					.filter(|images| !images.is_empty())
-			})
-			.unwrap_or_default(),
-	))
+	body.match_indices(marker)
+		.find_map(|(start, _)| {
+			serde_json::Deserializer::from_str(&body[start + marker.len()..])
+				.into_iter::<Vec<ReaderImage>>()
+				.next()?
+				.ok()
+				.filter(|images| !images.is_empty())
+		})
+		.map(Some)
+		.ok_or_else(|| error!("This chapter has missing pages"))
 }
 
 fn texts(list: Option<ElementList>) -> impl Iterator<Item = String> {
@@ -360,9 +355,11 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 	let tags = tags(page.select("a[href^='/genre/']"));
 	manga.description = page
 		.select_first("p.whitespace-pre-line")
-		.and_then(|text| text.text())
-		.filter(|text| !text.is_empty())
-		.map(|text| text.escape_markdown());
+		.and_then(|text| text.untrimmed_text())
+		.and_then(|text| {
+			let text = text.trim();
+			(!text.is_empty()).then(|| text.into())
+		});
 	manga.url = page
 		.select_first("link[rel=canonical]")
 		.and_then(|link| link.attr("href"));

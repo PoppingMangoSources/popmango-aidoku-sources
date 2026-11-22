@@ -40,13 +40,18 @@ impl ChapterItem {
 		self.chapter_number.parse().ok()
 	}
 
-	pub fn into_chapter(self, params: &Params, manga_key: &str) -> Chapter {
-		let key = String::from(self.key());
+	pub fn into_chapter(self, params: &Params, manga_key: &str) -> Option<Chapter> {
+		let key = self.key().trim();
+		if key.is_empty() {
+			return None;
+		}
+		let key = String::from(key);
 		let chapter_number = self.number();
-		// The API uses UTC. Removing the ISO separator also works in the test runner.
+		// The runner cannot parse the ISO separator or timezone token.
 		let date_uploaded = self
 			.date
 			.as_deref()
+			.and_then(|date| date.strip_suffix('Z'))
 			.and_then(|date| date.get(..19))
 			.and_then(|date| {
 				parse_date_with_options(
@@ -56,7 +61,7 @@ impl ChapterItem {
 					"UTC",
 				)
 			});
-		Chapter {
+		Some(Chapter {
 			url: Some(chapter_url(params, manga_key, &key)),
 			key,
 			title: self.title.filter(|title| {
@@ -75,6 +80,6 @@ impl ChapterItem {
 			chapter_number,
 			date_uploaded,
 			..Default::default()
-		}
+		})
 	}
 }

@@ -1,6 +1,6 @@
 use crate::{
 	Params, Row,
-	helpers::{Content, age, card, cards, check, parse_series_path, rating, status, tags},
+	helpers::{Content, age, card, cards, check_response, parse_series_path, rating, status, tags},
 };
 use aidoku::{
 	AidokuError, Chapter, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
@@ -129,7 +129,9 @@ fn aged_cards(params: &Params, scope: &Element) -> Vec<(i64, Manga)> {
 		.filter_map(|image| {
 			let (link, manga) = card(params, &image)?;
 			let seconds = link
-				.select("span")?
+				.select("span")
+				.into_iter()
+				.flatten()
 				.filter_map(|span| span.text())
 				.find_map(|text| age(&text))
 				.unwrap_or(i64::MAX);
@@ -150,7 +152,11 @@ fn scroller(entries: impl Iterator<Item = Manga>) -> Option<HomeComponentValue> 
 	})
 }
 
-fn chapter_list(entries: Vec<MangaWithChapter>) -> Option<HomeComponentValue> {
+fn chapter_list(entries: impl Iterator<Item = MangaWithChapter>) -> Option<HomeComponentValue> {
+	let mut seen = BTreeSet::new();
+	let entries: Vec<_> = entries
+		.filter(|entry| seen.insert(entry.manga.key.clone()))
+		.collect();
 	(!entries.is_empty()).then(|| HomeComponentValue::MangaChapterList {
 		page_size: Some(5),
 		entries,
@@ -219,30 +225,29 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 		}
 		Row::Chapters(page, heading) => {
 			let section = section(pages.get(page)?.as_ref()?, heading)?;
-			let series = cards(params, section.select("img[data-cover]"));
-			chapter_list(
-				section
-					.select("a[href*='/chapter/']")?
-					.filter_map(|link| {
-						let href = link.attr("href")?;
-						let (key, chapter_key) = parse_series_path(params, &href)?;
-						let manga = series.iter().find(|manga| manga.key == key)?.clone();
-						let number = link
-							.text()
-							.as_deref()
-							.and_then(|text| text.strip_prefix("Ch.")?.trim().parse().ok());
-						Some(chapter(manga, chapter_key?.into(), number))
-					})
-					.collect(),
-			)
+			let mut series = cards(params, section.select("img[data-cover]"));
+			chapter_list(section.select("a[href*='/chapter/']")?.filter_map(|link| {
+				let href = link.attr("href")?;
+				let (key, chapter_key) = parse_series_path(params, &href)?;
+				let chapter_key = chapter_key?;
+				let index = series.iter().position(|manga| manga.key == key)?;
+				let number = link
+					.text()
+					.as_deref()
+					.and_then(|text| text.strip_prefix("Ch.")?.trim().parse().ok());
+				Some(chapter(
+					series.swap_remove(index),
+					chapter_key.into(),
+					number,
+				))
+			}))
 		}
 		Row::Updates(page) => chapter_list(
 			pages
 				.get(page)?
 				.as_ref()?
 				.select("article")?
-				.filter_map(|article| update(params, &article))
-				.collect(),
+				.filter_map(|article| update(params, &article)),
 		),
 	}
 }
@@ -281,7 +286,7 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 		.map(|response| {
 			response
 				.map_err(AidokuError::from)
-				.and_then(check)
+				.and_then(check_response)
 				.and_then(|response| Ok(response.get_html()?))
 				.map_err(|error| failure = Some(error))
 				.ok()
