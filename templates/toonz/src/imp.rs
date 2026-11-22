@@ -1,14 +1,14 @@
 use crate::{
 	Params,
 	helpers::{
-		SORTS, SearchParams, chapter_items, details, narrowed, reader_images, series_page,
+		SORTS, SearchParams, chapter_items, details, genres, narrowed, reader_images, series_page,
 		series_path,
 	},
 	home,
 };
 use aidoku::{
-	Chapter, DeepLinkResult, FilterValue, HomeLayout, Listing, Manga, MangaPageResult, Page,
-	PageContent, Result,
+	Chapter, DeepLinkResult, Filter, FilterValue, GroupSetting, HomeLayout, Listing, Manga,
+	MangaPageResult, MultiSelectFilter, MultiSelectSetting, Page, PageContent, Result, Setting,
 	alloc::{String, Vec, format, vec},
 	imports::std::send_partial_result,
 	prelude::*,
@@ -165,6 +165,50 @@ pub trait Impl {
 
 	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
 		home::get_home(params)
+	}
+
+	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
+		let (names, slugs) = genres(params)?;
+		Ok(vec![
+			MultiSelectFilter {
+				id: "genre".into(),
+				title: Some("Tags".into()),
+				is_genre: true,
+				can_exclude: true,
+				options: names.into_iter().map(Into::into).collect(),
+				ids: Some(slugs.into_iter().map(Into::into).collect()),
+				..Default::default()
+			}
+			.into(),
+		])
+	}
+
+	// The genre list lives on the site, so excluded genres are offered from it.
+	fn get_dynamic_settings(&self, params: &Params) -> Result<Vec<Setting>> {
+		let (names, slugs) = genres(params)?;
+		Ok(vec![
+			GroupSetting {
+				title: "Excluded Genres".into(),
+				footer: Some(
+					"Titles with an excluded genre are hidden everywhere. An included tag \
+					 overrides this for one search."
+						.into(),
+				),
+				items: vec![
+					MultiSelectSetting {
+						key: "excludedGenres".into(),
+						title: "Excluded Genres".into(),
+						values: slugs.into_iter().map(Into::into).collect(),
+						titles: Some(names.into_iter().map(Into::into).collect()),
+						refreshes: Some(vec!["content".into(), "listings".into()]),
+						..Default::default()
+					}
+					.into(),
+				],
+				..Default::default()
+			}
+			.into(),
+		])
 	}
 
 	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {

@@ -31,4 +31,11 @@ impl Impl for LewdManhwa {
 	}
 }
 
-register_source!(Toonz<LewdManhwa>, Home, ListingProvider, DeepLinkHandler);
+register_source!(
+	Toonz<LewdManhwa>,
+	Home,
+	ListingProvider,
+	DynamicFilters,
+	DynamicSettings,
+	DeepLinkHandler
+);

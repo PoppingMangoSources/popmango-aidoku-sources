@@ -109,9 +109,12 @@ Everything below was probed live on 2026-11-19 unless marked.
 > clearance survives; a `reader_prefs` stored by a web view visit would come first and win
 > (inferred from `AidokuRunner.swift` `modify`).
 
-Genres are static per consumer, generated from each site's `/api/genres` (Toonz 199, Toonx
-607 including X-Ray, LewdManhwa 78). Merged `en.toonkotsu` shows they could be fetched instead
-(`DynamicFilters` and `DynamicSettings`), which would drop about 3,400 JSON lines (unverified
-whether Toonz's `/api/genres` answers through Cloudflare). The live
+> ⚠️ Genres come from each site's `/api/genres` at runtime (Toonz 199, Toonx 607 including
+> X-Ray, LewdManhwa 78 on 2026-11-22): the template's `DynamicFilters` builds the Tags filter
+> and `DynamicSettings` the Excluded Genres setting, as merged `en.toonkotsu` does from its
+> facets and keiyoushi's Toonz does with `fetchFilterData`. The API answers without the
+> Cloudflare challenge Toonz pages have. The consumers' JSON no longer lists genres, Toonx has
+> no static settings left, and the site's own names replace our title-cased slugs ("3D Family",
+> not "3d Family") (`templates/toonz/src/imp.rs`). The live
 `details_chapters_and_pages` test fails on Toonz in the sandbox on the challenge page and needs
 an in-app check; Toonx and LewdManhwa run their whole suites.

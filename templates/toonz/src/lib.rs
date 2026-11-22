@@ -1,7 +1,8 @@
 #![no_std]
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, Listing,
-	ListingProvider, Manga, MangaPageResult, Page, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, DynamicSettings, Filter, FilterValue,
+	Home, HomeLayout, Listing, ListingProvider, Manga, MangaPageResult, Page, Result, Setting,
+	Source,
 	alloc::{String, Vec},
 };
 
@@ -91,6 +92,18 @@ impl<T: Impl> ListingProvider for Toonz<T> {
 impl<T: Impl> Home for Toonz<T> {
 	fn get_home(&self) -> Result<HomeLayout> {
 		self.inner.get_home(&self.params)
+	}
+}
+
+impl<T: Impl> DynamicFilters for Toonz<T> {
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		self.inner.get_dynamic_filters(&self.params)
+	}
+}
+
+impl<T: Impl> DynamicSettings for Toonz<T> {
+	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
+		self.inner.get_dynamic_settings(&self.params)
 	}
 }
 

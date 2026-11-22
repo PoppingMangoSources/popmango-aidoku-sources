@@ -21,6 +21,12 @@ pub struct ChapterItem {
 }
 
 #[derive(Deserialize)]
+pub struct Genre {
+	pub name: String,
+	pub slug: String,
+}
+
+#[derive(Deserialize)]
 pub struct ReaderImage {
 	pub filename: String,
 }

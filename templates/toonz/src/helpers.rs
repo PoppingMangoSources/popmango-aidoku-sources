@@ -1,6 +1,6 @@
 use crate::{
 	Params,
-	models::{ChapterItem, ChapterList, ReaderImage},
+	models::{ChapterItem, ChapterList, Genre, ReaderImage},
 	settings,
 };
 use aidoku::{
@@ -280,6 +280,16 @@ pub fn comic_id(page: &Document) -> Result<String> {
 	page.select_first("[data-comic-id]")
 		.and_then(|marker| marker.attr("data-comic-id"))
 		.ok_or_else(|| error!("Series not found"))
+}
+
+// Names with their slugs, which the catalogue and the content cookie take.
+pub fn genres(params: &Params) -> Result<(Vec<String>, Vec<String>)> {
+	let url = format!("{}/api/genres", params.base_url);
+	Ok(check(Request::get(url)?.send()?)?
+		.get_json_owned::<Vec<Genre>>()?
+		.into_iter()
+		.map(|genre| (genre.name, genre.slug))
+		.unzip())
 }
 
 pub fn chapter_items(params: &Params, page: &Document) -> Result<Vec<ChapterItem>> {

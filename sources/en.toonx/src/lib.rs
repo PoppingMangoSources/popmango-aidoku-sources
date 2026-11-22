@@ -36,4 +36,11 @@ impl Impl for Toonx {
 	}
 }
 
-register_source!(Toonz<Toonx>, Home, ListingProvider, DeepLinkHandler);
+register_source!(
+	Toonz<Toonx>,
+	Home,
+	ListingProvider,
+	DynamicFilters,
+	DynamicSettings,
+	DeepLinkHandler
+);

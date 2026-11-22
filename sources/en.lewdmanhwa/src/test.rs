@@ -313,3 +313,32 @@ fn unknown_series_fails() {
 			.is_err()
 	);
 }
+
+#[aidoku_test]
+fn live_genres_come_from_the_site() {
+	use aidoku::{DynamicFilters, DynamicSettings, FilterKind, SettingValue};
+	let source = Tested::new();
+	let filters = source.get_dynamic_filters().unwrap();
+	assert_eq!(filters[0].id, "genre");
+	let FilterKind::MultiSelect {
+		is_genre: true,
+		can_exclude: true,
+		options,
+		ids: Some(ids),
+		..
+	} = &filters[0].kind
+	else {
+		panic!("the genre filter should be an excludable genre list with slugs");
+	};
+	assert_eq!(options.len(), ids.len());
+	assert!(ids.iter().any(|id| id == "yaoi"));
+	let settings = source.get_dynamic_settings().unwrap();
+	let SettingValue::Group { items, .. } = &settings[0].value else {
+		panic!("excluded genres should be a settings group");
+	};
+	assert_eq!(items[0].key, "excludedGenres");
+	let SettingValue::MultiSelect { values, .. } = &items[0].value else {
+		panic!("excluded genres should be a multi-select");
+	};
+	assert_eq!(values, ids);
+}
