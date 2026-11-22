@@ -32,16 +32,13 @@ impl Impl for ToonzTo {
 				("Top Rated This Month", Row::Featured(&[MANHWA, MANGA])),
 				("New Titles", Row::Newest(&[MANHWA, MANGA], "New Titles")),
 				("Recently Updated", Row::Updates(2)),
-				(
-					"Popular Updates (Manga)",
-					Row::Tab(MANGA, "Popular Updates"),
-				),
-				(
-					"Popular Updates (Manhwa)",
-					Row::Tab(MANHWA, "Popular Updates"),
-				),
 				("Trending Manga", Row::Tab(MANGA, "Trending")),
 				("Trending Manhwa", Row::Tab(MANHWA, "Trending")),
+				("Popular Updates Manga", Row::Tab(MANGA, "Popular Updates")),
+				(
+					"Popular Updates Manhwa",
+					Row::Tab(MANHWA, "Popular Updates"),
+				),
 			],
 		}
 	}

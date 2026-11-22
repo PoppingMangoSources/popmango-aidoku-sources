@@ -84,10 +84,10 @@ fn review_home_rows_keep_the_requested_order() {
 			"Top Rated This Month",
 			"New Titles",
 			"Recently Updated",
-			"Popular Updates (Manga)",
-			"Popular Updates (Manhwa)",
 			"Trending Manga",
 			"Trending Manhwa",
+			"Popular Updates Manga",
+			"Popular Updates Manhwa",
 		]
 	);
 }
