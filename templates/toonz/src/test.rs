@@ -2,7 +2,7 @@
 
 use crate::{
 	Params, Row,
-	helpers::{age, comic_id, details, narrowed, series_path, slugify},
+	helpers::{age, comic_id, details, narrowed, parse_series_path, slugify},
 	home::fill,
 };
 use aidoku::{
@@ -65,7 +65,8 @@ const MANGA_PAGE: &str = r#"<html><body><main>
 
 const LATEST_PAGE: &str = r#"<html><body><main><article><a href="/manga/kawaisou"><div><img src="/k.webp" alt="Kawaisou"/></div></a>
 <div><div><a href="/manga/kawaisou">Kawaisou</a></div><div><span><span>manga</span></span><span><span>·</span><span>CH.<!-- -->15.5</span></span></div>
-<p>Summary.</p><p>2w ago</p></div></article></main></body></html>"#;
+<p>Summary.</p><p>2w ago</p></div></article>
+<article><a href="/manga/undated"><div><img src="/u.webp" alt="Undated"/></div><span>CH. 3</span></a></article></main></body></html>"#;
 
 // The hero, a ranked row and cards whose link is an empty overlay beside the cover.
 const LEWD_HOME: &str = r#"<html><body>
@@ -126,6 +127,8 @@ fn review_home_rows_read_their_own_cards() {
 	assert_eq!(entries[0].chapter.key, "15.5");
 	assert_eq!(entries[0].chapter.chapter_number, Some(15.5));
 	assert!(entries[0].chapter.date_uploaded.is_some());
+	assert_eq!(entries[1].chapter.key, "3");
+	assert_eq!(entries[1].chapter.date_uploaded, None);
 
 	let Some(HomeComponentValue::Scroller { entries, .. }) = value(Row::Tab(0, "Trending")) else {
 		panic!("trending is not a scroller");
@@ -227,29 +230,31 @@ fn review_details_read_badges() {
 
 #[aidoku_test]
 fn review_links_and_ages() {
-	let link = |params: &Params, path: &str| series_path(params, path);
+	let link = parse_series_path;
 	assert_eq!(
 		link(&TOONZ, "/manhwa/solo-leveling"),
-		Some(("solo-leveling".into(), None))
+		Some(("solo-leveling", None))
 	);
 	assert_eq!(
 		link(&TOONZ, "/manga/x/chapter/84.02?page=2"),
-		Some(("x".into(), Some("84.02".into())))
+		Some(("x", Some("84.02")))
 	);
 	assert_eq!(link(&TOONZ, "/manhwa?sort=popular"), None);
 	assert_eq!(
 		link(&TOONZ, "/manhwa/solo-leveling?ref=home#chapters"),
-		Some(("solo-leveling".into(), None))
+		Some(("solo-leveling", None))
 	);
 	assert_eq!(link(&TOONZ, "/manhwa/browse"), None);
 	assert_eq!(link(&TOONZ, "/manga/trending"), None);
 	assert_eq!(link(&TOONZ, "/genre/action"), None);
-	assert_eq!(link(&TOONZ, "/webtoon/x"), Some(("x".into(), None)));
+	assert_eq!(link(&TOONZ, "/webtoon/x"), Some(("x", None)));
 	assert_eq!(link(&LEWD, "/manhwa/x"), None);
 	assert_eq!(
 		link(&LEWD, "/webtoon/rockstar-vwe1q/chapter/45-wad21"),
-		Some(("rockstar-vwe1q".into(), Some("45-wad21".into())))
+		Some(("rockstar-vwe1q", Some("45-wad21")))
 	);
+	assert_eq!(link(&TOONZ, "/manhwa/x/unknown"), None);
+	assert_eq!(link(&TOONZ, "manhwa/x"), None);
 	assert_eq!(age("just now"), Some(0));
 	assert_eq!(age("32m ago"), Some(32 * 60));
 	assert_eq!(age("3mo ago"), Some(3 * 2_592_000));

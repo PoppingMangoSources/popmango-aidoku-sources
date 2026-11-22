@@ -1,11 +1,11 @@
 use crate::{
 	Params, Row,
-	helpers::{Content, age, card, cards, check, rating, series_path, status},
+	helpers::{Content, age, card, cards, check, parse_series_path, rating, status, tags},
 };
 use aidoku::{
 	AidokuError, Chapter, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
 	Listing, ListingKind, Manga, MangaWithChapter, Result,
-	alloc::{String, Vec, format},
+	alloc::{String, Vec, collections::BTreeSet, format},
 	imports::{
 		html::{Document, Element},
 		net::Request,
@@ -25,17 +25,15 @@ fn section(page: &Document, heading: &str) -> Option<Element> {
 
 fn featured(params: &Params, article: &Element) -> Option<(f32, Manga)> {
 	let link = article.select_first("h2 a")?;
-	let (key, _) = series_path(params, &link.attr("href")?)?;
+	let href = link.attr("href")?;
+	let (key, _) = parse_series_path(params, &href)?;
+	let title = link.text().filter(|title| !title.is_empty())?;
 	let cover = article.select_first("img[data-cover]")?;
-	let mut tags: Vec<String> = article
-		.select("a[href^='/genre/']")?
-		.filter_map(|tag| tag.text())
-		.collect();
-	tags.sort_unstable();
-	tags.dedup();
-	// "5.0 rating"
+	let tags = tags(article.select("a[href^='/genre/']"));
 	let score = article
-		.select("dl > div")?
+		.select("dl > div")
+		.into_iter()
+		.flatten()
 		.find(|row| {
 			row.select_first("dt")
 				.and_then(|label| label.text())
@@ -47,8 +45,8 @@ fn featured(params: &Params, article: &Element) -> Option<(f32, Manga)> {
 	Some((
 		score,
 		Manga {
-			key,
-			title: link.text()?,
+			key: key.into(),
+			title,
 			cover: cover.attr("abs:src"),
 			description: article
 				.select_first("h2 + p")
@@ -61,26 +59,29 @@ fn featured(params: &Params, article: &Element) -> Option<(f32, Manga)> {
 	))
 }
 
-// Only the first slide's cover is in the page; the others are the same titles' cards further down.
 fn slide(params: &Params, heading: &Element, cards: &[Manga]) -> Option<Manga> {
 	let link = heading.parent()?;
-	let (key, _) = series_path(params, &link.attr("href")?)?;
+	let href = link.attr("href")?;
+	let (key, _) = parse_series_path(params, &href)?;
 	let info = link.parent()?;
+	// Later slides reuse covers from the cards further down the page.
 	let cover = info
 		.parent()?
 		.select_first("picture img")
 		.and_then(|cover| cover.attr("abs:src"))
 		.or_else(|| cards.iter().find(|card| card.key == key)?.cover.clone());
 	Some(Manga {
-		key,
-		title: heading.text()?,
+		key: key.into(),
+		title: heading.text().filter(|title| !title.is_empty())?,
 		cover,
 		description: info
 			.select_first("p")
 			.and_then(|text| text.text())
 			.filter(|text| !text.is_empty()),
 		status: info
-			.select("[data-slot=badge]")?
+			.select("[data-slot=badge]")
+			.into_iter()
+			.flatten()
 			.filter_map(|badge| badge.text())
 			.find_map(|text| status(&text))
 			.unwrap_or_default(),
@@ -101,18 +102,21 @@ fn chapter(manga: Manga, key: String, number: Option<f32>) -> MangaWithChapter {
 
 fn update(params: &Params, article: &Element) -> Option<MangaWithChapter> {
 	let (_, manga) = card(params, &article.select_first("img")?)?;
-	let number = article
+	let (key, number) = article
 		.select("span")?
 		.filter_map(|span| span.text())
-		.find_map(|text| Some(String::from(text.strip_prefix("CH.")?.trim())))?;
+		.find_map(|text| {
+			let key = text.strip_prefix("CH.")?.trim();
+			key.parse::<f32>()
+				.ok()
+				.map(|number| (String::from(key), number))
+		})?;
 	let seconds = article
-		.select("p")?
-		.next_back()?
-		.text()
+		.select("p")
+		.and_then(|mut paragraphs| paragraphs.next_back()?.text())
 		.as_deref()
 		.and_then(age);
-	let parsed = number.parse().ok();
-	let mut entry = chapter(manga, number, parsed);
+	let mut entry = chapter(manga, key, Some(number));
 	entry.chapter.date_uploaded = seconds.map(|seconds| current_date() - seconds);
 	Some(entry)
 }
@@ -134,17 +138,10 @@ fn aged_cards(params: &Params, scope: &Element) -> Vec<(i64, Manga)> {
 		.collect()
 }
 
-fn scroller(entries: Vec<Manga>) -> Option<HomeComponentValue> {
-	let mut keys: Vec<String> = Vec::new();
+fn scroller(entries: impl Iterator<Item = Manga>) -> Option<HomeComponentValue> {
+	let mut keys = BTreeSet::new();
 	let entries: Vec<Link> = entries
-		.into_iter()
-		.filter(|manga| {
-			let new = !keys.contains(&manga.key);
-			if new {
-				keys.push(manga.key.clone());
-			}
-			new
-		})
+		.filter(|manga| keys.insert(manga.key.clone()))
 		.map(Link::from)
 		.collect();
 	(!entries.is_empty()).then_some(HomeComponentValue::Scroller {
@@ -166,8 +163,11 @@ fn chapter_list(entries: Vec<MangaWithChapter>) -> Option<HomeComponentValue> {
 }
 
 pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<HomeComponentValue> {
-	let loaded =
-		|indices: &'static [usize]| indices.iter().filter_map(|index| pages[*index].as_ref());
+	let loaded = |indices: &'static [usize]| {
+		indices
+			.iter()
+			.filter_map(|&index| pages.get(index)?.as_ref())
+	};
 	match row {
 		Row::Featured(indices) => {
 			let mut entries: Vec<_> = loaded(indices)
@@ -186,7 +186,7 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 			})
 		}
 		Row::Hero(page) => {
-			let page = pages[page].as_ref()?;
+			let page = pages.get(page)?.as_ref()?;
 			let cards = cards(params, page.select("img[data-cover]"));
 			let entries: Vec<_> = page
 				.select("section h2")?
@@ -204,39 +204,41 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 				.collect();
 			// Stable, so cards of the same age keep the site's order.
 			entries.sort_by_key(|(seconds, _)| *seconds);
-			scroller(entries.into_iter().map(|(_, manga)| manga).collect())
+			scroller(entries.into_iter().map(|(_, manga)| manga))
 		}
 		Row::Tab(page, heading) => {
-			let panel = section(pages[page].as_ref()?, heading)?
+			let panel = section(pages.get(page)?.as_ref()?, heading)?
 				.select_first("div[role=tabpanel]:not([hidden])")?;
 			scroller(
-				aged_cards(params, &panel)
+				panel
+					.select("img[data-cover]")
 					.into_iter()
-					.map(|(_, manga)| manga)
-					.collect(),
+					.flatten()
+					.filter_map(|image| card(params, &image).map(|(_, manga)| manga)),
 			)
 		}
 		Row::Chapters(page, heading) => {
-			let section = section(pages[page].as_ref()?, heading)?;
+			let section = section(pages.get(page)?.as_ref()?, heading)?;
 			let series = cards(params, section.select("img[data-cover]"));
-			// "Ch. 47"
 			chapter_list(
 				section
 					.select("a[href*='/chapter/']")?
 					.filter_map(|link| {
-						let (key, chapter_key) = series_path(params, &link.attr("href")?)?;
+						let href = link.attr("href")?;
+						let (key, chapter_key) = parse_series_path(params, &href)?;
 						let manga = series.iter().find(|manga| manga.key == key)?.clone();
 						let number = link
 							.text()
 							.as_deref()
 							.and_then(|text| text.strip_prefix("Ch.")?.trim().parse().ok());
-						Some(chapter(manga, chapter_key?, number))
+						Some(chapter(manga, chapter_key?.into(), number))
 					})
 					.collect(),
 			)
 		}
 		Row::Updates(page) => chapter_list(
-			pages[page]
+			pages
+				.get(page)?
 				.as_ref()?
 				.select("article")?
 				.filter_map(|article| update(params, &article))
@@ -246,6 +248,10 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 }
 
 pub fn get_home(params: &Params) -> Result<HomeLayout> {
+	let content = Content::new(params);
+	if content.types.as_slice() == ["none"] {
+		return Ok(HomeLayout::default());
+	}
 	send_partial_result(&HomePartialResult::Layout(HomeLayout {
 		components: params
 			.home_rows
@@ -264,7 +270,6 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 			.collect(),
 	}));
 
-	let content = Content::new(params);
 	let requests = params
 		.home_pages
 		.iter()
@@ -282,7 +287,6 @@ pub fn get_home(params: &Params) -> Result<HomeLayout> {
 				.ok()
 		})
 		.collect();
-	// The final layout removes failed-section placeholders.
 	let components: Vec<_> = params
 		.home_rows
 		.iter()

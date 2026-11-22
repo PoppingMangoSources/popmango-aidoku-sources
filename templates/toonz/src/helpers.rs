@@ -5,7 +5,7 @@ use crate::{
 };
 use aidoku::{
 	ContentRating, Manga, MangaPageResult, MangaStatus, Result, Viewer,
-	alloc::{String, Vec, format, string::ToString, vec},
+	alloc::{String, Vec, borrow::Cow, collections::BTreeSet, format, string::ToString, vec},
 	helpers::{
 		string::PlainText,
 		uri::{QueryParameters, encode_uri_component},
@@ -16,8 +16,8 @@ use aidoku::{
 	},
 	prelude::*,
 };
+use serde::Serialize;
 
-// Type pages that share the series path.
 const TYPE_PAGES: [&str; 5] = [
 	"browse",
 	"top-rated",
@@ -40,7 +40,6 @@ pub fn narrowed(types: Vec<String>, count: usize) -> Vec<String> {
 	}
 }
 
-// Reports a refused request, such as an unsolved Cloudflare check, rather than parsing it.
 pub fn check(response: Response) -> Result<Response> {
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
@@ -49,11 +48,11 @@ pub fn check(response: Response) -> Result<Response> {
 	Ok(response)
 }
 
-// The site's content setting, a cookie every page reads.
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct Content {
 	pub rating: String,
 	pub types: Vec<String>,
+	#[serde(rename = "blockedGenres")]
 	pub blocked: Vec<String>,
 }
 
@@ -67,19 +66,7 @@ impl Content {
 	}
 
 	pub fn request(&self, url: &str) -> Result<Request> {
-		let list = |values: &[String]| {
-			values
-				.iter()
-				.map(|value| format!("\"{value}\""))
-				.collect::<Vec<_>>()
-				.join(",")
-		};
-		let prefs = format!(
-			r#"{{"rating":"{}","types":[{}],"blockedGenres":[{}]}}"#,
-			self.rating,
-			list(&self.types),
-			list(&self.blocked)
-		);
+		let prefs = serde_json::to_string(self)?;
 		Ok(Request::get(url)?.header(
 			"Cookie",
 			&format!("reader_prefs={}", encode_uri_component(prefs)),
@@ -109,6 +96,9 @@ impl SearchParams {
 	}
 
 	pub fn page(&self, params: &Params, page: i32) -> Result<MangaPageResult> {
+		if self.content.types.as_slice() == ["none"] {
+			return Ok(MangaPageResult::default());
+		}
 		let mut query = QueryParameters::new();
 		if self.query.is_some() {
 			query.push("search", self.query.as_deref());
@@ -121,10 +111,10 @@ impl SearchParams {
 			query.push("author", Some(&slugify(author)));
 		}
 		if !self.genres.is_empty() {
-			query.push_encoded("genres", Some(&self.genres.join(",")));
+			query.push("genres", Some(&self.genres.join(",")));
 		}
 		if !self.excluded_genres.is_empty() {
-			query.push_encoded("excludeGenres", Some(&self.excluded_genres.join(",")));
+			query.push("excludeGenres", Some(&self.excluded_genres.join(",")));
 		}
 		query.push_encoded("page", Some(&page.to_string()));
 		let url = format!("{}/{}?{query}", params.base_url, params.catalog);
@@ -138,19 +128,24 @@ impl SearchParams {
 	}
 }
 
-// Series keys are slugs, which the series path resolves for series and chapters alike.
-pub fn series_path(params: &Params, path: &str) -> Option<(String, Option<String>)> {
-	let mut parts = path.split(['?', '#']).next()?.trim_matches('/').split('/');
+pub fn parse_series_path<'a>(params: &Params, path: &'a str) -> Option<(&'a str, Option<&'a str>)> {
+	let mut parts = path
+		.strip_prefix('/')?
+		.split(['?', '#'])
+		.next()?
+		.trim_end_matches('/')
+		.split('/');
 	let kind = parts.next()?;
 	let slug = parts.next().filter(|slug| !slug.is_empty())?;
 	if !params.series_types.contains(&kind) || TYPE_PAGES.contains(&slug) {
 		return None;
 	}
-	let chapter = match (parts.next(), parts.next()) {
-		(Some("chapter"), Some(chapter)) if !chapter.is_empty() => Some(chapter.into()),
-		_ => None,
+	let chapter = match (parts.next(), parts.next(), parts.next()) {
+		(None, None, None) => None,
+		(Some("chapter"), Some(chapter), None) if !chapter.is_empty() => Some(chapter),
+		_ => return None,
 	};
-	Some((slug.into(), chapter))
+	Some((slug, chapter))
 }
 
 // LewdManhwa's series link is an empty overlay beside the cover, not around it.
@@ -166,13 +161,17 @@ pub fn card(params: &Params, image: &Element) -> Option<(Element, Manga)> {
 					.flatten()
 					.filter_map(|link| link.attr("href")),
 			)
-			.find_map(|href| series_path(params, &href));
-		if let Some((key, _)) = key {
+			.find_map(|href| parse_series_path(params, &href).map(|(key, _)| String::from(key)));
+		if let Some(key) = key {
 			let title = node
 				.select_first("h3")
 				.and_then(|heading| heading.text())
-				.or_else(|| image.attr("alt"))
-				.filter(|title| !title.is_empty())?;
+				.filter(|title| !title.is_empty())
+				.or_else(|| {
+					let title = image.attr("alt")?;
+					let title = title.trim();
+					(!title.is_empty()).then(|| title.into())
+				})?;
 			let manga = Manga {
 				key,
 				title,
@@ -188,15 +187,15 @@ pub fn card(params: &Params, image: &Element) -> Option<(Element, Manga)> {
 }
 
 pub fn cards(params: &Params, images: Option<ElementList>) -> Vec<Manga> {
-	let mut entries: Vec<Manga> = Vec::new();
-	for image in images.into_iter().flatten() {
-		if let Some((_, manga)) = card(params, &image)
-			&& !entries.iter().any(|entry| entry.key == manga.key)
-		{
-			entries.push(manga);
-		}
-	}
-	entries
+	let mut seen = BTreeSet::new();
+	images
+		.into_iter()
+		.flatten()
+		.filter_map(|image| {
+			let (_, manga) = card(params, &image)?;
+			seen.insert(manga.key.clone()).then_some(manga)
+		})
+		.collect()
 }
 
 // `nsfw` is the site's blur flag on erotica and explicit covers.
@@ -232,7 +231,6 @@ fn viewer(text: &str) -> Option<Viewer> {
 	})
 }
 
-// Seconds since the site's "32m ago" style.
 pub fn age(text: &str) -> Option<i64> {
 	if text == "just now" {
 		return Some(0);
@@ -249,7 +247,7 @@ pub fn age(text: &str) -> Option<i64> {
 		"y" => 31_536_000,
 		_ => return None,
 	};
-	Some(number.parse::<i64>().ok()? * unit)
+	number.parse::<i64>().ok()?.checked_mul(unit)
 }
 
 pub fn slugify(name: &str) -> String {
@@ -276,19 +274,24 @@ pub fn series_page(params: &Params, key: &str) -> Result<Document> {
 	Ok(check(Request::get(url)?.send()?)?.get_html()?)
 }
 
-pub fn comic_id(page: &Document) -> Result<String> {
+pub(crate) fn comic_id(page: &Document) -> Result<String> {
 	page.select_first("[data-comic-id]")
 		.and_then(|marker| marker.attr("data-comic-id"))
+		.filter(|id| !id.trim().is_empty())
 		.ok_or_else(|| error!("Series not found"))
 }
 
-// Names with their slugs, which the catalogue and the content cookie take.
-pub fn genres(params: &Params) -> Result<(Vec<String>, Vec<String>)> {
+pub fn genres(params: &Params) -> Result<Vec<Genre>> {
 	let url = format!("{}/api/genres", params.base_url);
-	Ok(check(Request::get(url)?.send()?)?
-		.get_json_owned::<Vec<Genre>>()?
+	check(Request::get(url)?.send()?)?.get_json_owned()
+}
+
+type GenreOptions = (Vec<Cow<'static, str>>, Vec<Cow<'static, str>>);
+
+pub fn genre_options(params: &Params) -> Result<GenreOptions> {
+	Ok(genres(params)?
 		.into_iter()
-		.map(|genre| (genre.name, genre.slug))
+		.map(|genre| (genre.name.into(), genre.slug.into()))
 		.unzip())
 }
 
@@ -303,7 +306,6 @@ pub fn chapter_items(params: &Params, page: &Document) -> Result<Vec<ChapterItem
 		.chapters)
 }
 
-// The chapter route's reader data, without the page around it.
 pub fn reader_images(
 	params: &Params,
 	manga_key: &str,
@@ -337,21 +339,25 @@ fn texts(list: Option<ElementList>) -> impl Iterator<Item = String> {
 		.filter_map(|element| element.text())
 }
 
-// Pages stream their content outside `main`, so selectors take the whole document.
-pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
-	manga.title = page
+pub fn series_summary(page: &Document) -> Result<(String, Option<String>)> {
+	// Next.js can stream the series content outside <main>.
+	let title = page
 		.select_first("h1")
 		.and_then(|heading| heading.text())
+		.filter(|title| !title.is_empty())
 		.ok_or_else(|| error!("Series not found"))?;
+	let cover = page
+		.select_first("meta[property='og:image']")
+		.and_then(|meta| meta.attr("content"));
+	Ok((title, cover))
+}
+
+pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
+	(manga.title, manga.cover) = series_summary(page)?;
 	let nsfw = page
 		.select_first("img[data-cover]")
 		.is_some_and(|cover| cover.has_attr("data-nsfw"));
-	let mut tags: Vec<String> = texts(page.select("a[href^='/genre/']")).collect();
-	tags.sort_unstable();
-	tags.dedup();
-	manga.cover = page
-		.select_first("meta[property='og:image']")
-		.and_then(|meta| meta.attr("content"));
+	let tags = tags(page.select("a[href^='/genre/']"));
 	manga.description = page
 		.select_first("p.whitespace-pre-line")
 		.and_then(|text| text.text())
@@ -393,11 +399,18 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 		.or_else(|| badges.iter().find_map(|badge| viewer(badge)))
 		.unwrap_or_default();
 	let mut authors: Vec<String> = Vec::new();
-	for name in texts(author_links) {
+	for name in texts(author_links).filter(|name| !name.is_empty()) {
 		if !authors.contains(&name) {
 			authors.push(name);
 		}
 	}
 	manga.authors = Some(authors).filter(|authors| !authors.is_empty());
 	Ok(())
+}
+
+pub fn tags(elements: Option<ElementList>) -> Vec<String> {
+	let mut tags: Vec<_> = texts(elements).filter(|tag| !tag.is_empty()).collect();
+	tags.sort_unstable();
+	tags.dedup();
+	tags
 }

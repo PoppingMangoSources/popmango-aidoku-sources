@@ -17,7 +17,6 @@ sources:
   - code: sources/en.toonz/res/settings.json
   - code: sources/en.toonx/src/lib.rs
   - code: sources/en.toonx/src/test.rs
-  - code: sources/en.toonx/res/settings.json
   - code: sources/en.lewdmanhwa/src/lib.rs
   - code: sources/en.lewdmanhwa/src/test.rs
   - code: sources/en.lewdmanhwa/res/settings.json
@@ -82,8 +81,8 @@ Everything below was probed live on 2026-11-19 unless marked.
 > its number. The reader takes the first `"images"` array that parses as pages, not merely the
 > first one named so (`helpers.rs` `reader_images`).
 
-> ⚠️ A cleared Types setting sends `types:["none"]`, which the site answers with nothing; a
-> full selection sends `[]` (`helpers.rs` `narrowed`).
+> ⚠️ A cleared Types setting returns an empty browse result or Discover layout without a
+> request. A full selection sends `types:[]`, which the site interprets as every type.
 
 > ⚠️ Next.js streams the page into hidden `S:` chunks after `<main>`, so selectors scoped to
 > `main` find nothing. Listing and details selectors take the whole document; home sections
@@ -92,7 +91,7 @@ Everything below was probed live on 2026-11-19 unless marked.
 > ⚠️ Only the list view (`view=list`) prints update times; some of its cards print none, so
 > Recently Updated keeps those rows undated. LewdManhwa has no list view, so its Latest
 > Updates row names the chapter without a date. Times are the site's `timeAgo` units: just
-> now, m, h, d, w, mo, y.
+> now, m, h, d, w, mo, y. Dates from the chapter API are parsed in UTC.
 
 > ⚠️ Home rows read each page's own section: Featured (Top rated this month) merged by rating,
 > New Titles merged by age, and the visible Today panel of Trending and Popular Updates. An
@@ -115,6 +114,7 @@ Everything below was probed live on 2026-11-19 unless marked.
 > facets and keiyoushi's Toonz does with `fetchFilterData`. The API answers without the
 > Cloudflare challenge Toonz pages have. The consumers' JSON no longer lists genres, Toonx has
 > no static settings left, and the site's own names replace our title-cased slugs ("3D Family",
-> not "3d Family") (`templates/toonz/src/imp.rs`). The live
+> not "3d Family") (`templates/toonz/src/imp.rs`). Tapping a tag in the details view resolves its
+> displayed name to the catalogue slug using those same facets. The live
 `details_chapters_and_pages` test fails on Toonz in the sandbox on the challenge page and needs
 an in-app check; Toonx and LewdManhwa run their whole suites.

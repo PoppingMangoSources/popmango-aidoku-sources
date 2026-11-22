@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Content Rating",
-		"footer": "Each rating shows its own titles and every rating below it: Safe shows only safe titles, Suggestive adds suggestive ones, Erotica adds erotica, and Explicit shows everything. Choosing ratings in the Content Rating filter overrides this for one search.",
+		"footer": "Shows titles at and below the selected rating. The Content Rating filter overrides this for one search.",
 		"items": [
 			{
 				"type": "select",

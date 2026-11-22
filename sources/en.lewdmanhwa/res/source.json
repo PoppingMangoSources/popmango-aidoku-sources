@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.lewdmanhwa",
 		"name": "LewdManhwa",
-		"version": 4,
+		"version": 5,
 		"url": "https://lewdmanhwa.com",
 		"contentRating": 2,
 		"languages": [
@@ -15,5 +15,8 @@
 			"id": "latest",
 			"name": "Latest Updates"
 		}
-	]
+	],
+	"config": {
+		"supportsTagSearch": true
+	}
 }

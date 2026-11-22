@@ -2,7 +2,7 @@
 	"info": {
 		"id": "en.toonz",
 		"name": "Toonz",
-		"version": 5,
+		"version": 6,
 		"url": "https://toonz.to",
 		"contentRating": 1,
 		"languages": [
@@ -15,5 +15,8 @@
 			"id": "latest",
 			"name": "Latest Updates"
 		}
-	]
+	],
+	"config": {
+		"supportsTagSearch": true
+	}
 }

@@ -16,19 +16,13 @@ mod test;
 
 pub use imp::Impl;
 
-// A home row, read from the home pages at the given indices.
 #[derive(Clone, Copy)]
 pub enum Row {
-	// Featured articles, highest rated first.
 	Featured(&'static [usize]),
 	Hero(usize),
-	// A section's cards, most recently added first.
 	Newest(&'static [usize], &'static str),
-	// A section's visible tab.
 	Tab(usize, &'static str),
-	// A section's cards with their newest chapter.
 	Chapters(usize, &'static str),
-	// The list view, which names each chapter and its age.
 	Updates(usize),
 }
 
@@ -37,10 +31,8 @@ pub struct Params {
 	pub catalog: &'static str,
 	// The path that resolves every series and chapter.
 	pub series_path: &'static str,
-	// The paths the site files series under.
 	pub series_types: &'static [&'static str],
 	pub rating: &'static str,
-	// Selecting every type sends none.
 	pub type_count: usize,
 	pub home_pages: &'static [&'static str],
 	pub home_rows: &'static [(&'static str, Row)],

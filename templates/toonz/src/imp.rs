@@ -1,8 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		SORTS, SearchParams, chapter_items, details, genres, narrowed, reader_images, series_page,
-		series_path,
+		SORTS, SearchParams, chapter_items, details, genre_options, genres, narrowed,
+		parse_series_path, reader_images, series_page, series_summary,
 	},
 	home,
 };
@@ -29,28 +29,23 @@ pub trait Impl {
 		if let Some((key, _)) = query
 			.as_deref()
 			.and_then(|url| url.trim().strip_prefix(params.base_url))
-			.and_then(|path| series_path(params, path))
-			&& let Ok(page) = series_page(params, &key)
+			.and_then(|path| parse_series_path(params, path))
+			&& let Ok(document) = series_page(params, key)
+			&& let Ok((title, cover)) = series_summary(&document)
 		{
-			let mut manga = Manga {
-				key,
-				..Default::default()
-			};
-			if details(&page, &mut manga).is_ok() {
-				return Ok(MangaPageResult {
-					entries: vec![Manga {
-						key: manga.key,
-						title: manga.title,
-						cover: manga.cover,
-						content_rating: manga.content_rating,
-						..Default::default()
-					}],
-					has_next_page: false,
-				});
-			}
+			return Ok(MangaPageResult {
+				entries: vec![Manga {
+					key: key.into(),
+					title,
+					cover,
+					..Default::default()
+				}],
+				has_next_page: false,
+			});
 		}
 
 		let mut search = SearchParams::new(params, query);
+		let mut tapped_genre = None;
 		for filter in filters {
 			match filter {
 				FilterValue::Sort { index, .. } => {
@@ -59,6 +54,7 @@ pub trait Impl {
 					}
 				}
 				FilterValue::Select { id, value } => match id.as_str() {
+					"genre" => tapped_genre = Some(value),
 					"status" => search.status = Some(value),
 					"rating" => search.content.rating = value,
 					_ => {}
@@ -78,6 +74,15 @@ pub trait Impl {
 				FilterValue::Text { id, value } if id == "author" => search.author = Some(value),
 				_ => {}
 			}
+		}
+		if let Some(value) = tapped_genre {
+			let Some(genre) = genres(params)?
+				.into_iter()
+				.find(|genre| genre.name.eq_ignore_ascii_case(&value) || genre.slug == value)
+			else {
+				return Ok(MangaPageResult::default());
+			};
+			search.genres.push(genre.slug);
 		}
 		// A tag included in a search overrides its exclusion in settings.
 		let genres = &search.genres;
@@ -132,7 +137,7 @@ pub trait Impl {
 	fn get_page_list(&self, params: &Params, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let images = match reader_images(params, &manga.key, &chapter.key)? {
 			Some(images) => images,
-			// The list view prints only a number, which misses a slug with a suffix ("45-wad21").
+			// List-view chapter numbers can omit a slug suffix.
 			None => {
 				let Ok(number) = chapter.key.parse::<f32>() else {
 					bail!("Chapter not found");
@@ -147,7 +152,11 @@ pub trait Impl {
 					.ok_or_else(|| error!("Chapter not found"))?
 			}
 		};
-		if images.is_empty() || images.iter().any(|image| image.filename.is_empty()) {
+		if images.is_empty()
+			|| images
+				.iter()
+				.any(|image| image.filename.trim().trim_start_matches('/').is_empty())
+		{
 			bail!("This chapter has missing pages");
 		}
 		Ok(images
@@ -156,7 +165,7 @@ pub trait Impl {
 				content: PageContent::url(format!(
 					"{}/uploads/{}",
 					params.base_url,
-					image.filename.trim_start_matches('/')
+					image.filename.trim().trim_start_matches('/')
 				)),
 				..Default::default()
 			})
@@ -168,7 +177,7 @@ pub trait Impl {
 	}
 
 	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
-		let (names, slugs) = genres(params)?;
+		let (names, slugs) = genre_options(params)?;
 		Ok(vec![
 			MultiSelectFilter {
 				id: "genre".into(),
@@ -176,17 +185,16 @@ pub trait Impl {
 				is_genre: true,
 				uses_tag_style: true,
 				can_exclude: true,
-				options: names.into_iter().map(Into::into).collect(),
-				ids: Some(slugs.into_iter().map(Into::into).collect()),
+				options: names,
+				ids: Some(slugs),
 				..Default::default()
 			}
 			.into(),
 		])
 	}
 
-	// The genre list lives on the site, so excluded genres are offered from it.
 	fn get_dynamic_settings(&self, params: &Params) -> Result<Vec<Setting>> {
-		let (names, slugs) = genres(params)?;
+		let (names, slugs) = genre_options(params)?;
 		Ok(vec![
 			GroupSetting {
 				title: "Excluded Genres".into(),
@@ -199,8 +207,8 @@ pub trait Impl {
 					MultiSelectSetting {
 						key: "excludedGenres".into(),
 						title: "Excluded Genres".into(),
-						values: slugs.into_iter().map(Into::into).collect(),
-						titles: Some(names.into_iter().map(Into::into).collect()),
+						values: slugs,
+						titles: Some(names),
 						refreshes: Some(vec!["content".into(), "listings".into()]),
 						..Default::default()
 					}
@@ -215,13 +223,13 @@ pub trait Impl {
 	fn handle_deep_link(&self, params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
 		Ok(url
 			.strip_prefix(params.base_url)
-			.and_then(|path| series_path(params, path))
+			.and_then(|path| parse_series_path(params, path))
 			.map(|(key, chapter)| match chapter {
 				Some(chapter) => DeepLinkResult::Chapter {
-					manga_key: key,
-					key: chapter,
+					manga_key: key.into(),
+					key: chapter.into(),
 				},
-				None => DeepLinkResult::Manga { key },
+				None => DeepLinkResult::Manga { key: key.into() },
 			}))
 	}
 }
