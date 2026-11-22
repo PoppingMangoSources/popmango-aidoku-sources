@@ -338,6 +338,15 @@ class CardRuleTests(unittest.TestCase):
         checks.check_api_use(self.path, 'parse_date(date, "dd/MM/yyyy")\n')
         self.assertEqual(checks.notes, [])
 
+    def test_deep_link_scheme_split_is_noted(self):
+        checks.notes.clear()
+        checks.check_api_use(self.path, 'fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {\n\tlet Some(path) = url.split_once("://").map(|(_, rest)| rest) else {\n')
+        self.assertEqual(len(checks.notes), 1)
+        checks.notes.clear()
+        checks.check_api_use(self.path, 'fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {\n\tlet Some(path) = url.strip_prefix(BASE_URL) else {\n')
+        checks.check_api_use(self.path, 'fn host(url: &str) -> Option<&str> {\n\turl.split_once("://")\n}\n')
+        self.assertEqual(checks.notes, [])
+
     def test_top_level_items_need_blank_lines(self):
         path = checks.ROOT / 'sources/es.eternalmangas/src/models.rs'
         checks.failures.clear()

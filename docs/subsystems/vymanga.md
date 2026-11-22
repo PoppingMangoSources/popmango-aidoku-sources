@@ -20,8 +20,9 @@ verified_at: afbc5da
 VyManga (`mangavyvy.com`, mirror `mangavyvy.net`) is server-rendered HTML with no API and no
 theme template. The sandbox reaches it with plain requests, so everything below was probed
 live on 2026-11-17 and the source's live tests run. Both hosts serve the same pages; the
-reader picks one through the app's base url select (`urls` in `source.json`). It is submitted
-upstream from `feat/en.vymanga`, cut from `upstream/main`.
+reader picks one through the app's base url select (`urls` in `source.json`). It merged upstream
+as #913 on 2026-11-21; the fork copy with its tests lives on `merged-sources` (main
+`046a7f2`), and later changes start from upstream's crate ([[archives]]).
 
 ## Pages
 

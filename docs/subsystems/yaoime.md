@@ -22,7 +22,9 @@ verified_at: afbc5da
 
 yaoi.me is a Next.js site rendered on the server, so the source reads its HTML; the only JSON
 endpoint is the reader. The sandbox reaches it directly, and everything below was probed live
-on 2026-11-17 unless marked.
+on 2026-11-17 unless marked. It merged upstream as #916 on 2026-11-21; the fork copy with its
+tests lives on `merged-sources` (main `046a7f2`), and later changes start from upstream's crate
+([[archives]]).
 
 ## Settings live in a cookie
 

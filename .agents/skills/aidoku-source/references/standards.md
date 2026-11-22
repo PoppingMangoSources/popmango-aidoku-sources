@@ -377,6 +377,29 @@ kkantan requested changes on both on 2026-11-20, with inline comments only.
 | `parse_date` on an ISO timestamp ending in `Z` ("this parses in the user's time zone ... more correct to use `parse_date_with_options` with the time zone set to UTC") | A timestamp the site gives in UTC is parsed with `parse_date_with_options(date, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "en_US_POSIX", "UTC")`, as `ja.rawdevart` and `ja.soraraw` do: `XXX` reads the `Z` as the zone rather than a literal. | R |
 | A settings footer explaining "Official chapters only" at length, and deduplication not saying it drops extras ("a little long winded and confusing") | Keep setting footers to one short sentence per option, naming what the option removes. | R |
 
+### From #923 (mangataro tag sort update)
+
+kkantan approved and merged it on 2026-11-21 (`4878f1a`) with one comment, read from the PR page.
+
+| What was flagged | The rule | |
+|---|---|---|
+| Version bumps on an update that only swapped `sort` for `sort_unstable` ("there shouldn't be any difference for users apart from a very tiny performance boost that is probably negligible, so incrementing the versions in cases like this isn't strictly necessary") | An upstream update with no user-visible change may keep its version; bump upstream when users would see a difference. Fork `main` still bumps every publishing push (section 0), since a push there is a release. | R |
+
+### From WebNex (`en.webnex`), checked line by line against merged sources
+
+The owner asked that anything with a merged equivalent be done the merged way. Each row names
+the merged source it follows.
+
+| What was flagged | The rule | |
+|---|---|---|
+| A home hero whose feed has no genres or synopsis, first replaced wholesale by a second list | When a feed omits featured metadata, make one lookup for the featured keys and fill each feed card from it by key, keeping the feed's own cards and order, as `en.atsumaru` does ("Feeds omit featured metadata"). If the lookup fails, keep the plain cards. Never one request per card, which `vi.cuutruyen` does. | R |
+| A deep-link handler splitting on `"://"` so any host passed | Strip `BASE_URL` and return `None` otherwise, as 84 of 85 merged handlers do; the app only hands a source its own links. `check-sources.py` notes the `"://"` split (`es.olympusscanlation` still has it). | N |
+| A pasted chapter link resolved through the deep-link handler, one extra request for the reader page | Resolve pasted series links locally and make one request, as `multi.mangaball` does; anything else is searched as text. | R |
+| Chapter pages fetched with `step_by` and `min` arithmetic | Batch numbered pages with `.chunks(n)` over a list of page numbers, as `multi.xcomic` does. | R |
+| Ratings that skip one collapsed Discover to one "Filtered Catalogue" row | When home only takes a rating ceiling, rebuild the rows the catalogue endpoint can reproduce with every chosen rating, one parallel request each, as `multi.mangadex` sends its ratings with every row's request; leave out rows it cannot reproduce. A row whose own type filter replaces the Types setting is skipped for a hidden type. | R |
+| A site row shown as "Readers Favourites" while it held a personalised "Your taste" list | Find a row by its heading when the site reuses an id, and title a personal row as personal, beside the shared one, as `multi.mangadotnet` keeps Most Tracked beside For You. | R |
+| A comment cut as obvious ("The series url has no query of its own") that answered a `check-sources.py` note | Before cutting a comment, check whether the checker asks for it; the note returns without it. | R |
+
 ### From #878, #894, #909 and #912 (other contributors, November 18-19)
 
 Read on 2026-11-20 from the review comments API; every review body was empty, so the inline

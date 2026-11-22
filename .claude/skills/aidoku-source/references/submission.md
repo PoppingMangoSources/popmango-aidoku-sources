@@ -183,3 +183,12 @@ upstream, is reviewed and is updated after a merge.
 - Pushes to the PR branch always use `--force-with-lease=<ref>:<expected-sha>`, never a
   bare `--force`. The person may push to it too (they did on #815), so fetch before
   building on it.
+- Check the PR is still open before each rebuild push (the PR page, or ask the person). #924
+  was closed between two WebNex rebuilds; three more pushes followed, and GitHub then greyed out
+  Reopen, because a closed PR only reopens while its branch still points at the commit it
+  closed on. Recovering means a leased push back to that commit, which the HarnessKit
+  plugin's force-push hook blocks in this environment, so the person opened #926 from the
+  same branch instead. A contributor cannot delete a PR; a closed duplicate stays closed.
+- A PR body drifts as review rounds change the source: re-read it against the final
+  behaviour before each push and hand the person the corrected text (WebNex's body still
+  described a removed single-request Discover).

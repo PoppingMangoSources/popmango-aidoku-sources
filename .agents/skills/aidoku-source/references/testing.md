@@ -45,6 +45,10 @@ Running them:
   dates in the app, not with an assertion. It also needs a time in the format: a date-only one
   such as `"MMM d, yyyy"` returns `None` there for every input, while `"MMM d, yyyy HH:mm"`
   parses (verified on `en.grimscans`), so assert only relative dates ("6 hours ago").
+- A listing opened from a home row is checked against the site's own View all page, not the
+  row: WebNex's "View all" pages start with different titles than the rows they belong to, on
+  the site itself. Streamed home shelves sometimes arrive short, so compare only the cards both
+  lists have, and keep `review_` tests off code paths that make requests.
 - The runner stores an `Element` made with `Element::try_from(node)` as a plain node, so its
   `tag_name()`, `html()` and other element calls return `None` there (`store.rs`,
   `as_html_element`), and a `child_nodes` walk sees only text. Take text from `child_nodes` and
