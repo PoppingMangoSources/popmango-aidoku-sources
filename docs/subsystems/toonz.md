@@ -58,6 +58,8 @@ Everything below was probed live on 2026-11-19 unless marked.
 > keeps the rendered slide titles and matches missing covers by slug against the embedded
 > page data. LewdManhwa can also reuse a matching cover from another row. No extra requests
 > are needed, and Toonz keeps all five Manga and all five Manhwa when both pages supply them.
+> LewdManhwa's home preview can run alternate titles and an Original Webtoon link label into
+> the synopsis. The Featured parser keeps the synopsis from that same slide.
 
 > ⚠️ The content setting is the `reader_prefs` cookie (`{"rating","types","blockedGenres"}`),
 > and every page reads it, home included. The site's own URL `rating` and `types` can only

@@ -95,8 +95,20 @@ fn slide(
 		cover,
 		description: info
 			.select_first("p")
-			.and_then(|text| text.text())
-			.filter(|text| !text.is_empty()),
+			.and_then(|text| text.untrimmed_text())
+			.and_then(|text| {
+				// Empty slash-separated aliases leave their separators before the synopsis.
+				let synopsis = match text.split_once(" /  / ") {
+					Some((_, synopsis)) => synopsis
+						.trim_start_matches(|c: char| c.is_whitespace() || matches!(c, '/' | '!')),
+					None => text.as_str(),
+				};
+				let synopsis = synopsis
+					.find(".Original Webtoon")
+					.map_or(synopsis, |end| &synopsis[..end + 1])
+					.trim();
+				(!synopsis.is_empty()).then(|| synopsis.into())
+			}),
 		status: info
 			.select("[data-slot=badge]")
 			.into_iter()

@@ -90,9 +90,10 @@ const LEWD_HOME: &str = r#"<html><body>
 <a href="/webtoon/beast"><h2>Beast</h2></a><div><span>3.3</span><span data-slot="badge">ongoing</span></div><p>Beast summary.</p>
 <a href="/webtoon/beast"><button>Read Now</button></a></div></div>
 <div aria-hidden="true"><div><a aria-label="Farm" href="/webtoon/farm-429h7"><div><div>manhwa</div></div></a><div>
-<a href="/webtoon/farm-429h7"><h2>Farm</h2></a><p>Farm summary.</p></div></div></div>
-<div aria-hidden="true"><div><div></div><div><a href="/webtoon/fields"><h2>Fields</h2></a></div></div></div>
-<div aria-hidden="true"><div><div></div><div><a href="/webtoon/forest"><h2>Forest</h2></a></div></div></div>
+<a href="/webtoon/farm-429h7"><h2>Farm</h2></a><p>A choice between home / the unknown.</p></div></div></div>
+<div aria-hidden="true"><div><div></div><div><a href="/webtoon/fields"><h2>Fields</h2></a>
+<p>Another Title! / Alternate Title! /  /  /  ! Someone returns to the fields.Original WebtoonOfficial Tr</p></div></div></div>
+<div aria-hidden="true"><div><div></div><div><a href="/webtoon/forest"><h2>Forest</h2></a><p>Another Forest /  /  !</p></div></div></div>
 <div aria-hidden="true"><div><div></div><div><a href="/webtoon/creek"><h2>Creek</h2></a></div></div></div>
 <div aria-hidden="true"><div><div></div><div><a href="/webtoon/garden"><h2>Garden</h2></a></div></div></div></section>
 <section><a href="/webtoon/unrelated"><h2>Not Featured</h2></a></section>
@@ -254,7 +255,15 @@ fn review_lewd_home_rows() {
 		Some("https://lewdmanhwa.com/f.webp"),
 		"a slide without its own cover takes its card's"
 	);
-	assert_eq!(entries[1].description.as_deref(), Some("Farm summary."));
+	assert_eq!(
+		entries[1].description.as_deref(),
+		Some("A choice between home / the unknown.")
+	);
+	assert_eq!(
+		entries[2].description.as_deref(),
+		Some("Someone returns to the fields.")
+	);
+	assert_eq!(entries[3].description, None);
 	assert_eq!(
 		entries[5].cover.as_deref(),
 		Some("https://lewdmanhwa.com/uploads/covers/garden.webp")
