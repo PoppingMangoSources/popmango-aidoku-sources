@@ -2,7 +2,7 @@
 title: WebNex (en.webnex)
 type: subsystem
 created: 2026-11-20
-updated: 2026-11-21
+updated: 2026-11-22
 sources:
   - code: sources/en.webnex/src/lib.rs
   - code: sources/en.webnex/src/helpers.rs
@@ -47,7 +47,7 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > taste and no Readers' favourites (v25 screenshot), and no other route or Browse sort lists
 > Readers' favourites, so the source can't add the missing one. Each row keeps its own
 > Sections switch, as merged MangaDotNet keeps Most Tracked beside its For You row (v22).
-> Both are ranked lists of three straight below the hero (owner's order, v26).
+> Both are ranked lists of three straight below Popular This Week (owner's order, v26).
 
 > ⚠️ Rows with a site "View all" link (Latest Updates, New in 2026, Recently Popular, Manhwa,
 > Manga, Manhua) carry it as their `Listing` id, as VineTheme does, and `ListingProvider` reads
@@ -58,14 +58,14 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > with the site's View all page, not with the row.
 
 > ⚠️ Readers Favourites and Finished are ranked lists of three per page (owner's choice, v16).
-> The home page carries no description or genres for the Popular cards (cover, title and type
-> only, checked in its HTML and flight data on 2026-11-21). Browse's table view
-> (`/browse?view=list&sort=popular`) is the same weekly chart and names each row's type and
-> first three genres. It is requested in parallel with the home page and each shelf card takes
-> the tags of its table row by key, as merged Atsumaru fills its featured cards from one lookup
-> ("Feeds omit featured metadata"); if the table fails the shelf keeps its type-only tags
-> (`sources/en.webnex/src/home.rs:295`). Descriptions exist only on series pages, one request
-> per card (which CuuTruyen does and our rules forbid), so the hero has none.
+
+> ⚠️ Popular This Week is a plain `Scroller`, as the site shows it: a row of cards. It was a
+> `BigScroller` filled with genres from Browse's table view (`/browse?view=list&sort=popular`),
+> and kkantan asked on the upstream PR why, since it had no author or description and didn't
+> match the site. The home page gives the Popular cards only cover, title and type (checked in
+> its HTML and flight data on 2026-11-21), and descriptions exist only on series pages, one
+> request per card, so don't bring the hero back without a feed that carries them
+> (`sources/en.webnex/src/home.rs:22`, v31).
 
 > ⚠️ Browse's Popular sort is the same weekly chart as home's Popular shelf; the shelf's
 > Today and This month tabs are `/?popular=day` and `/?popular=month`, and `/browse` ignores

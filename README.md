@@ -73,7 +73,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 </tr>
 <tr>
 <td align="center" width="50%"><img src="sources/en.toonz/res/icon.png" width="64"/><br/><b>Toonz</b><br/><sub><a href="https://toonz.to">toonz.to</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonz-v7.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.toonz-v7.aix">.aix (v7)</a></sub></td>
-<td align="center" width="50%"><img src="sources/en.webnex/res/icon.png" width="64"/><br/><b>Webnex</b><br/><sub><a href="https://webnex.cc">webnex.cc</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v30.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v30.aix">.aix (v30)</a></sub></td>
+<td align="center" width="50%"><img src="sources/en.webnex/res/icon.png" width="64"/><br/><b>Webnex</b><br/><sub><a href="https://webnex.cc">webnex.cc</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v31.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.webnex-v31.aix">.aix (v31)</a></sub></td>
 </tr>
 </table>
 

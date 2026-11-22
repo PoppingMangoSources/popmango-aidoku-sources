@@ -1,8 +1,8 @@
 use super::*;
 use crate::models::ReaderPages;
 use aidoku::{
-	ContentRating, Home, HomeComponentValue, LinkValue, Viewer, alloc::string::ToString,
-	imports::html::Html,
+	ContentRating, Home, HomeComponent, HomeComponentValue, LinkValue, Viewer,
+	alloc::string::ToString, imports::html::Html,
 };
 use aidoku_test::aidoku_test;
 
@@ -51,7 +51,7 @@ fn review_discover_uses_the_requested_headings_and_real_chapters() {
 		]
 	);
 	assert!(
-		matches!(&rows[0].value,HomeComponentValue::BigScroller{entries,..} if entries[0].key=="story" && entries[0].description.is_none() && entries[0].tags.as_ref().unwrap()[0]=="Manhwa")
+		matches!(&rows[0].value,HomeComponentValue::Scroller{entries,listing:None} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.key=="story" && m.tags.is_none()))
 	);
 	assert!(
 		matches!(&rows[2].value,HomeComponentValue::MangaList{ranking:true,page_size:Some(3),entries,..} if matches!(&entries[0].value,Some(LinkValue::Manga(m)) if m.tags.is_none() && m.key=="story"))
@@ -585,26 +585,11 @@ fn live_search_pages_and_series_updates() {
 #[aidoku_test]
 fn live_discover_and_chapter_link() {
 	let rows = Webnex.get_home().unwrap().components;
-	let HomeComponentValue::BigScroller { entries, .. } = &rows[0].value else {
-		panic!("Discover should open with the popular hero");
-	};
-	let doc = helpers::get_html(BASE_URL, None).unwrap();
-	let shelf = home::layout(&doc, 0, Some(&["popular".into()])).components;
-	let HomeComponentValue::BigScroller { entries: shelf, .. } = &shelf[0].value else {
-		panic!("the home page should have its popular shelf");
-	};
-	assert!(
-		entries
-			.iter()
-			.zip(shelf)
-			.take(3)
-			.all(|(hero, card)| hero.key == card.key)
-	);
-	assert!(entries.iter().all(|m| {
-		m.tags
-			.as_ref()
-			.is_some_and(|tags| tags.len() > 1 && tags.windows(2).all(|pair| pair[0] < pair[1]))
-	}));
+	assert!(matches!(
+		&rows[0],
+		HomeComponent { title: Some(title), value: HomeComponentValue::Scroller { entries, .. }, .. }
+			if title == "Popular This Week" && !entries.is_empty()
+	));
 	let titles: Vec<_> = rows.iter().filter_map(|c| c.title.as_deref()).collect();
 	let position = |title| titles.iter().position(|t| *t == title).unwrap();
 	assert!(
@@ -902,10 +887,7 @@ fn live_skipped_ratings_keep_the_rows_browse_can_match() {
 			"Manhua".into()
 		]
 	);
-	assert!(
-		matches!(&rows[0].value, HomeComponentValue::BigScroller { entries, .. } if !entries.is_empty())
-	);
-	assert!(rows[1..].iter().all(|r| matches!(&r.value,
+	assert!(rows.iter().all(|r| matches!(&r.value,
 		HomeComponentValue::Scroller { entries, listing: Some(l) } if !entries.is_empty() && l.id.starts_with("/browse?"))));
 	defaults_set(
 		"homeSections",

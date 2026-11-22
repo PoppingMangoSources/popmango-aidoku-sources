@@ -385,6 +385,12 @@ kkantan approved and merged it on 2026-11-21 (`4878f1a`) with one comment, read 
 |---|---|---|
 | Version bumps on an update that only swapped `sort` for `sort_unstable` ("there shouldn't be any difference for users apart from a very tiny performance boost that is probably negligible, so incrementing the versions in cases like this isn't strictly necessary") | An upstream update with no user-visible change may keep its version; bump upstream when users would see a difference. Fork `main` still bumps every publishing push (section 0), since a push there is a release. | R |
 
+### From #926 (`en.webnex`)
+
+| What was flagged | The rule | |
+|---|---|---|
+| Popular This Week as a `BigScroller` with only cover, title and genres ("I'm not sure if I agree with making the popular section a big scroller without information like author and description, since it looks empty and doesn't match the website layout anyways") | Use a `BigScroller` only when the feed already gives each card a description or authors, or the site itself shows a hero. A row the site shows as plain cards stays a `Scroller`, and no extra request is made only to dress up a hero. | R |
+
 ### From WebNex (`en.webnex`), checked line by line against merged sources
 
 The owner asked that anything with a merged equivalent be done the merged way. Each row names
