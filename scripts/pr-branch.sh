@@ -4,9 +4,14 @@
 # Add --update "<subject>" "<body>" for an existing upstream source,
 # --fix "<subject>" "<body>" for a review round, or --rebuild to preserve and replace a branch
 # (refused when the branch holds work main doesn't have, unless --discard-unmerged).
+# A template goes up with the sources that show it working (#824), one commit each:
+# scripts/pr-branch.sh --template <name> <id>... --body "<template>" --body "<first id>"... [--from <ref>] [--push]
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
 tooling=$(cd "$(dirname "$0")/.." && pwd)
+if [ "${1:-}" = --template ]; then
+    exec "$tooling/scripts/template-branch.sh" "${@:2}"
+fi
 id=${1:?provide a source id}
 shift
 snapshot=HEAD

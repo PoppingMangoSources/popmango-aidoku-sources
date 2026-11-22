@@ -128,6 +128,11 @@ class ScopeTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('Destination must be a recognized submission branch', result.stderr)
 
+    def test_template_submission_needs_a_body_per_commit(self):
+        result = subprocess.run(['bash', str(SCRIPTS / 'pr-branch.sh'), '--template', 'example', 'en.example', '--body', 'template only'], cwd=self.repo, text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('one --body for the template and one per source', result.stderr)
+
     def test_standard_test_dependencies_are_preserved(self):
         path = self.source / 'Cargo.toml'
         path.write_text('[dev-dependencies]\naidoku = {version="0.3", features=["test"]}\naidoku-test = "1"\n')

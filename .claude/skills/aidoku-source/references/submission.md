@@ -131,6 +131,14 @@ upstream, is reviewed and is updated after a merge.
   the source or differs from the selected snapshot beyond the version. Our `main` keeps its own
   incrementing version, since our users have it installed and a version going
   backwards means they never get an update.
+- A new template goes up as `feat/<name>-template` with the sources that show it working:
+  `scripts/pr-branch.sh --template <name> <id>... --body "<template>" --body "<id>"... [--push]`
+  (`scripts/template-branch.sh`) makes one `feat: add <name> template` commit, then one
+  `feat: add <id>` commit per source in the order given, each without fork tests, formatted and
+  at version 1. It runs the template's fmt and Clippy, every source's scope, rules and package
+  checks, refuses a crate that drifted from the snapshot, preserves an existing branch as
+  `chore/<name>-template-before-rebuild-<sha>` and pushes with a lease. Owner's call for
+  Toonz on 2026-11-22: separate commits rather than one.
 - Review rounds: fix on `main` (with a bump), then fold the changes into the PR's requested
   commit structure. New-source PRs stay one `feat: add <id>` commit by default, even after
   opening. Preserve the prior head, use the commit wrapper and verify the final tree before
