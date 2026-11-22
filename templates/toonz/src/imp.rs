@@ -174,6 +174,7 @@ pub trait Impl {
 				id: "genre".into(),
 				title: Some("Tags".into()),
 				is_genre: true,
+				uses_tag_style: true,
 				can_exclude: true,
 				options: names.into_iter().map(Into::into).collect(),
 				ids: Some(slugs.into_iter().map(Into::into).collect()),
