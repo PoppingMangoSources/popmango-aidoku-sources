@@ -73,3 +73,11 @@ for the last comment on each PR (unstable tag sorts, and the image quality param
 - `en.mangataro`
 - `en.roliascan`
 - `en.mkissa`
+
+## VyManga and yaoi.me
+
+PR 913 (VyManga) and PR 916 (yaoi.me) merged into canonical upstream on 2026-11-21. The complete
+fork snapshot is main `046a7f2a6f93f99ba3566a09a42b1ec28dd57487`, including every source test and both README icons.
+
+- `en.vymanga`
+- `multi.yaoime`

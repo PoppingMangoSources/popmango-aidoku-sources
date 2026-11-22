@@ -1,181 +1,21 @@
 #![no_std]
+mod helpers;
+mod home;
+mod settings;
+#[cfg(test)]
+mod test;
+
 use aidoku::{
-	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, DynamicFilters, Filter, FilterItem,
-	FilterValue, Home, HomeComponent, HomeComponentValue, HomeLayout, Link, LinkValue, Listing,
-	ListingProvider, Manga, MangaPageResult, MangaStatus, MultiSelectFilter, Page, PageContent,
-	PageContext, Result, Source,
-	alloc::{String, Vec, string::ToString, vec},
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Listing, ListingProvider, Manga,
+	MangaPageResult, Page, PageContent, Result, Source,
+	alloc::{String, Vec},
 	helpers::uri::QueryParameters,
-	imports::defaults::defaults_get,
-	imports::html::{Document, Element},
-	imports::net::Request,
-	imports::std::{parse_date, send_partial_result},
 	prelude::*,
 };
-
-const DEFAULT_BASE_URL: &str = "https://mangavyvy.net";
-const BASE_URL_KEY: &str = "baseUrl";
-const DESKTOP_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
-	(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-
-fn base_url() -> String {
-	defaults_get::<String>(BASE_URL_KEY)
-		.map(|url| url.trim().trim_end_matches('/').to_string())
-		.filter(|url| url.starts_with("http"))
-		.unwrap_or_else(|| DEFAULT_BASE_URL.into())
-}
-
-fn request(url: &str) -> Result<Request> {
-	let base = base_url();
-	let mut request = Request::get(url)?
-		.header("Referer", &format!("{base}/"))
-		.header("Origin", &base)
-		.header("User-Agent", DESKTOP_USER_AGENT)
-		.header(
-			"Accept",
-			"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-		);
-	request.set_timeout(15.0);
-	Ok(request)
-}
-
-const ADULT_GENRES: &[&str] = &["adult", "hentai", "smut"];
-
-fn abs_url(value: &str) -> String {
-	let value = value.trim();
-	if value.is_empty() {
-		String::new()
-	} else if let Some(rest) = value.strip_prefix("//") {
-		format!("https://{rest}")
-	} else if value.starts_with("http") {
-		value.to_string()
-	} else if value.starts_with('/') {
-		format!("{}{value}", base_url())
-	} else {
-		format!("{}/{value}", base_url())
-	}
-}
-
-fn img_from(el: &Element) -> String {
-	let src = el
-		.attr("data-src")
-		.or_else(|| el.attr("data-lazy-src"))
-		.or_else(|| el.attr("data-cfsrc"))
-		.or_else(|| el.attr("src"))
-		.unwrap_or_default();
-	abs_url(&src)
-}
-
-fn manga_id_from(href: &str) -> Option<String> {
-	let idx = href.find("/manga/")?;
-	let after = &href[idx + "/manga/".len()..];
-	let id = after.split(['/', '?', '#']).next().unwrap_or("");
-	(!id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'))
-		.then(|| id.to_string())
-}
-
-fn chapter_number_from(text: &str) -> Option<f32> {
-	let lower = text.to_lowercase();
-	let search = lower
-		.find("chapter")
-		.map(|i| &lower[i + 7..])
-		.unwrap_or(&lower);
-	let mut num = String::new();
-	for c in search.chars() {
-		if c.is_ascii_digit() || c == '.' {
-			num.push(c);
-		} else if !num.is_empty() {
-			break;
-		}
-	}
-	num.trim_matches('.').parse::<f32>().ok()
-}
-
-fn content_rating_for(genres: &[String]) -> ContentRating {
-	let lowered: Vec<String> = genres.iter().map(|g| g.trim().to_lowercase()).collect();
-	if lowered.iter().any(|g| ADULT_GENRES.contains(&g.as_str())) {
-		ContentRating::NSFW
-	} else {
-		ContentRating::Suggestive
-	}
-}
-
-fn status_from(text: &str) -> MangaStatus {
-	let s = text.to_lowercase();
-	if s.contains("complet") || s.contains("finish") {
-		MangaStatus::Completed
-	} else if s.contains("ongoing") || s.contains("going") || s.contains("updating") {
-		MangaStatus::Ongoing
-	} else if s.contains("hiatus") || s.contains("pause") {
-		MangaStatus::Hiatus
-	} else if s.contains("cancel") || s.contains("drop") {
-		MangaStatus::Cancelled
-	} else {
-		MangaStatus::Unknown
-	}
-}
-
-fn parse_cards(doc: &Document) -> Vec<Manga> {
-	let mut items = Vec::new();
-	let mut seen: Vec<String> = Vec::new();
-	let Some(cards) = doc.select(".comic-item") else {
-		return items;
-	};
-	for card in cards {
-		let Some(link) = card.select_first("a") else {
-			continue;
-		};
-		let href = link.attr("href").unwrap_or_default();
-		let Some(manga_id) = manga_id_from(&href) else {
-			continue;
-		};
-		if seen.iter().any(|s| s == &manga_id) {
-			continue;
-		}
-		let title = card
-			.select_first(".comic-title")
-			.and_then(|el| el.text())
-			.or_else(|| link.attr("title"))
-			.unwrap_or_default();
-		let title = title.trim().to_string();
-		if title.is_empty() {
-			continue;
-		}
-		seen.push(manga_id.clone());
-		let cover = card
-			.select_first(".comic-image img, img.image, img.lozad")
-			.map(|img| img_from(&img));
-		items.push(Manga {
-			key: manga_id,
-			title,
-			cover,
-			content_rating: ContentRating::Suggestive,
-			..Default::default()
-		});
-	}
-	items
-}
-
-fn has_next_page(doc: &Document) -> bool {
-	doc.select_first("[rel=next]").is_some()
-}
-
-fn fetch_cards(url: &str) -> Result<MangaPageResult> {
-	let doc = request(url)?.html()?;
-	let has_next_page = has_next_page(&doc);
-	Ok(MangaPageResult {
-		entries: parse_cards(&doc),
-		has_next_page,
-	})
-}
-
-fn browse_url(sort: &str, page: i32) -> String {
-	let mut qs = QueryParameters::new();
-	qs.push("sort", Some(sort));
-	qs.push("sort_type", Some("desc"));
-	qs.push("page", Some(&page.to_string()));
-	format!("{}/search?{qs}", base_url())
-}
+use helpers::{
+	SORTS, get_html, manga_key, manga_url, parse_chapters, parse_manga, parse_page, search_url,
+	sorted_url,
+};
 
 struct VyManga;
 
@@ -190,60 +30,48 @@ impl Source for VyManga {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let query = query.unwrap_or_default();
-		let query = query.trim();
-		let page = page.max(1);
-
-		let mut sort_index = 0;
-		let mut author = String::new();
-		let mut completed = String::new();
-		let mut included_genres: Vec<String> = Vec::new();
-		let mut excluded_genres: Vec<String> = Vec::new();
+		let mut qs = QueryParameters::new();
+		if query.is_some() {
+			qs.push("q", query.as_deref());
+		}
+		let mut included_genres = Vec::new();
+		let mut excluded_genres = Vec::new();
 		for filter in filters {
 			match filter {
-				FilterValue::Sort { index, .. } => sort_index = index,
-				FilterValue::Text { id, value } if id == "author" => author = value,
-				FilterValue::Select { id, value } if id == "completed" => completed = value,
+				FilterValue::Sort {
+					index, ascending, ..
+				} => {
+					if let Some(sort) = SORTS.get(index as usize) {
+						qs.push_encoded("sort", Some(sort));
+					}
+					if ascending {
+						qs.push_encoded("sort_type", Some("asc"));
+					}
+				}
+				FilterValue::Check { id, value } if id == "description" && value == 1 => {
+					qs.push_encoded("check_search_desc", Some("1"));
+				}
+				FilterValue::Text { id, value } if id == "author" => {
+					qs.push("author", Some(&value));
+				}
+				FilterValue::Select { id, value } => match id.as_str() {
+					"author_match" => qs.push_encoded("author_po", Some(&value)),
+					"status" => qs.push_encoded("completed", Some(&value)),
+					_ => {}
+				},
 				FilterValue::MultiSelect {
 					id,
 					included,
 					excluded,
-				} if id == "genres" => {
+				} if id == "genre" => {
 					included_genres = included;
 					excluded_genres = excluded;
 				}
 				_ => {}
 			}
 		}
-
-		let mut qs = QueryParameters::new();
-		qs.push("q", Some(query));
-		qs.push("page", Some(&page.to_string()));
-		qs.push("search_po", Some("0"));
-		qs.push("author_po", Some("0"));
-		if !author.is_empty() {
-			qs.push("author", Some(&author));
-		}
-		if !completed.is_empty() {
-			qs.push("completed", Some(&completed));
-		}
-		for genre in &included_genres {
-			qs.push("genre[]", Some(genre));
-		}
-		for genre in &excluded_genres {
-			qs.push("exclude_genre[]", Some(genre));
-		}
-		let sort = match sort_index {
-			1 => Some("updated_at"),
-			2 => Some("scored"),
-			3 => Some("created_at"),
-			_ => None,
-		};
-		if let Some(sort) = sort {
-			qs.push("sort", Some(sort));
-			qs.push("sort_type", Some("desc"));
-		}
-		fetch_cards(&format!("{}/search?{qs}", base_url()))
+		let url = search_url(qs, page, &included_genres, &excluded_genres);
+		Ok(parse_page(&get_html(&url)?))
 	}
 
 	fn get_manga_update(
@@ -252,373 +80,62 @@ impl Source for VyManga {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let url = format!("{}/manga/{}", base_url(), manga.key);
-		let doc = request(&url)?.html()?;
-
+		let html = get_html(&manga_url(&manga.key))?;
 		if needs_details {
-			manga.title = doc
-				.select_first("h1")
-				.and_then(|el| el.text())
-				.map(|t| t.trim().to_string())
-				.filter(|t| !t.is_empty())
-				.unwrap_or_else(|| manga.key.clone());
-			manga.cover = doc
-				.select_first(".img-manga img, .content-thumb img")
-				.map(|img| img_from(&img));
-			manga.description = doc
-				.select(".summary > .content, div.summary p.content")
-				.and_then(|els| {
-					let text = els
-						.filter_map(|el| el.text())
-						.map(|t| t.trim().to_string())
-						.filter(|t| !t.is_empty())
-						.collect::<Vec<_>>()
-						.join("\n");
-					(!text.is_empty()).then_some(text)
-				});
-			manga.authors = collect_text(&doc, ".pre-title:contains(Author) ~ a");
-			manga.artists = collect_text(&doc, ".pre-title:contains(Artist) ~ a");
-
-			let genres: Vec<String> = doc
-				.select(".pre-title:contains(Genres) ~ a, div.col-md-7 p a[href*=genre]")
-				.map(|els| {
-					els.filter_map(|el| el.text())
-						.map(|t| t.trim().to_string())
-						.filter(|t| !t.is_empty())
-						.collect()
-				})
-				.unwrap_or_default();
-			manga.content_rating = content_rating_for(&genres);
-			manga.tags = (!genres.is_empty()).then_some(genres);
-
-			let status_text = doc
-				.select(
-					".pre-title:contains(Status) ~ span:not(.space), div.col-md-7 p:contains(Status) span",
-				)
-				.and_then(|els| els.into_iter().next_back())
-				.and_then(|el| el.text())
-				.unwrap_or_default();
-			manga.status = status_from(&status_text);
-			manga.url = Some(url.clone());
-
-			if needs_chapters {
-				send_partial_result(&manga);
-			}
+			let Some(info) = html.select_first(".div-manga") else {
+				bail!("Missing series details");
+			};
+			manga = parse_manga(manga.key, &info)?;
 		}
-
 		if needs_chapters {
-			let mut chapters: Vec<Chapter> = Vec::new();
-			let mut seen: Vec<String> = Vec::new();
-			let elements = doc
-				.select("a.list-chapter")
-				.filter(|els| !els.is_empty())
-				.or_else(|| doc.select("a[id^=chapter-]"));
-			if let Some(elements) = elements {
-				for el in elements {
-					let href = el
-						.attr("href")
-						.or_else(|| el.select_first("a").and_then(|a| a.attr("href")))
-						.unwrap_or_default();
-					if href.is_empty() {
-						continue;
-					}
-					let key = abs_url(&href);
-					if seen.iter().any(|s| s == &key) {
-						continue;
-					}
-					seen.push(key.clone());
-					let title = el
-						.select_first("span")
-						.and_then(|s| s.text())
-						.or_else(|| el.select_first("p:not(.small)").and_then(|p| p.text()))
-						.or_else(|| el.text())
-						.unwrap_or_default();
-					let title = title.trim().to_string();
-					let chapter_number = chapter_number_from(&title);
-					let date_uploaded = el
-						.select_first("p.small")
-						.and_then(|d| d.text())
-						.and_then(|t| parse_relative_date(&t));
-					chapters.push(Chapter {
-						title: (!title.is_empty()).then_some(title),
-						chapter_number,
-						date_uploaded,
-						url: Some(key.clone()),
-						key,
-						language: Some("en".into()),
-						..Default::default()
-					});
-				}
-			}
-			manga.chapters = Some(chapters);
+			manga.chapters = Some(parse_chapters(&html));
 		}
-
 		Ok(manga)
 	}
 
-	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let doc = request(&chapter.key)?.html()?;
-		let mut pages = Vec::new();
-		let mut seen: Vec<String> = Vec::new();
-		if let Some(imgs) = doc.select("div.carousel-item[data-page] img, img.lozad, img.d-block") {
-			for img in imgs {
-				let url = img_from(&img);
-				let lower = url.to_lowercase();
-				if url.is_empty()
-					|| seen.iter().any(|s| s == &url)
-					|| lower.contains("loading.gif")
-					|| lower.contains("/logo")
-					|| lower.contains("/icon")
-					|| lower.contains("/avatar")
-					|| lower.contains("/banner")
-				{
-					continue;
-				}
-				seen.push(url.clone());
-				pages.push(Page {
+	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
+		// A chapter's link expires within hours, so a fresh one is read from the series page.
+		let Some(url) = parse_chapters(&get_html(&manga_url(&manga.key))?)
+			.into_iter()
+			.find(|listed| listed.key == chapter.key)
+			.and_then(|listed| listed.url)
+		else {
+			bail!("Chapter not found");
+		};
+		let html = get_html(&url)?;
+		let Some(images) = html
+			.select(".carousel-item > img")
+			.filter(|images| !images.is_empty())
+		else {
+			bail!("No pages found");
+		};
+		images
+			.map(|image| {
+				let url = image
+					.attr("data-src")
+					.ok_or_else(|| error!("Missing page image"))?;
+				Ok(Page {
 					content: PageContent::url(url),
 					..Default::default()
-				});
-			}
-		}
-		if pages.is_empty() {
-			bail!("No pages found");
-		}
-		Ok(pages)
-	}
-}
-
-fn collect_text(doc: &Document, selector: &str) -> Option<Vec<String>> {
-	let values: Vec<String> = doc
-		.select(selector)
-		.map(|els| {
-			els.filter_map(|el| el.text())
-				.map(|t| t.trim().to_string())
-				.filter(|t| {
-					!t.is_empty()
-						&& t != "-" && t.to_lowercase() != "n/a"
-						&& t.to_lowercase() != "updating"
 				})
-				.collect()
-		})
-		.unwrap_or_default();
-	(!values.is_empty()).then_some(values)
-}
-
-fn parse_relative_date(text: &str) -> Option<i64> {
-	let trimmed = text.trim();
-	if trimmed.is_empty() {
-		return None;
-	}
-	parse_date(trimmed, "MMM d, yyyy").or_else(|| parse_date(trimmed, "MMMM d, yyyy"))
-}
-
-impl Home for VyManga {
-	fn get_home(&self) -> Result<HomeLayout> {
-		let mut components: Vec<HomeComponent> = Vec::new();
-		let urls = [
-			browse_url("viewed", 1),
-			browse_url("updated_at", 1),
-			browse_url("scored", 1),
-			browse_url("created_at", 1),
-			base_url(),
-		];
-		let requests: Vec<Request> = urls
-			.iter()
-			.map(|url| request(url))
-			.collect::<Result<Vec<_>>>()?;
-		let mut responses = Request::send_all(requests).into_iter();
-		let mut next_document = || {
-			responses
-				.next()
-				.and_then(|response| response.ok())
-				.and_then(|response| response.get_html().ok())
-		};
-
-		if let Some(doc) = next_document() {
-			let entries: Vec<Manga> = parse_cards(&doc).into_iter().take(8).collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Popular".into()),
-					subtitle: None,
-					value: HomeComponentValue::BigScroller {
-						entries,
-						auto_scroll_interval: Some(6.0),
-					},
-				});
-			}
-		}
-
-		if let Some(doc) = next_document() {
-			let entries: Vec<Link> = parse_cards(&doc)
-				.into_iter()
-				.map(|manga| Link {
-					title: manga.title.clone(),
-					subtitle: None,
-					image_url: manga.cover.clone(),
-					value: Some(LinkValue::Manga(manga)),
-				})
-				.collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Latest Updated".into()),
-					subtitle: None,
-					value: HomeComponentValue::Scroller {
-						entries,
-						listing: Some(Listing {
-							id: "updated_at".into(),
-							name: "Latest Updated".into(),
-							..Default::default()
-						}),
-					},
-				});
-			}
-		}
-
-		for (title, sort) in [("Top Rated", "scored"), ("Newest", "created_at")] {
-			if let Some(doc) = next_document() {
-				let entries: Vec<Link> = parse_cards(&doc)
-					.into_iter()
-					.map(|manga| Link {
-						title: manga.title.clone(),
-						subtitle: None,
-						image_url: manga.cover.clone(),
-						value: Some(LinkValue::Manga(manga)),
-					})
-					.collect();
-				if !entries.is_empty() {
-					let listing = Some(Listing {
-						id: sort.into(),
-						name: title.into(),
-						..Default::default()
-					});
-					let value = if sort == "scored" {
-						HomeComponentValue::MangaList {
-							ranking: true,
-							page_size: Some(5),
-							entries,
-							listing,
-						}
-					} else {
-						HomeComponentValue::Scroller { entries, listing }
-					};
-					components.push(HomeComponent {
-						title: Some(title.into()),
-						subtitle: None,
-						value,
-					});
-				}
-			}
-		}
-
-		if let Some(doc) = next_document() {
-			let mut seen: Vec<String> = Vec::new();
-			let genres: Vec<FilterItem> = doc
-				.select("a[href*='/genre/']")
-				.map(|items| {
-					items
-						.filter_map(|link| {
-							let href = link.attr("href")?;
-							let slug = href
-								.split("/genre/")
-								.nth(1)?
-								.split(['/', '?', '#'])
-								.next()?;
-							let title = link.text()?.trim().to_string();
-							if slug.is_empty()
-								|| title.is_empty() || seen.iter().any(|id| id == slug)
-							{
-								return None;
-							}
-							seen.push(slug.into());
-							Some(FilterItem {
-								title,
-								values: Some(vec![FilterValue::MultiSelect {
-									id: "genres".into(),
-									included: vec![slug.into()],
-									excluded: Vec::new(),
-								}]),
-							})
-						})
-						.collect()
-				})
-				.unwrap_or_default();
-			if !genres.is_empty() {}
-		}
-		if components.is_empty() {
-			bail!("VyManga is currently unavailable from this network");
-		}
-
-		Ok(HomeLayout { components })
+			})
+			.collect()
 	}
 }
 
 impl ListingProvider for VyManga {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let sort = match listing.id.as_str() {
-			"viewed" => "viewed",
-			"updated_at" => "updated_at",
-			"scored" => "scored",
-			"created_at" => "created_at",
-			_ => bail!("Unknown listing"),
-		};
-		fetch_cards(&browse_url(sort, page.max(1)))
-	}
-}
-
-impl DynamicFilters for VyManga {
-	/// Genre ids are the site's own numbering, so the search form is read for
-	/// them rather than pinning a list that goes stale.
-	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let (options, ids): (Vec<_>, Vec<_>) = request(&format!("{}/search", base_url()))?
-			.html()?
-			.select(".checkbox-genre[data-value]")
-			.map(|boxes| {
-				boxes
-					.filter_map(|checkbox| {
-						let id = checkbox.attr("data-value")?;
-						let option = checkbox.parent()?.select_first("label")?.text()?;
-						Some((option.into(), id.into()))
-					})
-					.unzip()
-			})
-			.unwrap_or_default();
-
-		Ok(vec![
-			MultiSelectFilter {
-				id: "genres".into(),
-				title: Some("Genres".into()),
-				is_genre: true,
-				can_exclude: true,
-				options,
-				ids: Some(ids),
-				..Default::default()
-			}
-			.into(),
-		])
-	}
-}
-
-impl aidoku::ImageRequestProvider for VyManga {
-	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
-		request(&url)
+		if !SORTS.contains(&listing.id.as_str()) {
+			bail!("Unknown listing");
+		}
+		Ok(parse_page(&get_html(&sorted_url(&listing.id, page))?))
 	}
 }
 
 impl DeepLinkHandler for VyManga {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		let Some(manga_id) = manga_id_from(&url) else {
-			return Ok(None);
-		};
-		Ok(Some(DeepLinkResult::Manga { key: manga_id }))
+		Ok(manga_key(&url).map(|key| DeepLinkResult::Manga { key }))
 	}
 }
 
-register_source!(
-	VyManga,
-	DynamicFilters,
-	Home,
-	ListingProvider,
-	ImageRequestProvider,
-	DeepLinkHandler
-);
+register_source!(VyManga, Home, ListingProvider, DeepLinkHandler);
