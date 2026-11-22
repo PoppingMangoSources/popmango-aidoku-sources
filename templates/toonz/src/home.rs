@@ -1,6 +1,10 @@
 use crate::{
 	Params, Row,
-	helpers::{Content, age, card, cards, check_response, parse_series_path, rating, status, tags},
+	helpers::{
+		Content, age, card, cards, check_response, cover_url, featured_series, parse_series_path,
+		rating, status, tags,
+	},
+	models::FeaturedSeries,
 };
 use aidoku::{
 	AidokuError, Chapter, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
@@ -23,12 +27,20 @@ fn section(page: &Document, heading: &str) -> Option<Element> {
 	})
 }
 
-fn featured(params: &Params, article: &Element) -> Option<(f32, Manga)> {
+fn featured(params: &Params, article: &Element, series: &[FeaturedSeries]) -> Option<(f32, Manga)> {
 	let link = article.select_first("h2 a")?;
 	let href = link.attr("href")?;
 	let (key, _) = parse_series_path(params, &href)?;
 	let title = link.text().filter(|title| !title.is_empty())?;
-	let cover = article.select_first("img[data-cover]")?;
+	let image = article.select_first("img[data-cover]");
+	let series = series.iter().find(|series| series.slug == key);
+	let nsfw = image
+		.as_ref()
+		.is_some_and(|image| image.has_attr("data-nsfw"))
+		|| matches!(
+			series.and_then(|series| series.content_rating.as_deref()),
+			Some("erotica" | "pornographic")
+		);
 	let tags = tags(article.select("a[href^='/genre/']"));
 	let score = article
 		.select("dl > div")
@@ -47,28 +59,35 @@ fn featured(params: &Params, article: &Element) -> Option<(f32, Manga)> {
 		Manga {
 			key: key.into(),
 			title,
-			cover: cover.attr("abs:src"),
+			cover: image
+				.and_then(|image| image.attr("abs:src"))
+				.or_else(|| cover_url(params, series)),
 			description: article
 				.select_first("h2 + p")
 				.and_then(|text| text.text())
 				.filter(|text| !text.is_empty()),
-			content_rating: rating(cover.has_attr("data-nsfw"), &tags),
+			content_rating: rating(nsfw, &tags),
 			tags: Some(tags).filter(|tags| !tags.is_empty()),
 			..Default::default()
 		},
 	))
 }
 
-fn slide(params: &Params, heading: &Element, cards: &[Manga]) -> Option<Manga> {
+fn slide(
+	params: &Params,
+	heading: &Element,
+	series: &[FeaturedSeries],
+	cards: &[Manga],
+) -> Option<Manga> {
 	let link = heading.parent()?;
 	let href = link.attr("href")?;
 	let (key, _) = parse_series_path(params, &href)?;
 	let info = link.parent()?;
-	// Later slides reuse covers from the cards further down the page.
 	let cover = info
 		.parent()?
 		.select_first("picture img")
 		.and_then(|cover| cover.attr("abs:src"))
+		.or_else(|| cover_url(params, series.iter().find(|series| series.slug == key)))
 		.or_else(|| cards.iter().find(|card| card.key == key)?.cover.clone());
 	Some(Manga {
 		key: key.into(),
@@ -178,11 +197,12 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 		Row::Featured(indices) => {
 			let mut entries: Vec<_> = loaded(indices)
 				.flat_map(|page| {
+					let series = featured_series(page, r#""slides":"#);
 					page.select("section[aria-label=Featured] article")
 						.into_iter()
 						.flatten()
+						.filter_map(move |article| featured(params, &article, &series))
 				})
-				.filter_map(|article| featured(params, &article))
 				.collect();
 			// Stable, so equal ratings keep the page's order.
 			entries.sort_by(|(a, _), (b, _)| b.total_cmp(a));
@@ -193,10 +213,11 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 		}
 		Row::Hero(page) => {
 			let page = pages.get(page)?.as_ref()?;
+			let series = featured_series(page, r#""comics":"#);
 			let cards = cards(params, page.select("img[data-cover]"));
 			let entries: Vec<_> = page
-				.select("section h2")?
-				.filter_map(|heading| slide(params, &heading, &cards))
+				.select("section div[aria-hidden] a > h2")?
+				.filter_map(|heading| slide(params, &heading, &series, &cards))
 				.collect();
 			(!entries.is_empty()).then_some(HomeComponentValue::BigScroller {
 				entries,

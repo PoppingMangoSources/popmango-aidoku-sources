@@ -31,6 +31,14 @@ pub struct ReaderImage {
 	pub filename: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeaturedSeries {
+	pub slug: String,
+	pub cover: Option<String>,
+	pub content_rating: Option<String>,
+}
+
 impl ChapterItem {
 	pub fn key(&self) -> &str {
 		self.slug.strip_prefix("chapter-").unwrap_or(&self.slug)

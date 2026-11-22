@@ -1,6 +1,6 @@
 use crate::{
 	Params,
-	models::{ChapterItem, ChapterList, Genre, ReaderImage},
+	models::{ChapterItem, ChapterList, FeaturedSeries, Genre, ReaderImage},
 	settings,
 };
 use aidoku::{
@@ -326,6 +326,42 @@ pub fn reader_images(
 		})
 		.map(Some)
 		.ok_or_else(|| error!("This chapter has missing pages"))
+}
+
+pub fn featured_series(page: &Document, property: &str) -> Vec<FeaturedSeries> {
+	let mut flight = String::new();
+	// A slide record can span several script chunks.
+	for data in page
+		.select("script:not([src])")
+		.into_iter()
+		.flatten()
+		.filter_map(|script| script.data().or_else(|| script.html()))
+	{
+		let Some(chunk) = data.strip_prefix("self.__next_f.push(") else {
+			continue;
+		};
+		if let Some(Ok((1, text))) = serde_json::Deserializer::from_str(chunk)
+			.into_iter::<(u8, String)>()
+			.next()
+		{
+			flight.push_str(&text);
+		}
+	}
+	flight
+		.match_indices(property)
+		.find_map(|(start, _)| {
+			serde_json::Deserializer::from_str(&flight[start + property.len()..])
+				.into_iter::<Vec<FeaturedSeries>>()
+				.next()?
+				.ok()
+				.filter(|entries| !entries.is_empty())
+		})
+		.unwrap_or_default()
+}
+
+pub fn cover_url(params: &Params, featured: Option<&FeaturedSeries>) -> Option<String> {
+	let path = featured?.cover.as_deref()?.trim();
+	(!path.is_empty()).then(|| format!("{}/uploads/{path}", params.base_url))
 }
 
 fn texts(list: Option<ElementList>) -> impl Iterator<Item = String> {

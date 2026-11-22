@@ -8,7 +8,7 @@ use crate::{
 };
 use aidoku::{
 	ContentRating, HomeComponentValue, Manga, MangaStatus, Viewer,
-	alloc::{String, Vec, string::ToString, vec},
+	alloc::{String, Vec, format, string::ToString, vec},
 	imports::html::Html,
 };
 use aidoku_test::aidoku_test;
@@ -31,6 +31,17 @@ const LEWD: Params = Params {
 	series_types: &["webtoon"],
 	rating: "pornographic",
 	type_count: 5,
+	home_pages: &[],
+	home_rows: &[],
+};
+
+const TOONX: Params = Params {
+	base_url: "https://toonx.to",
+	catalog: "comics",
+	series_path: "comic",
+	series_types: &["comic", "adult"],
+	rating: "pornographic",
+	type_count: 0,
 	home_pages: &[],
 	home_rows: &[],
 };
@@ -79,15 +90,87 @@ const LEWD_HOME: &str = r#"<html><body>
 <a href="/webtoon/beast"><h2>Beast</h2></a><div><span>3.3</span><span data-slot="badge">ongoing</span></div><p>Beast summary.</p>
 <a href="/webtoon/beast"><button>Read Now</button></a></div></div>
 <div aria-hidden="true"><div><a aria-label="Farm" href="/webtoon/farm-429h7"><div><div>manhwa</div></div></a><div>
-<a href="/webtoon/farm-429h7"><h2>Farm</h2></a><p>Farm summary.</p></div></div></div></section>
+<a href="/webtoon/farm-429h7"><h2>Farm</h2></a><p>Farm summary.</p></div></div></div>
+<div aria-hidden="true"><div><div></div><div><a href="/webtoon/fields"><h2>Fields</h2></a></div></div></div>
+<div aria-hidden="true"><div><div></div><div><a href="/webtoon/forest"><h2>Forest</h2></a></div></div></div>
+<div aria-hidden="true"><div><div></div><div><a href="/webtoon/creek"><h2>Creek</h2></a></div></div></div>
+<div aria-hidden="true"><div><div></div><div><a href="/webtoon/garden"><h2>Garden</h2></a></div></div></div></section>
+<section><a href="/webtoon/unrelated"><h2>Not Featured</h2></a></section>
 <section><h2>Trending Now</h2><a href="/webtoon/beast"><div><img alt="Beast" data-cover src="/b.webp"/><div>1</div></div><h3>Beast</h3></a>
 <a href="/webtoon/farm-429h7"><div><img alt="Farm" data-cover src="/f.webp"/><div>2</div></div><h3>Farm</h3></a></section>
 <section><h2>Latest Updates</h2><div><a aria-label="Divorce" href="/webtoon/divorce"></a><div><img alt="Divorce" data-cover src="/d.webp"/>
 <div><span>Manhwa</span></div></div><div><h3>Divorce</h3><div><span>223</span></div><a href="/webtoon/divorce/chapter/17-wad21">Ch. <!-- -->17</a><a href="/webtoon/divorce/chapter/17-wad21">Read</a></div></div></section>
+<script>self.__next_f.push([1,"1a:[\"$\",\"$L3\",null,{\"comics\":[{\"slug\":\"fields\",\"cover\":\"covers/fields.webp\"},{\"slug\":\"forest\",\"cover\":\"covers/forest.webp\"},{\"slug\":\"creek\",\"cover\":\"covers/creek.webp\"},{\"slug\":\"garden\",\"cover\":\"covers/garden.webp\"},{\"slug\":\"unrelated\",\"cover\":\"covers/unrelated.webp\"}]}]\n"])</script>
 </body></html>"#;
 
 fn page(html: &str, base: &str) -> Option<aidoku::imports::html::Document> {
 	Some(Html::parse_with_url(html, base).unwrap())
+}
+
+fn top_rated_page(kind: &str) -> String {
+	let mut html = String::from(r#"<section aria-label="Featured">"#);
+	let mut series = Vec::new();
+	for number in 1..=5 {
+		let slug = format!("{kind}-{number}");
+		html.push_str(&format!(
+			r#"<article><h2><a href="/{kind}/{slug}">{slug}</a></h2><p>Summary</p><dl><div><dt>Rating</dt><dd>5.0 rating</dd></div></dl>"#
+		));
+		if number <= 2 {
+			html.push_str(&format!(r#"<img data-cover src="/{slug}_thumb.webp">"#));
+		}
+		html.push_str("</article>");
+		series.push(format!(
+			r#"{{"slug":"{slug}","description":"Quote: \"hello\"","cover":"covers/{slug}-hd.webp","contentRating":"erotica"}}"#
+		));
+	}
+	html.push_str("</section>");
+	let flight = format!(
+		r#"3d:["$","$L6b",null,{{"slides":[{}]}}]"#,
+		series.join(",")
+	);
+	let (first, second) = flight.split_at(flight.find("slides").unwrap() + 3);
+	for chunk in [first, second] {
+		let chunk = serde_json::to_string(&(1, chunk)).unwrap();
+		html.push_str(&format!("<script>self.__next_f.push({chunk})</script>"));
+	}
+	html
+}
+
+#[aidoku_test]
+fn review_top_rated_keeps_five_titles_from_each_type() {
+	let pages = [
+		page(&top_rated_page("manhwa"), TOONZ.base_url),
+		page(&top_rated_page("manga"), TOONZ.base_url),
+	];
+	let Some(HomeComponentValue::BigScroller { entries, .. }) =
+		fill(&TOONZ, Row::Featured(&[0, 1]), &pages)
+	else {
+		panic!("top rated is not a big scroller");
+	};
+	assert_eq!(entries.len(), 10);
+	for (index, entry) in entries.iter().enumerate() {
+		let kind = if index < 5 { "manhwa" } else { "manga" };
+		let number = index % 5 + 1;
+		assert_eq!(entry.key, format!("{kind}-{number}"));
+		assert!(entry.cover.is_some());
+	}
+}
+
+#[aidoku_test]
+fn review_toonx_top_rated_recovers_later_covers() {
+	let pages = [page(&top_rated_page("adult"), TOONX.base_url)];
+	let Some(HomeComponentValue::BigScroller { entries, .. }) =
+		fill(&TOONX, Row::Featured(&[0]), &pages)
+	else {
+		panic!("top rated is not a big scroller");
+	};
+	assert_eq!(entries.len(), 5);
+	assert_eq!(entries[4].key, "adult-5");
+	assert_eq!(
+		entries[4].cover.as_deref(),
+		Some("https://toonx.to/uploads/covers/adult-5-hd.webp")
+	);
+	assert_eq!(entries[4].content_rating, ContentRating::NSFW);
 }
 
 #[aidoku_test]
@@ -157,7 +240,7 @@ fn review_lewd_home_rows() {
 	let keys: Vec<_> = entries.iter().map(|manga| manga.key.as_str()).collect();
 	assert_eq!(
 		keys,
-		["beast", "farm-429h7"],
+		["beast", "farm-429h7", "fields", "forest", "creek", "garden"],
 		"only slide headings link a series"
 	);
 	assert_eq!(
@@ -172,6 +255,11 @@ fn review_lewd_home_rows() {
 		"a slide without its own cover takes its card's"
 	);
 	assert_eq!(entries[1].description.as_deref(), Some("Farm summary."));
+	assert_eq!(
+		entries[5].cover.as_deref(),
+		Some("https://lewdmanhwa.com/uploads/covers/garden.webp")
+	);
+	assert!(entries.iter().all(|entry| entry.cover.is_some()));
 
 	let Some(HomeComponentValue::MangaChapterList { entries, .. }) =
 		value(Row::Chapters(0, "Latest Updates"))

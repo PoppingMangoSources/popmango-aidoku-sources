@@ -53,9 +53,11 @@ Everything below was probed live on 2026-11-19 unless marked.
   LewdManhwa `/home` (hero slides and Latest Updates; its Trending Now repeats the slides), each
   in one `send_all`.
 
-> ⚠️ LewdManhwa's hero renders only its first slide's cover (a `<picture>`); the other slides
-> arrive with an empty cover box, so a slide takes its cover from the same title's card on the
-> page (`templates/toonz/src/home.rs`). Requiring the picture showed one Featured title.
+> ⚠️ Toonz and Toonx send five Top Rated slides per page but render images for only two.
+> LewdManhwa's Featured row also renders images for only the first few slides. The template
+> keeps the rendered slide titles and matches missing covers by slug against the embedded
+> page data. LewdManhwa can also reuse a matching cover from another row. No extra requests
+> are needed, and Toonz keeps all five Manga and all five Manhwa when both pages supply them.
 
 > ⚠️ The content setting is the `reader_prefs` cookie (`{"rating","types","blockedGenres"}`),
 > and every page reads it, home included. The site's own URL `rating` and `types` can only
