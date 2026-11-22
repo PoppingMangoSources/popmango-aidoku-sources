@@ -142,6 +142,15 @@ Reader shelves, Busiest groups and Latest comments are not series lists and are 
 > not asserted (v29; the earlier reshaped form existed only for the runner)
 > (`sources/en.webnex/src/models.rs:220`).
 
+> ⚠️ The site lists every upload of a chapter number in that number's single row (the main
+> link plus its sources menu), and a group appears at most once in a row: across 144 series
+> (popular and updated, up to 8 chapter pages each, 13,438 rows, 2026-11-22) no number
+> repeated across rows and no group repeated inside one. `uploads` still keeps one upload per
+> group per row (`sources/en.webnex/src/models.rs:285`), so a group's re-upload can't reach
+> One per Chapter as two entries. `select_chapters` keeps the winning group's other rows with
+> the same number only for parts, which that sample never showed (kkantan's question on the
+> upstream PR).
+
 ## Reader
 
 > ⚠️ `/read/<key>/pages` (the reader props' `pagesUrl`) answers 403 "Open this chapter on
