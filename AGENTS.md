@@ -275,17 +275,18 @@ common engine or theme:
 `pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`, `keyoapp`, `mangak`,
 `mangataro`, `zaimanhua`.
 
-`toonz` (Toonz, Toonx and LewdManhwa) is ours alone so far, on `feat/toonz-template`;
-`mangataro` merged with #911 and left `main` for `merged-sources` with MangaTaro and Rolia Scan
-(section 17).
+`toonz` (Toonz, Toonx and LewdManhwa) is ours alone so far, on `feat/toonz-template`.
+Every upstream template is kept in `templates/` for future sources (owner's call, 2026-11-22):
+`iken`, `mangataro` and `zaimanhua` came back as upstream's copies, while our fork versions
+with their fixtures stay on `merged-sources` with their consumers (section 17).
 
 Most templates track upstream. `madara` and `madtheme` carry additions our sources use
 (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and
 is upstream's copy again; its consumers live upstream only. `mangathemesia` adds shared novel
 reading and an opt-in `child_theme` module for Violet, Thunder, Madara and Eva; their source
 overrides select its home and deep-link handlers. It stays on `main` with its loopback fixtures
-for future consumers, though Scythe Scans, its last one, moved to `merged-sources`; `iken` left
-with its six consumers and `vinetheme` with its five (section 17). The default home and deep-link handlers remain
+for future consumers, though Scythe Scans, its last one, moved to `merged-sources`; `iken`'s six
+consumers and `vinetheme`'s five moved there too (section 17). The default home and deep-link handlers remain
 upstream's for the other consumers. KingOfShojo and RokariComics merged with the original template
 unchanged (section 17). The `madtheme` additions (a home page and a chapter-list fallback)
 were for Kaliscan, which now sits on
