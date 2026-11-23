@@ -146,7 +146,7 @@ pub fn viewer(kind: Option<&str>, medium: Option<&str>) -> Viewer {
 	}
 	match kind {
 		Some("Manga") => Viewer::RightToLeft,
-		Some("Manwha" | "Manhua") => Viewer::Webtoon,
+		Some("Manwha" | "Manhwa" | "Manhua") => Viewer::Webtoon,
 		_ => Viewer::Unknown,
 	}
 }
@@ -255,6 +255,7 @@ pub fn feed_allows(kind: Option<&str>, medium: Option<&str>, types: &[String]) -
 	if is_novel(medium) {
 		allows(types, "Novel")
 	} else {
-		kind.is_some_and(|kind| allows(types, kind))
+		// Home feeds corrected the spelling used by existing type preferences.
+		kind.is_some_and(|kind| allows(types, if kind == "Manhwa" { "Manwha" } else { kind }))
 	}
 }

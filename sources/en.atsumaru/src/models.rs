@@ -338,6 +338,12 @@ pub struct ReadChapter {
 	pub pages: Vec<PageItem>,
 }
 
+impl ReadChapter {
+	pub fn is_promo(&self) -> bool {
+		matches!(self.pages.as_slice(), [page] if page.image.starts_with("/static/promo/"))
+	}
+}
+
 #[derive(Deserialize)]
 pub struct PageItem {
 	pub image: String,

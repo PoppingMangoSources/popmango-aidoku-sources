@@ -212,7 +212,17 @@ impl Source for Atsumaru {
 			}]);
 		}
 
-		let pages = get::<ReadResponse>(&url)?.read_chapter.pages;
+		let mut read = get::<ReadResponse>(&url)?.read_chapter;
+		if read.is_promo() {
+			Request::head(format!("{API_URL}/android/download"))?
+				.header("Cache-Control", "no-cache")
+				.send()?;
+			read = get::<ReadResponse>(&url)?.read_chapter;
+			if read.is_promo() {
+				bail!("Chapter limit reached, try again later");
+			}
+		}
+		let pages = read.pages;
 		if pages.is_empty() {
 			bail!("This chapter has no pages");
 		}
