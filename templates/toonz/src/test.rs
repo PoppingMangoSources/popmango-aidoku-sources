@@ -416,3 +416,49 @@ fn review_reader_images_and_missing_pages() {
 	assert!(parse_reader_images(r#"{"images":[]}"#).is_err());
 	assert!(parse_reader_images(r#"{"images":[{"sortOrder":1}]}"#).is_err());
 }
+
+#[aidoku_test]
+fn review_mistagged_manga_viewer_overrides() {
+	let viewer_for = |html: &str| {
+		let page = Html::parse_with_url(html, TOONZ.base_url).unwrap();
+		let mut manga = Manga::default();
+		details(&page, &mut manga).unwrap();
+		manga.viewer
+	};
+	assert_eq!(
+		viewer_for(
+			r#"<html><body><header><h1>Reboot</h1></header><dl><div><dt>Type</dt><dd>Manga</dd></div><div><dt>Origin</dt><dd>South Korea</dd></div></dl></body></html>"#
+		),
+		Viewer::Webtoon
+	);
+	assert_eq!(
+		viewer_for(
+			r#"<html><body><header><h1>Super God Gene</h1></header><dl><div><dt>Type</dt><dd>Manga</dd></div><div><dt>Origin</dt><dd>China</dd></div></dl></body></html>"#
+		),
+		Viewer::Webtoon
+	);
+	assert_eq!(
+		viewer_for(
+			r#"<html><body><header><h1>Turning Point</h1><p>Turning Point is a boys' love historical manga.</p><p>터닝포인트</p></header><dl><div><dt>Type</dt><dd>Manga</dd></div><div><dt>Origin</dt><dd>Japan</dd></div></dl></body></html>"#
+		),
+		Viewer::Webtoon
+	);
+	assert_eq!(
+		viewer_for(
+			r#"<html><body><header><h1>Original Title Case</h1></header><dl><div><dt>Type</dt><dd>Manga</dd></div><div><dt>Origin</dt><dd>Japan</dd></div><div><dt>Original title</dt><dd><span>오곡 리부트</span></dd></div></dl></body></html>"#
+		),
+		Viewer::Webtoon
+	);
+	assert_eq!(
+		viewer_for(
+			r#"<html><body><header><h1>Tagged Strip</h1></header><dl><div><dt>Type</dt><dd>Manga</dd></div><div><dt>Origin</dt><dd>Japan</dd></div></dl><a href="/genre/long-strip">Long Strip</a></body></html>"#
+		),
+		Viewer::Webtoon
+	);
+	assert_eq!(
+		viewer_for(
+			r#"<html><body><header><h1>Call of the Night</h1><p>よふかしのうた</p></header><dl><div><dt>Type</dt><dd>Manga</dd></div><div><dt>Origin</dt><dd>Japan</dd></div></dl><a href="/genre/romance">Romance</a></body></html>"#
+		),
+		Viewer::RightToLeft
+	);
+}

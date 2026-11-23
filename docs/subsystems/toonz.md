@@ -49,7 +49,10 @@ Everything below was probed live on 2026-11-19 unless marked.
   the link; LewdManhwa puts an empty overlay link beside it.
 - Details: the series path (`/comic/{slug}` redirects to `/{type}/{slug}` on Toonz and to
   `/adult/{slug}` on Toonx). Toonz and Toonx list Type, Status and Author in a `dl`;
-  LewdManhwa shows badges and `/author/` links instead (`helpers.rs` `details`).
+  LewdManhwa shows badges and `/author/` links instead (`helpers.rs` `details`). Series tagged
+  as `Manga` still open in `Viewer::Webtoon` when their genres/tags mark a strip format, their
+  `Origin` row is Korean or Chinese, or their `Original title` / `h1 ~ p` alt title contains
+  Hangul (some mistagged Korean manhwas also list `Japan` as their origin).
 - Chapters: `/api/comics/{id}/chapters`, so a chapters-only update still fetches the series
   page for the id. Chapter keys are the slug minus `chapter-` (`2.1`, `45-wad21`).
 - Pages: the chapter route with `RSC: 1`, reading the `"images"` array (`{filename}` under
