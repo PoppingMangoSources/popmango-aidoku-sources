@@ -302,19 +302,14 @@ pub fn chapter_items(params: &Params, page: &Document) -> Result<Vec<ChapterItem
 		.chapters)
 }
 
-pub fn reader_images(
-	params: &Params,
-	manga_key: &str,
-	chapter_key: &str,
-) -> Result<Option<Vec<ReaderImage>>> {
+pub fn reader_page(params: &Params, manga_key: &str, chapter_key: &str) -> Result<Option<String>> {
 	let response = Request::get(chapter_url(params, manga_key, chapter_key))?
 		.header("RSC", "1")
 		.send()?;
 	if response.status_code() == 404 {
 		return Ok(None);
 	}
-	let body = check_response(response)?.get_string()?;
-	parse_reader_images(&body).map(Some)
+	Ok(Some(check_response(response)?.get_string()?))
 }
 
 pub fn parse_reader_images(body: &str) -> Result<Vec<ReaderImage>> {
@@ -327,11 +322,6 @@ pub fn parse_reader_images(body: &str) -> Result<Vec<ReaderImage>> {
 				.next()?
 				.ok()
 				.filter(|images| !images.is_empty())
-		})
-		.map(|mut images| {
-			// Stable, so missing or equal positions keep the response order.
-			images.sort_by_key(|image| image.sort_order);
-			images
 		})
 		.ok_or_else(|| error!("This chapter has missing pages"))
 }

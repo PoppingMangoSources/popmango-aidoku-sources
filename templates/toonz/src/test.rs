@@ -405,18 +405,14 @@ fn review_chapter_keys_and_titles() {
 }
 
 #[aidoku_test]
-fn review_reader_positions_and_missing_pages() {
+fn review_reader_images_and_missing_pages() {
 	let images = parse_reader_images(
 		r#"0:{"images":["unrelated"]}
 1:{"images":[{"filename":"second.webp","sortOrder":2},{"filename":"first.webp","sortOrder":1}]}"#,
 	)
 	.unwrap();
-	assert_eq!(images[0].filename, "first.webp");
-	assert_eq!(images[1].filename, "second.webp");
-	let images =
-		parse_reader_images(r#"{"images":[{"filename":"b.webp"},{"filename":"a.webp"}]}"#).unwrap();
-	assert_eq!(images[0].filename, "b.webp");
-	assert_eq!(images[1].filename, "a.webp");
+	assert_eq!(images[0].filename, "second.webp");
+	assert_eq!(images[1].filename, "first.webp");
 	assert!(parse_reader_images(r#"{"images":[]}"#).is_err());
 	assert!(parse_reader_images(r#"{"images":[{"sortOrder":1}]}"#).is_err());
 }

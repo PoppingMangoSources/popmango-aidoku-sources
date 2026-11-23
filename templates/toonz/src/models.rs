@@ -27,11 +27,8 @@ pub struct Genre {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ReaderImage {
 	pub filename: String,
-	#[serde(default)]
-	pub sort_order: u32,
 }
 
 #[derive(Deserialize)]

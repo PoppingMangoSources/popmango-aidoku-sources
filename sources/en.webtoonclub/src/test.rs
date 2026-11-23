@@ -3,7 +3,7 @@
 use super::*;
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue,
-	Listing, ListingKind, ListingProvider, Manga, MangaPageResult,
+	Listing, ListingKind, ListingProvider, Manga, MangaPageResult, PageContent,
 	alloc::{String, Vec, string::ToString, vec},
 	imports::defaults::{DefaultValue, defaults_set},
 };
@@ -87,6 +87,54 @@ fn review_home_rows_keep_the_requested_order() {
 			"Trending",
 			"Popular Updates",
 		]
+	);
+}
+
+#[aidoku_test]
+fn review_reader_positions_and_missing_pages() {
+	let params = WebtoonClub.params();
+	let urls = |body: &str| {
+		WebtoonClub
+			.parse_page_list(&params, body)
+			.unwrap()
+			.into_iter()
+			.map(|page| match page.content {
+				PageContent::Url(url, _) => url,
+				_ => panic!("expected image url page"),
+			})
+			.collect::<Vec<_>>()
+	};
+	assert_eq!(
+		urls(
+			r#"0:{"images":["unrelated"]}
+1:{"images":[{"filename":"second.webp","sortOrder":2},{"filename":"first.webp","sortOrder":1}]}"#,
+		),
+		[
+			"https://webtoonclub.com/uploads/first.webp",
+			"https://webtoonclub.com/uploads/second.webp",
+		]
+	);
+	assert_eq!(
+		urls(r#"{"images":[{"filename":"b.webp"},{"filename":"a.webp"}]}"#),
+		[
+			"https://webtoonclub.com/uploads/b.webp",
+			"https://webtoonclub.com/uploads/a.webp",
+		]
+	);
+	assert!(
+		WebtoonClub
+			.parse_page_list(&params, r#"{"images":[]}"#)
+			.is_err()
+	);
+	assert!(
+		WebtoonClub
+			.parse_page_list(&params, r#"{"images":[{"sortOrder":1}]}"#)
+			.is_err()
+	);
+	assert!(
+		WebtoonClub
+			.parse_page_list(&params, r#"{"images":[{"filename":" / ","sortOrder":1}]}"#)
+			.is_err()
 	);
 }
 

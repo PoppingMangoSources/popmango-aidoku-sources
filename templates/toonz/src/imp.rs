@@ -1,8 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		SORTS, SearchParams, chapter_items, details, genre_options, narrowed, parse_series_path,
-		reader_images, series_page, series_summary, slugify,
+		SORTS, SearchParams, chapter_items, details, genre_options, narrowed, parse_reader_images,
+		parse_series_path, reader_page, series_page, series_summary, slugify,
 	},
 	home,
 };
@@ -126,8 +126,8 @@ pub trait Impl {
 	}
 
 	fn get_page_list(&self, params: &Params, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let images = match reader_images(params, &manga.key, &chapter.key)? {
-			Some(images) => images,
+		let body = match reader_page(params, &manga.key, &chapter.key)? {
+			Some(body) => body,
 			// List-view chapter numbers can omit a slug suffix.
 			None => {
 				let Ok(number) = chapter.key.parse::<f32>() else {
@@ -139,11 +139,14 @@ pub trait Impl {
 					.find(|item| item.number() == Some(number))
 					.map(|item| String::from(item.key()))
 					.ok_or_else(|| error!("Chapter not found"))?;
-				reader_images(params, &manga.key, &key)?
-					.ok_or_else(|| error!("Chapter not found"))?
+				reader_page(params, &manga.key, &key)?.ok_or_else(|| error!("Chapter not found"))?
 			}
 		};
-		images
+		self.parse_page_list(params, &body)
+	}
+
+	fn parse_page_list(&self, params: &Params, body: &str) -> Result<Vec<Page>> {
+		parse_reader_images(body)?
 			.into_iter()
 			.map(|image| {
 				let filename = image.filename.trim().trim_start_matches('/');

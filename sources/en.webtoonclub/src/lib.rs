@@ -1,7 +1,9 @@
 #![no_std]
-use aidoku::{Source, prelude::*};
+use aidoku::{Page, Result, Source, alloc::Vec, prelude::*};
 use toonz::{Impl, Params, Row, Toonz};
 
+mod helpers;
+mod models;
 #[cfg(test)]
 mod test;
 
@@ -31,6 +33,10 @@ impl Impl for WebtoonClub {
 				("Popular Updates", Row::Tab(0, "Popular Updates")),
 			],
 		}
+	}
+
+	fn parse_page_list(&self, _params: &Params, body: &str) -> Result<Vec<Page>> {
+		helpers::parse_page_list(body)
 	}
 }
 

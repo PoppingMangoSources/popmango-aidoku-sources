@@ -12,6 +12,8 @@ sources:
   - code: templates/toonz/src/settings.rs
   - code: templates/toonz/src/test.rs
   - code: sources/en.webtoonclub/src/lib.rs
+  - code: sources/en.webtoonclub/src/helpers.rs
+  - code: sources/en.webtoonclub/src/models.rs
   - code: sources/en.webtoonclub/src/test.rs
   - ext: https://webtoonclub.com
   - code: sources/en.toonz/src/lib.rs
@@ -142,10 +144,10 @@ Recently Updated, Trending, Popular Updates. The hero's own label supplies its t
 Filters and defaults match Toonz, including its five types and Suggestive ceiling.
 The icon is the site's `/branding/webtoonclub/icon-180.png`, reduced with margin.
 
-> ⚠️ Reader arrays can have explicit `sortOrder` values. `helpers.rs`'s
-> `parse_reader_images` orders those positions while preserving response order when
-> positions are missing or tied. Keiyoushi's WebtoonClub reader sorts the same field.
-> This keeps the existing consumers' filename-only responses usable.
+> ⚠️ WebtoonClub reader arrays can have explicit `sortOrder` values. `sources/en.webtoonclub`
+> overrides `Impl::parse_page_list` to order those positions while preserving response order when
+> positions are missing or tied, leaving the shared template and its other three consumers on the
+> unsorted filename-only reader path. Keiyoushi's WebtoonClub reader sorts the same field.
 
 > ⚠️ Browser inspection of Mood Disorder chapter 101 returned warning images from the
 > site's own `/uploads/` URLs on 2026-11-23. A valid chapter URL and nonempty image list
