@@ -19,7 +19,7 @@ traps found in them. It grows as work touches new areas.
 - Working on VyManga: [[vymanga]]
 - Working on VineTheme, Drake, Elf, Valir, Diva or Kayn: [[vinetheme-template]] (archived)
 - Working on yaoi.me: [[yaoime]]
-- Working on Toonz, Toonx or LewdManhwa (the toonz template): [[toonz]]
+- Working on Toonz, Toonx, LewdManhwa or WebtoonClub (the toonz template): [[toonz]]
 - Working on Swarm: [[swarm]]
 - Working on WebNex: [[webnex]]
 

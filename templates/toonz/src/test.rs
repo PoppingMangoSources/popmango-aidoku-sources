@@ -2,7 +2,7 @@
 
 use crate::{
 	Params, Row,
-	helpers::{age, comic_id, details, narrowed, parse_series_path, slugify},
+	helpers::{age, comic_id, details, narrowed, parse_reader_images, parse_series_path, slugify},
 	home::fill,
 	models::ChapterItem,
 };
@@ -402,4 +402,21 @@ fn review_chapter_keys_and_titles() {
 	assert_eq!(numbered.key, "0");
 	assert!(numbered.title.is_none());
 	assert!(chapter(r#"{"chapterNumber":"0","slug":"chapter-"}"#).is_none());
+}
+
+#[aidoku_test]
+fn review_reader_positions_and_missing_pages() {
+	let images = parse_reader_images(
+		r#"0:{"images":["unrelated"]}
+1:{"images":[{"filename":"second.webp","sortOrder":2},{"filename":"first.webp","sortOrder":1}]}"#,
+	)
+	.unwrap();
+	assert_eq!(images[0].filename, "first.webp");
+	assert_eq!(images[1].filename, "second.webp");
+	let images =
+		parse_reader_images(r#"{"images":[{"filename":"b.webp"},{"filename":"a.webp"}]}"#).unwrap();
+	assert_eq!(images[0].filename, "b.webp");
+	assert_eq!(images[1].filename, "a.webp");
+	assert!(parse_reader_images(r#"{"images":[]}"#).is_err());
+	assert!(parse_reader_images(r#"{"images":[{"sortOrder":1}]}"#).is_err());
 }

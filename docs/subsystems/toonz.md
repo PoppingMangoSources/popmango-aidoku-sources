@@ -1,8 +1,8 @@
 ---
-title: Toonz template (en.toonz, en.toonx, en.lewdmanhwa)
+title: Toonz template (Toonz, Toonx, LewdManhwa, WebtoonClub)
 type: subsystem
 created: 2026-11-19
-updated: 2026-11-20
+updated: 2026-11-23
 sources:
   - code: templates/toonz/src/lib.rs
   - code: templates/toonz/src/imp.rs
@@ -11,6 +11,9 @@ sources:
   - code: templates/toonz/src/models.rs
   - code: templates/toonz/src/settings.rs
   - code: templates/toonz/src/test.rs
+  - code: sources/en.webtoonclub/src/lib.rs
+  - code: sources/en.webtoonclub/src/test.rs
+  - ext: https://webtoonclub.com
   - code: sources/en.toonz/src/lib.rs
   - code: sources/en.toonz/src/test.rs
   - code: sources/en.toonz/res/filters.json
@@ -129,3 +132,24 @@ Everything below was probed live on 2026-11-19 unless marked.
 > on the three sites ("D.Va" is `dva`, checked 2026-11-23). The live
 `details_chapters_and_pages` test fails on Toonz in the sandbox on the challenge page and needs
 an in-app check; Toonx and LewdManhwa run their whole suites.
+
+## WebtoonClub
+
+WebtoonClub uses the same catalogue, cookie, genre API, chapter API and streamed reader
+as the other consumers. Its `Params` uses `/webtoons`, `/webtoon/{slug}` and two home
+requests. Rows use the owner-requested Toonx order: Top Rated This Month, New Titles,
+Recently Updated, Trending, Popular Updates. The hero's own label supplies its title. Social rows are omitted.
+Filters and defaults match Toonz, including its five types and Suggestive ceiling.
+The icon is the site's `/branding/webtoonclub/icon-180.png`, reduced with margin.
+
+> ⚠️ Reader arrays can have explicit `sortOrder` values. `helpers.rs`'s
+> `parse_reader_images` orders those positions while preserving response order when
+> positions are missing or tied. Keiyoushi's WebtoonClub reader sorts the same field.
+> This keeps the existing consumers' filename-only responses usable.
+
+> ⚠️ Browser inspection of Mood Disorder chapter 101 returned warning images from the
+> site's own `/uploads/` URLs on 2026-11-23. A valid chapter URL and nonempty image list
+> do not prove that every uploaded page is a comic panel. The sandbox also answers 403
+> for direct requests, while browser and captured responses load. Browser inspection of
+> The Painter Who Paints Dungeons chapter 34 found comic panels after its promotional
+> splash. Device verification remains necessary.

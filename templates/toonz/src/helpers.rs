@@ -314,6 +314,10 @@ pub fn reader_images(
 		return Ok(None);
 	}
 	let body = check_response(response)?.get_string()?;
+	parse_reader_images(&body).map(Some)
+}
+
+pub fn parse_reader_images(body: &str) -> Result<Vec<ReaderImage>> {
 	// The first "images" array that reads as pages; another can come first.
 	let marker = r#""images":"#;
 	body.match_indices(marker)
@@ -324,7 +328,11 @@ pub fn reader_images(
 				.ok()
 				.filter(|images| !images.is_empty())
 		})
-		.map(Some)
+		.map(|mut images| {
+			// Stable, so missing or equal positions keep the response order.
+			images.sort_by_key(|image| image.sort_order);
+			images
+		})
 		.ok_or_else(|| error!("This chapter has missing pages"))
 }
 
