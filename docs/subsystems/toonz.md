@@ -9,6 +9,7 @@ sources:
   - code: templates/toonz/src/helpers.rs
   - code: templates/toonz/src/home.rs
   - code: templates/toonz/src/models.rs
+  - code: templates/toonz/src/rsc.rs
   - code: templates/toonz/src/settings.rs
   - code: templates/toonz/src/test.rs
   - code: sources/en.webtoonclub/src/lib.rs
@@ -27,11 +28,11 @@ sources:
   - code: sources/en.lewdmanhwa/res/settings.json
   - ext: https://toonz.to/comics
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/toonz
-verified_at: afbc5da
+verified_at: c37c77e
 ---
 
-Toonz (`toonz.to`), Toonx (`toonx.to`) and LewdManhwa (`lewdmanhwa.com`) are one Next.js
-engine, which keiyoushi serves from a single extension with three sources. The `toonz` template
+Toonz (`toonz.to`), Toonx (`toonx.to`), LewdManhwa (`lewdmanhwa.com`) and WebtoonClub
+(`webtoonclub.com`) share one Next.js engine, which keiyoushi serves from one extension. The `toonz` template
 holds all of it; each consumer is a `Params` block naming its catalogue (`comics` or
 `webtoons`), the path that resolves every series (`comic` or `webtoon`), the paths series are
 filed under, its rating default, type count and home rows (`templates/toonz/src/lib.rs`).
@@ -94,7 +95,7 @@ Everything below was probed live on 2026-11-19 unless marked.
 > number (probed on LewdManhwa, 2026-11-20), so `get_page_list` then reads the series' chapter
 > list once and retries with the real key (`imp.rs`); the LewdManhwa suite reads chapter 45 by
 > its number. The reader takes the first `"images"` array that parses as pages, not merely the
-> first one named so (`helpers.rs` `reader_images`).
+> first one named so (`rsc.rs` `reader_images`).
 
 > ⚠️ A cleared Types setting returns an empty browse result or Discover layout without a
 > request. A full selection sends `types:[]`, which the site interprets as every type.
@@ -119,7 +120,7 @@ Everything below was probed live on 2026-11-19 unless marked.
 
 > ⚠️ Toonz series and chapter pages answer `403` with `cf-mitigated: challenge`, a Cloudflare
 > managed challenge that the app solves in a web view, as for merged sources; the sandbox
-> cannot. `helpers.rs` `check` turns an unsolved challenge into "The site answered HTTP 403"
+> cannot. `helpers.rs` `check_response` turns an unsolved challenge into "The site answered HTTP 403"
 > rather than a misleading "Series not found". Toonx and LewdManhwa pages answer the sandbox.
 
 > ⚠️ The app appends a source's `Cookie` header after its stored cookies, so the Cloudflare

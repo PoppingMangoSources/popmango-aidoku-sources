@@ -1,10 +1,11 @@
 use crate::{
 	Params, Row,
 	helpers::{
-		Content, age, card, cards, check_response, cover_url, featured_series, parse_series_path,
-		rating, status, tags,
+		Content, age, card, cards, check_response, cover_url, parse_series_path, rating, status,
+		tags,
 	},
 	models::FeaturedSeries,
+	rsc::featured_series,
 };
 use aidoku::{
 	AidokuError, Chapter, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
@@ -122,18 +123,24 @@ fn slide(
 	})
 }
 
-fn chapter(manga: Manga, key: String, number: Option<f32>) -> MangaWithChapter {
+fn chapter(
+	manga: Manga,
+	key: String,
+	number: Option<f32>,
+	date_uploaded: Option<i64>,
+) -> MangaWithChapter {
 	MangaWithChapter {
 		chapter: Chapter {
 			key,
 			chapter_number: number,
+			date_uploaded,
 			..Default::default()
 		},
 		manga,
 	}
 }
 
-fn update(params: &Params, article: &Element) -> Option<MangaWithChapter> {
+fn update(params: &Params, article: &Element, now: i64) -> Option<MangaWithChapter> {
 	let (_, manga) = card(params, &article.select_first("img")?)?;
 	let (key, number) = article
 		.select("span")?
@@ -144,14 +151,13 @@ fn update(params: &Params, article: &Element) -> Option<MangaWithChapter> {
 				.ok()
 				.map(|number| (String::from(key), number))
 		})?;
-	let seconds = article
+	let date_uploaded = article
 		.select("p")
 		.and_then(|mut paragraphs| paragraphs.next_back()?.text())
 		.as_deref()
-		.and_then(age);
-	let mut entry = chapter(manga, key, Some(number));
-	entry.chapter.date_uploaded = seconds.map(|seconds| current_date() - seconds);
-	Some(entry)
+		.and_then(age)
+		.and_then(|seconds| now.checked_sub(seconds));
+	Some(chapter(manga, key, Some(number), date_uploaded))
 }
 
 fn aged_cards(params: &Params, scope: &Element) -> Vec<(i64, Manga)> {
@@ -221,8 +227,14 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 			// Toonz splits its top-rated carousel across the manhwa and manga pages, so the
 			// merged row is ordered by the rating each slide shows. Stable, so ties keep the page's order.
 			entries.sort_by(|(a, _), (b, _)| b.total_cmp(a));
-			(!entries.is_empty()).then(|| HomeComponentValue::BigScroller {
-				entries: entries.into_iter().map(|(_, manga)| manga).collect(),
+			let mut seen = BTreeSet::new();
+			let entries: Vec<_> = entries
+				.into_iter()
+				.map(|(_, manga)| manga)
+				.filter(|manga| seen.insert(manga.key.clone()))
+				.collect();
+			(!entries.is_empty()).then_some(HomeComponentValue::BigScroller {
+				entries,
 				auto_scroll_interval: Some(5.0),
 			})
 		}
@@ -275,16 +287,20 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 					series.swap_remove(index),
 					chapter_key.into(),
 					number,
+					None,
 				))
 			}))
 		}
-		Row::Updates(page) => chapter_list(
-			pages
-				.get(page)?
-				.as_ref()?
-				.select("article")?
-				.filter_map(|article| update(params, &article)),
-		),
+		Row::Updates(page) => {
+			let now = current_date();
+			chapter_list(
+				pages
+					.get(page)?
+					.as_ref()?
+					.select("article")?
+					.filter_map(|article| update(params, &article, now)),
+			)
+		}
 	}
 }
 

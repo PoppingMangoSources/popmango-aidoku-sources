@@ -365,7 +365,6 @@ dependencies = [
  "aidoku",
  "aidoku-test",
  "serde",
- "serde_json",
  "toonz",
 ]
 

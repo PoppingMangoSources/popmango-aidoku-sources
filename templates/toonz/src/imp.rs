@@ -1,15 +1,17 @@
 use crate::{
 	Params,
 	helpers::{
-		SORTS, SearchParams, chapter_items, details, genre_options, narrowed, parse_reader_images,
-		parse_series_path, reader_page, series_page, series_summary, slugify,
+		SORTS, SearchParams, chapter_items, details, genre_options, narrowed, parse_series_path,
+		reader_page, series_page, series_summary, slugify,
 	},
 	home,
+	models::ReaderImage,
+	rsc,
 };
 use aidoku::{
 	Chapter, DeepLinkResult, Filter, FilterValue, GroupSetting, HomeLayout, Listing, Manga,
-	MangaPageResult, MultiSelectFilter, MultiSelectSetting, Page, PageContent, Result, Setting,
-	alloc::{String, Vec, format, vec},
+	MangaPageResult, MultiSelectFilter, MultiSelectSetting, Page, Result, Setting,
+	alloc::{String, Vec, vec},
 	imports::std::send_partial_result,
 	prelude::*,
 };
@@ -52,7 +54,7 @@ pub trait Impl {
 						search.sort = sort;
 					}
 				}
-				FilterValue::Select { id, value } => match id.as_str() {
+				FilterValue::Select { id, value } if !value.is_empty() => match id.as_str() {
 					// A tapped tag arrives as its name; every genre's slug is its slugified name.
 					"genre" => search.genres.push(slugify(&value)),
 					"status" => search.status = Some(value),
@@ -146,18 +148,9 @@ pub trait Impl {
 	}
 
 	fn parse_page_list(&self, params: &Params, body: &str) -> Result<Vec<Page>> {
-		parse_reader_images(body)?
+		rsc::reader_images::<ReaderImage>(body)?
 			.into_iter()
-			.map(|image| {
-				let filename = image.filename.trim().trim_start_matches('/');
-				if filename.is_empty() {
-					bail!("This chapter has missing pages");
-				}
-				Ok(Page {
-					content: PageContent::url(format!("{}/uploads/{filename}", params.base_url)),
-					..Default::default()
-				})
-			})
+			.map(|image| image.into_page(params.base_url))
 			.collect()
 	}
 

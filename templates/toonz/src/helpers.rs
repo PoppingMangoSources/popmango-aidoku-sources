@@ -1,10 +1,10 @@
 use crate::{
 	Params,
-	models::{ChapterItem, ChapterList, FeaturedSeries, Genre, ReaderImage},
+	models::{ChapterItem, ChapterList, FeaturedSeries, Genre},
 	settings,
 };
 use aidoku::{
-	ContentRating, Manga, MangaPageResult, MangaStatus, Result, Viewer,
+	ContentRating, Manga, MangaPageResult, MangaStatus, Page, PageContent, Result, Viewer,
 	alloc::{String, Vec, borrow::Cow, collections::BTreeSet, format, string::ToString, vec},
 	helpers::uri::{QueryParameters, encode_uri_component},
 	imports::{
@@ -321,16 +321,14 @@ pub(crate) fn comic_id(page: &Document) -> Result<String> {
 		.ok_or_else(|| error!("Series not found"))
 }
 
-pub fn genres(params: &Params) -> Result<Vec<Genre>> {
-	let url = format!("{}/api/genres", params.base_url);
-	check_response(Request::get(url)?.send()?)?.get_json_owned()
-}
-
 type GenreOptions = (Vec<Cow<'static, str>>, Vec<Cow<'static, str>>);
 
 pub fn genre_options(params: &Params) -> Result<GenreOptions> {
-	Ok(genres(params)?
+	let url = format!("{}/api/genres", params.base_url);
+	let genres: Vec<Genre> = check_response(Request::get(url)?.send()?)?.get_json_owned()?;
+	Ok(genres
 		.into_iter()
+		.filter(|genre| !genre.name.trim().is_empty() && !genre.slug.trim().is_empty())
 		.map(|genre| (genre.name.into(), genre.slug.into()))
 		.unzip())
 }
@@ -356,49 +354,15 @@ pub fn reader_page(params: &Params, manga_key: &str, chapter_key: &str) -> Resul
 	Ok(Some(check_response(response)?.get_string()?))
 }
 
-pub fn parse_reader_images(body: &str) -> Result<Vec<ReaderImage>> {
-	// The first "images" array that reads as pages; another can come first.
-	let marker = r#""images":"#;
-	body.match_indices(marker)
-		.find_map(|(start, _)| {
-			serde_json::Deserializer::from_str(&body[start + marker.len()..])
-				.into_iter::<Vec<ReaderImage>>()
-				.next()?
-				.ok()
-				.filter(|images| !images.is_empty())
-		})
-		.ok_or_else(|| error!("This chapter has missing pages"))
-}
-
-pub fn featured_series(page: &Document, property: &str) -> Vec<FeaturedSeries> {
-	let mut flight = String::new();
-	// A slide record can span several script chunks.
-	for data in page
-		.select("script:not([src])")
-		.into_iter()
-		.flatten()
-		.filter_map(|script| script.data().or_else(|| script.html()))
-	{
-		let Some(chunk) = data.strip_prefix("self.__next_f.push(") else {
-			continue;
-		};
-		if let Some(Ok((1, text))) = serde_json::Deserializer::from_str(chunk)
-			.into_iter::<(u8, String)>()
-			.next()
-		{
-			flight.push_str(&text);
-		}
+pub fn upload_page(base_url: &str, filename: &str) -> Result<Page> {
+	let filename = filename.trim().trim_start_matches('/');
+	if filename.is_empty() {
+		bail!("This chapter has missing pages");
 	}
-	flight
-		.match_indices(property)
-		.find_map(|(start, _)| {
-			serde_json::Deserializer::from_str(&flight[start + property.len()..])
-				.into_iter::<Vec<FeaturedSeries>>()
-				.next()?
-				.ok()
-				.filter(|entries| !entries.is_empty())
-		})
-		.unwrap_or_default()
+	Ok(Page {
+		content: PageContent::url(format!("{base_url}/uploads/{filename}")),
+		..Default::default()
+	})
 }
 
 pub fn cover_url(params: &Params, featured: Option<&FeaturedSeries>) -> Option<String> {
@@ -440,7 +404,8 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 		});
 	manga.url = page
 		.select_first("link[rel=canonical]")
-		.and_then(|link| link.attr("href"));
+		.and_then(|link| link.attr("href"))
+		.filter(|url| !url.is_empty());
 	manga.content_rating = rating(nsfw, &tags);
 
 	// One layout lists these in a table, the other as badges and author links.

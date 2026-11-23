@@ -10,11 +10,14 @@ mod helpers;
 mod home;
 mod imp;
 mod models;
+mod rsc;
 mod settings;
 #[cfg(test)]
 mod test;
 
+pub use helpers::upload_page;
 pub use imp::Impl;
+pub use rsc::reader_images;
 
 #[derive(Clone, Copy)]
 pub enum Row {

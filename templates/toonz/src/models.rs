@@ -1,6 +1,9 @@
-use crate::{Params, helpers::chapter_url};
+use crate::{
+	Params,
+	helpers::{chapter_url, upload_page},
+};
 use aidoku::{
-	Chapter,
+	Chapter, Page, Result,
 	alloc::{String, Vec},
 	imports::std::parse_date_with_options,
 };
@@ -28,7 +31,13 @@ pub struct Genre {
 
 #[derive(Deserialize)]
 pub struct ReaderImage {
-	pub filename: String,
+	filename: String,
+}
+
+impl ReaderImage {
+	pub fn into_page(self, base_url: &str) -> Result<Page> {
+		upload_page(base_url, &self.filename)
+	}
 }
 
 #[derive(Deserialize)]
@@ -61,18 +70,19 @@ impl ChapterItem {
 		Some(Chapter {
 			url: Some(chapter_url(params, manga_key, &key)),
 			key,
-			title: self.title.filter(|title| {
+			title: self.title.and_then(|title| {
 				let title = title.trim();
 				let label = title
 					.strip_prefix("Chapter ")
 					.or_else(|| title.strip_prefix("Ch."))
 					.unwrap_or(title);
-				!title.is_empty()
+				(!title.is_empty()
 					&& label
 						.trim()
 						.parse::<f32>()
 						.ok()
-						.is_none_or(|number| Some(number) != chapter_number)
+						.is_none_or(|number| Some(number) != chapter_number))
+				.then(|| title.into())
 			}),
 			chapter_number,
 			date_uploaded,

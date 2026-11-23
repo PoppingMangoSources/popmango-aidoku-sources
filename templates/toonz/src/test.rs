@@ -2,12 +2,13 @@
 
 use crate::{
 	Params, Row,
-	helpers::{age, comic_id, details, narrowed, parse_reader_images, parse_series_path, slugify},
+	helpers::{age, comic_id, details, narrowed, parse_series_path, slugify},
 	home::fill,
-	models::ChapterItem,
+	models::{ChapterItem, ReaderImage},
+	rsc::reader_images,
 };
 use aidoku::{
-	ContentRating, HomeComponentValue, Manga, MangaStatus, Viewer,
+	ContentRating, HomeComponentValue, Manga, MangaStatus, PageContent, Viewer,
 	alloc::{String, Vec, format, string::ToString, vec},
 	imports::html::Html,
 };
@@ -393,7 +394,7 @@ fn review_chapter_keys_and_titles() {
 			.unwrap()
 			.into_chapter(&TOONZ, "example")
 	};
-	let dated = chapter(r#"{"chapterNumber":"12","title":"12 Days Later","slug":"chapter-12-alt","date":"2026-11-22T14:30:06.000Z"}"#).unwrap();
+	let dated = chapter(r#"{"chapterNumber":"12","title":"  12 Days Later  ","slug":"chapter-12-alt","date":"2026-11-22T14:30:06.000Z"}"#).unwrap();
 	assert_eq!(dated.key, "12-alt");
 	// The runner drops quoted format literals, so the UTC date is checked in the app.
 	assert_eq!(dated.title.as_deref(), Some("12 Days Later"));
@@ -406,15 +407,34 @@ fn review_chapter_keys_and_titles() {
 
 #[aidoku_test]
 fn review_reader_images_and_missing_pages() {
-	let images = parse_reader_images(
+	let pages: Vec<_> = reader_images::<ReaderImage>(
 		r#"0:{"images":["unrelated"]}
-1:{"images":[{"filename":"second.webp","sortOrder":2},{"filename":"first.webp","sortOrder":1}]}"#,
+1:{"images":[{"filename":"second.webp","sortOrder":2},{"filename":"/first.webp","sortOrder":1}]}"#,
 	)
-	.unwrap();
-	assert_eq!(images[0].filename, "second.webp");
-	assert_eq!(images[1].filename, "first.webp");
-	assert!(parse_reader_images(r#"{"images":[]}"#).is_err());
-	assert!(parse_reader_images(r#"{"images":[{"sortOrder":1}]}"#).is_err());
+	.unwrap()
+	.into_iter()
+	.map(
+		|image| match image.into_page(TOONZ.base_url).unwrap().content {
+			PageContent::Url(url, _) => url,
+			_ => panic!("expected image url page"),
+		},
+	)
+	.collect();
+	assert_eq!(
+		pages,
+		[
+			"https://toonz.to/uploads/second.webp",
+			"https://toonz.to/uploads/first.webp",
+		]
+	);
+	assert!(reader_images::<ReaderImage>(r#"{"images":[]}"#).is_err());
+	assert!(reader_images::<ReaderImage>(r#"{"images":[{"sortOrder":1}]}"#).is_err());
+	let blank = reader_images::<ReaderImage>(r#"{"images":[{"filename":" / "}]}"#)
+		.unwrap()
+		.into_iter()
+		.next()
+		.unwrap();
+	assert!(blank.into_page(TOONZ.base_url).is_err());
 }
 
 #[aidoku_test]
