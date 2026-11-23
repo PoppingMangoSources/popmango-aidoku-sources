@@ -177,6 +177,46 @@ class ScopeTests(unittest.TestCase):
         self.commit('template alone')
         self.assertIsNone(scope.template_source(self.repo, self.base, 'HEAD', 'theme'))
 
+    def test_new_template_changes_stay_in_first_commit(self):
+        self.git('reset', '--hard', self.base)
+        template = self.repo / 'templates/theme'
+        (template / 'src').mkdir(parents=True)
+        (template / 'Cargo.toml').write_text('[package]\nname="theme"\n')
+        (template / 'src/lib.rs').write_text('template\n')
+        self.commit('add template')
+        (self.source / 'res').mkdir(parents=True)
+        self.metadata(1)
+        (self.source / 'Cargo.toml').write_text('[dependencies]\ntheme={path="../../templates/theme"}\n')
+        self.commit('add consumer')
+        def inspect():
+            return scope.inspect(self.repo, self.base, 'HEAD', 'en.example', 'feat/theme-template')['errors']
+        self.assertEqual(inspect(), [])
+        (template / 'src/lib.rs').write_text('reader fix\n')
+        (self.source / 'src').mkdir()
+        (self.source / 'src/lib.rs').write_text('consumer\n')
+        self.commit('template fix in consumer commit')
+        self.assertTrue(any('first template commit' in error for error in inspect()))
+
+    def test_new_template_first_commit_cannot_include_consumer(self):
+        self.git('reset', '--hard', self.base)
+        template = self.repo / 'templates/theme'
+        (template / 'src').mkdir(parents=True)
+        (template / 'Cargo.toml').write_text('[package]\nname="theme"\n')
+        (template / 'src/lib.rs').write_text('template\n')
+        (self.source / 'res').mkdir(parents=True)
+        self.metadata(1)
+        (self.source / 'Cargo.toml').write_text('[dependencies]\ntheme={path="../../templates/theme"}\n')
+        self.commit('template and consumer together')
+        errors = scope.inspect(self.repo, self.base, 'HEAD', 'en.example', 'feat/theme-template')['errors']
+        self.assertTrue(any('first template commit' in error for error in errors))
+
+    def test_existing_template_update_can_have_later_template_fixes(self):
+        self.template_consumer(3)
+        (self.repo / 'templates/theme/src/lib.rs').write_text('review fix\n')
+        self.commit('template review fix')
+        errors = scope.inspect(self.repo, self.base, 'HEAD', 'en.example', 'feat/theme-template')['errors']
+        self.assertEqual(errors, [])
+
     def test_other_source(self):
         other = self.repo / 'sources/en.other'
         other.mkdir()

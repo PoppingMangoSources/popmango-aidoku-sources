@@ -200,6 +200,7 @@ Read on 2026-11-13 from the PR pages; quotes are kkantan's.
 |---|---|---|
 | A Relevance sort the site doesn't have, copied from a reference client that omits `sort_by` (owner's screenshot of the site's Sort By list) | Sorts and filters come from the site's own controls, in the site's order and wording. A reference client shows which parameters work, never which options to offer. When the sandbox can't load the search page, ask for a screenshot of its panel before writing `filters.json`. | R |
 | Extra fix commits remained after the owner asked to force-push (MangaBall correction) | A new-source submission stays one `feat: add <id>` commit, including after the PR opens, unless the owner explicitly requests separate commits. Fold fixes into the requested history, preserve a backup, verify tree equality and use an explicit-SHA force-with-lease. `--fix` adds a commit, so use it only when a separate commit was requested. | R |
+| Shared reader changes landed in the WebtoonClub commit (Toonz owner's correction) | A new template submission puts every shared template change in its first template commit, followed by one source-only commit per consumer. Rebuild the requested history, verify final tree equality and use an explicit-SHA force-with-lease. Existing upstream template updates can still have separate review-fix commits. | F |
 
 ### From #900 (Iken and EternalMangas)
 

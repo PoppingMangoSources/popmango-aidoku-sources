@@ -138,7 +138,9 @@ upstream, is reviewed and is updated after a merge.
   at version 1. It runs the template's fmt and Clippy, every source's scope, rules and package
   checks, refuses a crate that drifted from the snapshot, preserves an existing branch as
   `chore/<name>-template-before-rebuild-<sha>` and pushes with a lease. Owner's call for
-  Toonz on 2026-11-22: separate commits rather than one.
+  Toonz on 2026-11-22: separate commits rather than one. Owner's correction on 2026-11-23:
+  fold shared template changes into the first template commit, then keep one commit per
+  consumer. A new template's later consumer commits must not modify the template.
 - An upstream worktree has no `rust-toolchain.toml`, so cargo there falls back to the machine's
   default Rust. `scripts/toolchain.sh` exports the pinned version, and `verify-source.sh`,
   `template-branch.sh` and the pre-push hook source it, so a worktree formats as upstream CI

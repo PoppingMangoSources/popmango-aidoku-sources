@@ -58,7 +58,7 @@ def source_version(repo, ref, source):
         return None
 
 
-def inspect(repo, base, head, source):
+def inspect(repo, base, head, source, branch=None):
     if not SOURCE_ID.fullmatch(source):
         raise ValueError("invalid source id")
     base = git(repo, "rev-parse", "--verify", base + "^{commit}").decode().strip()
@@ -110,11 +110,26 @@ def inspect(repo, base, head, source):
                 errors.add(f"{path} removes standard {dependency!r} test dependency; retain it even without tests")
     if not delta:
         errors.add("submission has commits but no source changes")
+    template = template_for_branch(branch or "")
+    template_prefix = None
+    if template:
+        try:
+            git(repo, "cat-file", "-e", f"{base}:templates/{template}")
+        except subprocess.CalledProcessError:
+            template_prefix = f"templates/{template}/"
     for commit in commits:
         parents = git(repo, "rev-list", "--parents", "-n", "1", commit).split()
         if len(parents) > 2:
             errors.add(f"merge commit {commit[:12]}; rebase the submission instead")
-        check_paths(git(repo, "diff-tree", "--root", "--no-commit-id", "--no-renames", "--name-only", "-r", "-z", commit))
+        paths = git(repo, "diff-tree", "--root", "--no-commit-id", "--no-renames", "--name-only", "-r", "-z", commit)
+        check_paths(paths)
+        if template_prefix:
+            paths = paths.decode("utf-8", "replace").strip("\0").split("\0")
+            if commit == commits[-1]:
+                if not all(path.startswith(template_prefix) for path in paths):
+                    errors.add(f"first template commit must contain only {template_prefix}")
+            elif any(path.startswith(template_prefix) for path in paths):
+                errors.add(f"fold {template_prefix} changes into the first template commit, not {commit[:12]}")
     changed_templates = {
         path.split("/")[1] for path in delta.decode("utf-8", "replace").split("\0") if path.startswith("templates/")
     }
@@ -185,7 +200,7 @@ def main():
     reports = []
     for branch, head, source in targets:
         try:
-            report = inspect(args.repo, args.base, head, source)
+            report = inspect(args.repo, args.base, head, source, branch)
         except (subprocess.CalledProcessError, ValueError, KeyError, TypeError) as error:
             resolved = subprocess.run(["git", "-C", args.repo, "rev-parse", "--verify", head + "^{commit}"], text=True, capture_output=True)
             sha = resolved.stdout.strip() if resolved.returncode == 0 else None
