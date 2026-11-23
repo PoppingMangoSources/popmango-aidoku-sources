@@ -2,17 +2,17 @@
 title: WebNex audit coverage
 type: subsystem
 created: 2026-11-20
-updated: 2026-11-20
+updated: 2026-11-23
 sources:
-  - code: sources/en.webnex/src/lib.rs
-  - code: sources/en.webnex/src/helpers.rs
-  - code: sources/en.webnex/src/models.rs
-  - code: sources/en.webnex/src/home.rs
-  - code: sources/en.webnex/src/reader.rs
-  - code: sources/en.webnex/src/rsc.rs
-  - code: sources/en.webnex/src/settings.rs
-  - code: sources/en.webnex/src/test.rs
-verified_at: 88ccce31
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/reader.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/rsc.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/settings.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/test.rs
+verified_at: 2e52ace
 ---
 
 This recheck covers the entire WebNex crate after removal of the typed Tags filter.

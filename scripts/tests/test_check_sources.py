@@ -391,6 +391,10 @@ class CardRuleTests(unittest.TestCase):
             'remaps a request': 'Request::get(url)\n\t.map_err(|_| error!("bad"))?;\n',
             'escapes a whole chapter': 'content: PageContent::text(text.escape_markdown()),\n',
             'statements to eval_async': 'web_view.eval_async(&format!("return await window.state.result;"))?;\n',
+            'defaults Listing.name with unwrap_or_default': 'Listing {\n\tid,\n\tname: title.clone().unwrap_or_default(),\n\t..Default::default()\n};\n',
+            'defaults Manga.title with unwrap_or_default': 'Manga {\n\tkey,\n\ttitle: heading.text().unwrap_or_default(),\n\t..Default::default()\n};\n',
+            'defaults Link.title with unwrap_or_default': 'Link {\n\ttitle: name.unwrap_or_default(),\n\t..Default::default()\n};\n',
+            'defaults Chapter.key with unwrap_or_default': 'Chapter {\n\tkey: id.unwrap_or_default(),\n\t..Default::default()\n};\n',
         }
         for rule, text in cases.items():
             self.assertTrue(any(rule in message for message in self.api_use(text)), rule)
@@ -400,6 +404,8 @@ class CardRuleTests(unittest.TestCase):
             'if let Some(sort) = sort {\n\tquery.push("sort", Some(sort));\n}\n'
             'impl TryFrom<Entry> for Manga {\n\tfn try_from(e: Entry) -> Result<Self> {\n\t\tlet key = e.key().ok_or_else(|| error!("no key"))?;\n\t}\n}\n'
             'impl From<Entry> for Manga {\n\tfn from(e: Entry) -> Self {\n\t\tlet description = e.text.unwrap_or_default();\n\t}\n}\n'
+            'Chapter {\n\tkey,\n\ttitle: name.unwrap_or_default(),\n\t..Default::default()\n};\n'
+            'title.as_ref().zip(href).map(|(name, id)| Listing {\n\tid,\n\tname: name.clone(),\n\t..Default::default()\n});\n'
             'let date = parse_date(text, "yyyy-MM-dd");\n'
             'let date = parse_date_with_options(text, "MMM d, yyyy", "en_US_POSIX", "current");\n'
             'let list: List = Request::get(url)?.send()?.json_owned()?;\n'

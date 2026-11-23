@@ -65,7 +65,8 @@ upstream, is reviewed and is updated after a merge.
   first, an unsized image scroller, an Option unwrapped and wrapped again, a stable sort without a comment saying why, a `?` appended
   to a url variable) and a non-genre multi-select that leaves `canExclude` unstated.
   From sections 3 and 7 it also fails a `push(name, None)`, a `From` into `Manga` or `Chapter`
-  that defaults its key, a `parse_date` of month or day names without a locale, a response body
+  that defaults its key, `.unwrap_or_default()` on required string fields of `Manga`, `Chapter`,
+  `Listing` or `Link` (kkantan on #926), a `parse_date` of month or day names without a locale, a response body
   parsed with `serde_json` rather than `json_owned`, a Rust genre multi-select without
   `uses_tag_style: true`, a remapped `Request` error, a "Show Locked" switch on by default
   without a login, and a chapter escaped whole into one `PageContent::text`. With `--base`, a template

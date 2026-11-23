@@ -2,18 +2,18 @@
 title: WebNex (en.webnex)
 type: subsystem
 created: 2026-11-20
-updated: 2026-11-22
+updated: 2026-11-23
 sources:
-  - code: sources/en.webnex/src/lib.rs
-  - code: sources/en.webnex/src/helpers.rs
-  - code: sources/en.webnex/src/home.rs
-  - code: sources/en.webnex/src/reader.rs
-  - code: sources/en.webnex/src/rsc.rs
-  - code: sources/en.webnex/src/test.rs
-  - code: sources/en.webnex/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/home.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/reader.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/rsc.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/2e52acec2d185e608a3f3f390f5566d91fd7e715/sources/en.webnex/res/filters.json
   - ext: https://webnex.cc/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/webnex
-verified_at: 88ccce31
+verified_at: 2e52ace
 ---
 
 WebNex (`webnex.cc`) is a Next.js app without a general catalogue JSON API: every page is server-rendered HTML
@@ -202,3 +202,12 @@ rendering still require device verification.
 
 
 The complete attachment/source coverage recheck is recorded in [[webnex-audit]].
+
+## Merge and archive (23 November 2026)
+
+PR #926 merged into canonical upstream at `9171c4a` on 2026-11-23 with no reviewer commits
+pushed to the branch. On approval, kkantan noted on `sources/en.webnex/src/home.rs:82` that
+`Listing { id, name: title.clone().unwrap_or_default(), .. }` should normally avoid
+`.unwrap_or_default()` on strings in Aidoku data models; that rule is now recorded in section 3
+and enforced by `scripts/check-sources.py`. The complete crate and tests now live on
+`merged-sources` (archived from `main` at `2e52ace`).

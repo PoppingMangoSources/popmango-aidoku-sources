@@ -164,6 +164,12 @@ that shipped:
       chapter number; numbered prose keeps its title
 - [ ] A name the API can leave null is optional and converted with `TryFrom`; lists and home
       rows drop that card, details and pasted links return the error
+- [ ] Never `.unwrap_or_default()` required string fields (`Manga.key`/`title`, `Chapter.key`,
+      `Listing.id`/`name`, `Link.title`) in Aidoku data models; require them with `zip`/`?` or
+      omit/fail the item (kkantan on #926)
+- [ ] Before using a `WebView` for an inline JS cookie gate, probe whether a plain request with
+      `Accept: text/html` returns the script; when splicing Next.js `S:` streaming chunks, treat
+      `Element::html() == None` as empty string rather than failing
 - [ ] Home returns the last real error when no section loads, not a generic message
 - [ ] Group and language rules live in the chapter conversion, so home rows and chapter lists
       apply the same ones

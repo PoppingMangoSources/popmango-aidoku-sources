@@ -389,14 +389,19 @@ kkantan approved and merged it on 2026-11-21 (`4878f1a`) with one comment, read 
 
 ### From #926 (`en.webnex`)
 
+Merged on 2026-11-23 (`9171c4a`) with no reviewer commits pushed to the branch; archived to
+`merged-sources` afterwards.
+
 | What was flagged | The rule | |
 |---|---|---|
 | Popular This Week as a `BigScroller` with only cover, title and genres ("I'm not sure if I agree with making the popular section a big scroller without information like author and description, since it looks empty and doesn't match the website layout anyways") | Use a `BigScroller` only when the feed already gives each card a description or authors, or the site itself shows a hero. A row the site shows as plain cards stays a `Scroller`, and no extra request is made only to dress up a hero. | R |
+| `Listing { id, name: title.clone().unwrap_or_default(), .. }` ("usually we don't want to `unwrap_or_default` strings in the data models, but this won't matter unless the site is updated and the source would need to be updated anyways", approval review) | Never `.unwrap_or_default()` required string fields (`Manga.key`/`title`, `Chapter.key`, `Listing.id`/`name`, `Link.title`) when constructing Aidoku data models; require them with `zip`/`?` or omit/fail the item instead. `check-sources.py` fails `.unwrap_or_default()` on those fields. | F |
+| Same-group multiple uploads under `one_per_chapter` ("if the same group uploads multiple of the same chapter, wouldn't this keep all of them even with `one_per_chapter` enabled?") | Deduplicate per group per chapter row before ranking so one group's re-upload can't survive `one_per_chapter` twice, while still keeping distinct same-number parts from the winning group; verify against real series data. | R |
 
 ### From WebNex (`en.webnex`), checked line by line against merged sources
 
 The owner asked that anything with a merged equivalent be done the merged way. Each row names
-the merged source it follows.
+the merged source it follows, alongside the site lessons learnt while building it.
 
 | What was flagged | The rule | |
 |---|---|---|
@@ -407,6 +412,12 @@ the merged source it follows.
 | Ratings that skip one collapsed Discover to one "Filtered Catalogue" row | When home only takes a rating ceiling, rebuild the rows the catalogue endpoint can reproduce with every chosen rating, one parallel request each, as `multi.mangadex` sends its ratings with every row's request; leave out rows it cannot reproduce. A row whose own type filter replaces the Types setting is skipped for a hidden type. | R |
 | A site row shown as "Readers Favourites" while it held a personalised "Your taste" list | Find a row by its heading when the site reuses an id, and title a personal row as personal, beside the shared one, as `multi.mangadotnet` keeps Most Tracked beside For You. | R |
 | A comment cut as obvious ("The series url has no query of its own") that answered a `check-sources.py` note | Before cutting a comment, check whether the checker asks for it; the note returns without it. | R |
+| Empty React/Next.js streamed `S:` chunks broke placeholder expansion (`Element::html()` returns `None` for empty elements) | When splicing Next.js streaming chunks (`div[id^='S:']` into `template[id^='P:']`), treat `Element::html() == None` as an empty string rather than failing or dropping the shelf. | R |
+| Inline JS reader cookie gate initially used a `WebView` + user script (`minAppVersion` 0.8.4) | Before reaching for a `WebView` on an inline script cookie gate, probe a plain request with `Accept: text/html` (or `Sec-Fetch-Mode: navigate` + `Sec-Fetch-Dest: document`): if the HTML returns the cookie script, parse the cookie directly and avoid `WebView` completely (lowering `minAppVersion` and avoiding iOS WebView flakiness). | R |
+| Creator links combining native and romanized names with `/` (`오솟 / Osot`) | Sample real creator anchors before splitting on `/` or `,`. When each link's `href` searches the whole string and `/` joins native and romanized forms of one creator, keep credits whole and only deduplicate. | R |
+| Long-strip Korean/Chinese series labeled `"Manga"` opened right-to-left | Sample chapter page dimensions on `"Manga"` entries; where a site labels long strips `"Manga"`, let strip tags (`Long Strip`, `Webtoon`) and Korean/Chinese origin override `Viewer::RightToLeft` to `Viewer::Webtoon` inside a dedicated `viewer()` helper. | R |
+| Home "View all" rows linked to `/browse?...` pages | Carry the site's browse link as the `Listing` id (as VineTheme does) and parse its query parameters back through the browse filter path, failing on unknown parameters rather than widening the catalogue so the reader's settings still apply. | R |
+| A home `Sections` multi-select setting | An unset `Sections` setting enables every section; a cleared selection returns an empty layout before issuing any network request. | R |
 
 ### From #878, #894, #909 and #912 (other contributors, November 18-19)
 

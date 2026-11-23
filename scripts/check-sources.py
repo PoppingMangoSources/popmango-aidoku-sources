@@ -314,6 +314,13 @@ SINGLE_CALL_FN = re.compile(
 BARE_PUSH = re.compile(r'\.push\(\s*"([^"]+)"\s*,\s*None\s*\)')
 DEFAULT_KEY_FROM = re.compile(r"^impl\s+From<[^\n]+>\s+for\s+(?:Manga|Chapter)\b.*?^\}", re.M | re.S)
 DEFAULT_KEY = re.compile(r"\bkey\b[^\n]*\.unwrap_or_default\(\)")
+MODEL_LITERAL = re.compile(r"\b(Manga|Chapter|Listing|Link)\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
+MODEL_REQUIRED_STRINGS = {
+    "Manga": ("key", "title"),
+    "Chapter": ("key",),
+    "Listing": ("id", "name"),
+    "Link": ("title",),
+}
 NAMED_DATE = re.compile(r'\bparse_date\(\s*[^,()]+(?:\([^()]*\))?[^,()]*,\s*"([^"]*(?:MMM|EEE)[^"]*)"')
 UTC_DATE = re.compile(r"""\bparse_date\([^;]*?"[^"]*'Z'"\s*\)""")
 RESHAPED_DATE = re.compile(r"""\bparse_date(?:_with_options)?\([^;]*?\.replace\('T',\s*" "\)""")
@@ -364,6 +371,12 @@ def check_api_use(path: Path, text: str) -> None:
     for match in DEFAULT_KEY_FROM.finditer(text):
         if DEFAULT_KEY.search(match.group(0)):
             fail(path, f"line {line(match)} defaults a missing key in From; make it TryFrom with an error")
+    for match in MODEL_LITERAL.finditer(text):
+        kind, body = match.group(1), match.group(2)
+        fields = "|".join(MODEL_REQUIRED_STRINGS[kind])
+        for field in re.finditer(rf"\b({fields})\s*:[^,}}]*\.unwrap_or_default\(\)", body):
+            at = text.count("\n", 0, match.start(2) + field.start()) + 1
+            fail(path, f"line {at} defaults {kind}.{field.group(1)} with unwrap_or_default; require the value or omit the model")
     for match in NAMED_DATE.finditer(text):
         fail(path, f"line {line(match)} parses {match.group(1)!r} in the device's locale; use parse_date_with_options with \"en_US_POSIX\"")
     # kkantan on #916; merged sources still do this, so it is a note.
