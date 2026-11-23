@@ -128,6 +128,11 @@ fn search_text_author_and_filters() {
 		},
 		multi("genre", &["x-ray"], &[]),
 		multi("genre", &[], &["3d"]),
+		// A tapped tag with a dot in its name, whose slug drops the dot.
+		FilterValue::Select {
+			id: "genre".into(),
+			value: "D.Va".into(),
+		},
 	] {
 		let narrowed = search(None, vec![filter]);
 		assert!(!narrowed.entries.is_empty());

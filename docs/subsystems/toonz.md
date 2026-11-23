@@ -58,8 +58,10 @@ Everything below was probed live on 2026-11-19 unless marked.
 > keeps the rendered slide titles and matches missing covers by slug against the embedded
 > page data. LewdManhwa can also reuse a matching cover from another row. No extra requests
 > are needed, and Toonz keeps all five Manga and all five Manhwa when both pages supply them.
-> LewdManhwa's home preview can run alternate titles and an Original Webtoon link label into
-> the synopsis. The Featured parser keeps the synopsis from that same slide.
+> LewdManhwa's slide synopses are cut short by the site itself (about 300 characters, ending
+> mid-word, sometimes after alternate titles or an "Original Webtoon" label). The Featured row
+> shows that text as the site gives it: an earlier cleanup fixed only one title and was a
+> title-specific hack in a shared template, and the full synopsis needs a request per slide.
 
 > ⚠️ The content setting is the `reader_prefs` cookie (`{"rating","types","blockedGenres"}`),
 > and every page reads it, home included. The site's own URL `rating` and `types` can only
@@ -121,7 +123,8 @@ Everything below was probed live on 2026-11-19 unless marked.
 > facets and keiyoushi's Toonz does with `fetchFilterData`. The API answers without the
 > Cloudflare challenge Toonz pages have. The consumers' JSON no longer lists genres, Toonx has
 > no static settings left, and the site's own names replace our title-cased slugs ("3D Family",
-> not "3d Family") (`templates/toonz/src/imp.rs`). Tapping a tag in the details view resolves its
-> displayed name to the catalogue slug using those same facets. The live
+> not "3d Family") (`templates/toonz/src/imp.rs`). Tapping a tag in the details view searches the
+> template's `slugify` of its name, with no request: it gives the exact slug for all 884 genres
+> on the three sites ("D.Va" is `dva`, checked 2026-11-23). The live
 `details_chapters_and_pages` test fails on Toonz in the sandbox on the challenge page and needs
 an in-app check; Toonx and LewdManhwa run their whole suites.

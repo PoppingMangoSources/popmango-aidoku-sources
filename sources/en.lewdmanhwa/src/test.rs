@@ -162,6 +162,11 @@ fn settings_types_and_genres_apply_and_yield_to_search() {
 	reset();
 	let yaoi = keys(&search(None, vec![multi("genre", &["yaoi"], &[])]));
 	assert!(!yaoi.is_empty());
+	assert_eq!(
+		keys(&search(None, vec![select("genre", "Yaoi")])),
+		yaoi,
+		"a tapped tag searches by its slug"
+	);
 	content("pornographic", &TYPES, &["yaoi"]);
 	let included = search(None, vec![multi("genre", &["yaoi"], &[])]);
 	assert_eq!(

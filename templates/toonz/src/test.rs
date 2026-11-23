@@ -92,8 +92,10 @@ const LEWD_HOME: &str = r#"<html><body>
 <div aria-hidden="true"><div><a aria-label="Farm" href="/webtoon/farm-429h7"><div><div>manhwa</div></div></a><div>
 <a href="/webtoon/farm-429h7"><h2>Farm</h2></a><p>A choice between home / the unknown.</p></div></div></div>
 <div aria-hidden="true"><div><div></div><div><a href="/webtoon/fields"><h2>Fields</h2></a>
-<p>Another Title! / Alternate Title! /  /  /  ! Someone returns to the fields.Original WebtoonOfficial Tr</p></div></div></div>
-<div aria-hidden="true"><div><div></div><div><a href="/webtoon/forest"><h2>Forest</h2></a><p>Another Forest /  /  !</p></div></div></div>
+<p>Someone returns to the fields.
+
+Nothing is as it was. No</p></div></div></div>
+<div aria-hidden="true"><div><div></div><div><a href="/webtoon/forest"><h2>Forest</h2></a><p> </p></div></div></div>
 <div aria-hidden="true"><div><div></div><div><a href="/webtoon/creek"><h2>Creek</h2></a></div></div></div>
 <div aria-hidden="true"><div><div></div><div><a href="/webtoon/garden"><h2>Garden</h2></a></div></div></div></section>
 <section><a href="/webtoon/unrelated"><h2>Not Featured</h2></a></section>
@@ -261,7 +263,8 @@ fn review_lewd_home_rows() {
 	);
 	assert_eq!(
 		entries[2].description.as_deref(),
-		Some("Someone returns to the fields.")
+		Some("Someone returns to the fields.\n\nNothing is as it was. No"),
+		"the site's own cut synopsis is kept as it is"
 	);
 	assert_eq!(entries[3].description, None);
 	assert_eq!(
@@ -369,6 +372,9 @@ fn review_links_and_ages() {
 		("2:10 AM Animation", "210-am-animation"),
 		("3rd_R.I.O (써드리오)", "3rd-rio"),
 		("1000+10 (atsuyu)", "100010-atsuyu"),
+		// Tapped genres are searched by slugified name; these are the dotted ones.
+		("D.Va", "dva"),
+		("Fantasy.Harem", "fantasyharem"),
 	] {
 		assert_eq!(slugify(name), slug);
 	}

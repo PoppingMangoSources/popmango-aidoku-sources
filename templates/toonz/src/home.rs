@@ -97,17 +97,9 @@ fn slide(
 			.select_first("p")
 			.and_then(|text| text.untrimmed_text())
 			.and_then(|text| {
-				// Empty slash-separated aliases leave their separators before the synopsis.
-				let synopsis = match text.split_once(" /  / ") {
-					Some((_, synopsis)) => synopsis
-						.trim_start_matches(|c: char| c.is_whitespace() || matches!(c, '/' | '!')),
-					None => text.as_str(),
-				};
-				let synopsis = synopsis
-					.find(".Original Webtoon")
-					.map_or(synopsis, |end| &synopsis[..end + 1])
-					.trim();
-				(!synopsis.is_empty()).then(|| synopsis.into())
+				// The site cuts slide synopses short itself; the full one is on the series page.
+				let text = text.trim();
+				(!text.is_empty()).then(|| text.into())
 			}),
 		status: info
 			.select("[data-slot=badge]")
@@ -216,7 +208,8 @@ pub fn fill(params: &Params, row: Row, pages: &[Option<Document>]) -> Option<Hom
 						.filter_map(move |article| featured(params, &article, &series))
 				})
 				.collect();
-			// Stable, so equal ratings keep the page's order.
+			// Toonz splits its top-rated carousel across the manhwa and manga pages, so the
+			// merged row is ordered by the rating each slide shows. Stable, so ties keep the page's order.
 			entries.sort_by(|(a, _), (b, _)| b.total_cmp(a));
 			(!entries.is_empty()).then(|| HomeComponentValue::BigScroller {
 				entries: entries.into_iter().map(|(_, manga)| manga).collect(),

@@ -1,8 +1,8 @@
 use crate::{
 	Params,
 	helpers::{
-		SORTS, SearchParams, chapter_items, details, genre_options, genres, narrowed,
-		parse_series_path, reader_images, series_page, series_summary,
+		SORTS, SearchParams, chapter_items, details, genre_options, narrowed, parse_series_path,
+		reader_images, series_page, series_summary, slugify,
 	},
 	home,
 };
@@ -45,7 +45,6 @@ pub trait Impl {
 		}
 
 		let mut search = SearchParams::new(params, query);
-		let mut tapped_genre = None;
 		for filter in filters {
 			match filter {
 				FilterValue::Sort { index, .. } => {
@@ -54,7 +53,8 @@ pub trait Impl {
 					}
 				}
 				FilterValue::Select { id, value } => match id.as_str() {
-					"genre" => tapped_genre = Some(value),
+					// A tapped tag arrives as its name; every genre's slug is its slugified name.
+					"genre" => search.genres.push(slugify(&value)),
 					"status" => search.status = Some(value),
 					"rating" => search.content.rating = value,
 					_ => {}
@@ -74,15 +74,6 @@ pub trait Impl {
 				FilterValue::Text { id, value } if id == "author" => search.author = Some(value),
 				_ => {}
 			}
-		}
-		if let Some(value) = tapped_genre {
-			let Some(genre) = genres(params)?
-				.into_iter()
-				.find(|genre| genre.name.eq_ignore_ascii_case(&value) || genre.slug == value)
-			else {
-				return Ok(MangaPageResult::default());
-			};
-			search.genres.push(genre.slug);
 		}
 		// A tag included in a search overrides its exclusion in settings.
 		let genres = &search.genres;
@@ -188,6 +179,8 @@ pub trait Impl {
 		])
 	}
 
+	// Dynamic because each site has its own genre list, read from its API, and the site
+	// hides excluded genres itself through the content cookie.
 	fn get_dynamic_settings(&self, params: &Params) -> Result<Vec<Setting>> {
 		let (names, slugs) = genre_options(params)?;
 		Ok(vec![
