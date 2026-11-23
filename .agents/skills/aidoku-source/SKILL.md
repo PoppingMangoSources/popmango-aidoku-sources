@@ -66,7 +66,8 @@ aidoku-rs book, "Resource Files"). `aidoku verify` checks the same schemas on th
 
 ## Phase 3 — Implement
 
-Find the merged pattern before writing each feature:
+**Before writing any feature or fix — even when adapting behavior from an unmerged fork branch
+— check how the newest merged upstream sources built the same way do it:**
 
 ```sh
 python3 scripts/upstream-usage.py <id>                  # each feature this source has, and who upstream does it
@@ -74,9 +75,11 @@ python3 scripts/upstream-usage.py --feature '<regex>'   # who upstream does what
 ```
 
 Both list merged sources newest-changed first, with the file and line. Read the newest one or
-two (recent rewrites are what review currently accepts) and match their shape: module placement,
-naming, fetch helper, deduplication, date parsing, status mapping, home rows. Diverge only for a
-reason the site forces, and say it in the PR. The same report ends `scripts/review-source.sh`.
+two built the same way (Next.js, HTML, JSON API, or template; recent rewrites are what review
+currently accepts) and match their shape: module placement, naming, fetch helper,
+viewer/status/rating helpers, deduplication, date parsing, and home rows. Never copy an unmerged
+fork branch's inline layout without checking merged upstream first. Diverge only for a reason
+the site forces, and say it in the PR. The same report ends `scripts/review-source.sh`.
 
 Follow AGENTS.md / CLAUDE.md §2 and §6 for layout. Checklist, each item a real review comment or a bug
 that shipped:

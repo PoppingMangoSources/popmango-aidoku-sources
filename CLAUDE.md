@@ -61,9 +61,11 @@ rest of this file still applies, so read each section before the work it covers.
 - **List what the person asked for before calling it done.** Number each item from their
   messages and name beside it the code, test or output that shows it; an item with nothing
   beside it isn't done. An order or layout they specify gets a `review_` test.
-- Read the merged sources built the same way (section 6), and any reference client the person
-  names, before writing a feature. `scripts/upstream-usage.py <id>` (or `--feature '<regex>'`)
-  names the newest merged sources that already do it, with file and line; match their shape.
+- **Before writing any source or template code — feature or fix, even when adapting behavior
+  from an unmerged fork branch — read the newest merged upstream sources built the same way
+  first** (section 6). Run `python3 scripts/upstream-usage.py <id>` or
+  `python3 scripts/upstream-usage.py --feature '<regex>'` to find the newest merged examples
+  with file and line, and match their helper and module shape before editing.
 - Cards everywhere but `BigScroller` carry key, title and cover, optionally status and rating,
   and never a subtitle (sections 3 and 6).
 - Work on `main`; create another branch only when the owner explicitly asks. Requested branches

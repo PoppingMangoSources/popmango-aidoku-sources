@@ -41,9 +41,20 @@ class AgentHookTests(unittest.TestCase):
     def test_pre_edit_reminds_once_per_source(self):
         event = {'session_id': 's1', 'tool_input': {'file_path': str(self.root / 'sources/en.example/src/lib.rs')}}
         first = json.loads(run(hooks.pre_edit, event))
-        self.assertIn('scripts/review-source.sh en.example', first['hookSpecificOutput']['additionalContext'])
+        context = first['hookSpecificOutput']['additionalContext']
+        self.assertIn('scripts/review-source.sh en.example', context)
+        self.assertIn('scripts/upstream-usage.py en.example', context)
+        self.assertIn("scripts/upstream-usage.py --feature '<regex>'", context)
+        self.assertIn('newest merged upstream sources', context)
         self.assertEqual(first['hookSpecificOutput']['hookEventName'], 'PreToolUse')
         self.assertEqual(run(hooks.pre_edit, event), '')
+
+    def test_pre_edit_template_points_to_feature_usage_check(self):
+        event = {'session_id': 't1', 'tool_input': {'file_path': str(self.root / 'templates/example/src/helpers.rs')}}
+        context = json.loads(run(hooks.pre_edit, event))['hookSpecificOutput']['additionalContext']
+        self.assertIn("scripts/upstream-usage.py --feature '<regex>'", context)
+        self.assertNotIn('scripts/upstream-usage.py example', context)
+        self.assertIn('newest merged upstream sources', context)
 
     def test_pre_edit_ignores_other_files(self):
         for path in (self.root / 'README.md', Path('/etc/hosts')):

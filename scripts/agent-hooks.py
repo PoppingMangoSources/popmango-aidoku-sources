@@ -96,11 +96,15 @@ def pre_edit(event: dict) -> None:
             name = crate.split("/", 1)[1]
             review = f"`scripts/review-source.sh {name}`" if crate.startswith("sources/") else \
                 "`scripts/review-source.sh` on each source that uses it"
+            usage = f"`python3 scripts/upstream-usage.py {name}` or " if crate.startswith("sources/") else ""
             messages.append(
                 f"You are editing {crate}. Follow the aidoku-source skill "
                 "(.agents/skills/aidoku-source/SKILL.md in Codex, .claude/skills/aidoku-source/SKILL.md in Claude; "
-                "load it if it isn't loaded), compare with merged sources built the same way (AGENTS.md / CLAUDE.md section 6), "
-                f"and before calling the work done run {review} and read AGENTS.md / CLAUDE.md section 3 against the diff row by row."
+                "load it if it isn't loaded). Before writing any feature or fix — even when adapting behavior from "
+                f"an unmerged fork branch — run {usage}`python3 scripts/upstream-usage.py --feature '<regex>'` "
+                "and read the newest merged upstream sources built the same way (AGENTS.md / CLAUDE.md section 6) "
+                f"to match their shape. Before calling the work done, run {review} and read AGENTS.md / CLAUDE.md "
+                "section 3 against the diff row by row."
             )
         if ("HomeComponent" in written or relative.name == "home.rs") and remind_once(event, f"{crate}#home"):
             messages.append(section("### Home components", "### Global mutable state"))

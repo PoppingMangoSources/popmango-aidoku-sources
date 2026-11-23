@@ -27,8 +27,9 @@ Not for: fixing findings (the caller does that), a single rule question (read
    so read only what it points to: `AGENTS.md` (identical to `CLAUDE.md`) section by section, then
    every file in `.claude/skills/aidoku-source/references/`, `standards.md` row by row first.
 3. Read `docs/index.md` and each docs page covering the crate; its claims must match the code.
-4. Run `python3 scripts/check-sources.py <ids>` and `python3 scripts/upstream-usage.py <id>`, and
-   read the newest merged example of each listed feature against ours.
+4. Run `python3 scripts/check-sources.py <ids>` and `python3 scripts/upstream-usage.py <id>`
+   (and `--feature '<regex>'` for added helpers/overrides), and read the newest merged upstream
+   example built the same way against ours rather than trusting an unmerged fork branch's shape.
 5. Confirm every finding by reading the line before reporting it.
 
 Bash is for those two scripts, `git diff`, `git show` and `git log` only: no edits, commits,
