@@ -55,20 +55,9 @@ impl ChapterItem {
 		}
 		let key = String::from(key);
 		let chapter_number = self.number();
-		// The runner cannot parse the ISO separator or timezone token.
-		let date_uploaded = self
-			.date
-			.as_deref()
-			.and_then(|date| date.strip_suffix('Z'))
-			.and_then(|date| date.get(..19))
-			.and_then(|date| {
-				parse_date_with_options(
-					date.replace('T', " "),
-					"yyyy-MM-dd HH:mm:ss",
-					"en_US_POSIX",
-					"UTC",
-				)
-			});
+		let date_uploaded = self.date.and_then(|date| {
+			parse_date_with_options(date, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "en_US_POSIX", "UTC")
+		});
 		Some(Chapter {
 			url: Some(chapter_url(params, manga_key, &key)),
 			key,

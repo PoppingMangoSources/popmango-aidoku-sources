@@ -156,7 +156,7 @@ pub trait Impl {
 			.into_iter()
 			.map(|image| {
 				let filename = image.filename.trim().trim_start_matches('/');
-				if filename.trim().is_empty() {
+				if filename.is_empty() {
 					bail!("This chapter has missing pages");
 				}
 				Ok(Page {

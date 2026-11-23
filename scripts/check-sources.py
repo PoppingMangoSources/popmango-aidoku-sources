@@ -316,6 +316,7 @@ DEFAULT_KEY_FROM = re.compile(r"^impl\s+From<[^\n]+>\s+for\s+(?:Manga|Chapter)\b
 DEFAULT_KEY = re.compile(r"\bkey\b[^\n]*\.unwrap_or_default\(\)")
 NAMED_DATE = re.compile(r'\bparse_date\(\s*[^,()]+(?:\([^()]*\))?[^,()]*,\s*"([^"]*(?:MMM|EEE)[^"]*)"')
 UTC_DATE = re.compile(r"""\bparse_date\([^;]*?"[^"]*'Z'"\s*\)""")
+RESHAPED_DATE = re.compile(r"""\bparse_date(?:_with_options)?\([^;]*?\.replace\('T',\s*" "\)""")
 SCHEME_SPLIT_LINK = re.compile(r'fn handle_deep_link\b[^}]*?split_once\("://"\)', re.S)
 STRING_BODY = re.compile(r"let (\w+)\s*=[^;]*\.(?:string|data)\(\)\?;")
 INLINE_STRING_JSON = re.compile(r"serde_json::from_(?:str|slice)\([^;]*\.(?:string|data)\(\)\?")
@@ -368,6 +369,9 @@ def check_api_use(path: Path, text: str) -> None:
     # kkantan on #916; merged sources still do this, so it is a note.
     for match in UTC_DATE.finditer(text):
         note(path, f"line {line(match)} parses a UTC timestamp in the device's time zone; use parse_date_with_options with \"UTC\"")
+    # Toonz reshaped its timestamps only so the test runner could parse them.
+    for match in RESHAPED_DATE.finditer(text):
+        note(path, f"line {line(match)} reshapes an ISO timestamp before parsing; parse it as \"yyyy-MM-dd'T'HH:mm:ss.SSSXXX\" in \"UTC\"")
     # 84 of 85 merged handlers strip BASE_URL; es.olympusscanlation splits, so it is a note.
     for match in SCHEME_SPLIT_LINK.finditer(text):
         note(path, f"line {line(match)} handle_deep_link splits on \"://\"; strip BASE_URL as merged handlers do")

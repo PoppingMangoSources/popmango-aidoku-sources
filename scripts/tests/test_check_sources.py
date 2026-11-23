@@ -338,6 +338,15 @@ class CardRuleTests(unittest.TestCase):
         checks.check_api_use(self.path, 'parse_date(date, "dd/MM/yyyy")\n')
         self.assertEqual(checks.notes, [])
 
+    def test_iso_timestamp_reshaped_before_parsing_is_noted(self):
+        checks.notes.clear()
+        checks.check_api_use(self.path, ".and_then(|date| parse_date_with_options(date.replace('T', \" \"), \"yyyy-MM-dd HH:mm:ss\", \"en_US_POSIX\", \"UTC\"))\n")
+        self.assertEqual(len(checks.notes), 1)
+        checks.notes.clear()
+        checks.check_api_use(self.path, "parse_date_with_options(date, \"yyyy-MM-dd'T'HH:mm:ss.SSSXXX\", \"en_US_POSIX\", \"UTC\")\n")
+        checks.check_api_use(self.path, "let name = name.replace('T', \" \");\n")
+        self.assertEqual(checks.notes, [])
+
     def test_deep_link_scheme_split_is_noted(self):
         checks.notes.clear()
         checks.check_api_use(self.path, 'fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {\n\tlet Some(path) = url.split_once("://").map(|(_, rest)| rest) else {\n')
