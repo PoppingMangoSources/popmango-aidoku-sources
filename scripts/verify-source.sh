@@ -2,6 +2,7 @@
 # Usage: scripts/verify-source.sh /path/to/sources/en.example [--test]
 set -euo pipefail
 source "$(dirname "$0")/source-lints.sh"
+source "$(dirname "$0")/toolchain.sh"
 dir=$(cd "${1:?provide a source directory}" && pwd)
 test -f "$dir/Cargo.toml"
 cd "$dir"

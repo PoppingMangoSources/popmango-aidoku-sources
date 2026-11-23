@@ -292,6 +292,26 @@ class VerificationTests(unittest.TestCase):
             self.assertEqual(result.returncode, 42)
             self.assertFalse((root / 'package-was-called').exists())
 
+    def test_cargo_in_an_upstream_worktree_uses_the_pinned_toolchain(self):
+        # An upstream worktree has no rust-toolchain.toml; formatting there with the default
+        # toolchain passed locally and failed upstream CI's pinned rustfmt.
+        channel = next(line.split('"')[1] for line in (SCRIPTS.parent / 'rust-toolchain.toml').read_text().splitlines() if line.startswith('channel'))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'source'
+            source.mkdir()
+            (source / 'Cargo.toml').write_text('test')
+            bin_dir = root / 'bin'
+            bin_dir.mkdir()
+            cargo = bin_dir / 'cargo'
+            cargo.write_text('#!/bin/sh\necho "$RUSTUP_TOOLCHAIN" > "' + str(root / 'toolchain') + '"\nexit 3\n')
+            cargo.chmod(0o755)
+            env = {key: value for key, value in os.environ.items() if key != 'RUSTUP_TOOLCHAIN'}
+            subprocess.run(['bash', str(SCRIPTS / 'verify-source.sh'), str(source)], env={**env, 'PATH': str(bin_dir) + ':' + env['PATH']}, capture_output=True)
+            self.assertEqual((root / 'toolchain').read_text().strip(), channel)
+        for script in ('scripts/template-branch.sh', '.githooks/pre-push'):
+            self.assertIn('scripts/toolchain.sh"', (SCRIPTS.parent / script).read_text(), script)
+
     def test_clippy_annotations_and_summary_count_messages_once(self):
         if not shutil.which('jq'):
             self.skipTest('jq unavailable')

@@ -139,6 +139,10 @@ upstream, is reviewed and is updated after a merge.
   checks, refuses a crate that drifted from the snapshot, preserves an existing branch as
   `chore/<name>-template-before-rebuild-<sha>` and pushes with a lease. Owner's call for
   Toonz on 2026-11-22: separate commits rather than one.
+- An upstream worktree has no `rust-toolchain.toml`, so cargo there falls back to the machine's
+  default Rust. The first Toonz template push was formatted by 1.97 and failed upstream CI's
+  pinned 1.99 rustfmt (#927). `scripts/toolchain.sh` exports the pinned version, and
+  `verify-source.sh`, `template-branch.sh` and the pre-push hook source it.
 - Review rounds: fix on `main` (with a bump), then fold the changes into the PR's requested
   commit structure. New-source PRs stay one `feat: add <id>` commit by default, even after
   opening. Preserve the prior head, use the commit wrapper and verify the final tree before

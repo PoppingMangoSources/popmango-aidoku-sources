@@ -5,6 +5,7 @@
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
 tooling=$(cd "$(dirname "$0")/.." && pwd)
+source "$tooling/scripts/toolchain.sh"
 name=${1:?provide a template name}
 shift
 snapshot=HEAD
