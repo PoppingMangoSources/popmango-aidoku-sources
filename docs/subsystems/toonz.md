@@ -58,10 +58,11 @@ Everything below was probed live on 2026-11-19 unless marked.
 > keeps the rendered slide titles and matches missing covers by slug against the embedded
 > page data. LewdManhwa can also reuse a matching cover from another row. No extra requests
 > are needed, and Toonz keeps all five Manga and all five Manhwa when both pages supply them.
-> LewdManhwa's slide synopses are cut short by the site itself (about 300 characters, ending
-> mid-word, sometimes after alternate titles or an "Original Webtoon" label). The Featured row
-> shows that text as the site gives it: an earlier cleanup fixed only one title and was a
-> title-specific hack in a shared template, and the full synopsis needs a request per slide.
+> LewdManhwa's slide texts are cut by the site at about 300 characters, and some start with the
+> alternate titles (non-Latin names stripped to empty ` /  / ` entries) and end with a cut
+> "Original Webtoon" credit label. The Featured row keeps only the synopsis between them
+> (`templates/toonz/src/home.rs`). Showing the text as it comes put the alternate titles in
+> place of Someone Stop Her!'s synopsis (owner's screenshot, v12); keep the cleanup.
 
 > ⚠️ The content setting is the `reader_prefs` cookie (`{"rating","types","blockedGenres"}`),
 > and every page reads it, home included. The site's own URL `rating` and `types` can only

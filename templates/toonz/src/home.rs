@@ -97,9 +97,19 @@ fn slide(
 			.select_first("p")
 			.and_then(|text| text.untrimmed_text())
 			.and_then(|text| {
-				// The site cuts slide synopses short itself; the full one is on the series page.
-				let text = text.trim();
-				(!text.is_empty()).then(|| text.into())
+				// Some slide texts start with the alternate titles, whose non-Latin names the
+				// site strips to empty " /  / " entries, and end with a cut "Original Webtoon"
+				// credit label; the synopsis is what lies between.
+				let synopsis = match text.split_once(" /  / ") {
+					Some((_, synopsis)) => synopsis
+						.trim_start_matches(|c: char| c.is_whitespace() || matches!(c, '/' | '!')),
+					None => text.as_str(),
+				};
+				let synopsis = synopsis
+					.find(".Original Webtoon")
+					.map_or(synopsis, |end| &synopsis[..end + 1])
+					.trim();
+				(!synopsis.is_empty()).then(|| synopsis.into())
 			}),
 		status: info
 			.select("[data-slot=badge]")
