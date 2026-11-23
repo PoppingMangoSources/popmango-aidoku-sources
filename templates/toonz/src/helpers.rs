@@ -218,13 +218,57 @@ pub fn status(text: &str) -> Option<MangaStatus> {
 	})
 }
 
-fn viewer(text: &str) -> Option<Viewer> {
-	Some(match text.to_lowercase().as_str() {
-		"manhwa" | "manhua" | "webtoon" => Viewer::Webtoon,
-		"manga" => Viewer::RightToLeft,
-		"comic" | "western" => Viewer::LeftToRight,
-		_ => return None,
-	})
+fn viewer(
+	kind: Option<&str>,
+	origin: Option<&str>,
+	tags: &[String],
+	badges: &[String],
+	alt_titles: &[String],
+) -> Viewer {
+	if tags.iter().any(|tag| {
+		[
+			"Long Strip",
+			"Longstrip",
+			"Webtoon",
+			"Webtoons",
+			"Manhwa",
+			"Manhua",
+		]
+		.iter()
+		.any(|name| tag.eq_ignore_ascii_case(name))
+	}) {
+		return Viewer::Webtoon;
+	}
+	let origin = origin.map(str::to_lowercase);
+	if matches!(
+		origin.as_deref(),
+		Some(
+			"south korea"
+				| "korea" | "korean"
+				| "china" | "chinese"
+				| "chinese (hong kong)"
+				| "taiwan" | "hong kong"
+		)
+	) {
+		return Viewer::Webtoon;
+	}
+	// Mistagged Korean manhwas can list Japan as their origin while keeping a Hangul alt title.
+	if alt_titles.iter().any(|title| {
+		title
+			.chars()
+			.any(|c| ('\u{AC00}'..='\u{D7A3}').contains(&c))
+	}) {
+		return Viewer::Webtoon;
+	}
+	kind.into_iter()
+		.chain(badges.iter().map(String::as_str))
+		.find_map(|text| match text.to_lowercase().as_str() {
+			"manhwa" | "manhua" | "webtoon" => Some(Viewer::Webtoon),
+			"manga" => Some(Viewer::RightToLeft),
+			"comic" | "western" => Some(Viewer::LeftToRight),
+			_ => None,
+		})
+		.unwrap_or_default()
 }
 
 pub fn age(text: &str) -> Option<i64> {
@@ -387,18 +431,6 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 		.select_first("img[data-cover]")
 		.is_some_and(|cover| cover.has_attr("data-nsfw"));
 	let tags = tags(page.select("a[href^='/genre/']"));
-	let mut strip = tags.iter().any(|tag| {
-		[
-			"Long Strip",
-			"Longstrip",
-			"Webtoon",
-			"Webtoons",
-			"Manhwa",
-			"Manhua",
-		]
-		.iter()
-		.any(|name| tag.eq_ignore_ascii_case(name))
-	});
 	manga.description = page
 		.select_first("p.whitespace-pre-line")
 		.and_then(|text| text.untrimmed_text())
@@ -410,12 +442,12 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 		.select_first("link[rel=canonical]")
 		.and_then(|link| link.attr("href"));
 	manga.content_rating = rating(nsfw, &tags);
-	manga.tags = Some(tags).filter(|tags| !tags.is_empty());
 
 	// One layout lists these in a table, the other as badges and author links.
 	let mut status_text = None;
 	let mut type_text = None;
-	let mut original_title = None;
+	let mut origin_text = None;
+	let mut alt_titles: Vec<String> = texts(page.select("h1 ~ p")).collect();
 	let mut author_links = page.select("a[href^='/author/']");
 	for row in page.select("dl > div").into_iter().flatten() {
 		let (Some(label), Some(value)) = (
@@ -427,31 +459,11 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 		match label.as_str() {
 			"Status" => status_text = value.text(),
 			"Type" => type_text = value.text(),
-			"Origin" => {
-				if value.text().is_some_and(|origin| {
-					matches!(
-						origin.to_ascii_lowercase().as_str(),
-						"south korea"
-							| "korea" | "korean" | "china"
-							| "chinese" | "chinese (hong kong)"
-							| "taiwan" | "hong kong"
-					)
-				}) {
-					strip = true;
-				}
-			}
-			"Original title" => original_title = value.text(),
+			"Origin" => origin_text = value.text(),
+			"Original title" => alt_titles.extend(value.text()),
 			"Author" | "Authors" => author_links = value.select("a"),
 			_ => {}
 		}
-	}
-	// Mistagged Korean manhwas can list Japan as their origin while keeping a Hangul alt title.
-	let has_hangul = |text: &str| text.chars().any(|c| ('\u{AC00}'..='\u{D7A3}').contains(&c));
-	if !strip
-		&& (original_title.as_deref().is_some_and(has_hangul)
-			|| texts(page.select("h1 ~ p")).any(|text| has_hangul(&text)))
-	{
-		strip = true;
 	}
 	let badges: Vec<String> = texts(page.select("[data-slot=badge]")).collect();
 	manga.status = status_text
@@ -459,15 +471,14 @@ pub fn details(page: &Document, manga: &mut Manga) -> Result<()> {
 		.and_then(status)
 		.or_else(|| badges.iter().find_map(|badge| status(badge)))
 		.unwrap_or_default();
-	manga.viewer = if strip {
-		Viewer::Webtoon
-	} else {
-		type_text
-			.as_deref()
-			.and_then(viewer)
-			.or_else(|| badges.iter().find_map(|badge| viewer(badge)))
-			.unwrap_or_default()
-	};
+	manga.viewer = viewer(
+		type_text.as_deref(),
+		origin_text.as_deref(),
+		&tags,
+		&badges,
+		&alt_titles,
+	);
+	manga.tags = Some(tags).filter(|tags| !tags.is_empty());
 	let mut authors: Vec<String> = Vec::new();
 	for name in texts(author_links).filter(|name| !name.is_empty()) {
 		if !authors.contains(&name) {
