@@ -81,3 +81,10 @@ fork snapshot is main `046a7f2a6f93f99ba3566a09a42b1ec28dd57487`, including ever
 
 - `en.vymanga`
 - `multi.yaoime`
+
+## Webnex
+
+PR 926 (Webnex) merged into canonical upstream at `9171c4a` on 2026-11-23. The complete fork
+snapshot is main `2e52acec2d185e608a3f3f390f5566d91fd7e715`, including every fork test.
+
+- `en.webnex`
