@@ -2,7 +2,7 @@
 title: Swarm (multi.swarm)
 type: subsystem
 created: 2026-11-19
-updated: 2026-11-19
+updated: 2026-11-25
 sources:
   - code: sources/multi.swarm/src/lib.rs
   - code: sources/multi.swarm/src/api.rs
@@ -16,7 +16,7 @@ sources:
   - code: sources/multi.swarm/res/source.json
   - ext: https://swarm.ws/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/swarm
-verified_at: afbc5da
+verified_at: 9f0af67
 ---
 
 Swarm (`swarm.ws`) is a Next.js site over a JSON API, reachable from the sandbox; the live

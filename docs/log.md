@@ -238,3 +238,13 @@ and the script cookie following the latest main update; the earlier web-view not
 obsolete. Preserved synopsis markup and gate-retry HTTP errors, added arbitrary tag
 search and source/checker regressions, and compared the code against current merged
 implementations and live browser/filter evidence.
+
+## 2026-11-25 Kagane, xcomic and Swarm review and mirror updates
+
+Updated [[kagane]] for the `kagane.moe` default mirror (`kstatic.to` rejects `Origin: https://kagane.org`
+for chapter pages even though `kagane.org` answers manifest calls), saved-mirror fallback,
+`BaseUrlProvider`, chapter deep links, and `/api/v2/books/page/original/` URLs. Updated [[xcomic]]
+after upstream merged the mirror cleanup dropping `xcomic.net` and `yona.to`. Re-verified [[swarm]]
+and [[mangak-template]] at `9f0af67`, and recorded the November 25 upstream review comments and the
+Kagane reader-CDN mirror check in the shared `standards.md` references.
+

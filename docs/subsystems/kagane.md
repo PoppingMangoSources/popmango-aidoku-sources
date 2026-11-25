@@ -2,20 +2,29 @@
 title: Kagane (multi.kagane)
 type: subsystem
 created: 2026-11-20
-updated: 2026-11-20
+updated: 2026-11-25
 sources:
   - ext: https://github.com/Aidoku-Community/sources/tree/main/sources/multi.kagane
-verified_at: 3ac574e
+verified_at: 9f0af67
 ---
 
 `multi.kagane` lives upstream only. The rework merged as #827; a later change is a new
 branch from `upstream/main` (it isn't on our `main`, so `scripts/pr-branch.sh` can't copy it
 until it is restored from its last copy, section 17).
-Confirmed by console probes on kagane.si unless marked.
+Confirmed by console probes and in-app checks unless marked.
 
-- Mirrors: kagane.cx (default), kagane.si, kagane.moe, kagane.net serve the same catalogue
-  (kagane.si probed). kagane.org now opens a page that picks one of those four, so it is
-  listed last. API under `{base}/api/v2`; the selected url is read as `defaults_get("url")`.
+- **Mirrors:** `kagane.moe` (default) and `kagane.org` remain after `.cx`, `.si`, and `.net`
+  went dead. `base_url()` filters `defaults_get("url")` against `MIRRORS` so a dead mirror
+  saved in `UserDefaults` falls back to `kagane.moe`, and `BaseUrlProvider` makes Open Website
+  follow the selected mirror.
+- **Reader pages:** `POST /api/integrity` then `POST /api/v2/books/{id}?is_datasaver=false`
+  with `x-integrity-token`; image URLs require the quality segment
+  `{cache_url}/api/v2/books/page/original/{book_id}/{page_id}.{ext}?token={access_token}`.
+
+> ⚠️ `kagane.org` is Kagane's mirror-picker hub: it answers `/api/v2` and book manifests (`1 of N`),
+> so runner/API probes look green, while `kstatic.to` rejects `Origin: https://kagane.org` on reader
+> page images. Keep `https://kagane.moe` first in `urls` and `MIRRORS`, and never drop `/original/`
+> from `/api/v2/books/page/original/`.
 - **Chapters** come from `GET /series/{id}/books/index?fields=List` — rows of values in
   the order `fields` names, groups as indices into `groups`; order by `sort_no`, since
   chapter numbers restart. The series endpoint no longer lists books. (inferred from

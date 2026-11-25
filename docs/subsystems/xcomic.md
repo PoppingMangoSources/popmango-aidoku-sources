@@ -2,17 +2,17 @@
 title: XCOMIC (multi.xcomic)
 type: subsystem
 created: 2026-11-20
-updated: 2026-11-20
+updated: 2026-11-25
 sources:
   - ext: https://github.com/Aidoku-Community/sources/tree/main/sources/multi.xcomic
-verified_at: 3ac574e
+verified_at: 9f0af67
 ---
 
 Kept here because the API is undocumented and this took a while to work out. `multi.xcomic`
 lives upstream only: #735 added it, #738 added the yona.to mirror, #762 and #771 followed the
-site's title api and edition urls, and #853 added formats and Merge Editions. Its crate and
-tests are at `b86969e` (section 17); a later change restarts `fix/multi.xcomic` from
-`upstream/main`.
+site's title api and edition urls, #853 added formats and Merge Editions, and #929 (`4aa33eb`)
+dropped the dead `xcomic.net` and `yona.to` mirrors. Its crate and
+tests are on `merged-sources` (section 17); a later change restarts from `upstream/main`.
 
 - GraphQL, `POST {base}/query/`. Bato-family schema.
 - **Two id namespaces.** `/title/{id}` is the series; `/comic/{id}-{lang}-{slug}` is
@@ -44,11 +44,9 @@ tests are at `b86969e` (section 17); a later change restarts `fix/multi.xcomic` 
   `genre_ids`, so a filter can match titles whose details don't show that genre.
 - Exclusion exists only for genres and formats (`excGenres`); types, demographics, status and
   original languages are include-only, so their filters state `"canExclude": false` (#853).
-- `xcomic.net` and `comik.to` resolve alongside `xcomic.me`; `xcomic.cr` and
-  `xcomic.cs` appear in the site's own domain list but don't resolve. `mpark.top` is
-  a sibling site, not a mirror — different ids. **`comik.to` has not been confirmed
-  to serve the same ids** (inferred from DNS and the PWA manifest naming the app
-  "ComiK.TO"); if urls 404, check which base url is selected.
+- `xcomic.me` (default) and `comik.to` remain active after #929 dropped `xcomic.net` and
+  `yona.to` (both 301 to `comik.to`); `xcomic.cr` and `xcomic.cs` don't resolve. `mpark.top`
+  is a sibling site, not a mirror — different ids.
 
 ## Reference implementations
 
