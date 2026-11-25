@@ -1,5 +1,3 @@
-//! Helpers for reading Next.js App Router flight payloads and recognizing renamed fields.
-
 use aidoku::{
 	alloc::{String, Vec, collections::BTreeMap},
 	imports::html::Document,
@@ -9,18 +7,16 @@ use serde_json::{Map, Value};
 const PUSH: &str = "self.__next_f.push(";
 
 pub struct Flight {
-	pub rows: Vec<Value>,
+	rows: Vec<Value>,
 	modules: BTreeMap<String, Value>,
 }
 
 impl Flight {
 	pub fn from_document(doc: &Document) -> Self {
 		let mut payload = String::new();
-		if let Some(scripts) = doc.select("script") {
-			for script in scripts {
-				if let Some(code) = script.data().or_else(|| script.text()) {
-					append_chunks(&code, &mut payload);
-				}
+		for script in doc.select("script").into_iter().flatten() {
+			if let Some(code) = script.data().or_else(|| script.text()) {
+				append_chunks(&code, &mut payload);
 			}
 		}
 		let (rows, modules) = parse_rows(&payload);
@@ -61,39 +57,81 @@ fn append_chunks(script: &str, payload: &mut String) {
 	while let Some(at) = rest.find(PUSH) {
 		let args = &rest[at + PUSH.len()..];
 		let mut values = serde_json::Deserializer::from_str(args).into_iter::<Value>();
-		if let Some(Ok(Value::Array(items))) = values.next()
-			&& let [Value::Number(kind), Value::String(chunk), ..] = items.as_slice()
-			&& kind.as_u64() == Some(1)
-		{
-			payload.push_str(chunk);
+		match values.next() {
+			Some(Ok(Value::Array(items))) => {
+				if let [Value::Number(kind), Value::String(chunk), ..] = items.as_slice()
+					&& kind.as_u64() == Some(1)
+				{
+					payload.push_str(chunk);
+				}
+				rest = &args[values.byte_offset()..];
+			}
+			_ => rest = args,
 		}
-		rest = args;
 	}
 }
 
+enum Row {
+	Data(Value),
+	Module(String, Value),
+	Other,
+}
+
+// Text rows (`<id>:T<hex>,<bytes>`) have no trailing newline before the next row.
 fn parse_rows(payload: &str) -> (Vec<Value>, BTreeMap<String, Value>) {
 	let mut rows = Vec::new();
 	let mut modules = BTreeMap::new();
-	for line in payload.lines() {
-		let Some((id, body)) = line.split_once(':') else {
-			continue;
-		};
-		if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
-			continue;
-		}
-		if let Some(rest) = body.strip_prefix('I') {
-			if let Ok(value) = serde_json::from_str::<Value>(rest) {
-				modules.insert(String::from(id), value);
+	let mut rest = payload;
+	while !rest.is_empty() {
+		match next_row(rest) {
+			Some((row, after)) => {
+				match row {
+					Row::Data(value) => rows.push(value),
+					Row::Module(id, value) => {
+						modules.insert(id, value);
+					}
+					Row::Other => {}
+				}
+				rest = after;
 			}
-			continue;
-		}
-		if matches!(body.as_bytes().first(), Some(b'{' | b'['))
-			&& let Ok(value) = serde_json::from_str::<Value>(body)
-		{
-			rows.push(value);
+			None => rest = skip_line(rest),
 		}
 	}
 	(rows, modules)
+}
+
+fn next_row(text: &str) -> Option<(Row, &str)> {
+	let (id, body) = text.split_once(':')?;
+	if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+		return None;
+	}
+	match body.chars().next()? {
+		'T' => {
+			let (length, content) = body[1..].split_once(',')?;
+			let length = usize::from_str_radix(length, 16).ok()?;
+			Some((Row::Other, content.get(length..)?))
+		}
+		'I' => {
+			let (value, after) = json_value(&body[1..])?;
+			Some((Row::Module(String::from(id), value), after))
+		}
+		tag if tag.is_ascii_uppercase() => Some((Row::Other, skip_line(body))),
+		_ => {
+			let (value, after) = json_value(body)?;
+			Some((Row::Data(value), after))
+		}
+	}
+}
+
+fn json_value(text: &str) -> Option<(Value, &str)> {
+	let mut stream = serde_json::Deserializer::from_str(text).into_iter::<Value>();
+	let value = stream.next()?.ok()?;
+	let after = &text[stream.byte_offset()..];
+	Some((value, after.strip_prefix('\n').unwrap_or(after)))
+}
+
+fn skip_line(text: &str) -> &str {
+	text.find('\n').map_or("", |at| &text[at + 1..])
 }
 
 fn search<'a>(value: &'a Value, keys: &[&str]) -> Option<&'a Map<String, Value>> {
@@ -177,15 +215,13 @@ pub struct Classified {
 
 pub fn slug_like(value: &str) -> bool {
 	!value.is_empty()
-		&& !value.starts_with('-')
-		&& !value.ends_with('-')
-		&& value
-			.bytes()
-			.all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+		&& !value
+			.chars()
+			.any(|c| c.is_whitespace() || c.is_uppercase() || c == '/')
 }
 
 impl Classified {
-	/// Identifies the renamed slug and title fields among records whose other fields are known.
+	// Next.js builds rename slug and title keys to short tokens while leaving `known` intact.
 	pub fn of(records: &[&Map<String, Value>], known: &[&str]) -> Option<Self> {
 		let first = records.first()?;
 		if first.contains_key("series_slug") && first.contains_key("title") {

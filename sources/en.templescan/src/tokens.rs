@@ -1,5 +1,3 @@
-//! Decodes Temple Scan's obfuscated reader page tokens into absolute image URLs.
-
 use aidoku::alloc::{String, Vec, format, string::ToString};
 
 pub const SEED: &str = "di183bafh964gce5072";

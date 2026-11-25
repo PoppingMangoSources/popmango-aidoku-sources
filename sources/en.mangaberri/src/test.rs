@@ -1,7 +1,14 @@
 #![expect(clippy::unwrap_used)]
 
-use super::*;
-use aidoku::{DeepLinkHandler, Home, ListingProvider, Source};
+use super::{
+	MangaBerri,
+	helpers::{BASE_URL, chapter_from_href, listing, parse_chapter_label, slug_from_href},
+};
+use aidoku::{
+	DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponentValue, ListingProvider, Manga,
+	Source,
+	alloc::{String, Vec, format, vec},
+};
 use aidoku_test::aidoku_test;
 
 #[aidoku_test]
@@ -11,6 +18,8 @@ fn review_chapter_and_link_helpers() {
 		(Some(202.0), Some("END".into()))
 	);
 	assert_eq!(parse_chapter_label("Chapter 12"), (Some(12.0), None));
+	assert_eq!(parse_chapter_label("Ch. 12"), (Some(12.0), None));
+	assert_eq!(parse_chapter_label("12"), (Some(12.0), None));
 	assert_eq!(
 		slug_from_href("https://mangaberri.com/title/beyblade-x"),
 		Some("beyblade-x".into())
@@ -31,7 +40,14 @@ fn home_browse_details_pages_and_deep_links() {
 		.iter()
 		.filter_map(|c| c.title.as_deref())
 		.collect();
-	assert_eq!(titles, ["Most Read", "Popular", "Latest Updates"]);
+	assert_eq!(titles, ["Featured", "Popular", "Latest Updates"]);
+	match &home.components[0].value {
+		HomeComponentValue::BigScroller { entries, .. } => {
+			assert!(!entries.is_empty());
+			assert!(entries[0].description.is_some());
+		}
+		_ => panic!("Featured must be BigScroller"),
+	}
 
 	let browse = source.get_search_manga_list(None, 1, vec![]).unwrap();
 	assert!(!browse.entries.is_empty());
@@ -49,10 +65,10 @@ fn home_browse_details_pages_and_deep_links() {
 		.unwrap();
 	assert!(!filtered.entries.is_empty());
 
-	let listing = source
-		.get_manga_list(make_listing("popular", "Popular"), 1)
+	let list_page = source
+		.get_manga_list(listing("popular", "Popular"), 1)
 		.unwrap();
-	assert!(!listing.entries.is_empty());
+	assert!(!list_page.entries.is_empty());
 
 	let sample = Manga {
 		key: "beyblade-x".into(),

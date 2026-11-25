@@ -222,7 +222,7 @@ impl Title {
 			manga.authors = names(self.authors).or_else(|| names(self.author));
 			manga.artists = names(self.artists);
 			manga.status = status(self.status.as_deref());
-			manga.tags = Some(tags).filter(|tags| !tags.is_empty());
+			manga.tags = (!tags.is_empty()).then_some(tags);
 		}
 		manga.key = self.url;
 		manga.title = title;
@@ -320,13 +320,8 @@ fn effective_language<'a>(lang: &'a str, title: Option<&str>) -> &'a str {
 }
 
 fn strip_prefix_ci<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
-	let bytes = text.as_bytes();
-	let pbytes = prefix.as_bytes();
-	if bytes.len() >= pbytes.len() && bytes[..pbytes.len()].eq_ignore_ascii_case(pbytes) {
-		Some(&text[pbytes.len()..])
-	} else {
-		None
-	}
+	let (head, tail) = text.split_at_checked(prefix.len())?;
+	head.eq_ignore_ascii_case(prefix).then_some(tail)
 }
 
 fn split_leading_number(text: &str) -> Option<(&str, &str)> {
@@ -395,21 +390,31 @@ fn parse_chapter_label(line: &str) -> (Option<f32>, Option<(&str, f32, &str)>) {
 }
 
 fn clean_title_and_volume(raw: Option<&str>, number: Option<f32>) -> (Option<f32>, Option<String>) {
-	let Some(line) = raw.and_then(|t| t.lines().map(str::trim).find(|l| !l.is_empty())) else {
+	let Some(mut line) = raw.and_then(|t| t.lines().map(str::trim).find(|l| !l.is_empty())) else {
 		return (None, None);
 	};
-	let (volume, parsed) = parse_chapter_label(line);
-	if let Some((_, label_num, tail)) = parsed
-		&& number.is_some_and(|n| (n - label_num).abs() < f32::EPSILON)
-	{
-		let cleaned = tail
-			.trim_start_matches(|c: char| {
-				c.is_whitespace() || matches!(c, ':' | '-' | '–' | '—' | '|')
-			})
-			.trim();
-		return (volume, (!cleaned.is_empty()).then(|| String::from(cleaned)));
+	let mut volume = None;
+	loop {
+		let (vol, parsed) = parse_chapter_label(line);
+		if volume.is_none() {
+			volume = vol;
+		}
+		if let Some((_, label_num, tail)) = parsed
+			&& number.is_some_and(|n| (n - label_num).abs() < f32::EPSILON)
+		{
+			let cleaned = tail
+				.trim_start_matches(|c: char| {
+					c.is_whitespace() || matches!(c, ':' | '-' | '–' | '—' | '|')
+				})
+				.trim();
+			if cleaned.is_empty() {
+				return (volume, None);
+			}
+			line = cleaned;
+			continue;
+		}
+		return (volume, Some(String::from(line)));
 	}
-	(volume, Some(String::from(line)))
 }
 
 fn canonical_number_key(number: Option<f32>, raw: &str) -> core::result::Result<u32, &str> {

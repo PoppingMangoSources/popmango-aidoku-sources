@@ -17,7 +17,6 @@ pub const API_URL: &str = "https://swarm.ws/api";
 
 const PAGE_SIZE: usize = 50;
 
-// Sorts in `filters.json` order.
 // Browse answers `created` with an error; `newest` is the same sort.
 pub const SORTS: [&str; 3] = ["last_updated", "title", "newest"];
 

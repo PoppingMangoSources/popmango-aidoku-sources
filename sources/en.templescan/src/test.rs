@@ -1,170 +1,168 @@
-#![expect(clippy::unwrap_used)]
-
-use super::*;
-use aidoku::{DeepLinkHandler, HomeComponentValue, alloc::vec, imports::html::Html};
+use super::{
+	TempleScan,
+	helpers::{
+		BASE_URL, build_home_layout, decode_reader_tokens, extract_reader_tokens,
+		is_challenge_page, page_catalog, parse_catalog, parse_series_chapters,
+		parse_series_details, sort_catalog,
+	},
+	tokens,
+};
+use aidoku::{
+	DeepLinkHandler, DeepLinkResult, HomeComponentValue, Manga, MangaStatus, Source,
+	alloc::{String, Vec, format, vec},
+	imports::html::Html,
+};
 use aidoku_test::aidoku_test;
 
-fn flight_script(chunk: &str) -> String {
-	let literal = serde_json::to_string(chunk).unwrap();
-	format!("<script>self.__next_f.push([1,{literal}])</script>")
-}
+const HOME_HTML: &str = r#"<!doctype html>
+<html>
+<head><title>Temple Scan</title></head>
+<body>
+<script>self.__next_f.push([1,"1:[\"$\",\"$L1\",null,{\"featured\":[{\"a\":\"solo-hunter\",\"b\":\"Solo Hunter\",\"protagonist\":\"/uploads/p1.webp\",\"description\":\"<p>A hero rises.#tags</p>\",\"badge\":\"NEW\"}],\"weekRes\":[{\"x\":\"week-king\",\"y\":\"Week King\",\"thumbnail\":\"/uploads/w1.webp\",\"badge\":\"18+\"}]}]\n"])</script>
+<section aria-labelledby="trending-title">
+	<ol><li><a href="/comic/week-king"><img src="/uploads/w1.webp"><h3>Week King</h3></a></li></ol>
+</section>
+<section>
+	<h2 id="latest-updates-title">Latest Updates</h2>
+	<article>
+		<a href="/comic/latest-one"><img src="/uploads/l1.webp"></a>
+		<h3><a href="/comic/latest-one">Latest One</a></h3>
+		<ul>
+			<li><a href="/comic/latest-one/chapter-42"><span class="sr-only">Premium</span><span>Chapter 42</span><time datetime="2026-11-24T10:00:00Z">1h ago</time></a></li>
+			<li><a href="/comic/latest-one/chapter-41"><span>Chapter 41</span><time datetime="2026-11-23T10:00:00Z">1d ago</time></a></li>
+		</ul>
+	</article>
+</section>
+<section>
+	<h2>New Series</h2>
+	<a href="/comic/brand-new"><img src="/uploads/n1.webp"><h3>Brand New</h3></a>
+</section>
+</body>
+</html>"#;
 
 #[aidoku_test]
 fn review_home_layout_order_and_components() {
-	let flight = flight_script(
-		"1:{\"banners\":[{\"series_slug\":\"hero-a\",\"title\":\"Hero A\",\"protagonist\":\"https://media.templetoons.com/p.webp\",\"description\":\"<p>A featured series.</p>\",\"total_views\":12000}],\"weekRes\":[{\"xSlug\":\"trend-w\",\"yName\":\"Trending Weekly\",\"thumbnail\":\"https://media.templetoons.com/tw.webp\",\"badge\":\"Manhwa\"}]}\n",
-	);
-	let html_str = format!(
-		r#"<html><body>
-		{flight}
-		<section>
-			<h2 id="latest-updates-title">Latest Updates</h2>
-			<article data-sponsored="true"><a href="/comic/ad"><img src="/ad.webp"/></a><h3><a href="/comic/ad">Ad</a></h3></article>
-			<article>
-				<a href="/comic/orchid"><img src="https://media.templetoons.com/o.webp"/></a>
-				<h3><a href="/comic/orchid">Until He Becomes An Orchid</a></h3>
-				<ul>
-					<li><a href="/comic/orchid/chapter-29"><span>Chapter 29</span><time datetime="2026-11-24T12:00:00Z">1d</time></a></li>
-				</ul>
-			</article>
-		</section>
-		<section>
-			<h2>New Series</h2>
-			<a href="/comic/new-one"><img src="https://media.templetoons.com/n.webp"/><h3>New One</h3></a>
-		</section>
-		</body></html>"#
-	);
-	let doc = Html::parse_with_url(&html_str, DOMAIN).unwrap();
+	let doc = Html::parse_with_url(HOME_HTML, BASE_URL).expect("parse home");
 	let layout = build_home_layout(&doc);
-
-	let titles: Vec<_> = layout
+	let titles: Vec<&str> = layout
 		.components
 		.iter()
 		.filter_map(|c| c.title.as_deref())
 		.collect();
 	assert_eq!(
 		titles,
-		[
+		vec![
 			"Featured",
 			"Trending This Week",
 			"Latest Updates",
 			"New Series"
 		]
 	);
-	assert!(matches!(
-		layout.components[0].value,
-		HomeComponentValue::BigScroller { .. }
-	));
-	assert!(matches!(
-		layout.components[1].value,
-		HomeComponentValue::Scroller { .. }
-	));
+
+	match &layout.components[0].value {
+		HomeComponentValue::BigScroller { entries, .. } => {
+			assert_eq!(entries.len(), 1);
+			assert_eq!(entries[0].key, "solo-hunter");
+			assert_eq!(entries[0].description.as_deref(), Some("A hero rises."));
+		}
+		_ => panic!("Featured must be BigScroller"),
+	}
+	match &layout.components[1].value {
+		HomeComponentValue::Scroller { entries, .. } => {
+			assert_eq!(entries.len(), 1);
+			assert_eq!(entries[0].title, "Week King");
+			assert!(entries[0].subtitle.is_none());
+		}
+		_ => panic!("Trending This Week must be Scroller"),
+	}
 	match &layout.components[2].value {
 		HomeComponentValue::MangaChapterList {
-			page_size: Some(5),
-			entries,
-			..
+			page_size, entries, ..
 		} => {
+			assert_eq!(*page_size, Some(5));
 			assert_eq!(entries.len(), 1);
-			assert_eq!(entries[0].manga.key, "orchid");
-			assert_eq!(entries[0].chapter.chapter_number, Some(29.0));
-			assert!(entries[0].chapter.date_uploaded.is_some());
+			assert_eq!(entries[0].manga.key, "latest-one");
+			assert_eq!(entries[0].chapter.chapter_number, Some(41.0));
+			assert!(entries[0].chapter.title.is_none());
+			assert!(entries[0].chapter.url.is_none());
 		}
-		_ => panic!("expected Latest Updates MangaChapterList with page_size 5"),
+		_ => panic!("Latest Updates must be MangaChapterList"),
 	}
-	assert!(matches!(
-		layout.components[3].value,
-		HomeComponentValue::Scroller { .. }
-	));
+	match &layout.components[3].value {
+		HomeComponentValue::Scroller { entries, .. } => {
+			assert_eq!(entries.len(), 1);
+			assert_eq!(entries[0].title, "Brand New");
+		}
+		_ => panic!("New Series must be Scroller"),
+	}
 }
 
 #[aidoku_test]
-fn review_catalog_details_chapters_and_reader_tokens() {
-	// Renamed catalog fields
-	let cat_flight = flight_script(
-		"1:{\"items\":[{\"aaa\":\"evil-husband\",\"bbb\":\"Evil Husband\",\"thumbnail\":\"https://media.templetoons.com/e.webp\",\"badge\":\"Manhwa +18\",\"status\":\"Ongoing\",\"total_views\":5000,\"created_at\":\"2026-01-01T00:00:00Z\",\"update_chapter\":\"2026-11-20T00:00:00Z\"},{\"aaa\":\"switch-boyfriend\",\"bbb\":\"Switch Boyfriend\",\"thumbnail\":\"https://media.templetoons.com/s.webp\",\"badge\":\"Manhwa\",\"status\":\"Completed\",\"total_views\":2000,\"created_at\":\"2026-06-01T00:00:00Z\",\"update_chapter\":\"2026-11-10T00:00:00Z\"}]}\n",
-	);
-	let cat_doc =
-		Html::parse_with_url(format!("<html><body>{cat_flight}</body></html>"), DOMAIN).unwrap();
-	let items = parse_catalog(&cat_doc);
+fn review_flight_text_rows_challenge_and_reader_tokens() {
+	// Flight text row `<id>:T<hex>,<bytes>` followed directly by the catalog row without a newline.
+	let catalog_html = r#"<html><body><script>self.__next_f.push([1,"a:T5,hello1:[\"$\",\"$L2\",null,{\"initialPage\":1,\"list\":[{\"z1\":\"alpha-one\",\"z2\":\"Alpha One\",\"thumbnail\":\"/a.webp\",\"badge\":\"Safe\",\"status\":\"Ongoing\",\"created_at\":\"2026-01-01T00:00:00Z\",\"update_chapter\":\"2026-11-24T00:00:00Z\",\"total_views\":500,\"alternative_names\":\"Alt A\"},{\"z1\":\"beta-two\",\"z2\":\"Beta Two\",\"thumbnail\":\"/b.webp\",\"badge\":\"18+\",\"status\":\"Completed\",\"created_at\":\"2026-10-01T00:00:00Z\",\"update_chapter\":\"2026-11-20T00:00:00Z\",\"total_views\":1000,\"alternative_names\":\"\"}]}]\n"])</script></body></html>"#;
+	let cat_doc = Html::parse_with_url(catalog_html, BASE_URL).expect("parse catalog");
+	let mut items = parse_catalog(&cat_doc);
 	assert_eq!(items.len(), 2);
-	assert_eq!(items[0].slug, "evil-husband");
-	assert_eq!(items[0].title, "Evil Husband");
+	sort_catalog(&mut items, 0);
+	let page = page_catalog(items, 1);
+	assert_eq!(page.entries[0].key, "beta-two");
+	assert_eq!(page.entries[1].key, "alpha-one");
 
-	// Series details & chapters
-	let detail_html = r#"<html><head><meta property="og:image" content="https://media.templetoons.com/c.webp"/></head><body>
-		<h1 id="series-title">Evil Husband</h1>
-		<div id="series-synopsis-text"><p>First paragraph.</p><p>Second paragraph.</p></div>
-		<dl><div><dt>Author</dt><dd>Author One, Author Two</dd></div></dl>
+	let challenge_html = r#"<html><head><title>Temple Scan</title><script src="/_next/static/chunks/app/challenge/page-61f1e8.js"></script></head><body></body></html>"#;
+	let challenge_doc = Html::parse_with_url(challenge_html, BASE_URL).expect("parse challenge");
+	assert!(is_challenge_page(&challenge_doc));
+
+	let detail_html = r#"<html><head><meta property="og:image" content="https://media.templetoons.com/c.webp"></head><body>
+		<h1 id="series-title">Alpha One</h1>
+		<div id="series-synopsis-text"><p>First para.</p><p>Second para.</p></div>
+		<dl><div><dt>Author</dt><dd>Jane Doe</dd></div></dl>
 		<ul aria-label="Series stats"><li>Ongoing</li></ul>
-		<ul aria-label="Genres"><li>Romance</li><li>+18</li></ul>
+		<ul aria-label="Genres"><li>Fantasy</li><li>Action</li><li>Action</li></ul>
 		<ul id="chapter-list">
-			<li><a href="/comic/evil-husband/chapter-52"><span>Chapter 52</span><span>Premium</span><time datetime="2026-11-24T10:00:00Z">1h</time></a></li>
-			<li><a href="/comic/evil-husband/chapter-51"><span>Chapter 51</span><span>A Fresh Start</span><time datetime="2026-11-20T10:00:00Z">4d</time></a></li>
+			<li><a href="/comic/alpha-one/ch-2"><span>Chapter 2</span><span>Chapter 2</span><time datetime="2026-11-24T12:00:00Z">2h</time></a></li>
+			<li><a href="/comic/alpha-one/ch-1"><span>Ch. 1</span><span>Prologue</span><time datetime="2026-11-20T12:00:00Z">4d</time></a></li>
 		</ul>
 	</body></html>"#;
-	let detail_doc = Html::parse_with_url(detail_html, DOMAIN).unwrap();
+	let detail_doc = Html::parse_with_url(detail_html, BASE_URL).expect("parse detail");
 	let mut manga = Manga {
-		key: "evil-husband".into(),
-		title: String::new(),
+		key: "alpha-one".into(),
 		..Default::default()
 	};
 	parse_series_details(&detail_doc, &mut manga);
-	assert_eq!(manga.title, "Evil Husband");
+	assert_eq!(manga.title, "Alpha One");
 	assert_eq!(manga.status, MangaStatus::Ongoing);
-	assert_eq!(manga.content_rating, ContentRating::NSFW);
 	assert_eq!(
-		manga.authors,
-		Some(vec!["Author One".into(), "Author Two".into()])
+		manga.tags,
+		Some(vec![String::from("Action"), String::from("Fantasy")])
 	);
-
-	let chapters = parse_series_chapters(&detail_doc, "evil-husband");
+	let chapters = parse_series_chapters(&detail_doc, "alpha-one");
 	assert_eq!(chapters.len(), 2);
-	assert!(chapters[0].locked);
-	assert_eq!(chapters[0].chapter_number, Some(52.0));
-	assert!(!chapters[1].locked);
-	assert_eq!(chapters[1].chapter_number, Some(51.0));
-	assert_eq!(chapters[1].title.as_deref(), Some("A Fresh Start"));
-	assert!(chapters[1].date_uploaded.is_some());
+	assert_eq!(chapters[0].chapter_number, Some(2.0));
+	assert!(chapters[0].title.is_none());
+	assert_eq!(chapters[1].chapter_number, Some(1.0));
+	assert_eq!(chapters[1].title.as_deref(), Some("Prologue"));
 
-	// Reader token decoding & chunk seed recovery
-	let page0 = "https://media.templetoons.com/file/p0.webp";
-	let page1 = "https://media.templetoons.com/file/p1.webp";
-	let tok0 = tokens::scramble(page0, 0, tokens::SEED);
-	let tok1 = tokens::scramble(page1, 1, tokens::SEED);
-	let reader_flight = flight_script(&format!(
-		"2c:I[44083,[\"static/chunks/reader.js\"],\"default\"]\nc:[[\"$\",\"$L2c\",null,{{\"layoutHints\":[null,null],\"k\":[\"{tok0}\",\"{tok1}\"]}}]]\n"
-	));
-	let reader_doc =
-		Html::parse_with_url(format!("<html><body>{reader_flight}</body></html>"), DOMAIN).unwrap();
-	let reader = extract_reader_tokens(&reader_doc).unwrap();
-	assert_eq!(
-		reader.script,
-		Some((44083, "static/chunks/reader.js".into()))
+	let url0 = "https://media.templetoons.com/file/terms54/uploads/series/s/c/01.jpg";
+	let url1 = "https://media.templetoons.com/file/terms54/uploads/series/s/c/02.jpg";
+	let t0 = tokens::scramble(url0, 0, tokens::SEED);
+	let t1 = tokens::scramble(url1, 1, tokens::SEED);
+	let reader_html = format!(
+		r#"<html><body><script>self.__next_f.push([1,"5:I[44083,[\"static/chunks/reader.js\"],\"default\"]\n6:[\"$\",\"$L5\",null,{{\"layoutHints\":[1,1],\"p\":[\"{t0}\",\"{t1}\"]}}]\n"])</script></body></html>"#
 	);
-	assert_eq!(
-		decode_reader_tokens(&reader.tokens, tokens::SEED).unwrap(),
-		[page0, page1]
-	);
+	let reader_doc = Html::parse_with_url(&reader_html, BASE_URL).expect("parse reader");
+	let reader = extract_reader_tokens(&reader_doc).expect("reader tokens");
+	let decoded = decode_reader_tokens(&reader.tokens, tokens::SEED).expect("decoded urls");
+	assert_eq!(decoded, vec![String::from(url0), String::from(url1)]);
 
-	let chunk = "44083:function(e,t){const s=\"abc123456789\";new TextDecoder();const a=795580989,b=2048675417;}";
-	assert_eq!(
-		tokens::seed_from_chunk(chunk, 44083).as_deref(),
-		Some("abc123456789")
-	);
-
-	// Deep links & Turnstile detection
 	let source = TempleScan::new();
-	assert!(matches!(
+	assert_eq!(
 		source
-			.handle_deep_link(format!("{DOMAIN}/comic/evil-husband/chapter-51"))
-			.unwrap(),
-		Some(DeepLinkResult::Chapter { manga_key, key }) if manga_key == "evil-husband" && key == "chapter-51"
-	));
-	let cf_doc = Html::parse_with_url(
-		"<html><head><title>Just a moment...</title></head></html>",
-		DOMAIN,
-	)
-	.unwrap();
-	assert!(is_challenge_page(&cf_doc));
+			.handle_deep_link(format!("{BASE_URL}/comic/alpha-one/ch-2"))
+			.expect("deep link"),
+		Some(DeepLinkResult::Chapter {
+			manga_key: "alpha-one".into(),
+			key: "ch-2".into(),
+		})
+	);
 }

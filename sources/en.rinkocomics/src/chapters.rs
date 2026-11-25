@@ -1,6 +1,7 @@
+use crate::helpers::{BASE_URL, clean, path_of};
 use aidoku::{
 	Chapter, Result,
-	alloc::{String, Vec, format, string::ToString},
+	alloc::{String, Vec, collections::BTreeSet, format, string::ToString},
 	helpers::uri::QueryParameters,
 	imports::{
 		html::{Document, Element, Html},
@@ -12,12 +13,10 @@ use aidoku::{
 use base64::prelude::*;
 use serde::Deserialize;
 
-use crate::{BASE_URL, clean, path_of};
-
 pub const LOCK_SUFFIX: &str = "#lock";
 const CHAPTER_SELECTOR: &str = "#cwChapters a.chapter-item, #cwVolumes [data-ep] > a, li.chapter";
 const LOAD_MORE_SELECTOR: &str = "#cwMoreChapters, #loadMoreChaptersBtn";
-const CHAPTERS_PER_PAGE: usize = 10;
+const CHAPTER_PAGE_SIZE: usize = 10;
 const MAX_CHAPTER_PAGES: usize = 60;
 
 #[derive(Deserialize)]
@@ -31,7 +30,7 @@ struct AjaxData {
 	html: Option<String>,
 }
 
-pub fn parse_rinko_date(text: &str) -> Option<i64> {
+pub fn parse_date_str(text: &str) -> Option<i64> {
 	let trimmed = text.split('·').next().unwrap_or(text).trim();
 	if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("new") {
 		return None;
@@ -93,25 +92,21 @@ pub fn is_locked_row(row: &Element, href: &str) -> bool {
 	{
 		return true;
 	}
-	if row.has_class("locked-chapter") || row.has_class("is-locked") {
-		return true;
-	}
-	href.is_empty() || href == "#" || row.select_first(".chapter_price").is_some()
+	row.has_class("locked-chapter")
+		|| row.has_class("is-locked")
+		|| href.is_empty()
+		|| href == "#"
+		|| row.select_first(".chapter_price").is_some()
 }
 
 fn parse_nonce(body: &str) -> Option<String> {
-	let start = body.find("comicworld_ajax")?;
-	let rest = &body[start..];
+	let rest = &body[body.find("comicworld_ajax")?..];
 	let brace = rest.find('{')?;
-	let end = rest[brace..].find('}')?;
-	let block = &rest[brace..brace + end];
+	let block = &rest[brace..brace + rest[brace..].find('}')?];
 	let marker = "\"nonce\"";
-	let n_pos = block.find(marker)?;
-	let after = block[n_pos + marker.len()..].trim_start();
-	let after = after.strip_prefix(':')?.trim_start();
-	let after = after.strip_prefix('"')?;
-	let close = after.find('"')?;
-	Some(after[..close].to_string())
+	let after = block[block.find(marker)? + marker.len()..].trim_start();
+	let after = after.strip_prefix(':')?.trim_start().strip_prefix('"')?;
+	Some(after[..after.find('"')?].into())
 }
 
 pub fn has_more_chapters(doc: &Document) -> bool {
@@ -120,54 +115,68 @@ pub fn has_more_chapters(doc: &Document) -> bool {
 		.is_some_and(|id| !id.trim().is_empty())
 }
 
-fn clean_chapter_title(name: &str, number: Option<f32>) -> Option<String> {
+pub fn clean_chapter_title(name: &str, number: Option<f32>) -> Option<String> {
 	let trimmed = name.trim();
 	if trimmed.is_empty() {
 		return None;
 	}
-	if let Some(num) = number {
-		let lower = trimmed.to_ascii_lowercase();
-		for prefix in ["chapter", "ch.", "ch", "episode", "ep.", "ep", "#"] {
-			if let Some(after) = lower.strip_prefix(prefix) {
-				let rest = trimmed[trimmed.len() - after.len()..].trim_start();
-				let mut end = 0;
-				let mut seen_dot = false;
-				for (i, ch) in rest.char_indices() {
-					if ch.is_ascii_digit() {
-						end = i + ch.len_utf8();
-					} else if ch == '.' && !seen_dot && end > 0 {
-						seen_dot = true;
-						end = i + 1;
-					} else {
-						break;
-					}
-				}
-				let num_str = rest[..end].trim_end_matches('.');
-				if num_str
-					.parse::<f32>()
-					.ok()
-					.is_some_and(|n| (n - num).abs() < f32::EPSILON)
-				{
-					let tail = rest
-						.strip_prefix(num_str)
-						.unwrap_or("")
-						.trim_start_matches(|c: char| {
-							c.is_whitespace() || matches!(c, ':' | '-' | '–' | '—' | '|')
-						})
-						.trim();
-					return (!tail.is_empty()).then(|| tail.to_string());
-				}
-			}
+	let Some(num) = number else {
+		return Some(trimmed.into());
+	};
+	if trimmed
+		.parse::<f32>()
+		.ok()
+		.is_some_and(|n| (n - num).abs() < f32::EPSILON)
+	{
+		return None;
+	}
+	let rest = trimmed
+		.strip_prefix("Chapter")
+		.or_else(|| trimmed.strip_prefix("CHAPTER"))
+		.or_else(|| trimmed.strip_prefix("chapter"))
+		.or_else(|| trimmed.strip_prefix("Ch."))
+		.or_else(|| trimmed.strip_prefix("ch."))
+		.or_else(|| trimmed.strip_prefix("CH."))
+		.or_else(|| trimmed.strip_prefix("Ch "))
+		.or_else(|| trimmed.strip_prefix("ch "))
+		.or_else(|| trimmed.strip_prefix("Episode"))
+		.or_else(|| trimmed.strip_prefix("EPISODE"))
+		.or_else(|| trimmed.strip_prefix("episode"))
+		.or_else(|| trimmed.strip_prefix("Ep."))
+		.or_else(|| trimmed.strip_prefix("ep."))
+		.or_else(|| trimmed.strip_prefix("Ep "))
+		.or_else(|| trimmed.strip_prefix("ep "))
+		.or_else(|| trimmed.strip_prefix('#'))
+		.map(str::trim_start);
+	if let Some(after_prefix) = rest {
+		let after_num = after_prefix.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+		let num_str = after_prefix
+			.strip_suffix(after_num)
+			.unwrap_or("")
+			.trim_end_matches('.');
+		if num_str
+			.parse::<f32>()
+			.ok()
+			.is_some_and(|n| (n - num).abs() < f32::EPSILON)
+		{
+			let tail = after_num
+				.trim_start_matches(|c: char| {
+					c.is_whitespace() || matches!(c, ':' | '-' | '–' | '—' | '|')
+				})
+				.trim();
+			return (!tail.is_empty()).then(|| tail.into());
 		}
 	}
-	Some(trimmed.to_string())
+	Some(trimmed.into())
 }
 
-fn parse_rows(doc: &Document, show_locked: bool, out: &mut Vec<Chapter>, seen: &mut Vec<String>) {
-	let Some(rows) = doc.select(CHAPTER_SELECTOR) else {
-		return;
-	};
-	for row in rows {
+fn parse_rows(
+	doc: &Document,
+	show_locked: bool,
+	out: &mut Vec<Chapter>,
+	seen: &mut BTreeSet<String>,
+) {
+	for row in doc.select(CHAPTER_SELECTOR).into_iter().flatten() {
 		let href = row
 			.attr("data-permalink")
 			.or_else(|| row.attr("href"))
@@ -202,16 +211,15 @@ fn parse_rows(doc: &Document, show_locked: bool, out: &mut Vec<Chapter>, seen: &
 		} else {
 			base_key.clone()
 		};
-		if seen.contains(&key) {
+		if !seen.insert(key.clone()) {
 			continue;
 		}
-		seen.push(key.clone());
 
 		let ep_badge = row
 			.select_first("span.font-semibold")
 			.and_then(|el| el.text())
 			.map(|t| clean(&t))
-			.and_then(|t| t.strip_prefix('#').map(|n| n.to_string()))
+			.and_then(|t| t.strip_prefix('#').map(String::from))
 			.filter(|n| n.parse::<f32>().is_ok());
 
 		let raw_name = if let Some(ref ep) = ep_badge {
@@ -255,12 +263,8 @@ fn parse_rows(doc: &Document, show_locked: bool, out: &mut Vec<Chapter>, seen: &
 			.and_then(|s| s.parse::<f32>().ok())
 			.or_else(|| chapter_number_of(&raw_name));
 		let title = clean_chapter_title(&raw_name, chapter_number);
-		let date_uploaded = stamp.as_deref().and_then(parse_rinko_date);
-		let url = if !base_key.starts_with("locked-") {
-			Some(format!("{BASE_URL}/{base_key}"))
-		} else {
-			None
-		};
+		let date_uploaded = stamp.as_deref().and_then(parse_date_str);
+		let url = (!base_key.starts_with("locked-")).then(|| format!("{BASE_URL}/{base_key}"));
 
 		out.push(Chapter {
 			key,
@@ -275,8 +279,8 @@ fn parse_rows(doc: &Document, show_locked: bool, out: &mut Vec<Chapter>, seen: &
 }
 
 pub fn collect_chapters(doc: &Document, body: &str, url: &str, show_locked: bool) -> Vec<Chapter> {
-	let mut chapters: Vec<Chapter> = Vec::new();
-	let mut seen: Vec<String> = Vec::new();
+	let mut chapters = Vec::new();
+	let mut seen = BTreeSet::new();
 	parse_rows(doc, show_locked, &mut chapters, &mut seen);
 
 	let initial_count = doc
@@ -297,10 +301,10 @@ pub fn collect_chapters(doc: &Document, body: &str, url: &str, show_locked: bool
 			.unwrap_or(initial_count);
 		for _ in 0..MAX_CHAPTER_PAGES {
 			let mut form = QueryParameters::new();
-			form.push("action", Some("load_more_chapters"));
+			form.push_encoded("action", Some("load_more_chapters"));
 			form.push("nonce", Some(&nonce));
 			form.push("comic_id", Some(&comic_id));
-			form.push("offset", Some(&offset.to_string()));
+			form.push_encoded("offset", Some(&offset.to_string()));
 
 			let Ok(req) = Request::post(format!("{BASE_URL}/wp-admin/admin-ajax.php")) else {
 				break;
@@ -338,14 +342,13 @@ pub fn collect_chapters(doc: &Document, body: &str, url: &str, show_locked: bool
 				break;
 			}
 			parse_rows(&parsed, show_locked, &mut chapters, &mut seen);
-			offset += batch_rows.max(CHAPTERS_PER_PAGE);
-			if batch_rows < CHAPTERS_PER_PAGE {
+			offset += batch_rows.max(CHAPTER_PAGE_SIZE);
+			if batch_rows < CHAPTER_PAGE_SIZE {
 				break;
 			}
 		}
 	}
 
-	// Ensure newest-first order across comics and novels alike.
 	chapters.sort_unstable_by(|a, b| match (b.chapter_number, a.chapter_number) {
 		(Some(bn), Some(an)) => bn.total_cmp(&an),
 		(Some(_), None) => core::cmp::Ordering::Less,

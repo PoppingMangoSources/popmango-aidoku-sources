@@ -2,7 +2,6 @@
 	{
 		"type": "sort",
 		"id": "m_orderby",
-		"title": "Order by",
 		"canAscend": false,
 		"options": [
 			"Relevance",

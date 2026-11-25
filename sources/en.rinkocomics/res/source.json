@@ -2,10 +2,13 @@
 	"info": {
 		"id": "en.rinkocomics",
 		"name": "RinkoComics",
-		"version": 17,
+		"version": 18,
 		"url": "https://rinkocomics.com",
 		"contentRating": 0,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
+	},
+	"config": {
+		"supportsTagSearch": true
 	}
 }
