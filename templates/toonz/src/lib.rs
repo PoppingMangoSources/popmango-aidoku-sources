@@ -12,8 +12,6 @@ mod imp;
 mod models;
 mod rsc;
 mod settings;
-#[cfg(test)]
-mod test;
 
 pub use helpers::upload_page;
 pub use imp::Impl;

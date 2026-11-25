@@ -2,10 +2,10 @@
 title: Sources kept off main (merged-sources and dead-sources)
 type: operation
 created: 2026-11-20
-updated: 2026-11-23
+updated: 2026-11-24
 sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/merged-sources
-verified_at: 2e52ace
+verified_at: 9f4bbf5
 ---
 
 A source leaves `main` once it is upstream, or while its upstream branch waits on review. Its
@@ -13,7 +13,8 @@ crate and live tests stay in `main`'s history; what it taught stays in this file
 The `merged-sources` branch keeps the last copy of each merged one, tests included (Atsumaru,
 MangaK, XCOMIC, Toonkotsu, KingOfShojo, RokariComics, Novel Archive and the seven MangaThemesia
 sources merged in the November batch, plus both Keyoapp generations and their ten consumers, VineTheme with its five consumers, MangaBall,
-the MangaTaro template with MangaTaro, Rolia Scan and MKissa, VyManga, yaoi.me and Webnex),
+the MangaTaro template with MangaTaro, Rolia Scan and MKissa, VyManga, yaoi.me, Webnex, and the
+Toonz template with Toonz, Toonx, LewdManhwa and WebtoonClub),
 so they can be read and
 tested in one place.
 
@@ -74,6 +75,10 @@ and push gates reject incomplete preservation. Archive branches do not publish p
 | `en.vymanga` | merged (#913) | `046a7f2` | `merged-sources`; maintenance from upstream | section 3, `docs/subsystems/vymanga.md` |
 | `multi.yaoime` | merged (#916) | `046a7f2` | `merged-sources`; maintenance from upstream | section 3, `docs/subsystems/yaoime.md` |
 | `en.webnex` | merged (#926) | `2e52ace` | `merged-sources`; maintenance from upstream | section 3, `docs/subsystems/webnex.md`, `docs/subsystems/webnex-audit.md` |
+| `en.toonz` | merged (#927) | `9f4bbf5` | `merged-sources`; template on `main`, maintenance from upstream | section 3, `docs/subsystems/toonz.md` |
+| `en.toonx` | merged (#927) | `9f4bbf5` | `merged-sources`; template on `main`, maintenance from upstream | section 3, `docs/subsystems/toonz.md` |
+| `en.lewdmanhwa` | merged (#927) | `9f4bbf5` | `merged-sources`; template on `main`, maintenance from upstream | section 3, `docs/subsystems/toonz.md` |
+| `en.webtoonclub` | merged (#927) | `9f4bbf5` | `merged-sources`; template on `main`, maintenance from upstream | section 3, `docs/subsystems/toonz.md` |
 
 A review round on an open branch restores the crate on `main` from its last copy
 (`git checkout <sha> -- sources/<id>` plus its README row), fixes and tests it there with a

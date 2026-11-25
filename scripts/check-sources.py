@@ -465,9 +465,15 @@ def check_rust(source: Path, single_language: bool) -> None:
                 fail(path, f"line {number} silences an unused-code warning; delete the code, or comment why it must stay")
         if path.name == "test.rs":
             continue
-        check_cards(path, path.read_text())
-        check_item_spacing(path, path.read_text())
-        check_api_use(path, path.read_text())
+        body = path.read_text()
+        if path.name == "helpers.rs":
+            fns = re.findall(r"^\s*(?:pub(?:\([^)]*\))?\s+)?fn\s+\w+", body, re.M)
+            non_blank = sum(1 for line in body.splitlines() if line.strip() and not line.lstrip().startswith("//"))
+            if len(fns) == 1 and non_blank <= 20:
+                note(path, "defines only one short helper function; consider inlining it rather than creating a separate module")
+        check_cards(path, body)
+        check_item_spacing(path, body)
+        check_api_use(path, body)
         for number, line in enumerate(path.read_text().splitlines(), 1):
             where = f"line {number}"
             if SECTION_BANNER.match(line):

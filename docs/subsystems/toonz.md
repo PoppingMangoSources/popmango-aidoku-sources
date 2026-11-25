@@ -2,7 +2,7 @@
 title: Toonz template (Toonz, Toonx, LewdManhwa, WebtoonClub)
 type: subsystem
 created: 2026-11-19
-updated: 2026-11-23
+updated: 2026-11-24
 sources:
   - code: templates/toonz/src/lib.rs
   - code: templates/toonz/src/imp.rs
@@ -11,24 +11,24 @@ sources:
   - code: templates/toonz/src/models.rs
   - code: templates/toonz/src/rsc.rs
   - code: templates/toonz/src/settings.rs
-  - code: templates/toonz/src/test.rs
-  - code: sources/en.webtoonclub/src/lib.rs
-  - code: sources/en.webtoonclub/src/helpers.rs
-  - code: sources/en.webtoonclub/src/models.rs
-  - code: sources/en.webtoonclub/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/templates/toonz/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.webtoonclub/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.webtoonclub/src/helpers.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.webtoonclub/src/models.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.webtoonclub/src/test.rs
   - ext: https://webtoonclub.com
-  - code: sources/en.toonz/src/lib.rs
-  - code: sources/en.toonz/src/test.rs
-  - code: sources/en.toonz/res/filters.json
-  - code: sources/en.toonz/res/settings.json
-  - code: sources/en.toonx/src/lib.rs
-  - code: sources/en.toonx/src/test.rs
-  - code: sources/en.lewdmanhwa/src/lib.rs
-  - code: sources/en.lewdmanhwa/src/test.rs
-  - code: sources/en.lewdmanhwa/res/settings.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.toonz/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.toonz/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.toonz/res/filters.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.toonz/res/settings.json
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.toonx/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.toonx/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.lewdmanhwa/src/lib.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.lewdmanhwa/src/test.rs
+  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.lewdmanhwa/res/settings.json
   - ext: https://toonz.to/comics
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/toonz
-verified_at: c37c77e
+verified_at: 9f4bbf5
 ---
 
 Toonz (`toonz.to`), Toonx (`toonx.to`), LewdManhwa (`lewdmanhwa.com`) and WebtoonClub

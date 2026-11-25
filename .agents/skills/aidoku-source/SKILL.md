@@ -134,7 +134,15 @@ that shipped:
       scores have a stable tie-breaker, tested with reversed input
 - [ ] Moving an axis between settings and filters renames the setting key
 - [ ] `bail!` over `Err(error!())`; consume owned values instead of cloning
-- [ ] JSON types and their `From` impls in `models.rs`, free functions in `helpers.rs`
+- [ ] JSON types and their `From`/`TryFrom` impls in `models.rs`, free functions in `helpers.rs`
+      — but inline a single short override function in `lib.rs` instead of creating a whole
+      `helpers.rs` module for one function (kkantan on #927)
+- [ ] Put Next.js `self.__next_f.push` decoding and generic array/object extraction in `rsc.rs`
+      (matching `vinetheme`, `en.webnex`, `toonz`); templates re-export shared helpers so
+      consumers with custom overrides don't duplicate scanners or add `serde_json`
+- [ ] Guard `FilterValue::Select { id, value } if !value.is_empty()` so an empty `"Any"` option
+      cannot overwrite a setting-backed filter default; when Next.js streams `S:` chunks outside
+      `<main>`, select against the whole document
 - [ ] `.json_owned()` rather than `.string()` plus `serde_json::from_str`; `parse_date`
       rather than a hand-written parser; no `JsContext` where a Rust crate does the job
 - [ ] An Option goes straight to a callee that takes one (`if query.is_some() { qs.push("q", query.as_deref()) }`); no `if let Some(q) = q { push(.., Some(&q)) }`

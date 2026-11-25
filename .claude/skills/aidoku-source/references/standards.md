@@ -419,6 +419,25 @@ the merged source it follows, alongside the site lessons learnt while building i
 | Home "View all" rows linked to `/browse?...` pages | Carry the site's browse link as the `Listing` id (as VineTheme does) and parse its query parameters back through the browse filter path, failing on unknown parameters rather than widening the catalogue so the reader's settings still apply. | R |
 | A home `Sections` multi-select setting | An unset `Sections` setting enables every section; a cleared selection returns an empty layout before issuing any network request. | R |
 
+### From #927 (`toonz` template, `en.toonz`, `en.toonx`, `en.lewdmanhwa`, `en.webtoonclub`)
+
+Merged on 2026-11-24 (`52d9d81`) with no reviewer commits pushed to the branch. The four
+consumers and the fork's `templates/toonz` snapshot (with tests) moved to `merged-sources`,
+while `templates/toonz` stays on `main` as upstream's copy.
+
+| What was flagged | The rule | |
+|---|---|---|
+| `helpers::parse_page_list(body)` in `en.webtoonclub/src/lib.rs` calling a 9-line `helpers.rs` ("personally I think this could be put inline. I don't think there's enough reason to create a whole new module/file for one function, but if you think it's cleaner that's fine.", approval review) | Inline a single short override function in `lib.rs` instead of creating a whole `helpers.rs` module for one function; extract `helpers.rs` once a source has multiple helpers or substantial logic. `check-sources.py` notes a `helpers.rs` defining only one short function (≤ 20 non-blank lines). | N |
+| Duplicated Next.js Flight / RSC array scanning and `/uploads/` page building across template and consumer (`templates/toonz` + `en.webtoonclub`) | Put `self.__next_f.push` decoding and generic `serde_json::Deserializer` array extraction in a dedicated `rsc.rs` (matching `templates/vinetheme` and `sources/en.webnex`), and re-export shared helpers (`reader_images`, `upload_page`) from the template so consumers with custom overrides do not duplicate scanning or pull in `serde_json` directly. | R |
+| Consumer-specific `sortOrder` reader sorting originally edited the shared template for all consumers | Keep optional per-site reader differences behind a consumer `Impl` hook (`parse_page_list`) rather than altering other consumers' default path, and keep shared template changes in the first commit of a new-template PR (`check-upstream-scope.py`). | F |
+| Site URL `rating` and `types` parameters could only narrow the `reader_prefs` cookie, never widen it | Write the effective preference cookie per request (search filters replacing settings, included genres removed from `blockedGenres`) instead of sending URL params that cannot widen the cookie. | R |
+| Hero carousels rendered images for only the first two slides, and LewdManhwa slide texts started with empty `" /  / "` alternate titles and cut credit labels | Recover missing carousel covers by matching slugs against the page's embedded Flight data or cards already on the page (zero extra requests), and strip empty title-separator prefixes and cut credit suffixes before showing a `BigScroller` synopsis. | R |
+| Mistagged Korean/Chinese manhwas labeled `"Manga"` (some also listing `Origin: Japan`) opened right-to-left | Map viewer in a dedicated `viewer()` helper (matching `en.mkissa` / `ja.soraraw`) checking strip tags, Korean/Chinese origin, and Hangul alt/original titles before falling back to the type label. | R |
+| Home list view printed only a chapter number (`CH. 45`) while some chapters used suffixed slugs (`chapter-45-wad21`) that 404 on the bare number | On 404 in `get_page_list`, fall back to one chapter-list lookup matching by chapter number and retry with the real slug. | R |
+| Unchecked `FilterValue::Select` match arm allowed an empty `""` ("Any") option to overwrite a setting-backed filter | Guard `FilterValue::Select { id, value } if !value.is_empty()` (as `multi.mangaball` does) so an empty neutral option ID can never clear a default rating or send an empty query param. | R |
+| Next.js streamed listing and details content into hidden `S:` chunks outside `<main>` | Select listing and details elements against the whole document rather than scoping to `main` when a Next.js site streams content outside `<main>`. | R |
+| Dynamic genres from `/api/genres` needed detail tag taps to resolve to slugs without an extra request | Verify `slugify` against every live genre on the site (e.g. `"D.Va"` → `dva`) before relying on local slugification for tapped tags, and filter out blank names/slugs when building dynamic options. | R |
+
 ### From #878, #894, #909 and #912 (other contributors, November 18-19)
 
 Read on 2026-11-20 from the review comments API; every review body was empty, so the inline

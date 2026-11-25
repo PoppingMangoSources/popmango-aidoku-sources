@@ -183,6 +183,7 @@ somewhere.
 | MangaBall | [`docs/subsystems/mangaball.md`](docs/subsystems/mangaball.md) |
 | VyManga | [`docs/subsystems/vymanga.md`](docs/subsystems/vymanga.md) |
 | Iken maintenance | [`docs/subsystems/iken-template.md`](docs/subsystems/iken-template.md) |
+| Toonz template | [`docs/subsystems/toonz.md`](docs/subsystems/toonz.md) |
 
 ---
 
@@ -269,18 +270,18 @@ commands to remember: `python3 scripts/ci-gates.py --base origin/main` for the o
 
 ## 12. Templates
 
-Twenty-two of them live in `templates/` upstream (counted 2026-11-20), for sites that share a
+Twenty-three of them live in `templates/` upstream (counted 2026-11-24), for sites that share a
 common engine or theme:
 
 `madara`, `wpcomics`, `gigaviewer`, `mangathemesia`, `iken`, `mangareader`,
 `libgroup`, `mangabox`, `liliana`, `guya`, `mmrcms`, `tukutema`, `ezmanhwa`,
 `pizzareader`, `madtheme`, `mangaworld`, `otakuovh`, `vinetheme`, `keyoapp`, `mangak`,
-`mangataro`, `zaimanhua`.
+`mangataro`, `zaimanhua`, `toonz`.
 
-`toonz` (Toonz, Toonx and LewdManhwa) is ours alone so far, on `feat/toonz-template`.
 Every upstream template is kept in `templates/` for future sources (owner's call, 2026-11-22):
-`iken`, `mangataro` and `zaimanhua` came back as upstream's copies, while our fork versions
-with their fixtures stay on `merged-sources` with their consumers (section 17).
+`iken`, `mangataro`, `zaimanhua` and `toonz` (merged in #927 with Toonz, Toonx, LewdManhwa and
+WebtoonClub) stay on `main` as upstream's copies, while our fork versions with their fixtures
+and consumers stay on `merged-sources` (section 17).
 
 Most templates track upstream. `madara` and `madtheme` carry additions our sources use
 (shared detail parsing, listings and dynamic filters). `mangak` merged with #850 and

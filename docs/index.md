@@ -19,7 +19,7 @@ traps found in them. It grows as work touches new areas.
 - Working on VyManga: [[vymanga]]
 - Working on VineTheme, Drake, Elf, Valir, Diva or Kayn: [[vinetheme-template]] (archived)
 - Working on yaoi.me: [[yaoime]]
-- Working on Toonz, Toonx, LewdManhwa or WebtoonClub (the toonz template): [[toonz]]
+- Working on Toonz, Toonx, LewdManhwa or WebtoonClub (the toonz template): [[toonz]] (template on main; consumers archived)
 - Working on Swarm: [[swarm]]
 - Working on WebNex: [[webnex]] (archived)
 
@@ -46,7 +46,7 @@ _(none yet)_
 
 - [[vinetheme-template]] -- current Vine sites, Flight reader data, home rows and novel routing (archived)
 - [[yaoime]] -- yaoi.me's settings cookie, browse parameters, chapter variants and the signed reader
-- [[toonz]] -- the toonz template: its content cookie, streamed pages, home rows per site and the challenged Toonz pages
+- [[toonz]] -- the toonz template: its content cookie, streamed pages, home rows per site and the challenged Toonz pages (template on main; consumers archived)
 - [[swarm]] -- Swarm's API, local exclusions, encrypted page request, languages and uploads
 - [[webnex]] -- WebNex's streamed shelves, browse parameters that alias, chapter and year presets, section visibility and the plain-request reader (archived)
 - [[xcomic]] -- XCOMIC's GraphQL API, editions, feeds and filters (upstream only)

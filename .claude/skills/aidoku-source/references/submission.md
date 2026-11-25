@@ -61,7 +61,7 @@ upstream, is reviewed and is updated after a merge.
   `ae6485e`, whose `bail!` fails Rust 1.99 under `-Dwarnings` as a match arm. Upstream moved every
   lock in #807; ours move when a source is next edited (`cargo update -p aidoku -p aidoku-test`),
   since a sweep would first need each old source's backlog fixed. It notes the section 3 **N** rows (page-size names,
-  own-field wrappers, single-call helpers used once, full-path calls, a sort filter that isn't
+  own-field wrappers, single-call helpers used once, a `helpers.rs` defining only one short function from #927, full-path calls, a sort filter that isn't
   first, an unsized image scroller, an Option unwrapped and wrapped again, a stable sort without a comment saying why, a `?` appended
   to a url variable) and a non-genre multi-select that leaves `canExclude` unstated.
   From sections 3 and 7 it also fails a `push(name, None)`, a `From` into `Manga` or `Chapter`

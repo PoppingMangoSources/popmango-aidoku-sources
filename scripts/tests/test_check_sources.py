@@ -706,6 +706,22 @@ class SurvivingMutantTests(unittest.TestCase):
         self.assertFalse([failure for failure in failures if 'README' in failure], failures)
         self.assertTrue(any('has no .cargo/config.toml' in failure for failure in failures), failures)
 
+    def test_single_short_helper_module_note(self):
+        self.write(
+            'src/helpers.rs',
+            'pub fn parse_page_list(body: &str) -> Vec<u8> {\n\tbody.as_bytes().to_vec()\n}\n',
+        )
+        checks.notes.clear()
+        self.assertEqual(self.outcome(checks.check_rust, self.source, True), [])
+        self.assertTrue(any('one short helper function' in item for item in checks.notes), checks.notes)
+        self.write(
+            'src/helpers.rs',
+            'pub fn first() -> u8 {\n\t1\n}\n\npub fn second() -> u8 {\n\t2\n}\n',
+        )
+        checks.notes.clear()
+        self.assertEqual(self.outcome(checks.check_rust, self.source, True), [])
+        self.assertFalse(any('one short helper function' in item for item in checks.notes), checks.notes)
+
 
 class KeyoappHttpTests(unittest.TestCase):
     def test_only_checked_fetches_are_allowed_in_keyoapp_parsers(self):
