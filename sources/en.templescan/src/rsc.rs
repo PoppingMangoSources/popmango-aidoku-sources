@@ -9,6 +9,7 @@ const PUSH: &str = "self.__next_f.push(";
 pub struct Flight {
 	rows: Vec<Value>,
 	modules: BTreeMap<String, Value>,
+	texts: BTreeMap<String, String>,
 }
 
 impl Flight {
@@ -19,8 +20,12 @@ impl Flight {
 				append_chunks(&code, &mut payload);
 			}
 		}
-		let (rows, modules) = parse_rows(&payload);
-		Self { rows, modules }
+		let (rows, modules, texts) = parse_rows(&payload);
+		Self {
+			rows,
+			modules,
+			texts,
+		}
 	}
 
 	pub fn find(&self, keys: &[&str]) -> Option<&Map<String, Value>> {
@@ -50,6 +55,20 @@ impl Flight {
 		}
 		arrays
 	}
+
+	// React Flight encodes long strings as `$<hex_id>` references and escapes literal `$` as `$$`.
+	pub fn resolve_str<'a>(&'a self, value: &'a str) -> Option<&'a str> {
+		if let Some(escaped) = value.strip_prefix("$$") {
+			return Some(escaped);
+		}
+		if let Some(id) = value
+			.strip_prefix('$')
+			.filter(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_hexdigit()))
+		{
+			return self.texts.get(id).map(String::as_str);
+		}
+		Some(value)
+	}
 }
 
 fn append_chunks(script: &str, payload: &mut String) {
@@ -72,23 +91,39 @@ fn append_chunks(script: &str, payload: &mut String) {
 }
 
 enum Row {
-	Data(Value),
+	Data(String, Value),
 	Module(String, Value),
+	Text(String, String),
 	Other,
 }
 
+type ParsedFlight = (
+	Vec<Value>,
+	BTreeMap<String, Value>,
+	BTreeMap<String, String>,
+);
+
 // Text rows (`<id>:T<hex>,<bytes>`) have no trailing newline before the next row.
-fn parse_rows(payload: &str) -> (Vec<Value>, BTreeMap<String, Value>) {
+fn parse_rows(payload: &str) -> ParsedFlight {
 	let mut rows = Vec::new();
 	let mut modules = BTreeMap::new();
+	let mut texts = BTreeMap::new();
 	let mut rest = payload;
 	while !rest.is_empty() {
 		match next_row(rest) {
 			Some((row, after)) => {
 				match row {
-					Row::Data(value) => rows.push(value),
+					Row::Data(id, value) => {
+						if let Value::String(ref text) = value {
+							texts.insert(id, text.clone());
+						}
+						rows.push(value);
+					}
 					Row::Module(id, value) => {
 						modules.insert(id, value);
+					}
+					Row::Text(id, text) => {
+						texts.insert(id, text);
 					}
 					Row::Other => {}
 				}
@@ -97,7 +132,7 @@ fn parse_rows(payload: &str) -> (Vec<Value>, BTreeMap<String, Value>) {
 			None => rest = skip_line(rest),
 		}
 	}
-	(rows, modules)
+	(rows, modules, texts)
 }
 
 fn next_row(text: &str) -> Option<(Row, &str)> {
@@ -109,7 +144,12 @@ fn next_row(text: &str) -> Option<(Row, &str)> {
 		'T' => {
 			let (length, content) = body[1..].split_once(',')?;
 			let length = usize::from_str_radix(length, 16).ok()?;
-			Some((Row::Other, content.get(length..)?))
+			let value = content.get(..length)?;
+			let after = content.get(length..)?;
+			Some((
+				Row::Text(String::from(id), String::from(value)),
+				after.strip_prefix('\n').unwrap_or(after),
+			))
 		}
 		'I' => {
 			let (value, after) = json_value(&body[1..])?;
@@ -118,7 +158,7 @@ fn next_row(text: &str) -> Option<(Row, &str)> {
 		tag if tag.is_ascii_uppercase() => Some((Row::Other, skip_line(body))),
 		_ => {
 			let (value, after) = json_value(body)?;
-			Some((Row::Data(value), after))
+			Some((Row::Data(String::from(id), value), after))
 		}
 	}
 }

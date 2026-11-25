@@ -7,7 +7,10 @@
 				"type": "switch",
 				"key": "showLocked",
 				"title": "Show Locked Chapters",
-				"default": false
+				"default": false,
+				"refreshes": [
+					"content"
+				]
 			}
 		]
 	}

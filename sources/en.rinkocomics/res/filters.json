@@ -4,10 +4,10 @@
 		"id": "sort",
 		"canAscend": false,
 		"options": [
-			"Latest Update",
-			"Most Viewed",
-			"Newest Series",
-			"A-Z"
+			"A–Z",
+			"Latest update",
+			"Most viewed",
+			"Newest series"
 		]
 	},
 	{
@@ -31,7 +31,7 @@
 			"Any",
 			"Ongoing",
 			"Completed",
-			"Season End",
+			"Season end",
 			"Dropped"
 		],
 		"ids": [

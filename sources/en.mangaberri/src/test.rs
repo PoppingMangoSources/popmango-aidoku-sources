@@ -40,13 +40,16 @@ fn home_browse_details_pages_and_deep_links() {
 		.iter()
 		.filter_map(|c| c.title.as_deref())
 		.collect();
-	assert_eq!(titles, ["Featured", "Popular", "Latest Updates"]);
+	assert_eq!(titles, ["Most Read", "Popular", "Latest Updates"]);
 	match &home.components[0].value {
 		HomeComponentValue::BigScroller { entries, .. } => {
-			assert!(!entries.is_empty());
-			assert!(entries[0].description.is_some());
+			assert!(
+				entries.len() > 1,
+				"Most Read BigScroller must have multiple titles"
+			);
+			assert!(entries.iter().any(|e| e.tags.is_some()));
 		}
-		_ => panic!("Featured must be BigScroller"),
+		_ => panic!("Most Read must be BigScroller"),
 	}
 
 	let browse = source.get_search_manga_list(None, 1, vec![]).unwrap();

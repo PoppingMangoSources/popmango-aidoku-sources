@@ -2,6 +2,7 @@
 	{
 		"type": "sort",
 		"id": "m_orderby",
+		"title": "Order by",
 		"canAscend": false,
 		"options": [
 			"Relevance",
@@ -35,25 +36,48 @@
 		"type": "select",
 		"id": "adult",
 		"title": "Adult content",
-		"options": ["All", "No adult content", "Only adult content"],
-		"ids": ["", "0", "1"]
+		"options": [
+			"All",
+			"None adult content",
+			"Only adult content"
+		],
+		"ids": [
+			"",
+			"0",
+			"1"
+		]
 	},
 	{
 		"type": "multi-select",
 		"id": "status[]",
 		"title": "Status",
 		"canExclude": false,
-		"options": ["Ongoing", "Completed", "Canceled", "On Hold", "Upcoming"],
-		"ids": ["on-going", "end", "canceled", "on-hold", "upcoming"]
+		"options": [
+			"Ongoing",
+			"Completed",
+			"Canceled",
+			"On Hold",
+			"Upcoming"
+		],
+		"ids": [
+			"on-going",
+			"end",
+			"canceled",
+			"on-hold",
+			"upcoming"
+		]
 	},
 	{
 		"type": "select",
 		"id": "op",
 		"title": "Genres condition",
 		"options": [
-			"OR (having one of the selected genres)",
-			"AND (having all of the selected genres)"
+			"OR (having one of selected genres)",
+			"AND (having all selected genres)"
 		],
-		"ids": ["", "1"]
+		"ids": [
+			"",
+			"1"
+		]
 	}
 ]

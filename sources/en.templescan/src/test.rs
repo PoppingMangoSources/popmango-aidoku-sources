@@ -14,11 +14,12 @@ use aidoku::{
 };
 use aidoku_test::aidoku_test;
 
+// Featured description uses `$29` Flight text reference (`29:T18,<p>A hero rises.#tags</p>`).
 const HOME_HTML: &str = r#"<!doctype html>
 <html>
 <head><title>Temple Scan</title></head>
 <body>
-<script>self.__next_f.push([1,"1:[\"$\",\"$L1\",null,{\"featured\":[{\"a\":\"solo-hunter\",\"b\":\"Solo Hunter\",\"protagonist\":\"/uploads/p1.webp\",\"description\":\"<p>A hero rises.#tags</p>\",\"badge\":\"NEW\"}],\"weekRes\":[{\"x\":\"week-king\",\"y\":\"Week King\",\"thumbnail\":\"/uploads/w1.webp\",\"badge\":\"18+\"}]}]\n"])</script>
+<script>self.__next_f.push([1,"29:T19,<p>A hero rises.#tags</p>1:[\"$\",\"$L1\",null,{\"featured\":[{\"a\":\"solo-hunter\",\"b\":\"Solo Hunter\",\"protagonist\":\"/uploads/p1.webp\",\"description\":\"$29\",\"badge\":\"NEW\"}],\"weekRes\":[{\"x\":\"week-king\",\"y\":\"Week King\",\"thumbnail\":\"/uploads/w1.webp\",\"badge\":\"18+\"}]}]\n"])</script>
 <section aria-labelledby="trending-title">
 	<ol><li><a href="/comic/week-king"><img src="/uploads/w1.webp"><h3>Week King</h3></a></li></ol>
 </section>
@@ -32,6 +33,13 @@ const HOME_HTML: &str = r#"<!doctype html>
 			<li><a href="/comic/latest-one/chapter-41"><span>Chapter 41</span><time datetime="2026-11-23T10:00:00Z">1d ago</time></a></li>
 		</ul>
 	</article>
+	<article>
+		<a href="/comic/locked-only"><img src="/uploads/l2.webp"></a>
+		<h3><a href="/comic/locked-only">Locked Only</a></h3>
+		<ul>
+			<li><a href="/comic/locked-only/chapter-9"><span class="sr-only">Premium</span><span>Chapter 9</span><time datetime="2026-11-24T11:00:00Z">30m ago</time></a></li>
+		</ul>
+	</article>
 </section>
 <section>
 	<h2>New Series</h2>
@@ -41,9 +49,9 @@ const HOME_HTML: &str = r#"<!doctype html>
 </html>"#;
 
 #[aidoku_test]
-fn review_home_layout_order_and_components() {
+fn review_home_layout_flight_refs_and_show_locked() {
 	let doc = Html::parse_with_url(HOME_HTML, BASE_URL).expect("parse home");
-	let layout = build_home_layout(&doc);
+	let layout = build_home_layout(&doc, false);
 	let titles: Vec<&str> = layout
 		.components
 		.iter()
@@ -95,19 +103,34 @@ fn review_home_layout_order_and_components() {
 		}
 		_ => panic!("New Series must be Scroller"),
 	}
+
+	let layout_with_locked = build_home_layout(&doc, true);
+	if let HomeComponentValue::MangaChapterList { entries, .. } =
+		&layout_with_locked.components[2].value
+	{
+		assert_eq!(entries.len(), 2);
+		assert!(entries[1].chapter.locked);
+	} else {
+		panic!("Latest Updates must be MangaChapterList");
+	}
 }
 
 #[aidoku_test]
-fn review_flight_text_rows_challenge_and_reader_tokens() {
-	// Flight text row `<id>:T<hex>,<bytes>` followed directly by the catalog row without a newline.
+fn review_flight_text_rows_sorts_locked_chapters_and_reader_tokens() {
 	let catalog_html = r#"<html><body><script>self.__next_f.push([1,"a:T5,hello1:[\"$\",\"$L2\",null,{\"initialPage\":1,\"list\":[{\"z1\":\"alpha-one\",\"z2\":\"Alpha One\",\"thumbnail\":\"/a.webp\",\"badge\":\"Safe\",\"status\":\"Ongoing\",\"created_at\":\"2026-01-01T00:00:00Z\",\"update_chapter\":\"2026-11-24T00:00:00Z\",\"total_views\":500,\"alternative_names\":\"Alt A\"},{\"z1\":\"beta-two\",\"z2\":\"Beta Two\",\"thumbnail\":\"/b.webp\",\"badge\":\"18+\",\"status\":\"Completed\",\"created_at\":\"2026-10-01T00:00:00Z\",\"update_chapter\":\"2026-11-20T00:00:00Z\",\"total_views\":1000,\"alternative_names\":\"\"}]}]\n"])</script></body></html>"#;
 	let cat_doc = Html::parse_with_url(catalog_html, BASE_URL).expect("parse catalog");
 	let mut items = parse_catalog(&cat_doc);
 	assert_eq!(items.len(), 2);
-	sort_catalog(&mut items, 0);
+
+	// 0 = Update Chapter (desc), 1 = Created At, 2 = Title, 3 = Trending (views).
+	sort_catalog(&mut items, 0, false);
+	assert_eq!(items[0].slug, "alpha-one");
+	sort_catalog(&mut items, 3, false);
+	assert_eq!(items[0].slug, "beta-two");
+	sort_catalog(&mut items, 2, true);
 	let page = page_catalog(items, 1);
-	assert_eq!(page.entries[0].key, "beta-two");
-	assert_eq!(page.entries[1].key, "alpha-one");
+	assert_eq!(page.entries[0].key, "alpha-one");
+	assert_eq!(page.entries[1].key, "beta-two");
 
 	let challenge_html = r#"<html><head><title>Temple Scan</title><script src="/_next/static/chunks/app/challenge/page-61f1e8.js"></script></head><body></body></html>"#;
 	let challenge_doc = Html::parse_with_url(challenge_html, BASE_URL).expect("parse challenge");
@@ -120,6 +143,7 @@ fn review_flight_text_rows_challenge_and_reader_tokens() {
 		<ul aria-label="Series stats"><li>Ongoing</li></ul>
 		<ul aria-label="Genres"><li>Fantasy</li><li>Action</li><li>Action</li></ul>
 		<ul id="chapter-list">
+			<li><a href="/comic/alpha-one/ch-3"><span class="sr-only">Premium</span><span>Chapter 3</span><time datetime="2026-11-25T12:00:00Z">1h</time></a></li>
 			<li><a href="/comic/alpha-one/ch-2"><span>Chapter 2</span><span>Chapter 2</span><time datetime="2026-11-24T12:00:00Z">2h</time></a></li>
 			<li><a href="/comic/alpha-one/ch-1"><span>Ch. 1</span><span>Prologue</span><time datetime="2026-11-20T12:00:00Z">4d</time></a></li>
 		</ul>
@@ -136,12 +160,16 @@ fn review_flight_text_rows_challenge_and_reader_tokens() {
 		manga.tags,
 		Some(vec![String::from("Action"), String::from("Fantasy")])
 	);
-	let chapters = parse_series_chapters(&detail_doc, "alpha-one");
-	assert_eq!(chapters.len(), 2);
-	assert_eq!(chapters[0].chapter_number, Some(2.0));
-	assert!(chapters[0].title.is_none());
-	assert_eq!(chapters[1].chapter_number, Some(1.0));
-	assert_eq!(chapters[1].title.as_deref(), Some("Prologue"));
+	let free_chapters = parse_series_chapters(&detail_doc, "alpha-one", false);
+	assert_eq!(free_chapters.len(), 2);
+	assert_eq!(free_chapters[0].chapter_number, Some(2.0));
+	assert!(free_chapters[0].title.is_none());
+	assert_eq!(free_chapters[1].chapter_number, Some(1.0));
+	assert_eq!(free_chapters[1].title.as_deref(), Some("Prologue"));
+
+	let all_chapters = parse_series_chapters(&detail_doc, "alpha-one", true);
+	assert_eq!(all_chapters.len(), 3);
+	assert!(all_chapters[0].locked);
 
 	let url0 = "https://media.templetoons.com/file/terms54/uploads/series/s/c/01.jpg";
 	let url1 = "https://media.templetoons.com/file/terms54/uploads/series/s/c/02.jpg";

@@ -14,8 +14,8 @@ use aidoku::{
 };
 use helpers::{
 	BASE_URL, SORTS, abs_url, chapter_from_href, clean, content_rating_for, fetch, has_next_page,
-	listing, parse_cards_in, parse_chapter_label, parse_hero, parse_status, slug_from_href,
-	viewer_for,
+	listing, parse_cards_in, parse_chapter_label, parse_featured_most_read, parse_status,
+	slug_from_href, viewer_for,
 };
 
 struct MangaBerri;
@@ -210,13 +210,24 @@ impl ListingProvider for MangaBerri {
 
 impl Home for MangaBerri {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let doc = fetch(&format!("{BASE_URL}/discover"))?;
+		let requests = [
+			Request::get(format!("{BASE_URL}/browse?sort=popular"))?
+				.header("Referer", &format!("{BASE_URL}/")),
+			Request::get(format!("{BASE_URL}/discover"))?
+				.header("Referer", &format!("{BASE_URL}/")),
+		];
+		let [most_read_resp, discover_resp]: [_; 2] = Request::send_all(requests)
+			.try_into()
+			.map_err(|_| error!("Unexpected response count"))?;
+		let most_read = most_read_resp?.get_html()?;
+		let discover = discover_resp?.get_html()?;
+
 		let mut components = Vec::new();
 
-		let featured = parse_hero(&doc);
+		let featured = parse_featured_most_read(&most_read, &discover);
 		if !featured.is_empty() {
 			components.push(HomeComponent {
-				title: Some("Featured".into()),
+				title: Some("Most Read".into()),
 				subtitle: None,
 				value: HomeComponentValue::BigScroller {
 					entries: featured,
@@ -225,10 +236,11 @@ impl Home for MangaBerri {
 			});
 		}
 
-		let popular: Vec<Link> = parse_cards_in(&doc, "section.popular-manga article.manga-card")
-			.into_iter()
-			.map(Into::into)
-			.collect();
+		let popular: Vec<Link> =
+			parse_cards_in(&discover, "section.popular-manga article.manga-card")
+				.into_iter()
+				.map(Into::into)
+				.collect();
 		if !popular.is_empty() {
 			components.push(HomeComponent {
 				title: Some("Popular".into()),
@@ -241,7 +253,7 @@ impl Home for MangaBerri {
 		}
 
 		let latest: Vec<Link> =
-			parse_cards_in(&doc, "section:not(.popular-manga) article.manga-card")
+			parse_cards_in(&discover, "section:not(.popular-manga) article.manga-card")
 				.into_iter()
 				.map(Into::into)
 				.collect();

@@ -131,60 +131,7 @@ pub fn parse_chapter_label(name: &str) -> (Option<f32>, Option<String>) {
 	(num, Some(trimmed.into()))
 }
 
-pub fn parse_hero(document: &Document) -> Vec<Manga> {
-	document
-		.select("section.hero")
-		.into_iter()
-		.flatten()
-		.filter_map(|hero| {
-			let href = hero.select_first("a[href*='/title/']")?.attr("href")?;
-			let key = slug_from_href(&href)?;
-			let title = hero
-				.select_first("h2.featured-title, h2")
-				.and_then(|el| el.text())
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())?;
-			let cover = hero
-				.select_first(".hero-art img, img")
-				.and_then(|img| img.attr("data-src").or_else(|| img.attr("src")))
-				.filter(|s| !s.is_empty())
-				.map(|s| abs_url(&s));
-			let description = hero
-				.select_first("p.hero-description")
-				.and_then(|el| el.text())
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty());
-			let status = hero
-				.select_first(".hero-tags span.pink")
-				.and_then(|el| el.text())
-				.map(|t| parse_status(&t))
-				.unwrap_or(MangaStatus::Unknown);
-			let mut tags: Vec<String> = hero
-				.select(".hero-tags span:not(.pink)")
-				.into_iter()
-				.flatten()
-				.filter_map(|el| el.text())
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())
-				.collect();
-			tags.sort_unstable();
-			tags.dedup();
-			Some(Manga {
-				url: Some(format!("{BASE_URL}/title/{key}")),
-				key,
-				title,
-				cover,
-				description,
-				status,
-				content_rating: content_rating_for(&tags),
-				tags: (!tags.is_empty()).then_some(tags),
-				..Default::default()
-			})
-		})
-		.collect()
-}
-
-fn parse_card(card: &Element) -> Option<Manga> {
+fn parse_card(card: &Element, with_tags: bool) -> Option<Manga> {
 	let href = card.select_first("a[href*='/title/']")?.attr("href")?;
 	let key = slug_from_href(&href)?;
 	let title = card
@@ -202,7 +149,7 @@ fn parse_card(card: &Element) -> Option<Manga> {
 		.and_then(|el| el.text())
 		.map(|t| parse_status(&t))
 		.unwrap_or(MangaStatus::Unknown);
-	let genres: Vec<String> = card
+	let mut genres: Vec<String> = card
 		.select(".card-meta span")
 		.into_iter()
 		.flatten()
@@ -210,6 +157,9 @@ fn parse_card(card: &Element) -> Option<Manga> {
 		.map(|t| clean(&t))
 		.filter(|t| !t.is_empty() && !t.to_ascii_lowercase().contains("chapter"))
 		.collect();
+	genres.sort_unstable();
+	genres.dedup();
+	let content_rating = content_rating_for(&genres);
 
 	Some(Manga {
 		url: Some(format!("{BASE_URL}/title/{key}")),
@@ -217,7 +167,8 @@ fn parse_card(card: &Element) -> Option<Manga> {
 		title,
 		cover,
 		status,
-		content_rating: content_rating_for(&genres),
+		content_rating,
+		tags: (with_tags && !genres.is_empty()).then_some(genres),
 		..Default::default()
 	})
 }
@@ -229,8 +180,40 @@ pub fn parse_cards_in(document: &Document, selector: &str) -> Vec<Manga> {
 		.into_iter()
 		.flatten()
 		.filter_map(|card| {
-			let manga = parse_card(&card)?;
+			let manga = parse_card(&card, false)?;
 			seen.insert(manga.key.clone()).then_some(manga)
+		})
+		.collect()
+}
+
+pub fn parse_featured_most_read(most_read_doc: &Document, discover_doc: &Document) -> Vec<Manga> {
+	let hero_synopsis = discover_doc.select_first("section.hero").and_then(|hero| {
+		let href = hero.select_first("a[href*='/title/']")?.attr("href")?;
+		let slug = slug_from_href(&href)?;
+		let desc = hero
+			.select_first("p.hero-description")
+			.and_then(|el| el.text())
+			.map(|t| clean(&t))
+			.filter(|t| !t.is_empty())?;
+		Some((slug, desc))
+	});
+
+	let mut seen = BTreeSet::new();
+	most_read_doc
+		.select("[data-browse-results] article.manga-card")
+		.into_iter()
+		.flatten()
+		.filter_map(|card| {
+			let mut manga = parse_card(&card, true)?;
+			if !seen.insert(manga.key.clone()) {
+				return None;
+			}
+			if let Some((ref hero_slug, ref desc)) = hero_synopsis
+				&& &manga.key == hero_slug
+			{
+				manga.description = Some(desc.clone());
+			}
+			Some(manga)
 		})
 		.collect()
 }

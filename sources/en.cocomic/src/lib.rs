@@ -1,23 +1,25 @@
 #![no_std]
 mod helpers;
+mod settings;
 #[cfg(test)]
 mod test;
 
 use aidoku::{
-	Chapter, ContentRating, Filter, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing,
-	Manga, MangaPageResult, MangaStatus, MultiSelectFilter, Page, PageContent, PageContext, Result,
-	Source, Viewer,
-	alloc::{String, Vec, vec},
-	helpers::{element::ElementHelpers, string::StripPrefixOrSelf},
+	Chapter, ContentRating, DeepLinkResult, Filter, HomeComponent, HomeComponentValue, HomeLayout,
+	Link, Listing, Manga, MangaPageResult, MangaStatus, MultiSelectFilter, Page, PageContent,
+	PageContext, Result, Source, Viewer,
+	alloc::{String, Vec, format, vec},
+	helpers::element::ElementHelpers,
 	imports::{
 		html::{Document, Element},
-		net::Request,
+		net::{Request, TimeUnit, set_rate_limit},
 		std::send_partial_result,
 	},
 	prelude::*,
 };
 use helpers::{
-	BASE_URL, card_manga, clean, clean_chapter_title, hero_entries, is_valid_genre, listing,
+	BASE_URL, LOCK_SUFFIX, append_style_list, card_manga, clean, clean_chapter_title, hero_entries,
+	is_valid_genre, listing, listing_date, parse_manga_chapter_path, reader_image_url,
 	swimlane_latest, swimlane_manga,
 };
 use madara::{
@@ -29,6 +31,7 @@ struct Cocomic;
 
 impl Impl for Cocomic {
 	fn new() -> Self {
+		set_rate_limit(1, 2, TimeUnit::Seconds);
 		Self
 	}
 
@@ -42,14 +45,22 @@ impl Impl for Cocomic {
 			details_title_selector: "h1.asura-series-title".into(),
 			details_cover_selector: "img.asura-poster-img".into(),
 			details_author_selector: ".asura-chip-author .author-name-text".into(),
-			details_artist_selector: ".artist-content > a".into(),
+			details_artist_selector:
+				".asura-chip:has(.chip-label:containsOwn(Artist)) .chip-val, .artist-content > a"
+					.into(),
 			details_description_selector: ".asura-synopsis-content".into(),
 			details_tag_selector: "a.asura-genre-tag".into(),
 			details_status_selector: ".asura-badge-status".into(),
 			details_type_selector: ".asura-hero-badge-type".into(),
-			chapter_selector: "li.wp-manga-chapter:not(.premium)".into(),
+			chapter_selector: "li.wp-manga-chapter".into(),
 			..Default::default()
 		}
+	}
+
+	fn modify_request(&self, _params: &Params, request: Request) -> Result<Request> {
+		Ok(request
+			.header("Referer", &format!("{BASE_URL}/"))
+			.header("Cookie", "wpmanga-adault=1"))
 	}
 
 	fn apply_manga_details(&self, params: &Params, manga: &mut Manga, html: &Document, url: &str) {
@@ -61,16 +72,24 @@ impl Impl for Cocomic {
 			.select_first(&params.details_cover_selector)
 			.and_then(|img| img.img_attr(params.use_style_images))
 			.or(manga.cover.take());
-		manga.artists = html.select(&params.details_artist_selector).map(|els| {
-			els.filter_map(|span| span.text())
-				.filter(|t| !t.is_empty())
-				.collect()
-		});
-		manga.authors = html.select(&params.details_author_selector).map(|els| {
-			els.filter_map(|span| span.text())
-				.filter(|t| !t.is_empty())
-				.collect()
-		});
+		manga.artists = html
+			.select(&params.details_artist_selector)
+			.map(|els| {
+				els.filter_map(|span| span.text())
+					.map(|t| clean(&t))
+					.filter(|t| !t.is_empty())
+					.collect::<Vec<_>>()
+			})
+			.filter(|v| !v.is_empty());
+		manga.authors = html
+			.select(&params.details_author_selector)
+			.map(|els| {
+				els.filter_map(|span| span.text())
+					.map(|t| clean(&t))
+					.filter(|t| !t.is_empty())
+					.collect::<Vec<_>>()
+			})
+			.filter(|v| !v.is_empty());
 		manga.description = html
 			.select_first(&params.details_description_selector)
 			.and_then(|div| div.text_with_newlines())
@@ -104,8 +123,18 @@ impl Impl for Cocomic {
 	}
 
 	fn parse_chapter_element(&self, params: &Params, element: Element) -> Option<Chapter> {
+		let locked =
+			element.has_class("premium") || element.select_first(".coin:not(.free)").is_some();
+		if locked && !settings::show_locked_chapters() {
+			return None;
+		}
 		let url_element = element.select_first(&params.chapter_url_selector)?;
-		let url = url_element.attr("abs:href")?;
+		let href = url_element
+			.attr("abs:href")
+			.or_else(|| url_element.attr("href"))?;
+		let (_, Some(ch_path)) = parse_manga_chapter_path(&href)? else {
+			return None;
+		};
 		let title_element = if params.chapter_title_selector == params.chapter_url_selector {
 			url_element
 		} else {
@@ -113,14 +142,29 @@ impl Impl for Cocomic {
 		};
 		let title_text = clean(&title_element.text()?);
 		let chapter_number = madara_helpers::find_first_f32(&title_text);
+		let date_uploaded = element
+			.select_first(&params.chapter_date_selector)
+			.and_then(|el| {
+				el.select_first(".c-new-tag")
+					.and_then(|tag| tag.attr("title"))
+					.or_else(|| el.text())
+			})
+			.and_then(|date| {
+				listing_date(&date)
+					.or_else(|| Some(madara_helpers::parse_chapter_date(params, &date)))
+			});
+		let url = format!("{BASE_URL}{ch_path}");
+		let key = if locked {
+			format!("{ch_path}{LOCK_SUFFIX}")
+		} else {
+			ch_path
+		};
 		Some(Chapter {
-			key: url.strip_prefix_or_self(&params.base_url).into(),
+			key,
 			title: clean_chapter_title(&title_text, chapter_number),
 			chapter_number,
-			date_uploaded: element
-				.select_first(&params.chapter_date_selector)
-				.and_then(|time| time.text())
-				.map(|date| madara_helpers::parse_chapter_date(params, &date)),
+			date_uploaded,
+			locked,
 			url: Some(url),
 			..Default::default()
 		})
@@ -160,9 +204,8 @@ impl Impl for Cocomic {
 	}
 
 	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
-		let html = Request::get(format!("{}{}", params.base_url, params.genre_endpoint))?
-			.header("Referer", &format!("{BASE_URL}/"))
-			.html()?;
+		let request = Request::get(format!("{}{}", params.base_url, params.genre_endpoint))?;
+		let html = self.modify_request(params, request)?.html()?;
 		let mut pairs: Vec<(String, String)> = Vec::new();
 		for input in html.select("input[name]").into_iter().flatten() {
 			if input.attr("name").as_deref() != Some("genre[]") {
@@ -212,12 +255,26 @@ impl Impl for Cocomic {
 	}
 
 	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let url = format!("{}{}", params.base_url, chapter.key);
-		let html = Request::get(&url)?
-			.header("Referer", &format!("{BASE_URL}/"))
+		if chapter.locked || chapter.key.ends_with(LOCK_SUFFIX) {
+			bail!("This chapter is locked on Cocomic");
+		}
+		let ch_path = match parse_manga_chapter_path(&chapter.key) {
+			Some((_, Some(path))) => path,
+			_ => {
+				let raw = chapter.key.trim_end_matches(LOCK_SUFFIX).trim();
+				if raw.starts_with('/') {
+					String::from(raw)
+				} else {
+					format!("/{raw}")
+				}
+			}
+		};
+		let reader_url = append_style_list(&format!("{}{ch_path}", params.base_url));
+		let html = self
+			.modify_request(params, Request::get(&reader_url)?)?
 			.html()?;
 		let mut context = PageContext::new();
-		context.insert("Referer".into(), url);
+		context.insert("Referer".into(), format!("{BASE_URL}/"));
 		let pages: Vec<Page> = html
 			.select(
 				".asura-stream-images img, .reading-content .page-break img, .reading-content img.wp-manga-chapter-img",
@@ -225,22 +282,52 @@ impl Impl for Cocomic {
 			.into_iter()
 			.flatten()
 			.filter_map(|img| {
-				let src = img.img_attr(false)?;
-				(!src.is_empty()).then(|| Page {
+				let src = reader_image_url(&img)?;
+				Some(Page {
 					content: PageContent::url_context(src, context.clone()),
 					..Default::default()
 				})
 			})
 			.collect();
-		if pages.is_empty() {
-			bail!("No pages found");
+		if !pages.is_empty() {
+			return Ok(pages);
 		}
-		Ok(pages)
+		if html
+			.select_first(".asura-chapters-card, h1.asura-series-title")
+			.is_some()
+		{
+			bail!("This chapter's pages are unavailable on Cocomic");
+		}
+		bail!("No pages found");
+	}
+
+	fn get_image_request(
+		&self,
+		params: &Params,
+		url: String,
+		context: Option<PageContext>,
+	) -> Result<Request> {
+		let referer = context
+			.as_ref()
+			.and_then(|ctx| ctx.get("Referer"))
+			.cloned()
+			.unwrap_or_else(|| format!("{}/", params.base_url));
+		Ok(Request::get(url)?.header("Referer", &referer))
+	}
+
+	fn handle_deep_link(&self, _params: &Params, url: String) -> Result<Option<DeepLinkResult>> {
+		let Some((manga_key, chapter_key)) = parse_manga_chapter_path(&url) else {
+			return Ok(None);
+		};
+		Ok(Some(match chapter_key {
+			Some(key) => DeepLinkResult::Chapter { manga_key, key },
+			None => DeepLinkResult::Manga { key: manga_key },
+		}))
 	}
 
 	fn get_manga_list(
 		&self,
-		_params: &Params,
+		params: &Params,
 		listing: Listing,
 		page: i32,
 	) -> Result<MangaPageResult> {
@@ -253,9 +340,7 @@ impl Impl for Cocomic {
 		} else {
 			format!("{BASE_URL}/manga/page/{page}/?m_orderby={order}")
 		};
-		let html = Request::get(&url)?
-			.header("Referer", &format!("{BASE_URL}/"))
-			.html()?;
+		let html = self.modify_request(params, Request::get(&url)?)?.html()?;
 		let entries = html
 			.select("article.asura-card, .c-tabs-item__content")
 			.into_iter()
@@ -271,10 +356,11 @@ impl Impl for Cocomic {
 		})
 	}
 
-	fn get_home(&self, _params: &Params) -> Result<HomeLayout> {
-		let home = Request::get(format!("{BASE_URL}/"))?
-			.header("Referer", &format!("{BASE_URL}/"))
+	fn get_home(&self, params: &Params) -> Result<HomeLayout> {
+		let home = self
+			.modify_request(params, Request::get(format!("{BASE_URL}/"))?)?
 			.html()?;
+		let show_locked = settings::show_locked_chapters();
 
 		let mut components = Vec::new();
 
@@ -305,7 +391,7 @@ impl Impl for Cocomic {
 			});
 		}
 
-		let latest = swimlane_latest(&home, "Latest Updates");
+		let latest = swimlane_latest(&home, "Latest Updates", show_locked);
 		if !latest.is_empty() {
 			components.push(HomeComponent {
 				title: Some("Latest Updates".into()),

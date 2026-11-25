@@ -1,6 +1,21 @@
 [
 	{
 		"type": "group",
+		"title": "Chapters",
+		"items": [
+			{
+				"type": "switch",
+				"key": "showLocked",
+				"title": "Show Locked Chapters",
+				"default": false,
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
 		"title": "Verify Captcha",
 		"items": [
 			{
@@ -10,11 +25,12 @@
 				"key": "verify",
 				"title": "Verify Temple Scan Captcha",
 				"logoutTitle": "Re-Verify Temple Scan Captcha",
+				"notification": "verify",
 				"refreshes": [
 					"content"
 				]
 			}
 		],
-		"footer": "Open this if Temple Scan asks for verification. Cookies are kept for the source once completed."
+		"footer": "Only needed if Temple Scan asks your network for verification."
 	}
 ]

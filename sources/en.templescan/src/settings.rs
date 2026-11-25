@@ -1,9 +1,13 @@
 use aidoku::{
 	alloc::{String, Vec, format},
-	imports::defaults::defaults_get_map,
+	imports::defaults::{defaults_get, defaults_get_map},
 };
 
-const VERIFY_KEY: &str = "verify";
+pub const VERIFY_KEY: &str = "verify";
+
+pub fn show_locked_chapters() -> bool {
+	defaults_get::<bool>("showLocked").unwrap_or(false)
+}
 
 pub fn verify_cookie_header() -> Option<String> {
 	let cookies = defaults_get_map(VERIFY_KEY)?;

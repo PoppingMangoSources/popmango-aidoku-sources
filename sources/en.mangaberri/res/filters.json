@@ -4,9 +4,9 @@
 		"id": "sort",
 		"canAscend": false,
 		"options": [
-			"Latest Updates",
-			"Most Read",
-			"Title A-Z"
+			"Latest updates",
+			"Most read",
+			"Title A–Z"
 		]
 	},
 	{
@@ -14,7 +14,7 @@
 		"id": "status",
 		"title": "Status",
 		"options": [
-			"All",
+			"Any status",
 			"Ongoing",
 			"Finished",
 			"Discontinued"
@@ -32,7 +32,7 @@
 		"title": "Genre",
 		"isGenre": true,
 		"options": [
-			"All",
+			"All genres",
 			"Action",
 			"Adventure",
 			"Animals",

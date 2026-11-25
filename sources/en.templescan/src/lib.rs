@@ -7,9 +7,9 @@ mod test;
 mod tokens;
 
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeLayout, ImageRequestProvider,
-	Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result,
-	Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, HashMap, Home, HomeLayout,
+	ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent,
+	PageContext, Result, Source, WebLoginHandler,
 	alloc::{String, Vec, vec},
 	imports::net::Request,
 	prelude::*,
@@ -33,12 +33,37 @@ impl Source for TempleScan {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let query = query.map(|q| q.to_ascii_lowercase());
+		if let Some((slug, _)) = query.as_deref().and_then(parse_comic_href) {
+			let mut manga = Manga {
+				key: slug,
+				..Default::default()
+			};
+			let doc = fetch_doc(&format!("{BASE_URL}/comic/{}", manga.key))?;
+			parse_series_details(&doc, &mut manga);
+			if !manga.title.is_empty() {
+				return Ok(MangaPageResult {
+					entries: vec![manga],
+					has_next_page: false,
+				});
+			}
+		}
+
+		let query = query
+			.map(|q| q.trim().to_ascii_lowercase())
+			.filter(|q| !q.is_empty());
 		let mut sort = 0;
+		let mut ascending = false;
 		let mut status = None;
 		for filter in filters {
 			match filter {
-				FilterValue::Sort { index, .. } => sort = index,
+				FilterValue::Sort {
+					index,
+					ascending: asc,
+					..
+				} => {
+					sort = index;
+					ascending = asc;
+				}
 				FilterValue::Select { id, value } if id == "status" && !value.is_empty() => {
 					status = Some(value);
 				}
@@ -71,7 +96,7 @@ impl Source for TempleScan {
 			}
 			true
 		});
-		sort_catalog(&mut items, sort);
+		sort_catalog(&mut items, sort, ascending);
 		Ok(page_catalog(items, page))
 	}
 
@@ -86,7 +111,11 @@ impl Source for TempleScan {
 			parse_series_details(&doc, &mut manga);
 		}
 		if needs_chapters {
-			manga.chapters = Some(parse_series_chapters(&doc, &manga.key));
+			manga.chapters = Some(parse_series_chapters(
+				&doc,
+				&manga.key,
+				settings::show_locked_chapters(),
+			));
 		}
 		Ok(manga)
 	}
@@ -136,16 +165,17 @@ impl Source for TempleScan {
 impl Home for TempleScan {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let doc = fetch_doc(&format!("{BASE_URL}/"))?;
-		Ok(build_home_layout(&doc))
+		Ok(build_home_layout(&doc, settings::show_locked_chapters()))
 	}
 }
 
 impl ListingProvider for TempleScan {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let index = match listing.id.as_str() {
-			"views" => 0,
-			"updated" => 1,
-			"created" => 2,
+			"updated" => 0,
+			"created" => 1,
+			"title" => 2,
+			"views" => 3,
 			_ => bail!("Unknown listing"),
 		};
 		self.get_search_manga_list(
@@ -184,10 +214,20 @@ impl DeepLinkHandler for TempleScan {
 	}
 }
 
+impl WebLoginHandler for TempleScan {
+	fn handle_web_login(&self, key: String, cookies: HashMap<String, String>) -> Result<bool> {
+		if key == settings::VERIFY_KEY {
+			return Ok(cookies.iter().any(|(k, v)| !k.is_empty() && !v.is_empty()));
+		}
+		Ok(false)
+	}
+}
+
 register_source!(
 	TempleScan,
 	Home,
 	ListingProvider,
 	ImageRequestProvider,
-	DeepLinkHandler
+	DeepLinkHandler,
+	WebLoginHandler
 );

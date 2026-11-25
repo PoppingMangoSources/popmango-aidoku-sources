@@ -278,6 +278,39 @@ fn parse_rows(
 	}
 }
 
+fn total_chapters(doc: &Document) -> Option<usize> {
+	for dt in doc.select("#main dt, main dt").into_iter().flatten() {
+		if dt
+			.text()
+			.is_some_and(|t| clean(&t).eq_ignore_ascii_case("chapters"))
+		{
+			return dt
+				.next()
+				.and_then(|dd| dd.text())
+				.and_then(|t| clean(&t).parse::<usize>().ok());
+		}
+	}
+	None
+}
+
+fn build_chapter_request(url: &str, nonce: &str, comic_id: &str, offset: usize) -> Option<Request> {
+	let mut form = QueryParameters::new();
+	form.push_encoded("action", Some("load_more_chapters"));
+	form.push("nonce", Some(nonce));
+	form.push("comic_id", Some(comic_id));
+	form.push_encoded("offset", Some(&offset.to_string()));
+	form.push_encoded("order", Some("desc"));
+	form.push_encoded("ui", Some("v2"));
+	Some(
+		Request::post(format!("{BASE_URL}/wp-admin/admin-ajax.php"))
+			.ok()?
+			.header("Referer", url)
+			.header("X-Requested-With", "XMLHttpRequest")
+			.header("Content-Type", "application/x-www-form-urlencoded")
+			.body(form.to_string()),
+	)
+}
+
 pub fn collect_chapters(doc: &Document, body: &str, url: &str, show_locked: bool) -> Vec<Chapter> {
 	let mut chapters = Vec::new();
 	let mut seen = BTreeSet::new();
@@ -288,63 +321,86 @@ pub fn collect_chapters(doc: &Document, body: &str, url: &str, show_locked: bool
 		.map(|rows| rows.count())
 		.unwrap_or(0);
 
+	let script_nonce = doc
+		.select_first("script#comicworld-loadmore-js-extra")
+		.and_then(|el| el.data().or_else(|| el.html()).or_else(|| el.text()))
+		.and_then(|s| parse_nonce(&s));
+
 	if let Some(button) = doc.select_first(LOAD_MORE_SELECTOR)
 		&& let Some(comic_id) = button
 			.attr("data-comic-id")
 			.map(|s| clean(&s))
 			.filter(|s| !s.is_empty())
-		&& let Some(nonce) = parse_nonce(body)
+		&& let Some(nonce) = script_nonce.or_else(|| parse_nonce(body))
 	{
-		let mut offset = button
+		let page_size = button
 			.attr("data-offset")
 			.and_then(|s| s.trim().parse::<usize>().ok())
-			.unwrap_or(initial_count);
-		for _ in 0..MAX_CHAPTER_PAGES {
-			let mut form = QueryParameters::new();
-			form.push_encoded("action", Some("load_more_chapters"));
-			form.push("nonce", Some(&nonce));
-			form.push("comic_id", Some(&comic_id));
-			form.push_encoded("offset", Some(&offset.to_string()));
+			.filter(|n| *n > 0)
+			.unwrap_or_else(|| initial_count.max(CHAPTER_PAGE_SIZE));
 
-			let Ok(req) = Request::post(format!("{BASE_URL}/wp-admin/admin-ajax.php")) else {
-				break;
-			};
-			let Ok(resp) = req
-				.header("Referer", url)
-				.header("X-Requested-With", "XMLHttpRequest")
-				.header("Content-Type", "application/x-www-form-urlencoded")
-				.body(form.to_string())
-				.send()
-			else {
-				break;
-			};
-			let Ok(ajax) = resp.get_json_owned::<AjaxResponse>() else {
-				break;
-			};
-			if ajax.success != Some(true) {
-				break;
+		if let Some(total) = total_chapters(doc).filter(|t| *t > page_size) {
+			let requests: Vec<Request> = (page_size..total)
+				.step_by(page_size)
+				.take(MAX_CHAPTER_PAGES)
+				.filter_map(|offset| build_chapter_request(url, &nonce, &comic_id, offset))
+				.collect();
+			for resp in Request::send_all(requests) {
+				let Ok(resp) = resp else {
+					continue;
+				};
+				let Ok(ajax) = resp.get_json_owned::<AjaxResponse>() else {
+					continue;
+				};
+				if ajax.success != Some(true) {
+					continue;
+				}
+				if let Some(fragment) = ajax
+					.data
+					.and_then(|d| d.html)
+					.filter(|h| !h.trim().is_empty())
+					&& let Ok(parsed) = Html::parse_with_url(&fragment, url)
+				{
+					parse_rows(&parsed, show_locked, &mut chapters, &mut seen);
+				}
 			}
-			let Some(fragment) = ajax
-				.data
-				.and_then(|d| d.html)
-				.filter(|h| !h.trim().is_empty())
-			else {
-				break;
-			};
-			let Ok(parsed) = Html::parse_with_url(&fragment, url) else {
-				break;
-			};
-			let batch_rows = parsed
-				.select(CHAPTER_SELECTOR)
-				.map(|rows| rows.count())
-				.unwrap_or(0);
-			if batch_rows == 0 {
-				break;
-			}
-			parse_rows(&parsed, show_locked, &mut chapters, &mut seen);
-			offset += batch_rows.max(CHAPTER_PAGE_SIZE);
-			if batch_rows < CHAPTER_PAGE_SIZE {
-				break;
+		} else {
+			let mut offset = page_size;
+			for _ in 0..MAX_CHAPTER_PAGES {
+				let Some(req) = build_chapter_request(url, &nonce, &comic_id, offset) else {
+					break;
+				};
+				let Ok(resp) = req.send() else {
+					break;
+				};
+				let Ok(ajax) = resp.get_json_owned::<AjaxResponse>() else {
+					break;
+				};
+				if ajax.success != Some(true) {
+					break;
+				}
+				let Some(fragment) = ajax
+					.data
+					.and_then(|d| d.html)
+					.filter(|h| !h.trim().is_empty())
+				else {
+					break;
+				};
+				let Ok(parsed) = Html::parse_with_url(&fragment, url) else {
+					break;
+				};
+				let batch_rows = parsed
+					.select(CHAPTER_SELECTOR)
+					.map(|rows| rows.count())
+					.unwrap_or(0);
+				if batch_rows == 0 {
+					break;
+				}
+				parse_rows(&parsed, show_locked, &mut chapters, &mut seen);
+				offset += batch_rows.max(CHAPTER_PAGE_SIZE);
+				if batch_rows < CHAPTER_PAGE_SIZE {
+					break;
+				}
 			}
 		}
 	}

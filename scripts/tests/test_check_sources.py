@@ -395,6 +395,7 @@ class CardRuleTests(unittest.TestCase):
             'defaults Manga.title with unwrap_or_default': 'Manga {\n\tkey,\n\ttitle: heading.text().unwrap_or_default(),\n\t..Default::default()\n};\n',
             'defaults Link.title with unwrap_or_default': 'Link {\n\ttitle: name.unwrap_or_default(),\n\t..Default::default()\n};\n',
             'defaults Chapter.key with unwrap_or_default': 'Chapter {\n\tkey: id.unwrap_or_default(),\n\t..Default::default()\n};\n',
+            'reads a <script> with .text()': 'let raw = html.select_first("script#cwPages").and_then(|el| el.text());\n',
         }
         for rule, text in cases.items():
             self.assertTrue(any(rule in message for message in self.api_use(text)), rule)
@@ -410,6 +411,7 @@ class CardRuleTests(unittest.TestCase):
             'let date = parse_date_with_options(text, "MMM d, yyyy", "en_US_POSIX", "current");\n'
             'let list: List = Request::get(url)?.send()?.json_owned()?;\n'
             'let data: Next = serde_json::from_str(&script.data().unwrap_or_default())?;\n'
+            'let payload = html.select_first("script#cwPages").and_then(|el| el.data().or_else(|| el.html()).or_else(|| el.text()));\n'
             'MultiSelectFilter {\n\tis_genre: true,\n\tuses_tag_style: true,\n\t..Default::default()\n}\n'
             'let rest = url.strip_prefix(BASE_URL)?;\n'
             'Request::get(url)?.send()?;\n'

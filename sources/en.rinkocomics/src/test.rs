@@ -181,13 +181,25 @@ fn review_locked_chapters_and_cw_pages_decoder() {
 		payload.push(b ^ mask[i % 16]);
 	}
 	let encoded = BASE64_STANDARD.encode(&payload);
+	let reader_doc = Html::parse_with_url(
+		format!(
+			r#"<html><body><script type="text/plain" id="cwPages">{encoded}</script></body></html>"#
+		),
+		BASE_URL,
+	)
+	.unwrap();
+	let script_payload = reader_doc
+		.select_first("script#cwPages, #cwPages")
+		.and_then(|el| el.data().or_else(|| el.html()).or_else(|| el.text()))
+		.unwrap();
 	assert_eq!(
-		decode_cw_pages(&encoded).unwrap(),
+		decode_cw_pages(&script_payload).unwrap(),
 		[
 			"https://rinkocomics.com/p1.webp",
 			"https://rinkocomics.com/p2.webp"
 		]
 	);
+	assert_eq!(super::helpers::SORTS, ["az", "updated", "views", "new"]);
 }
 
 #[aidoku_test]

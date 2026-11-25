@@ -12,7 +12,7 @@ use aidoku::{
 };
 
 pub const BASE_URL: &str = "https://rinkocomics.com";
-pub const SORTS: [&str; 4] = ["updated", "views", "new", "az"];
+pub const SORTS: [&str; 4] = ["az", "updated", "views", "new"];
 
 pub fn clean(text: &str) -> String {
 	text.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -42,10 +42,31 @@ pub fn path_of(href: &str) -> String {
 		.into()
 }
 
+fn largest_srcset(srcset: &str) -> Option<&str> {
+	srcset
+		.split(',')
+		.filter_map(|entry| {
+			let mut parts = entry.split_whitespace();
+			let url = parts.next()?;
+			let width = parts
+				.next()
+				.and_then(|w| w.strip_suffix('w'))
+				.and_then(|w| w.parse::<u32>().ok())
+				.unwrap_or(0);
+			Some((url, width))
+		})
+		.max_by_key(|(_, width)| *width)
+		.map(|(url, _)| url)
+}
+
 pub fn image_from(element: &Element, selector: &str) -> Option<String> {
 	let img = element.select_first(selector)?;
-	let src = img
-		.attr("data-src")
+	let from_srcset = img
+		.attr("data-srcset")
+		.or_else(|| img.attr("srcset"))
+		.and_then(|s| largest_srcset(&s).map(String::from));
+	let src = from_srcset
+		.or_else(|| img.attr("data-src"))
 		.or_else(|| img.attr("data-lazy-src"))
 		.or_else(|| img.attr("src"))?;
 	let cleaned = src.trim();

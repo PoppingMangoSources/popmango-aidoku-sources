@@ -138,6 +138,14 @@ fn parse_iso_utc(value: Option<&str>) -> Option<i64> {
 	let raw = value?.trim();
 	parse_date_with_options(raw, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "en_US_POSIX", "UTC")
 		.or_else(|| parse_date_with_options(raw, "yyyy-MM-dd'T'HH:mm:ssXXX", "en_US_POSIX", "UTC"))
+		.or_else(|| {
+			let naive = raw
+				.split('.')
+				.next()?
+				.trim_end_matches("+00:00")
+				.trim_end_matches('Z');
+			parse_date_with_options(naive, "yyyy-MM-ddTHH:mm:ss", "en_US_POSIX", "UTC")
+		})
 		.or_else(|| parse_date_with_options(raw, "yyyy-MM-dd", "en_US_POSIX", "UTC"))
 }
 
@@ -337,12 +345,26 @@ pub fn parse_catalog(doc: &Document) -> Vec<CatalogItem> {
 	best
 }
 
-pub fn sort_catalog(items: &mut [CatalogItem], sort: i32) {
-	match sort {
-		1 => items.sort_unstable_by_key(|a| core::cmp::Reverse(a.updated_at)),
-		2 => items.sort_unstable_by_key(|a| core::cmp::Reverse(a.created_at)),
-		_ => items.sort_unstable_by_key(|a| core::cmp::Reverse(a.views)),
-	}
+pub fn sort_catalog(items: &mut [CatalogItem], sort: i32, ascending: bool) {
+	items.sort_unstable_by(|a, b| {
+		let ord = match sort {
+			1 => a
+				.created_at
+				.unwrap_or(i64::MIN)
+				.cmp(&b.created_at.unwrap_or(i64::MIN)),
+			2 => a
+				.title
+				.to_ascii_lowercase()
+				.cmp(&b.title.to_ascii_lowercase()),
+			3 => a.views.cmp(&b.views),
+			_ => a
+				.updated_at
+				.unwrap_or(i64::MIN)
+				.cmp(&b.updated_at.unwrap_or(i64::MIN)),
+		}
+		.then_with(|| a.slug.cmp(&b.slug));
+		if ascending { ord } else { ord.reverse() }
+	});
 }
 
 pub fn page_catalog(items: Vec<CatalogItem>, page: i32) -> MangaPageResult {
@@ -371,21 +393,28 @@ pub fn page_catalog(items: Vec<CatalogItem>, page: i32) -> MangaPageResult {
 	}
 }
 
-fn extract_home_entry(record: &Map<String, Value>) -> Option<(String, String)> {
+fn extract_home_entry(flight: &Flight, record: &Map<String, Value>) -> Option<(String, String)> {
 	let strings: Vec<&str> = record
 		.iter()
 		.filter(|(k, _)| !HOME_KNOWN.contains(&k.as_str()))
-		.filter_map(|(_, v)| v.as_str().map(str::trim).filter(|s| !s.is_empty()))
+		.filter_map(|(_, v)| {
+			v.as_str()
+				.and_then(|s| flight.resolve_str(s))
+				.map(str::trim)
+				.filter(|s| !s.is_empty())
+		})
 		.collect();
 	let slug = record
 		.get("series_slug")
 		.and_then(Value::as_str)
+		.and_then(|s| flight.resolve_str(s))
 		.map(str::trim)
 		.filter(|s| !s.is_empty())
 		.or_else(|| strings.iter().copied().find(|s| slug_like(s)))?;
 	let title = record
 		.get("title")
 		.and_then(Value::as_str)
+		.and_then(|s| flight.resolve_str(s))
 		.map(str::trim)
 		.filter(|s| !s.is_empty())
 		.or_else(|| {
@@ -410,7 +439,7 @@ fn parse_home_featured(flight: &Flight) -> Vec<Manga> {
 		let entries: Vec<Manga> = records
 			.into_iter()
 			.filter_map(|record| {
-				let (slug, title) = extract_home_entry(record)?;
+				let (slug, title) = extract_home_entry(flight, record)?;
 				if !seen.insert(slug.clone()) {
 					return None;
 				}
@@ -423,16 +452,19 @@ fn parse_home_featured(flight: &Flight) -> Vec<Manga> {
 							.get("protagonist")
 							.or_else(|| record.get("banner"))
 							.or_else(|| record.get("thumbnail"))
-							.and_then(Value::as_str),
+							.and_then(Value::as_str)
+							.and_then(|s| flight.resolve_str(s)),
 					),
 					description: record
 						.get("description")
 						.and_then(Value::as_str)
+						.and_then(|s| flight.resolve_str(s))
 						.map(strip_html)
 						.filter(|d| !d.is_empty()),
 					content_rating: record
 						.get("badge")
 						.and_then(Value::as_str)
+						.and_then(|s| flight.resolve_str(s))
 						.map(rating_of)
 						.unwrap_or(ContentRating::Safe),
 					..Default::default()
@@ -495,7 +527,7 @@ fn parse_home_trending_week(doc: &Document, flight: &Flight) -> Vec<Manga> {
 			.iter()
 			.filter_map(Value::as_object)
 			.filter_map(|record| {
-				let (slug, title) = extract_home_entry(record)?;
+				let (slug, title) = extract_home_entry(flight, record)?;
 				if !seen.insert(slug.clone()) {
 					return None;
 				}
@@ -503,10 +535,16 @@ fn parse_home_trending_week(doc: &Document, flight: &Flight) -> Vec<Manga> {
 					url: Some(format!("{BASE_URL}/comic/{slug}")),
 					key: slug,
 					title,
-					cover: image_url(record.get("thumbnail").and_then(Value::as_str)),
+					cover: image_url(
+						record
+							.get("thumbnail")
+							.and_then(Value::as_str)
+							.and_then(|s| flight.resolve_str(s)),
+					),
 					content_rating: record
 						.get("badge")
 						.and_then(Value::as_str)
+						.and_then(|s| flight.resolve_str(s))
 						.map(rating_of)
 						.unwrap_or(ContentRating::Safe),
 					..Default::default()
@@ -581,7 +619,7 @@ fn parse_chapter_anchor(
 	}
 }
 
-fn parse_home_latest(doc: &Document) -> Vec<MangaWithChapter> {
+fn parse_home_latest(doc: &Document, show_locked: bool) -> Vec<MangaWithChapter> {
 	let Some(section) = doc.select("section").into_iter().flatten().find(|s| {
 		s.select_first("#latest-updates-title").is_some()
 			|| s.select_first("h2")
@@ -606,9 +644,6 @@ fn parse_home_latest(doc: &Document) -> Vec<MangaWithChapter> {
 				.map(|t| clean(&t))
 				.filter(|t| !t.is_empty());
 			let manga = parse_card_anchor(&cover_link, title)?;
-			if !seen.insert(manga.key.clone()) {
-				return None;
-			}
 			let mut fallback = None;
 			let mut picked = None;
 			for anchor in article.select("ul a[href]").into_iter().flatten() {
@@ -627,10 +662,9 @@ fn parse_home_latest(doc: &Document) -> Vec<MangaWithChapter> {
 					}
 				}
 			}
-			Some(MangaWithChapter {
-				manga,
-				chapter: picked.or(fallback)?,
-			})
+			let chapter = picked.or_else(|| show_locked.then_some(fallback).flatten())?;
+			seen.insert(manga.key.clone())
+				.then_some(MangaWithChapter { manga, chapter })
 		})
 		.collect()
 }
@@ -664,7 +698,7 @@ fn listing(id: &str, name: &str) -> Listing {
 	}
 }
 
-pub fn build_home_layout(doc: &Document) -> HomeLayout {
+pub fn build_home_layout(doc: &Document, show_locked: bool) -> HomeLayout {
 	let flight = Flight::from_document(doc);
 	let mut components = Vec::new();
 
@@ -690,12 +724,12 @@ pub fn build_home_layout(doc: &Document) -> HomeLayout {
 			subtitle: None,
 			value: HomeComponentValue::Scroller {
 				entries: trending,
-				listing: Some(listing("views", "Most Viewed")),
+				listing: Some(listing("views", "Trending")),
 			},
 		});
 	}
 
-	let latest = parse_home_latest(doc);
+	let latest = parse_home_latest(doc, show_locked);
 	if !latest.is_empty() {
 		components.push(HomeComponent {
 			title: Some("Latest Updates".into()),
@@ -718,7 +752,7 @@ pub fn build_home_layout(doc: &Document) -> HomeLayout {
 			subtitle: None,
 			value: HomeComponentValue::Scroller {
 				entries: new_series,
-				listing: Some(listing("created", "Newest")),
+				listing: Some(listing("created", "New Series")),
 			},
 		});
 	}
@@ -861,7 +895,7 @@ fn chapter_positions(doc: &Document) -> BTreeMap<String, f32> {
 	map
 }
 
-pub fn parse_series_chapters(doc: &Document, slug: &str) -> Vec<Chapter> {
+pub fn parse_series_chapters(doc: &Document, slug: &str, show_locked: bool) -> Vec<Chapter> {
 	let positions = chapter_positions(doc);
 	let mut seen = BTreeSet::new();
 	doc.select("#chapter-list > li")
@@ -876,7 +910,8 @@ pub fn parse_series_chapters(doc: &Document, slug: &str) -> Vec<Chapter> {
 				return None;
 			}
 			let pos = positions.get(&ch_slug).copied();
-			Some(parse_chapter_anchor(&anchor, slug, ch_slug, pos, true))
+			let chapter = parse_chapter_anchor(&anchor, slug, ch_slug, pos, true);
+			(show_locked || !chapter.locked).then_some(chapter)
 		})
 		.collect()
 }

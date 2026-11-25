@@ -96,6 +96,14 @@ pub fn parse_iso_utc(raw: &str) -> Option<i64> {
 		"UTC",
 	)
 	.or_else(|| parse_date_with_options(trimmed, "yyyy-MM-dd'T'HH:mm:ssXXX", "en_US_POSIX", "UTC"))
+	.or_else(|| {
+		let naive = trimmed
+			.split('.')
+			.next()?
+			.trim_end_matches("+00:00")
+			.trim_end_matches('Z');
+		parse_date_with_options(naive, "yyyy-MM-ddTHH:mm:ss", "en_US_POSIX", "UTC")
+	})
 	.or_else(|| parse_date_with_options(trimmed, "yyyy-MM-dd", "en_US_POSIX", "UTC"))
 }
 

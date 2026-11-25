@@ -178,7 +178,7 @@ impl Source for RinkoComics {
 		if chapter.locked || chapter.key.ends_with(LOCK_SUFFIX) {
 			bail!("This chapter is locked on RinkoComics");
 		}
-		let path = chapter.key.trim_matches('/');
+		let path = path_of(&chapter.key);
 		let url = format!("{BASE_URL}/{path}/");
 		let html = fetch_html(&url)?;
 
@@ -219,10 +219,11 @@ impl Source for RinkoComics {
 		let mut context = PageContext::new();
 		context.insert("Referer".into(), url);
 
+		// SwiftSoup stores `<script id="cwPages">` as a DataNode (`data()`), whereas scraper uses `text()`.
 		if let Some(encoded) = html
-			.select_first("#cwPages")
-			.and_then(|el| el.text())
-			.filter(|t| !t.is_empty())
+			.select_first("script#cwPages, #cwPages")
+			.and_then(|el| el.data().or_else(|| el.html()).or_else(|| el.text()))
+			.filter(|t| !t.trim().is_empty())
 		{
 			let pages = decode_cw_pages(&encoded)?;
 			if !pages.is_empty() {
@@ -276,8 +277,8 @@ impl DynamicFilters for RinkoComics {
 					.map(|s| clean(&s))
 					.filter(|s| !s.is_empty())?;
 				let label = input
-					.parent()?
-					.select_first("span")?
+					.next()
+					.or_else(|| input.parent()?.select_first("span"))?
 					.text()
 					.map(|t| clean(&t))
 					.filter(|t| !t.is_empty())?;
@@ -307,12 +308,12 @@ impl DynamicFilters for RinkoComics {
 impl ListingProvider for RinkoComics {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let (kind, sort) = match listing.id.as_str() {
-			"views" => ("comic", 1),
-			"new" => ("comic", 2),
-			"updated" => ("comic", 0),
-			"novels" => ("novel", 2),
-			"novels-updated" => ("novel", 0),
-			_ => ("comic", 0),
+			"updated" => ("comic", 1),
+			"views" => ("comic", 2),
+			"new" => ("comic", 3),
+			"novels" => ("novel", 3),
+			"novels-updated" => ("novel", 1),
+			_ => ("comic", 1),
 		};
 		self.get_search_manga_list(
 			None,

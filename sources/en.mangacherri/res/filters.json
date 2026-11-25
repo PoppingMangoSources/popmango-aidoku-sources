@@ -4,12 +4,12 @@
 		"id": "sort",
 		"canAscend": false,
 		"options": [
-			"Recently Updated",
-			"Newly Added",
-			"Most Viewed",
-			"Most Chapters",
-			"Title A-Z",
-			"Title Z-A"
+			"Recently updated",
+			"Newly added",
+			"Most viewed",
+			"Most chapters",
+			"Title A–Z",
+			"Title Z–A"
 		]
 	},
 	{
@@ -17,7 +17,7 @@
 		"id": "status",
 		"title": "Status",
 		"options": [
-			"All",
+			"Any status",
 			"Ongoing",
 			"Completed",
 			"Hiatus"
@@ -35,7 +35,7 @@
 		"title": "Genre",
 		"isGenre": true,
 		"options": [
-			"All",
+			"Every genre",
 			"Action",
 			"Adventure",
 			"Animals",
