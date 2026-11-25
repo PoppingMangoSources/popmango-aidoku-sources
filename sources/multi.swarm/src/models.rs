@@ -4,11 +4,7 @@ use crate::{
 };
 use aidoku::{
 	AidokuError, Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
-	alloc::{
-		String, Vec,
-		collections::{BTreeMap, BTreeSet},
-		format, vec,
-	},
+	alloc::{String, Vec, collections::BTreeSet, format, vec},
 	helpers::string::PlainText,
 	imports::std::parse_date,
 	prelude::*,
@@ -273,6 +269,156 @@ impl Update {
 	}
 }
 
+// The site's scrapers occasionally mislabel non-English chapters as "en".
+fn effective_language<'a>(lang: &'a str, title: Option<&str>) -> &'a str {
+	let mapped = app_language(lang);
+	if mapped != "en" {
+		return mapped;
+	}
+	let Some(line) = title.and_then(|t| t.lines().map(str::trim).find(|l| !l.is_empty())) else {
+		return mapped;
+	};
+	let lower = line.to_lowercase();
+	for (prefix, code) in [
+		("chương", "vi"),
+		("chuong", "vi"),
+		("ตอนที่", "th"),
+		("บทที่", "th"),
+		("capítulo", "es"),
+		("capitulo", "es"),
+		("chapitre", "fr"),
+		("kapitel", "de"),
+		("глава", "ru"),
+		("الفصل", "ar"),
+		("bölüm", "tr"),
+		("bolum", "tr"),
+		("rozdział", "pl"),
+		("rozdzial", "pl"),
+		("capitolo", "it"),
+		("bab ", "id"),
+	] {
+		if lower.starts_with(prefix) {
+			return code;
+		}
+	}
+	let has_ascii_alpha = line.chars().any(|c| c.is_ascii_alphabetic());
+	if !has_ascii_alpha && line.chars().any(|c| c.is_alphabetic()) {
+		for ch in line.chars() {
+			match ch as u32 {
+				0x0E00..=0x0E7F => return "th",
+				0x0600..=0x06FF => return "ar",
+				0x0400..=0x04FF => return "ru",
+				0xAC00..=0xD7AF | 0x1100..=0x11FF => return "ko",
+				0x3040..=0x30FF => return "ja",
+				0x4E00..=0x9FFF => return "zh",
+				_ => {}
+			}
+		}
+		return "und";
+	}
+	mapped
+}
+
+fn strip_prefix_ci<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
+	let bytes = text.as_bytes();
+	let pbytes = prefix.as_bytes();
+	if bytes.len() >= pbytes.len() && bytes[..pbytes.len()].eq_ignore_ascii_case(pbytes) {
+		Some(&text[pbytes.len()..])
+	} else {
+		None
+	}
+}
+
+fn split_leading_number(text: &str) -> Option<(&str, &str)> {
+	let mut end = 0;
+	let mut seen_dot = false;
+	for (i, ch) in text.char_indices() {
+		if ch.is_ascii_digit() {
+			end = i + ch.len_utf8();
+		} else if ch == '.' && !seen_dot && end > 0 {
+			seen_dot = true;
+			end = i + 1;
+		} else {
+			break;
+		}
+	}
+	let num = text[..end].trim_end_matches('.');
+	(!num.is_empty())
+		.then(|| text.strip_prefix(num).map(|tail| (num, tail)))
+		.flatten()
+}
+
+// Swarm's scraper sometimes drops trailing zeroes from integer chapter numbers (e.g. "Chapter 50" -> "5").
+fn is_trailing_zero_truncation(raw: &str, raw_num: f32, title_str: &str, title_num: f32) -> bool {
+	if raw.contains('.') || title_str.contains('.') || title_num <= raw_num {
+		return false;
+	}
+	let raw_sig = raw.trim_start_matches('0').trim_end_matches('0');
+	let title_sig = title_str.trim_start_matches('0').trim_end_matches('0');
+	!raw_sig.is_empty() && raw_sig == title_sig
+}
+
+fn parse_chapter_label(line: &str) -> (Option<f32>, Option<(&str, f32, &str)>) {
+	let mut rest = line.trim();
+	let mut volume = None;
+	for prefix in ["volume", "vol.", "vol"] {
+		if let Some(after) = strip_prefix_ci(rest, prefix)
+			&& (after.is_empty()
+				|| after.starts_with(|c: char| c.is_whitespace() || c.is_ascii_digit()))
+			&& let Some((vol_str, tail)) = split_leading_number(after.trim_start())
+			&& let Ok(v) = vol_str.parse::<f32>()
+		{
+			volume = Some(v);
+			rest = tail
+				.trim_start_matches(|c: char| c.is_whitespace() || matches!(c, '-' | ':' | ','));
+			break;
+		}
+	}
+	for prefix in ["chapter", "ch.", "ch", "episode", "ep.", "ep", "#"] {
+		if let Some(after) = strip_prefix_ci(rest, prefix)
+			&& (prefix == "#"
+				|| after.starts_with(|c: char| c.is_whitespace() || c.is_ascii_digit() || c == '.'))
+			&& let Some((num_str, tail)) =
+				split_leading_number(after.trim_start_matches([' ', '.']))
+			&& let Ok(num) = num_str.parse::<f32>()
+		{
+			return (volume, Some((num_str, num, tail)));
+		}
+	}
+	if let Some((num_str, tail)) = split_leading_number(rest)
+		&& tail.trim().is_empty()
+		&& let Ok(num) = num_str.parse::<f32>()
+	{
+		return (volume, Some((num_str, num, tail)));
+	}
+	(volume, None)
+}
+
+fn clean_title_and_volume(raw: Option<&str>, number: Option<f32>) -> (Option<f32>, Option<String>) {
+	let Some(line) = raw.and_then(|t| t.lines().map(str::trim).find(|l| !l.is_empty())) else {
+		return (None, None);
+	};
+	let (volume, parsed) = parse_chapter_label(line);
+	if let Some((_, label_num, tail)) = parsed
+		&& number.is_some_and(|n| (n - label_num).abs() < f32::EPSILON)
+	{
+		let cleaned = tail
+			.trim_start_matches(|c: char| {
+				c.is_whitespace() || matches!(c, ':' | '-' | '–' | '—' | '|')
+			})
+			.trim();
+		return (volume, (!cleaned.is_empty()).then(|| String::from(cleaned)));
+	}
+	(volume, Some(String::from(line)))
+}
+
+fn canonical_number_key(number: Option<f32>, raw: &str) -> core::result::Result<u32, &str> {
+	match number {
+		Some(n) if n.is_finite() => Ok(if n == 0.0 { 0.0_f32 } else { n }.to_bits()),
+		_ => Err(raw),
+	}
+}
+
 impl ChapterItem {
 	// The site's Uploader column; a numbered one ("official2") is another copy from that origin.
 	fn uploader(&self) -> &str {
@@ -300,8 +446,32 @@ impl ChapterItem {
 		(self.rank.as_deref().unwrap_or("~"), copy)
 	}
 
+	fn language(&self) -> &str {
+		effective_language(&self.lang, self.title.as_deref())
+	}
+
+	fn effective_number(&self) -> Option<f32> {
+		let raw = self.number.trim();
+		let raw_num = raw.parse::<f32>().ok();
+		if let Some(line) = self
+			.title
+			.as_deref()
+			.and_then(|t| t.lines().map(str::trim).find(|l| !l.is_empty()))
+			&& let (_, Some((title_str, title_num, tail))) = parse_chapter_label(line)
+			&& tail.trim().is_empty()
+			&& (raw_num.is_none()
+				|| raw_num
+					.is_some_and(|n| is_trailing_zero_truncation(raw, n, title_str, title_num)))
+		{
+			return Some(title_num);
+		}
+		raw_num
+	}
+
 	fn into_chapter(self, slug: &str) -> Chapter {
-		let number = self.number.parse::<f32>().ok();
+		let number = self.effective_number();
+		let language = String::from(self.language());
+		let (volume_number, title) = clean_title_and_volume(self.title.as_deref(), number);
 		let scanlators = Some(vec![self.uploader().into()]);
 		// The reader picks an upload by its rank letter, "a" being the default.
 		let query = self
@@ -315,13 +485,12 @@ impl ChapterItem {
 				"{BASE_URL}/comic/{slug}/chapter/{}{query}",
 				self.number
 			)),
-			title: self.title.filter(|title| {
-				!title.trim().is_empty() && *title != format!("Chapter {}", self.number)
-			}),
+			title,
 			chapter_number: number,
+			volume_number,
 			date_uploaded: date(self.published_date.as_deref()),
 			scanlators,
-			language: Some(app_language(&self.lang).into()),
+			language: Some(language),
 			key: self.id,
 			..Default::default()
 		}
@@ -341,12 +510,11 @@ pub fn chapter_list(
 			.iter()
 			.position(|name| *name == item.uploader().to_lowercase() || *name == item.group())
 	};
-	let items: Vec<ChapterItem> = items
+	let mut items: Vec<ChapterItem> = items
 		.into_iter()
 		.filter(|item| {
-			languages
-				.iter()
-				.any(|language| language == app_language(&item.lang))
+			let lang = item.language();
+			languages.iter().any(|language| language == lang)
 		})
 		.filter(|item| listed(blocked, item).is_none())
 		.collect();
@@ -357,30 +525,43 @@ pub fn chapter_list(
 			0
 		}
 	};
-	// The upload each chapter keeps, by language, number and, per uploader, its group.
-	let mut picks: BTreeMap<(&str, &str, String), usize> = BTreeMap::new();
-	if mode != "off" {
-		for (index, item) in items.iter().enumerate() {
+	// Sort newest-first by chapter number; within a number, prefer the user's pick then site rank.
+	items.sort_unstable_by(|a, b| {
+		let num_cmp = match (b.effective_number(), a.effective_number()) {
+			(Some(bn), Some(an)) => bn.total_cmp(&an),
+			(Some(_), None) => core::cmp::Ordering::Less,
+			(None, Some(_)) => core::cmp::Ordering::Greater,
+			(None, None) => b.number.cmp(&a.number),
+		};
+		num_cmp
+			.then_with(|| preference(a).cmp(&preference(b)))
+			.then_with(|| a.site_order().cmp(&b.site_order()))
+			.then_with(|| a.id.cmp(&b.id))
+	});
+	if mode == "off" {
+		return items
+			.into_iter()
+			.map(|item| item.into_chapter(slug))
+			.collect();
+	}
+	// Because items are sorted by (number desc, preference, site_order), the first seen wins.
+	let mut seen = BTreeSet::new();
+	items
+		.into_iter()
+		.filter(|item| {
 			let group = if mode == "uploader" {
 				item.group()
 			} else {
 				String::new()
 			};
-			let key = (item.lang.as_str(), item.number.as_str(), group);
-			if picks.get(&key).is_none_or(|best| {
-				let other = &items[*best];
-				(preference(item), item.site_order()) < (preference(other), other.site_order())
-			}) {
-				picks.insert(key, index);
-			}
-		}
-	}
-	let kept: BTreeSet<usize> = picks.into_values().collect();
-	items
-		.into_iter()
-		.enumerate()
-		.filter(|(index, _)| mode == "off" || kept.contains(index))
-		.map(|(_, item)| item.into_chapter(slug))
+			let key = (
+				String::from(item.language()),
+				canonical_number_key(item.effective_number(), &item.number).map_err(String::from),
+				group,
+			);
+			seen.insert(key)
+		})
+		.map(|item| item.into_chapter(slug))
 		.collect()
 }
 
@@ -396,14 +577,19 @@ impl Novel {
 
 	pub fn into_details(mut self) -> Result<Manga> {
 		let url = format!("{BASE_URL}/novel/{}", self.slug);
-		let chapters = core::mem::take(&mut self.chapters)
+		let mut raw_chapters = core::mem::take(&mut self.chapters);
+		raw_chapters.sort_unstable_by(|a, b| b.number.total_cmp(&a.number));
+		let chapters = raw_chapters
 			.into_iter()
 			.map(|chapter| {
 				let number = format!("{}", chapter.number);
+				let (volume_number, title) =
+					clean_title_and_volume(chapter.title.as_deref(), Some(chapter.number));
 				Chapter {
 					url: Some(format!("{url}/chapter/{number}")),
-					title: chapter.title,
+					title,
 					chapter_number: Some(chapter.number),
+					volume_number,
 					date_uploaded: date(chapter.created_at.as_deref()),
 					language: Some("en".into()),
 					key: number,

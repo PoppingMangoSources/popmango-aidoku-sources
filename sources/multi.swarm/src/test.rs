@@ -141,7 +141,7 @@ fn review_home_updates_follow_languages_and_blocked_uploaders() {
 
 #[aidoku_test]
 fn review_chapter_list_modes() {
-	assert_eq!(uploads("off", &[], &[], &["en"]), ["a1", "a2", "a3", "a5"]);
+	assert_eq!(uploads("off", &[], &[], &["en"]), ["a2", "a1", "a3", "a5"]);
 	// The lowest rank letter wins within an uploader's copies.
 	assert_eq!(uploads("uploader", &[], &[], &["en"]), ["a2", "a3", "a5"]);
 	assert_eq!(uploads("chapter", &[], &[], &["en"]), ["a2", "a5"]);
@@ -157,17 +157,55 @@ fn review_chapter_list_modes() {
 	let chapters = chapter_list(items, "x", &["en".into()], &[], "off", &[]);
 	assert_eq!(
 		chapters[0].url.as_deref(),
-		Some("https://swarm.ws/comic/x/chapter/2?b")
+		Some("https://swarm.ws/comic/x/chapter/2")
 	);
 	assert_eq!(
 		chapters[1].url.as_deref(),
-		Some("https://swarm.ws/comic/x/chapter/2")
+		Some("https://swarm.ws/comic/x/chapter/2?b")
 	);
 	assert_eq!(chapters[0].title, None);
 	assert_eq!(chapters[3].title.as_deref(), Some("The Start"));
 	assert_eq!(chapters[2].date_uploaded, None);
-	assert_eq!(chapters[0].scanlators, Some(vec!["groupa2".into()]));
+	assert_eq!(chapters[0].scanlators, Some(vec!["groupa".into()]));
 	assert_eq!(chapters[0].language.as_deref(), Some("en"));
+}
+
+#[aidoku_test]
+fn review_chapter_ordering_language_and_titles() {
+	let raw = r#"[
+		{"id":"c1","lang":"en","number":"1","title":"Ch.1","rank":"a","source_name":"comix"},
+		{"id":"c2","lang":"en","number":"002","title":"Chapter 002","rank":"b","source_name":"comick"},
+		{"id":"c2b","lang":"en","number":"2","title":"2","rank":"a","source_name":"mangahub"},
+		{"id":"c3","lang":"en","number":"3.2","title":"Volume 1 Chapter 3.2: First visit","rank":"a","source_name":"comix"},
+		{"id":"c50","lang":"en","number":"5","title":"Chapter 50","rank":"a","source_name":"swarmws"},
+		{"id":"c6","lang":"en","number":"6","title":"Episode 6\n\n.st0 { fill: #fff; }\n2024-09-07","rank":"a","source_name":"swarmws"},
+		{"id":"vi1","lang":"en","number":"1","title":"Chương 1","rank":"a","source_name":"harimanga"},
+		{"id":"th1","lang":"en","number":"1","title":"ตอนที่ 1","rank":"a","source_name":"zinmanga"}
+	]"#;
+	let items: Vec<ChapterItem> = serde_json::from_str(raw).unwrap();
+	let en_chapters = chapter_list(items, "slug", &["en".into()], &[], "chapter", &[]);
+	// Strictly descending by effective chapter number; Vietnamese/Thai mislabeled as "en" excluded.
+	let nums: Vec<Option<f32>> = en_chapters.iter().map(|c| c.chapter_number).collect();
+	assert_eq!(
+		nums,
+		[Some(50.0), Some(6.0), Some(3.2), Some(2.0), Some(1.0)]
+	);
+	assert_eq!(en_chapters[0].key, "c50");
+	assert_eq!(en_chapters[0].title, None);
+	assert_eq!(en_chapters[1].title, None);
+	assert_eq!(en_chapters[2].volume_number, Some(1.0));
+	assert_eq!(en_chapters[2].title.as_deref(), Some("First visit"));
+	// "002" and "2" deduplicate together, picking rank "a" (c2b) with redundant title stripped.
+	assert_eq!(en_chapters[3].key, "c2b");
+	assert_eq!(en_chapters[3].title, None);
+	assert_eq!(en_chapters[4].title, None);
+
+	// Re-tagged non-English chapters appear when their actual language is selected.
+	let items2: Vec<ChapterItem> = serde_json::from_str(raw).unwrap();
+	let vi_chapters = chapter_list(items2, "slug", &["vi".into()], &[], "off", &[]);
+	assert_eq!(vi_chapters.len(), 1);
+	assert_eq!(vi_chapters[0].key, "vi1");
+	assert_eq!(vi_chapters[0].language.as_deref(), Some("vi"));
 }
 
 #[aidoku_test]
