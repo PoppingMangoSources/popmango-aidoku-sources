@@ -1,5 +1,20 @@
 [
 	{
+		"type": "sort",
+		"id": "m_orderby",
+		"title": "Order by",
+		"canAscend": false,
+		"options": [
+			"Relevance",
+			"Latest",
+			"A-Z",
+			"Rating",
+			"Trending",
+			"Most Views",
+			"New"
+		]
+	},
+	{
 		"type": "text",
 		"id": "author",
 		"title": "Author",
@@ -16,21 +31,6 @@
 		"id": "release",
 		"title": "Release Year",
 		"placeholder": "Year"
-	},
-	{
-		"type": "sort",
-		"id": "m_orderby",
-		"title": "Order by",
-		"canAscend": false,
-		"options": [
-			"Relevance",
-			"Latest",
-			"A-Z",
-			"Rating",
-			"Trending",
-			"Most Views",
-			"New"
-		]
 	},
 	{
 		"type": "select",

@@ -390,7 +390,7 @@ pub trait Impl {
 			"trending" => 4,
 			"top_daily" | "popular" => 5,
 			"new" => 6,
-			_ => bail!("Unknown listing"),
+			_ => return Err(error!("Unknown listing")),
 		};
 		self.get_search_manga_list(
 			params,

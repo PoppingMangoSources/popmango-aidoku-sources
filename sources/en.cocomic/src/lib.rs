@@ -1,96 +1,93 @@
 #![no_std]
+#[cfg(test)]
+mod test;
+
 use aidoku::{
-	Chapter, HomeComponent, HomeComponentValue, HomeLayout, Link, Manga, MangaWithChapter, Result,
-	Source,
-	alloc::{String, Vec},
+	Chapter, ContentRating, Filter, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing,
+	ListingKind, Manga, MangaPageResult, MangaStatus, MangaWithChapter, MultiSelectFilter, Page,
+	PageContent, PageContext, Result, Source, Viewer,
+	alloc::{String, Vec, vec},
 	helpers::string::StripPrefixOrSelf,
 	imports::{
 		html::{Document, Element},
 		net::Request,
-		std::{current_date, parse_date},
+		std::{current_date, parse_date, parse_date_with_options},
 	},
 	prelude::*,
 };
-use madara::{Impl, Madara, Params};
+use madara::{
+	Impl, LoadMoreStrategy, Madara, Params,
+	helpers::{self, ElementImageAttr},
+};
 
 const BASE_URL: &str = "https://cocomic.co";
-
-fn browse_url(order: &str) -> String {
-	format!("{BASE_URL}/manga/?m_orderby={order}")
-}
 
 fn clean(text: &str) -> String {
 	text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Resolves the relative or absolute stamps the listing cards carry.
 fn listing_date(text: &str) -> Option<i64> {
 	let trimmed = text.trim();
 	if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("new") {
 		return None;
 	}
-
 	let lowered = trimmed.to_lowercase();
-	let mut words = lowered.trim_end_matches("ago").split_whitespace();
-	if let Some(amount) = words.next().and_then(|word| word.parse::<i64>().ok())
-		&& let Some(unit) = words.next()
-	{
-		let seconds = if unit.starts_with("second") {
-			Some(1)
-		} else if unit.starts_with("min") {
-			Some(60)
-		} else if unit.starts_with("hour") {
-			Some(3600)
-		} else if unit.starts_with("day") {
-			Some(86400)
-		} else if unit.starts_with("week") {
-			Some(604800)
-		} else if unit.starts_with("month") {
-			Some(2592000)
-		} else if unit.starts_with("year") {
-			Some(31536000)
-		} else {
-			None
-		};
-		if let Some(seconds) = seconds {
-			return Some(current_date() - amount * seconds);
+	if lowered == "just now" || lowered == "today" {
+		return Some(current_date());
+	}
+	if let Some(rest) = lowered.strip_suffix("ago") {
+		let rest = rest.trim();
+		let split = rest.find(|c: char| !c.is_ascii_digit());
+		if let Some(idx) = split
+			&& let Ok(amount) = rest[..idx].parse::<i64>()
+		{
+			let unit = rest[idx..].trim();
+			let seconds = match unit {
+				"s" => Some(1),
+				"m" => Some(60),
+				"h" => Some(3_600),
+				"d" => Some(86_400),
+				"w" => Some(604_800),
+				"mo" => Some(2_592_000),
+				"y" => Some(31_536_000),
+				u if u.starts_with("second") => Some(1),
+				u if u.starts_with("min") => Some(60),
+				u if u.starts_with("hour") => Some(3_600),
+				u if u.starts_with("day") => Some(86_400),
+				u if u.starts_with("week") => Some(604_800),
+				u if u.starts_with("month") => Some(2_592_000),
+				u if u.starts_with("year") => Some(31_536_000),
+				_ => None,
+			};
+			if let Some(seconds) = seconds {
+				return Some(current_date() - amount * seconds);
+			}
 		}
 	}
 
-	parse_date(trimmed, "MMMM d, yyyy")
-		.or_else(|| parse_date(trimmed, "MMM d, yyyy"))
+	parse_date_with_options(trimmed, "MMMM d, yyyy", "en_US_POSIX", "current")
+		.or_else(|| parse_date_with_options(trimmed, "MMM d, yyyy", "en_US_POSIX", "current"))
 		.or_else(|| parse_date(trimmed, "yyyy-MM-dd"))
 }
 
 fn cover_of(element: &Element) -> Option<String> {
-	let image = element.select_first(
-		".item-thumb img, .tab-thumb img, .related__thumb img, .slider__thumb img, img",
-	)?;
-	image
-		.attr("abs:data-cfsrc")
-		.or_else(|| image.attr("abs:data-src"))
-		.or_else(|| image.attr("abs:data-lazy-src"))
-		.or_else(|| image.attr("abs:src"))
+	element
+		.select_first("img")
+		.and_then(|image| image.img_attr(false))
 		.filter(|url| !url.is_empty())
 }
 
-fn chapter_number(title: &str) -> Option<f32> {
-	let mut number = String::new();
-	for ch in title.chars() {
-		if ch.is_ascii_digit() || (ch == '.' && !number.is_empty()) {
-			number.push(ch);
-		} else if !number.is_empty() {
-			break;
-		}
-	}
-	number.trim_matches('.').parse().ok()
+fn style_image_url(style: &str) -> Option<String> {
+	let start = style.find("url(")? + 4;
+	let rest = &style[start..];
+	let end = rest.find(')')?;
+	let url = rest[..end].trim().trim_matches(['\'', '"']);
+	(!url.is_empty()).then(|| String::from(url))
 }
 
 fn card_manga(item: &Element) -> Option<Manga> {
-	// Only anchors that point at a series title the card; a bare `a` fallback
-	// would otherwise latch onto a genre link (e.g. "manhwa").
 	let link = item.select_first(
-		".post-title a, .related__title a, .slider__content h4 a, h3 a[href*='/manga/'], h4 a[href*='/manga/']",
+		".asura-card-title, .swimlane-title, .post-title a, h3 a[href*='/manga/'], h4 a[href*='/manga/']",
 	)?;
 	let href = link.attr("abs:href")?;
 	if !href.contains("/manga/") {
@@ -101,78 +98,114 @@ fn card_manga(item: &Element) -> Option<Manga> {
 		.or_else(|| link.attr("title"))
 		.map(|text| clean(&text))
 		.filter(|text| !text.is_empty())?;
-	let cover = cover_of(item)?;
+	let cover = cover_of(item);
 	Some(Manga {
 		key: href.strip_prefix_or_self(BASE_URL).into(),
 		title,
-		cover: Some(cover),
+		cover,
 		url: Some(href),
 		..Default::default()
 	})
 }
 
-fn browse_cards(document: &Document) -> Vec<Manga> {
+fn hero_entries(document: &Document) -> Vec<Manga> {
+	let synopses: Vec<(String, String)> = document
+		.select(".hero-slide")
+		.map(|slides| {
+			slides
+				.filter_map(|slide| {
+					let href = slide.select_first(".hero-actions a")?.attr("abs:href")?;
+					let synopsis = slide
+						.select_first(".hero-synopsis")
+						.and_then(|el| el.text())
+						.map(|t| clean(&t))
+						.filter(|t| !t.is_empty())?;
+					Some((href.strip_prefix_or_self(BASE_URL).into(), synopsis))
+				})
+				.collect()
+		})
+		.unwrap_or_default();
+
 	document
-		.select(".page-item-detail, .c-tabs-item__content, .related__item, .slider__item")
-		.map(|items| items.filter_map(|item| card_manga(&item)).collect())
+		.select(".mobile-hero-slide")
+		.map(|slides| {
+			slides
+				.filter_map(|slide| {
+					let href = slide.select_first(".mobile-hero-cta")?.attr("abs:href")?;
+					let key: String = href.strip_prefix_or_self(BASE_URL).into();
+					let title = slide
+						.select_first(".mobile-hero-title")
+						.and_then(|el| el.text())
+						.map(|t| clean(&t))
+						.filter(|t| !t.is_empty())?;
+					let cover = slide.attr("style").and_then(|s| style_image_url(&s));
+					let tags: Vec<String> = slide
+						.select(".m-genre")
+						.map(|els| {
+							els.filter_map(|el| el.text())
+								.map(|t| clean(&t))
+								.filter(|t| !t.is_empty())
+								.collect()
+						})
+						.unwrap_or_default();
+					let description = synopses
+						.iter()
+						.find(|(k, _)| *k == key)
+						.map(|(_, s)| s.clone());
+					Some(Manga {
+						key,
+						title,
+						cover,
+						description,
+						tags: (!tags.is_empty()).then_some(tags),
+						url: Some(href),
+						..Default::default()
+					})
+				})
+				.collect()
+		})
 		.unwrap_or_default()
 }
 
-/// A homepage rail, located by its `.tp-heading` text and read from the
-/// following sliders block.
-fn homepage_rail(document: &Document, title: &str) -> Vec<Manga> {
-	let Some(headings) = document.select(".tp-heading") else {
-		return Vec::new();
-	};
-	for heading in headings {
-		let own = heading
-			.own_text()
-			.or_else(|| heading.text())
-			.map(|t| clean(&t))
-			.unwrap_or_default();
-		if !own.eq_ignore_ascii_case(title) {
-			continue;
-		}
-		let mut sibling = heading.next();
-		while let Some(el) = sibling {
-			if el.has_class("wp-block-wp-manga-gutenberg-manga-sliders-block") {
-				return el
-					.select(".related__item, .slider__item")
-					.map(|items| items.filter_map(|i| card_manga(&i)).collect())
-					.unwrap_or_default();
-			}
-			sibling = el.next();
-		}
-	}
-	Vec::new()
+fn swimlane_section(document: &Document, heading: &str) -> Option<Element> {
+	document
+		.select(".mobile-swimlane-section")?
+		.find(|section| {
+			section
+				.select_first(".swimlane-heading")
+				.and_then(|el| el.text())
+				.is_some_and(|text| clean(&text).eq_ignore_ascii_case(heading))
+		})
 }
 
-/// The dated latest-update rows from the `/new/` listing.
-fn latest_updates(document: &Document) -> Vec<MangaWithChapter> {
-	document
-		.select(".page-item-detail")
-		.map(|items| {
-			items
-				.filter_map(|item| {
-					let manga = card_manga(&item)?;
-					let chapter =
-						item.select_first(".latest-chap .chapter a, .chapter-item .chapter a")?;
-					let href = chapter.attr("abs:href").or_else(|| chapter.attr("href"))?;
+fn swimlane_manga(document: &Document, heading: &str) -> Vec<Manga> {
+	swimlane_section(document, heading)
+		.and_then(|section| section.select(".mobile-swimlane-card"))
+		.map(|cards| cards.filter_map(|card| card_manga(&card)).collect())
+		.unwrap_or_default()
+}
+
+fn swimlane_latest(document: &Document, heading: &str) -> Vec<MangaWithChapter> {
+	swimlane_section(document, heading)
+		.and_then(|section| section.select(".mobile-swimlane-card"))
+		.map(|cards| {
+			cards
+				.filter_map(|card| {
+					let manga = card_manga(&card)?;
+					let chapter = card.select_first(".swimlane-chap")?;
+					let href = chapter.attr("abs:href")?;
 					let label = chapter.text().map(|text| clean(&text))?;
-					let date = item
-						.select_first(".chapter-release-date, .post-on")
-						.and_then(|el| {
-							el.select_first(".c-new-tag")
-								.and_then(|tag| tag.attr("title"))
-								.or_else(|| el.text())
-						})
-						.and_then(|text| listing_date(text.trim()));
+					let date_uploaded = card
+						.select_first(".swimlane-time")
+						.and_then(|el| el.text())
+						.and_then(|text| listing_date(&text));
+					let chapter_number = helpers::find_first_f32(&label);
 					Some(MangaWithChapter {
 						manga,
 						chapter: Chapter {
 							key: href.strip_prefix_or_self(BASE_URL).into(),
-							chapter_number: chapter_number(&label),
-							date_uploaded: date,
+							chapter_number,
+							date_uploaded,
 							title: (!label.is_empty()).then_some(label),
 							url: Some(href),
 							..Default::default()
@@ -182,6 +215,29 @@ fn latest_updates(document: &Document) -> Vec<MangaWithChapter> {
 				.collect()
 		})
 		.unwrap_or_default()
+}
+
+fn is_valid_genre(label: &str) -> bool {
+	if label.is_empty() || label.len() > 64 {
+		return false;
+	}
+	let lower = label.to_lowercase();
+	!lower.contains("publication:")
+		&& !lower.contains("bato status:")
+		&& !lower.contains("bato upload status:")
+		&& !lower.contains("read direction:")
+		&& !lower.contains("tr from")
+		&& !label
+			.chars()
+			.any(|c| ('\u{F000}'..='\u{F8FF}').contains(&c))
+}
+
+fn make_listing(id: &str, name: &str) -> Listing {
+	Listing {
+		id: String::from(id),
+		name: String::from(name),
+		kind: ListingKind::Default,
+	}
 }
 
 struct Cocomic;
@@ -195,119 +251,239 @@ impl Impl for Cocomic {
 		Params {
 			base_url: BASE_URL.into(),
 			use_new_chapter_endpoint: true,
+			use_load_more_request: LoadMoreStrategy::Never,
+			default_viewer: Viewer::Webtoon,
+			genre_endpoint: "/?s=&post_type=wp-manga".into(),
+			details_title_selector: "h1.asura-series-title".into(),
+			details_cover_selector: "img.asura-poster-img".into(),
+			details_author_selector: ".asura-chip-author .author-name-text".into(),
+			details_artist_selector: ".artist-content > a".into(),
+			details_description_selector: ".asura-synopsis-content".into(),
+			details_tag_selector: "a.asura-genre-tag".into(),
+			details_status_selector: ".asura-badge-status".into(),
+			details_type_selector: ".asura-hero-badge-type".into(),
+			chapter_selector: "li.wp-manga-chapter:not(.premium)".into(),
 			..Default::default()
 		}
 	}
 
-	fn get_home(&self, _params: &Params) -> Result<HomeLayout> {
-		// Ranked shelves come from browse queries; the curated rails and the dated
-		// updates come from the homepage and `/new/`. Fetch them all together.
-		let urls = [
-			browse_url("rating"),
-			browse_url("trending"),
-			browse_url("views"),
-			format!("{BASE_URL}/new/"),
-			format!("{BASE_URL}/"),
-		];
-		let requests = urls
-			.iter()
-			.map(|url| Request::get(url).map_err(Into::into))
-			.collect::<Result<Vec<_>>>()?;
-		let documents: Vec<Option<Document>> = Request::send_all(requests)
+	fn get_manga_status(&self, str: &str) -> MangaStatus {
+		match str.trim().to_ascii_lowercase().as_str() {
+			"ongoing" | "updating" => MangaStatus::Ongoing,
+			"completed" => MangaStatus::Completed,
+			"on hold" | "hiatus" => MangaStatus::Hiatus,
+			"canceled" | "cancelled" | "dropped" => MangaStatus::Cancelled,
+			_ => MangaStatus::Unknown,
+		}
+	}
+
+	fn get_manga_content_rating(&self, _html: &Document, manga: &Manga) -> ContentRating {
+		let Some(ref tags) = manga.tags else {
+			return ContentRating::Safe;
+		};
+		let mut suggestive = false;
+		for tag in tags {
+			match tag.to_ascii_lowercase().as_str() {
+				"18" | "18+" | "adult" | "hentai" | "pornographic" | "smut" => {
+					return ContentRating::NSFW;
+				}
+				"ecchi" | "mature" | "soft yaoi" | "soft yuri" | "yaoi" | "yaoibl" | "yuri" => {
+					suggestive = true;
+				}
+				_ => {}
+			}
+		}
+		if suggestive {
+			ContentRating::Suggestive
+		} else {
+			ContentRating::Safe
+		}
+	}
+
+	fn get_dynamic_filters(&self, params: &Params) -> Result<Vec<Filter>> {
+		let html = Request::get(format!("{}{}", params.base_url, params.genre_endpoint))?
+			.header("Referer", &format!("{BASE_URL}/"))
+			.html()?;
+		let mut pairs: Vec<(String, String)> = Vec::new();
+		if let Some(inputs) = html.select("input[name]") {
+			for input in inputs {
+				if input.attr("name").as_deref() != Some("genre[]") {
+					continue;
+				}
+				let Some(id) = input.attr("value") else {
+					continue;
+				};
+				let Some(input_id) = input.attr("id") else {
+					continue;
+				};
+				let Some(label) = html
+					.select_first(format!("label[for='{input_id}']"))
+					.and_then(|el| el.text())
+					.map(|t| clean(&t))
+					.map(|t| String::from(t.trim_end_matches([',', ' '])))
+				else {
+					continue;
+				};
+				if id.is_empty()
+					|| !is_valid_genre(&label)
+					|| pairs.iter().any(|(seen_opt, seen_id)| {
+						seen_id == &id || seen_opt.eq_ignore_ascii_case(&label)
+					}) {
+					continue;
+				}
+				pairs.push((label, id));
+			}
+		}
+		pairs.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+		let (options, ids): (Vec<_>, Vec<_>) = pairs
 			.into_iter()
-			.map(|response| response.ok().and_then(|response| response.get_html().ok()))
-			.collect();
-		let doc = |index: usize| documents.get(index).and_then(Option::as_ref);
+			.map(|(opt, id)| (opt.into(), id.into()))
+			.unzip();
+		Ok(vec![
+			MultiSelectFilter {
+				id: "genre[]".into(),
+				title: Some("Genres".into()),
+				is_genre: true,
+				can_exclude: false,
+				uses_tag_style: true,
+				options,
+				ids: Some(ids),
+				..Default::default()
+			}
+			.into(),
+		])
+	}
+
+	fn get_page_list(&self, params: &Params, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
+		let url = format!("{}{}", params.base_url, chapter.key);
+		let html = Request::get(&url)?
+			.header("Referer", &format!("{BASE_URL}/"))
+			.html()?;
+		let mut context = PageContext::new();
+		context.insert("Referer".into(), url);
+		Ok(html
+			.select(
+				".asura-stream-images img, .reading-content .page-break img, .reading-content img.wp-manga-chapter-img",
+			)
+			.map(|imgs| {
+				imgs.filter_map(|img| {
+					let src = img.img_attr(false)?;
+					(!src.is_empty()).then(|| Page {
+						content: PageContent::url_context(src, context.clone()),
+						..Default::default()
+					})
+				})
+				.collect()
+			})
+			.unwrap_or_default())
+	}
+
+	fn get_manga_list(
+		&self,
+		_params: &Params,
+		listing: Listing,
+		page: i32,
+	) -> Result<MangaPageResult> {
+		let order = match listing.id.as_str() {
+			"trending" | "latest" | "views" | "new-manga" | "rating" => listing.id.as_str(),
+			_ => "latest",
+		};
+		let url = if page <= 1 {
+			format!("{BASE_URL}/manga/?m_orderby={order}")
+		} else {
+			format!("{BASE_URL}/manga/page/{page}/?m_orderby={order}")
+		};
+		let html = Request::get(&url)?
+			.header("Referer", &format!("{BASE_URL}/"))
+			.html()?;
+		let entries = html
+			.select("article.asura-card, .c-tabs-item__content")
+			.map(|cards| cards.filter_map(|card| card_manga(&card)).collect())
+			.unwrap_or_default();
+		let has_next_page = html
+			.select_first(".asura-pagination a.next, a.next.page-numbers, a.nextpostslink")
+			.is_some();
+		Ok(MangaPageResult {
+			entries,
+			has_next_page,
+		})
+	}
+
+	fn get_home(&self, _params: &Params) -> Result<HomeLayout> {
+		let home = Request::get(format!("{BASE_URL}/"))?
+			.header("Referer", &format!("{BASE_URL}/"))
+			.html()?;
 
 		let mut components: Vec<HomeComponent> = Vec::new();
 
-		if let Some(document) = doc(0) {
-			let entries: Vec<Manga> = browse_cards(document).into_iter().take(10).collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Top Rated".into()),
-					subtitle: None,
-					value: HomeComponentValue::BigScroller {
-						entries,
-						auto_scroll_interval: Some(6.0),
-					},
-				});
-			}
+		let featured = hero_entries(&home);
+		if !featured.is_empty() {
+			components.push(HomeComponent {
+				title: Some("Trending".into()),
+				subtitle: None,
+				value: HomeComponentValue::BigScroller {
+					entries: featured,
+					auto_scroll_interval: Some(6.0),
+				},
+			});
 		}
 
-		if let Some(document) = doc(1) {
-			let entries: Vec<Link> = browse_cards(document).into_iter().map(Into::into).collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Trending".into()),
-					subtitle: None,
-					value: HomeComponentValue::MangaList {
-						ranking: true,
-						page_size: Some(5),
-						entries,
-						listing: None,
-					},
-				});
-			}
+		let trending_now: Vec<Link> = swimlane_manga(&home, "Trending Now")
+			.into_iter()
+			.map(Into::into)
+			.collect();
+		if !trending_now.is_empty() {
+			components.push(HomeComponent {
+				title: Some("Trending Now".into()),
+				subtitle: None,
+				value: HomeComponentValue::Scroller {
+					entries: trending_now,
+					listing: Some(make_listing("trending", "Trending Now")),
+				},
+			});
 		}
 
-		if let Some(document) = doc(3) {
-			let latest = latest_updates(document);
-			if !latest.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Latest Updates".into()),
-					subtitle: None,
-					value: HomeComponentValue::MangaChapterList {
-						page_size: Some(5),
-						entries: latest,
-						listing: None,
-					},
-				});
-			}
+		let latest = swimlane_latest(&home, "Latest Updates");
+		if !latest.is_empty() {
+			components.push(HomeComponent {
+				title: Some("Latest Updates".into()),
+				subtitle: None,
+				value: HomeComponentValue::MangaChapterList {
+					page_size: Some(5),
+					entries: latest,
+					listing: Some(make_listing("latest", "Latest Updates")),
+				},
+			});
 		}
 
-		if let Some(document) = doc(2) {
-			let entries: Vec<Link> = browse_cards(document).into_iter().map(Into::into).collect();
-			if !entries.is_empty() {
-				components.push(HomeComponent {
-					title: Some("Most Viewed".into()),
-					subtitle: None,
-					value: HomeComponentValue::MangaList {
-						ranking: true,
-						page_size: Some(5),
-						entries,
-						listing: None,
-					},
-				});
-			}
+		let popular: Vec<Link> = swimlane_manga(&home, "Popular Manga")
+			.into_iter()
+			.map(Into::into)
+			.collect();
+		if !popular.is_empty() {
+			components.push(HomeComponent {
+				title: Some("Popular Manga".into()),
+				subtitle: None,
+				value: HomeComponentValue::Scroller {
+					entries: popular,
+					listing: Some(make_listing("views", "Popular Manga")),
+				},
+			});
 		}
 
-		// Curated homepage rails.
-		if let Some(home) = doc(4) {
-			for title in [
-				"Only Cocomic",
-				"New Releases",
-				"Today's Official",
-				"Yaoi",
-				"Manhwa",
-				"Smut",
-			] {
-				let entries: Vec<Link> = homepage_rail(home, title)
-					.into_iter()
-					.map(Into::into)
-					.collect();
-				if entries.is_empty() {
-					continue;
-				}
-				components.push(HomeComponent {
-					title: Some(title.into()),
-					subtitle: None,
-					value: HomeComponentValue::Scroller {
-						entries,
-						listing: None,
-					},
-				});
-			}
+		let new_releases: Vec<Link> = swimlane_manga(&home, "New Releases")
+			.into_iter()
+			.map(Into::into)
+			.collect();
+		if !new_releases.is_empty() {
+			components.push(HomeComponent {
+				title: Some("New Releases".into()),
+				subtitle: None,
+				value: HomeComponentValue::Scroller {
+					entries: new_releases,
+					listing: Some(make_listing("new-manga", "New Releases")),
+				},
+			});
 		}
 
 		Ok(HomeLayout { components })
@@ -317,6 +493,7 @@ impl Impl for Cocomic {
 register_source!(
 	Madara<Cocomic>,
 	Home,
+	ListingProvider,
 	DynamicFilters,
 	DeepLinkHandler,
 	ImageRequestProvider
