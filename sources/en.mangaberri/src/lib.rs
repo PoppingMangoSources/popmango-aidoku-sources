@@ -1,21 +1,29 @@
 #![no_std]
+#[cfg(test)]
+mod test;
+
 use aidoku::{
 	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, Home, HomeComponent,
-	HomeComponentValue, HomeLayout, Manga, MangaPageResult, MangaWithChapter, Page, PageContent,
-	PageContext, Result, Source,
+	HomeComponentValue, HomeLayout, ImageRequestProvider, Link, Listing, ListingKind,
+	ListingProvider, Manga, MangaPageResult, MangaStatus, Page, PageContent, PageContext, Result,
+	Source, Viewer,
 	alloc::{String, Vec, string::ToString, vec},
-	helpers::uri::encode_uri_component,
+	helpers::uri::QueryParameters,
 	imports::{
 		html::{Document, Element},
 		net::Request,
+		std::parse_date_with_options,
 	},
 	prelude::*,
 };
 
-// SITE is swapped per source (mangaberri.com / mangacherri.com).
 const BASE_URL: &str = "https://mangaberri.com";
-
+const SORTS: [&str; 3] = ["latest", "popular", "title"];
 const MATURE_GENRES: &[&str] = &["seinen", "ecchi", "harem", "mature", "adult", "smut"];
+
+fn clean(text: &str) -> String {
+	text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
 
 fn abs_url(url: &str) -> String {
 	if url.is_empty() {
@@ -29,256 +37,182 @@ fn abs_url(url: &str) -> String {
 	}
 }
 
-fn clean(text: &str) -> String {
-	text.split_whitespace().collect::<Vec<_>>().join(" ")
+fn slug_from_href(href: &str) -> Option<String> {
+	let after = href.split("/title/").nth(1)?;
+	let slug = after.split(['/', '?', '#']).next()?;
+	(!slug.is_empty()).then(|| slug.to_string())
 }
 
-/// The manga id is the first path segment of a `/slug` link.
-fn slug_from_href(href: &str) -> String {
-	href.trim_start_matches('/')
-		.split(['/', '?', '#'])
-		.next()
-		.unwrap_or("")
-		.to_string()
+fn chapter_from_href(href: &str) -> Option<(String, String)> {
+	let after = href.split("/read/").nth(1)?;
+	let mut parts = after.split(['/', '?', '#']);
+	let slug = parts.next()?;
+	let id = parts.next()?;
+	(!slug.is_empty() && !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit()))
+		.then(|| (slug.to_string(), id.to_string()))
 }
 
-/// Chapter links look like `/slug/12345`; the trailing number is the id.
-fn chapter_id_from_href(href: &str) -> Option<String> {
-	let mut segments = href.trim_start_matches('/').split(['/', '?', '#']);
-	segments.next()?; // slug
-	let id = segments.next()?;
-	(!id.is_empty() && id.bytes().all(|b| b.is_ascii_digit())).then(|| id.to_string())
-}
-
-fn is_slug_only(href: &str) -> bool {
-	let trimmed = href.trim_start_matches('/');
-	let mut segments = trimmed.split(['?', '#']).next().unwrap_or("").split('/');
-	segments.next().is_some_and(|first| !first.is_empty())
-		&& segments.all(|segment| segment.is_empty())
-}
-
-fn cover_from(element: &Element) -> Option<String> {
-	let img = element.select_first("img")?;
-	let src = img
-		.attr("data-src")
-		.or_else(|| img.attr("src"))
-		.unwrap_or_default();
-	(!src.is_empty()).then(|| abs_url(&src))
+fn parse_status(value: &str) -> MangaStatus {
+	match value.trim().to_ascii_lowercase().as_str() {
+		s if s.contains("ongoing") => MangaStatus::Ongoing,
+		s if s.contains("complet") || s.contains("finish") => MangaStatus::Completed,
+		s if s.contains("hiatus") => MangaStatus::Hiatus,
+		s if s.contains("cancel") || s.contains("discontinu") => MangaStatus::Cancelled,
+		_ => MangaStatus::Unknown,
+	}
 }
 
 fn content_rating_for(genres: &[String]) -> ContentRating {
-	let lowered: Vec<String> = genres.iter().map(|g| g.to_lowercase()).collect();
-	if lowered.iter().any(|g| MATURE_GENRES.contains(&g.as_str())) {
+	let mut suggestive = false;
+	for genre in genres {
+		let g = genre.trim().to_ascii_lowercase();
+		if matches!(g.as_str(), "adult" | "smut" | "hentai") {
+			return ContentRating::NSFW;
+		}
+		if MATURE_GENRES.contains(&g.as_str()) {
+			suggestive = true;
+		}
+	}
+	if suggestive {
 		ContentRating::Suggestive
 	} else {
 		ContentRating::Safe
 	}
 }
 
-fn chapter_number(text: &str) -> Option<f32> {
-	let mut number = String::new();
-	for ch in text.chars() {
-		if ch.is_ascii_digit() || (ch == '.' && !number.is_empty()) {
-			number.push(ch);
-		} else if !number.is_empty() {
+fn viewer_for(genres: &[String]) -> Viewer {
+	if genres.iter().any(|g| {
+		let lower = g.to_ascii_lowercase();
+		lower.contains("manhwa") || lower.contains("manhua") || lower.contains("webtoon")
+	}) {
+		Viewer::Webtoon
+	} else {
+		Viewer::RightToLeft
+	}
+}
+
+fn parse_chapter_label(name: &str) -> (Option<f32>, Option<String>) {
+	let trimmed = name.trim();
+	let lower = trimmed.to_ascii_lowercase();
+	if let Some(rest) = lower
+		.strip_prefix("chapter")
+		.map(|_| trimmed["chapter".len()..].trim_start())
+	{
+		let mut end = 0;
+		let mut seen_dot = false;
+		for (i, ch) in rest.char_indices() {
+			if ch.is_ascii_digit() {
+				end = i + ch.len_utf8();
+			} else if ch == '.' && !seen_dot && end > 0 {
+				seen_dot = true;
+				end = i + 1;
+			} else {
+				break;
+			}
+		}
+		let num_str = rest[..end].trim_end_matches('.');
+		if let Ok(num) = num_str.parse::<f32>() {
+			let tail = rest
+				.strip_prefix(num_str)
+				.unwrap_or("")
+				.trim_start_matches(|c: char| {
+					c.is_whitespace() || matches!(c, ':' | '-' | '–' | '—')
+				})
+				.trim();
+			return (Some(num), (!tail.is_empty()).then(|| tail.to_string()));
+		}
+	}
+	let mut digits = String::new();
+	for ch in trimmed.chars() {
+		if ch.is_ascii_digit() || (ch == '.' && !digits.is_empty()) {
+			digits.push(ch);
+		} else if !digits.is_empty() {
 			break;
 		}
 	}
-	number.trim_matches('.').parse().ok()
+	let num = digits.trim_matches('.').parse::<f32>().ok();
+	(num, (!trimmed.is_empty()).then(|| trimmed.to_string()))
 }
 
-/// Reads a card as it appears in a listing or carousel.
-fn parse_card(item: &Element) -> Option<Manga> {
-	let anchors: Vec<Element> = item.select("a[href]").map(|els| els.collect())?;
-	let slug_link = anchors
-		.iter()
-		.find(|a| a.attr("href").is_some_and(|href| is_slug_only(&href)))
-		.or_else(|| anchors.first())?;
-	let slug = slug_from_href(&slug_link.attr("href")?);
-	if slug.is_empty() {
-		return None;
-	}
-	let title = anchors
-		.iter()
-		.filter(|a| a.attr("href").is_some_and(|href| is_slug_only(&href)))
-		.find(|a| a.select_first("img").is_none())
-		.and_then(|a| a.text())
-		.map(|text| clean(&text))
-		.filter(|text| !text.is_empty())
-		.or_else(|| slug_link.attr("title").map(|t| clean(&t)))?;
+fn parse_card(card: &Element) -> Option<Manga> {
+	let href = card.select_first("a[href*='/title/']")?.attr("href")?;
+	let key = slug_from_href(&href)?;
+	let title = card
+		.select_first("h3")
+		.and_then(|el| el.text())
+		.map(|t| clean(&t))
+		.filter(|t| !t.is_empty())?;
+	let cover = card
+		.select_first("img")
+		.and_then(|img| img.attr("data-src").or_else(|| img.attr("src")))
+		.filter(|s| !s.is_empty())
+		.map(|s| abs_url(&s));
+	let status = card
+		.select_first(".cover-label")
+		.and_then(|el| el.text())
+		.map(|t| parse_status(&t))
+		.unwrap_or(MangaStatus::Unknown);
+	let genres: Vec<String> = card
+		.select(".card-meta span")
+		.map(|els| {
+			els.filter_map(|el| el.text())
+				.map(|t| clean(&t))
+				.filter(|t| !t.is_empty() && !t.to_ascii_lowercase().contains("chapter"))
+				.collect()
+		})
+		.unwrap_or_default();
 
 	Some(Manga {
-		key: slug.clone(),
+		url: Some(format!("{BASE_URL}/title/{key}")),
+		key,
 		title,
-		cover: cover_from(item),
-		url: Some(format!("{BASE_URL}/{slug}")),
-		content_rating: ContentRating::Suggestive,
+		cover,
+		status,
+		content_rating: content_rating_for(&genres),
 		..Default::default()
 	})
 }
 
-fn latest_from(item: &Element) -> Option<(String, String)> {
-	let chapter = item.select("a[href]")?.find(|a| {
-		a.attr("href")
-			.is_some_and(|href| chapter_id_from_href(&href).is_some())
-	})?;
-	let href = chapter.attr("href")?;
-	let id = chapter_id_from_href(&href)?;
-	let label = chapter.text().map(|text| clean(&text)).unwrap_or_default();
-	Some((id, label))
-}
-
-fn detail_field(document: &Document, label: &str) -> Option<String> {
-	let rows = document.select(".section-status.row, .comic-attrs .column")?;
-	for row in rows {
-		let children: Vec<Element> = row.children().collect();
-		let key = children
-			.first()
-			.and_then(|el| el.text())
-			.map(|text| clean(&text))
-			.unwrap_or_default();
-		if key.eq_ignore_ascii_case(label) {
-			return children
-				.last()
-				.and_then(|el| el.text())
-				.map(|text| clean(&text));
-		}
-	}
-	None
-}
-
-fn parse_details(document: &Document, manga: &mut Manga) {
-	if let Some(title) = document
-		.select_first("h1.story-name")
-		.and_then(|el| el.text())
-		.map(|text| clean(&text))
-		.filter(|text| !text.is_empty())
-	{
-		manga.title = title;
-	}
-	manga.cover = document
-		.select_first("img.comic-img")
-		.and_then(|img| img.attr("src"))
-		.map(|src| abs_url(&src))
-		.or_else(|| manga.cover.take());
-	manga.description = document
-		.select_first(".story-desc")
-		.and_then(|el| el.text())
-		.map(|text| clean(&text))
-		.filter(|text| !text.is_empty());
-	manga.authors = document
-		.select_first(".comic-attrs a[href*='/author/']")
-		.and_then(|el| el.text())
-		.map(|text| vec![clean(&text)]);
-
-	let genres: Vec<String> = document
-		.select(".comic-attrs a[href*='genre.php?genre=']")
-		.map(|els| {
-			els.filter_map(|el| el.text())
-				.map(|text| clean(&text))
-				.filter(|text| !text.is_empty())
+fn parse_cards_in(document: &Document, selector: &str) -> Vec<Manga> {
+	let mut seen: Vec<String> = Vec::new();
+	document
+		.select(selector)
+		.map(|cards| {
+			cards
+				.filter_map(|card| {
+					let manga = parse_card(&card)?;
+					if seen.contains(&manga.key) {
+						return None;
+					}
+					seen.push(manga.key.clone());
+					Some(manga)
+				})
 				.collect()
 		})
-		.unwrap_or_default();
-	manga.content_rating = content_rating_for(&genres);
-	manga.tags = (!genres.is_empty()).then_some(genres);
-
-	manga.status = match detail_field(document, "Status")
 		.unwrap_or_default()
-		.to_lowercase()
-		.as_str()
-	{
-		s if s.contains("ongoing") => aidoku::MangaStatus::Ongoing,
-		s if s.contains("complet") => aidoku::MangaStatus::Completed,
-		s if s.contains("hiatus") => aidoku::MangaStatus::Hiatus,
-		s if s.contains("cancel") => aidoku::MangaStatus::Cancelled,
-		_ => aidoku::MangaStatus::Unknown,
-	};
-	manga.url = Some(format!("{BASE_URL}/{}", manga.key));
 }
 
-fn parse_chapters(document: &Document) -> Vec<Chapter> {
-	let Some(anchors) = document.select(".chapters-container a[href]") else {
-		return Vec::new();
-	};
-	let mut seen: Vec<String> = Vec::new();
-	let entries: Vec<(String, String)> = anchors
-		.filter_map(|a| {
-			let href = a.attr("href")?;
-			let id = chapter_id_from_href(&href)?;
-			let label = a.text().map(|text| clean(&text)).unwrap_or_default();
-			Some((id, label))
+fn has_next_page(document: &Document) -> bool {
+	document.select("nav.pagination a").is_some_and(|links| {
+		links.into_iter().any(|link| {
+			link.text()
+				.is_some_and(|text| text.to_ascii_lowercase().contains("next"))
 		})
-		.collect();
-	let total = entries.len();
-	entries
-		.into_iter()
-		.enumerate()
-		.filter_map(|(index, (id, label))| {
-			if seen.contains(&id) {
-				return None;
-			}
-			seen.push(id.clone());
-			Some(Chapter {
-				chapter_number: chapter_number(&label).or(Some((total - index) as f32)),
-				title: (!label.is_empty()).then(|| label.clone()),
-				url: Some(format!("{BASE_URL}/{id}")),
-				key: id,
-				..Default::default()
-			})
-		})
-		.collect()
+	})
 }
 
 fn fetch(url: &str) -> Result<Document> {
-	Request::get(url)?
+	Ok(Request::get(url)?
 		.header("Referer", &format!("{BASE_URL}/"))
-		.html()
-		.map_err(Into::into)
+		.html()?)
 }
 
-fn cards_from(document: &Document, selector: &str) -> Vec<Manga> {
-	document
-		.select(selector)
-		.map(|items| items.filter_map(|item| parse_card(&item)).collect())
-		.unwrap_or_default()
-}
-
-/// The cards in the section whose `.section-title` matches `title`.
-fn section_cards(document: &Document, title: &str, item_selector: &str) -> Vec<Manga> {
-	let Some(sections) = document.select(".section-container") else {
-		return Vec::new();
-	};
-	for section in sections {
-		let heading = section
-			.select_first(".section-title")
-			.and_then(|el| el.text())
-			.map(|text| clean(&text))
-			.unwrap_or_default();
-		if heading.eq_ignore_ascii_case(title) {
-			return section
-				.select(item_selector)
-				.map(|items| items.filter_map(|item| parse_card(&item)).collect())
-				.unwrap_or_default();
-		}
+fn make_listing(id: &str, name: &str) -> Listing {
+	Listing {
+		id: id.into(),
+		name: name.into(),
+		kind: ListingKind::Default,
 	}
-	Vec::new()
-}
-
-/// Adds the page number, which the listing urls take as a query parameter.
-fn paged(url: &str, page: i32) -> String {
-	if page <= 1 {
-		return url.into();
-	}
-	let separator = if url.contains('?') { '&' } else { '?' };
-	format!("{url}{separator}page={page}")
-}
-
-fn genre_url(name: &str) -> String {
-	format!(
-		"{BASE_URL}/genre.php?genre={}",
-		encode_uri_component(name).replace("%2F", "/")
-	)
 }
 
 struct MangaBerri;
@@ -294,29 +228,35 @@ impl Source for MangaBerri {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let query = query.unwrap_or_default();
-		let query = query.trim();
-		let genre = filters.into_iter().find_map(|filter| match filter {
-			FilterValue::Select { id, value } if id == "genre" && value != "all" => Some(value),
-			_ => None,
-		});
-
-		let url = if !query.is_empty() {
-			format!(
-				"{BASE_URL}/search.php?keyword={}",
-				encode_uri_component(query)
-			)
-		} else if let Some(genre) = genre {
-			genre_url(&genre)
+		let mut qs = QueryParameters::new();
+		if let Some(q) = query.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
+			qs.push("q", Some(q));
+		}
+		for filter in filters {
+			match filter {
+				FilterValue::Sort { index, .. } => {
+					if let Some(sort) = SORTS.get(index as usize) {
+						qs.set("sort", Some(sort));
+					}
+				}
+				FilterValue::Select { id, value } if !value.is_empty() => {
+					qs.set(&id, Some(&value));
+				}
+				_ => {}
+			}
+		}
+		if page > 1 {
+			qs.set("page", Some(&page.to_string()));
+		}
+		let url = if qs.is_empty() {
+			format!("{BASE_URL}/browse")
 		} else {
-			format!("{BASE_URL}/home.php")
+			format!("{BASE_URL}/browse?{qs}")
 		};
-
-		let document = fetch(&paged(&url, page))?;
-		let entries = cards_from(&document, ".manga-item, .manga-horizontal-item");
+		let document = fetch(&url)?;
 		Ok(MangaPageResult {
-			has_next_page: !entries.is_empty(),
-			entries,
+			entries: parse_cards_in(&document, "[data-browse-results] article.manga-card"),
+			has_next_page: has_next_page(&document),
 		})
 	}
 
@@ -326,133 +266,211 @@ impl Source for MangaBerri {
 		needs_details: bool,
 		needs_chapters: bool,
 	) -> Result<Manga> {
-		let document = fetch(&format!("{BASE_URL}/{}", manga.key))?;
+		let url = format!("{BASE_URL}/title/{}", manga.key);
+		let document = fetch(&url)?;
+
 		if needs_details {
-			parse_details(&document, &mut manga);
+			if let Some(title) = document
+				.select_first("section.detail h1")
+				.and_then(|el| el.text())
+				.map(|t| clean(&t))
+				.filter(|t| !t.is_empty())
+			{
+				manga.title = title;
+			}
+			manga.cover = document
+				.select_first("section.detail img.detail-cover")
+				.and_then(|img| img.attr("data-src").or_else(|| img.attr("src")))
+				.filter(|s| !s.is_empty())
+				.map(|s| abs_url(&s))
+				.or_else(|| manga.cover.take());
+			manga.description = document
+				.select_first("section.detail p.synopsis")
+				.and_then(|el| el.text())
+				.map(|t| clean(&t))
+				.filter(|t| !t.is_empty());
+			manga.authors = document
+				.select_first("section.detail h1 + p.muted")
+				.and_then(|el| el.text())
+				.map(|t| clean(&t))
+				.filter(|t| !t.is_empty())
+				.map(|a| vec![a]);
+
+			let mut genres: Vec<String> = Vec::new();
+			if let Some(els) = document.select("section.detail .tags a") {
+				for el in els {
+					if let Some(tag) = el.text().map(|t| clean(&t)).filter(|t| !t.is_empty())
+						&& !genres.iter().any(|g| g.eq_ignore_ascii_case(&tag))
+					{
+						genres.push(tag);
+					}
+				}
+			}
+			manga.content_rating = content_rating_for(&genres);
+			manga.viewer = viewer_for(&genres);
+			manga.tags = (!genres.is_empty()).then_some(genres);
+			manga.status = document
+				.select_first("section.detail .eyebrow")
+				.and_then(|el| el.text())
+				.map(|t| parse_status(t.split('·').next().unwrap_or(&t)))
+				.unwrap_or(MangaStatus::Unknown);
+			manga.url = Some(url);
 		}
+
 		if needs_chapters {
-			manga.chapters = Some(parse_chapters(&document));
+			let mut seen: Vec<String> = Vec::new();
+			let chapters = document
+				.select(".chapter-list a[data-chapter-group]")
+				.map(|rows| {
+					rows.filter_map(|row| {
+						let href = row.attr("href")?;
+						let (slug, id) = chapter_from_href(&href)?;
+						if seen.contains(&id) {
+							return None;
+						}
+						seen.push(id.clone());
+						let raw_name = row
+							.select_first("strong")
+							.and_then(|el| el.text())
+							.map(|t| clean(&t))
+							.unwrap_or_default();
+						let (chapter_number, title) = parse_chapter_label(&raw_name);
+						let date_uploaded = row
+							.select_first("span")
+							.and_then(|el| el.text())
+							.and_then(|t| {
+								parse_date_with_options(
+									clean(&t),
+									"MMM d, yyyy",
+									"en_US_POSIX",
+									"UTC",
+								)
+							});
+						let scanlators = (row.attr("data-chapter-group").as_deref() == Some("raw"))
+							.then(|| vec!["RAW".into()]);
+						Some(Chapter {
+							url: Some(format!("{BASE_URL}/read/{slug}/{id}")),
+							key: id,
+							title,
+							chapter_number,
+							date_uploaded,
+							scanlators,
+							..Default::default()
+						})
+					})
+					.collect()
+				})
+				.unwrap_or_default();
+			manga.chapters = Some(chapters);
 		}
+
 		Ok(manga)
 	}
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let document = fetch(&format!("{BASE_URL}/{}/{}", manga.key, chapter.key))?;
-		let mut seen: Vec<String> = Vec::new();
+		let url = format!("{BASE_URL}/read/{}/{}", manga.key, chapter.key);
+		let document = fetch(&url)?;
 		let pages = document
-			.select(".reading-container img")
-			.map(|images| {
-				images
-					.filter_map(|img| {
-						let src = img.attr("data-src").or_else(|| img.attr("src"))?;
-						let url = abs_url(&src);
-						(!url.is_empty() && !seen.contains(&url)).then(|| {
-							seen.push(url.clone());
-							Page {
-								content: PageContent::url(url),
-								..Default::default()
-							}
-						})
+			.select("img[data-page-image]")
+			.map(|imgs| {
+				imgs.filter_map(|img| {
+					let src = img.attr("data-src").or_else(|| img.attr("src"))?;
+					(!src.is_empty()).then(|| Page {
+						content: PageContent::url(abs_url(&src)),
+						..Default::default()
 					})
-					.collect()
+				})
+				.collect()
 			})
 			.unwrap_or_default();
 		Ok(pages)
 	}
 }
 
+impl ListingProvider for MangaBerri {
+	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
+		let sort = match listing.id.as_str() {
+			"popular" | "latest" | "title" => listing.id.as_str(),
+			_ => "latest",
+		};
+		let url = if page <= 1 {
+			format!("{BASE_URL}/browse?sort={sort}")
+		} else {
+			format!("{BASE_URL}/browse?sort={sort}&page={page}")
+		};
+		let document = fetch(&url)?;
+		Ok(MangaPageResult {
+			entries: parse_cards_in(&document, "[data-browse-results] article.manga-card"),
+			has_next_page: has_next_page(&document),
+		})
+	}
+}
+
 impl Home for MangaBerri {
 	fn get_home(&self) -> Result<HomeLayout> {
-		let requests = [format!("{BASE_URL}/home.php")]
-			.into_iter()
-			.map(|url| {
-				Request::get(&url)
-					.map(|r| r.header("Referer", &format!("{BASE_URL}/")))
-					.map_err(Into::into)
-			})
-			.collect::<Result<Vec<_>>>()?;
-		let mut documents = Request::send_all(requests)
-			.into_iter()
-			.map(|response| response.ok().and_then(|response| response.get_html().ok()));
-
-		let home = documents.next().flatten();
+		let requests = [
+			Request::get(format!("{BASE_URL}/discover"))?
+				.header("Referer", &format!("{BASE_URL}/")),
+			Request::get(format!("{BASE_URL}/browse?sort=popular"))?
+				.header("Referer", &format!("{BASE_URL}/")),
+		];
+		let [discover_resp, popular_resp]: [_; 2] = Request::send_all(requests)
+			.try_into()
+			.map_err(|_| error!("Unexpected response count"))?;
 
 		let mut components: Vec<HomeComponent> = Vec::new();
 
-		if let Some(home) = home.as_ref() {
-			let viewed = section_cards(home, "Most Viewed", ".manga-item");
-			if !viewed.is_empty() {
+		if let Ok(resp) = popular_resp
+			&& let Ok(doc) = resp.get_html()
+		{
+			let entries: Vec<Manga> =
+				parse_cards_in(&doc, "[data-browse-results] article.manga-card")
+					.into_iter()
+					.take(10)
+					.collect();
+			if !entries.is_empty() {
 				components.push(HomeComponent {
-					title: Some("Most Viewed".into()),
+					title: Some("Most Read".into()),
 					subtitle: None,
 					value: HomeComponentValue::BigScroller {
-						entries: viewed.into_iter().take(10).collect(),
+						entries,
 						auto_scroll_interval: Some(6.0),
 					},
 				});
 			}
+		}
 
-			let latest: Vec<MangaWithChapter> = section_cards(home, "Latest Update", "")
-				.into_iter()
-				.collect::<Vec<_>>()
-				.into_iter()
-				.map(|manga| MangaWithChapter {
-					manga,
-					chapter: Chapter::default(),
-				})
-				.collect();
-			let latest_items = home
-				.select(".section-container")
-				.and_then(|sections| {
-					sections.into_iter().find(|section| {
-						section
-							.select_first(".section-title")
-							.and_then(|el| el.text())
-							.map(|text| clean(&text))
-							.is_some_and(|t| t.eq_ignore_ascii_case("Latest Update"))
-					})
-				})
-				.and_then(|section| section.select(".manga-horizontal-item"));
-			let latest: Vec<MangaWithChapter> = latest_items
-				.map(|items| {
-					items
-						.filter_map(|item| {
-							let manga = parse_card(&item)?;
-							let (id, label) = latest_from(&item).unwrap_or_default();
-							Some(MangaWithChapter {
-								manga,
-								chapter: Chapter {
-									chapter_number: chapter_number(&label),
-									title: (!label.is_empty()).then_some(label),
-									url: (!id.is_empty()).then(|| format!("{BASE_URL}/{id}")),
-									key: id,
-									..Default::default()
-								},
-							})
-						})
-						.collect()
-				})
-				.unwrap_or(latest);
-			if !latest.is_empty() {
+		if let Ok(resp) = discover_resp
+			&& let Ok(doc) = resp.get_html()
+		{
+			let popular: Vec<Link> =
+				parse_cards_in(&doc, "section.popular-manga article.manga-card")
+					.into_iter()
+					.map(Into::into)
+					.collect();
+			if !popular.is_empty() {
 				components.push(HomeComponent {
-					title: Some("Latest Update".into()),
+					title: Some("Popular".into()),
 					subtitle: None,
-					value: HomeComponentValue::MangaChapterList {
-						page_size: Some(5),
-						entries: latest,
-						listing: None,
+					value: HomeComponentValue::Scroller {
+						entries: popular,
+						listing: Some(make_listing("popular", "Popular")),
 					},
 				});
 			}
 
-			let popular = section_cards(home, "Popular Today", ".manga-item");
-			if !popular.is_empty() {
+			let latest: Vec<Link> =
+				parse_cards_in(&doc, "section:not(.popular-manga) article.manga-card")
+					.into_iter()
+					.map(Into::into)
+					.collect();
+			if !latest.is_empty() {
 				components.push(HomeComponent {
-					title: Some("Popular Today".into()),
+					title: Some("Latest Updates".into()),
 					subtitle: None,
 					value: HomeComponentValue::Scroller {
-						entries: popular.into_iter().map(Into::into).collect(),
-						listing: None,
+						entries: latest,
+						listing: Some(make_listing("latest", "Latest Updates")),
 					},
 				});
 			}
@@ -462,7 +480,7 @@ impl Home for MangaBerri {
 	}
 }
 
-impl aidoku::ImageRequestProvider for MangaBerri {
+impl ImageRequestProvider for MangaBerri {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
 		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
 	}
@@ -470,13 +488,20 @@ impl aidoku::ImageRequestProvider for MangaBerri {
 
 impl DeepLinkHandler for MangaBerri {
 	fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {
-		let path = url.strip_prefix(BASE_URL).unwrap_or(&url);
-		let slug = slug_from_href(path);
-		if slug.is_empty() || slug.ends_with(".php") {
-			return Ok(None);
+		if let Some((manga_key, key)) = chapter_from_href(&url) {
+			return Ok(Some(DeepLinkResult::Chapter { manga_key, key }));
 		}
-		Ok(Some(DeepLinkResult::Manga { key: slug }))
+		if let Some(key) = slug_from_href(&url) {
+			return Ok(Some(DeepLinkResult::Manga { key }));
+		}
+		Ok(None)
 	}
 }
 
-register_source!(MangaBerri, Home, ImageRequestProvider, DeepLinkHandler);
+register_source!(
+	MangaBerri,
+	Home,
+	ListingProvider,
+	ImageRequestProvider,
+	DeepLinkHandler
+);
