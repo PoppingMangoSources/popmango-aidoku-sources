@@ -77,5 +77,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             python3 "$tooling/scripts/check-rule-tests.py"
         fi
     fi
+    if [ "$branch" = main ]; then
+        # Not fatal: main goes first, then each lagging submission is rebuilt from it.
+        python3 "$tooling/scripts/agent-hooks.py" stale-submissions >&2 || echo "Rebuild the submission branches above from main after this push." >&2
+    fi
 done <<< "$updates"
 echo "pre-push: all gates green"

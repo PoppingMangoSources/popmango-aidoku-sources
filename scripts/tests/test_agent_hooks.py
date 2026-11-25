@@ -117,6 +117,34 @@ class AgentHookTests(unittest.TestCase):
         with mock.patch.object(hooks, 'changed_crates', return_value=['sources/en.example']), self.checked():
             self.assertIn('changed since its last review', json.loads(run(hooks.stop, {}))['reason'])
 
+    def test_stop_blocks_on_a_submission_branch_behind_main(self):
+        def git(*args):
+            subprocess.run(['git', *args], cwd=self.root, check=True, capture_output=True)
+        source = self.root / 'sources/en.example'
+        (source / 'res').mkdir()
+        (source / 'res/source.json').write_text('{"info": {"id": "en.example", "version": 1}}\n')
+        git('init', '-q')
+        git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'a', '--allow-empty')
+        git('add', '-A')
+        git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'b')
+        git('update-ref', 'refs/remotes/origin/feat/en.example', 'HEAD')
+        # A version bump and fork-only tests on main are not submission changes.
+        (source / 'res/source.json').write_text('{"info": {"id": "en.example", "version": 4}}\n')
+        (source / 'src/test.rs').write_text('fn t() {}\n')
+        git('add', '-A')
+        git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'c')
+        self.assertEqual(hooks.stale_submissions(), [])
+        (source / 'src/lib.rs').write_text('fn fixed() {}\n')
+        git('add', '-A')
+        git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'd')
+        with mock.patch.object(hooks, 'changed_crates', return_value=[]):
+            reason = json.loads(run(hooks.stop, {}))['reason']
+        self.assertIn('origin/feat/en.example no longer matches', reason)
+        self.assertIn('scripts/pr-branch.sh en.example --rebuild --push', reason)
+        # Merged upstream: later main changes go up as an update instead.
+        git('update-ref', 'refs/remotes/upstream/main', 'refs/remotes/origin/feat/en.example')
+        self.assertEqual(hooks.stale_submissions(), [])
+
     def write_rules(self):
         (self.root / 'AGENTS.md').write_text(
             '## 0. Hard rules\n\n- Commit with scripts/commit.sh.\n\n---\n\n'

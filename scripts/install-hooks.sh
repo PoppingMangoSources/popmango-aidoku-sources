@@ -8,4 +8,6 @@ git config --local core.hooksPath "$root/.githooks"
 git config --local user.name "Popmango Extensions"
 git config --local user.email "297959108+PoppingMangoSources@users.noreply.github.com"
 git config --local commit.gpgsign false
+# The stop hook compares every origin submission branch with main, so fetch them all.
+git config --local --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 echo "Installed hooks from $root/.githooks; keep this tooling checkout available."

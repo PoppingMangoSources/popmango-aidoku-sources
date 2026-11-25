@@ -26,7 +26,12 @@ upstream, is reviewed and is updated after a merge.
   (`scripts/agent-hooks.py`). Before the first edit to a source or template in a session, the agent is pointed at the skill, section 6
   and `review-source.sh`. When it tries to finish, the Stop hook blocks while a changed source
   fails `check-sources.py` or has no passing review of its current files, so any edit after a
-  review needs another one. A second stop in the same turn only reports, so a live-site failure
+  review needs another one. It also blocks while an unmerged `origin/feat/<id>` or `origin/fix/<id>`
+  branch no longer matches `sources/<id>` on HEAD (version and fork-only tests aside), even after
+  main is pushed, until `pr-branch.sh <id> --rebuild --push` carries main's changes over; a fix
+  pushed to main once sat for days off its open submission. The pre-push hook prints the same list
+  after a push to main, and `install-hooks.sh` fetches every origin branch so the comparison sees
+  them. A second stop in the same turn only reports, so a live-site failure
   can be explained rather than loop. The Bash hook refuses a `git commit` outside
   `scripts/commit.sh` (it also reads the scripts a command runs, except `scripts/` and
   `.githooks/`), prints the section 9 commit rules beside each `commit.sh`, and prints section 3

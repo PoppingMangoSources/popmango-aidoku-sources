@@ -54,7 +54,9 @@ aidoku/aidoku-test development dependencies when excluding fork-only tests.
 ## 3. Review rounds
 
 For each comment, fix it on `main` with a bump, then fold the changes into the PR's
-requested commit structure. A new-source submission stays one `feat: add <id>` commit by
+requested commit structure. Any later push of that source to `main` does the same: an unmerged
+`feat/<id>` or `fix/<id>` on origin is rebuilt from `main` in the same task
+(`scripts/pr-branch.sh <id> --rebuild --push`), and the Stop hook blocks until it is. A new-source submission stays one `feat: add <id>` commit by
 default, including after it opens. Fetch first, preserve the old head, commit through the
 wrapper and verify the resulting source tree and commit count. Force-push with the exact
 expected remote SHA. A force-push alone does not fold an added commit into the original.

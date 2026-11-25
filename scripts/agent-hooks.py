@@ -13,6 +13,9 @@ Usage:
                                         record that scripts/review-source.sh ran on <id>'s files
     scripts/agent-hooks.py checklist [--compact]
                                         print the section 3 rules to read against the diff
+    scripts/agent-hooks.py stale-submissions
+                                        list unmerged origin feat/<id> and fix/<id> branches that
+                                        lag behind HEAD's source; exit 1 when there are any
 """
 
 import contextlib
@@ -20,6 +23,7 @@ import hashlib
 import io
 import json
 import re
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -197,16 +201,59 @@ def digest() -> None:
           "and the aidoku-source skill before a source edit.")
 
 
+SUBMISSION_BRANCH = re.compile(r"(?:feat|fix)/((?:[a-z]{2,3}|multi)\.[a-z0-9][a-z0-9.-]*)\Z")
+
+
+def submission_files(ref: str, source: str) -> dict:
+    """A source as pr-branch.sh submits it: no fork-only tests, and no version."""
+    helpers = runpy.run_path(str(Path(__file__).resolve().parent / "submission-files.py"))
+    files = helpers["without_tests"](helpers["snapshot_files"](ROOT, ref, source))
+    metadata = json.loads(files.get("res/source.json") or b"{}")
+    metadata.get("info", {}).pop("version", None)
+    files["res/source.json"] = json.dumps(metadata, sort_keys=True).encode()
+    return files
+
+
+def stale_submissions() -> list[str]:
+    """Unmerged origin submission branches whose source differs from the committed source on HEAD.
+
+    Checked on every stop, not only for changed crates: after main is pushed nothing counts as
+    changed, which is exactly when a pushed fix is left off its open submission."""
+    problems = []
+    branches = git("for-each-ref", "--format=%(refname:strip=3)",
+                   "refs/remotes/origin/feat", "refs/remotes/origin/fix").split()
+    for branch in branches:
+        match = SUBMISSION_BRANCH.fullmatch(branch)
+        source = f"sources/{match[1]}" if match else ""
+        if not match or not git("ls-tree", "HEAD", "--", source).strip():
+            continue
+        try:
+            submitted = submission_files(f"refs/remotes/origin/{branch}", source)
+            # Once merged upstream, later main changes go up as an --update, not into this branch.
+            if git("ls-tree", "refs/remotes/upstream/main", "--", source).strip() and \
+                    submitted == submission_files("refs/remotes/upstream/main", source):
+                continue
+            if submitted == submission_files("HEAD", source):
+                continue
+        except (subprocess.CalledProcessError, OSError, ValueError, KeyError):
+            continue
+        problems.append(
+            f"origin/{branch} no longer matches {source} on HEAD: run scripts/pr-branch.sh {match[1]} "
+            "--rebuild --push (add --update \"<subject>\" \"<body>\" when the source is already upstream) "
+            "so the submission carries main's changes."
+        )
+    return problems
+
+
 def stop(event: dict) -> None:
     crates = [crate for crate in changed_crates() if (ROOT / crate / "Cargo.toml").exists()]
     sources = [crate.split("/", 1)[1] for crate in crates if crate.startswith("sources/")]
-    if not sources:
-        return
-    problems = []
-    result = subprocess.run([sys.executable, str(ROOT / "scripts/check-sources.py"), *sources],
-                            cwd=ROOT, capture_output=True, text=True)
-    if result.returncode:
-        problems.append("check-sources.py fails:\n" + result.stdout.strip())
+    problems = stale_submissions()
+    if sources:
+        result = subprocess.run([sys.executable, str(ROOT / "scripts/check-sources.py"), *sources],
+                                cwd=ROOT, capture_output=True, text=True)
+        if result.returncode:
+            problems.append("check-sources.py fails:\n" + result.stdout.strip())
     for name in sources:
         stamp = read_stamp(f"sources/{name}")
         if stamp.get("tree") != tree_hash(f"sources/{name}"):
@@ -265,6 +312,10 @@ def main() -> int:
         checklist(compact="--compact" in sys.argv)
     elif command == "digest":
         digest()
+    elif command == "stale-submissions":
+        stale = stale_submissions()
+        print("\n".join(stale))
+        return int(bool(stale))
     else:
         print(__doc__, file=sys.stderr)
         return 2
