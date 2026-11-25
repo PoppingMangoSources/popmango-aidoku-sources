@@ -58,7 +58,6 @@ impl Source for Swarm {
 						search.sort = sort;
 					}
 				}
-				// A tapped tag sends its name, which is either a genre or a tag.
 				FilterValue::Select { id, value } if id == "genre" && !value.is_empty() => {
 					let genres = get::<Genres>(&format!("{API_URL}/manga/genres"))?.genres;
 					if genres.contains(&value) {
@@ -70,7 +69,6 @@ impl Source for Swarm {
 				FilterValue::MultiSelect { id, included, .. } => match id.as_str() {
 					"genre" => search.genres.extend(included),
 					"type" => search.content.types = Some(included),
-					// As on the site, All or both ratings mean every title.
 					"rating" => {
 						search.content.rating = match included.as_slice() {
 							[only] => only.clone(),
@@ -94,7 +92,6 @@ impl Source for Swarm {
 				_ => {}
 			}
 		}
-		// A genre or tag included in a search overrides its exclusion in settings.
 		let content = &mut search.content;
 		content
 			.excluded_genres
@@ -170,7 +167,7 @@ impl Source for Swarm {
 			.body(format!(r#"{{"payload":"{payload}"}}"#))
 			.send()?;
 		let images = parse::<Pages>(response)?.chapter.data;
-		// The site's placeholder for an upload it has no pages for.
+		// `/noah/fall.png` is the site's missing-page placeholder.
 		if images.is_empty()
 			|| images
 				.iter()

@@ -51,8 +51,7 @@ fn feed_url(feed: Feed, content: &Content) -> String {
 	}
 }
 
-// The update feeds list one row per chapter; each series keeps its first, in the site's order.
-// A blocked uploader also blocks its numbered copies, as in the chapter list.
+// Keep only the first chapter entry per series in site order.
 pub fn updates(updates: Vec<Update>, content: &Content) -> Vec<Update> {
 	let blocked = settings::blocked_uploaders();
 	let mut kept: Vec<Update> = Vec::new();
@@ -74,7 +73,6 @@ pub fn updates(updates: Vec<Update>, content: &Content) -> Vec<Update> {
 	kept
 }
 
-// An empty row is left out rather than shown as a title over nothing.
 pub fn fill(
 	feed: Feed,
 	response: Response,
@@ -109,7 +107,6 @@ pub fn fill(
 				listing: None,
 			})
 		}
-		// Novels are English and typed "Novel", with no rating or genres to check.
 		Feed::Novels if content.allows_novels() => {
 			row(parse::<models::Response<Vec<Novel>>>(response)?
 				.data
@@ -145,7 +142,6 @@ impl Home for Swarm {
 			.iter()
 			.map(|(_, feed)| request(&feed_url(*feed, &content)))
 			.collect::<Result<Vec<_>>>()?;
-		// The final layout removes failed-section placeholders.
 		let mut failure = None;
 		let components: Vec<_> = SECTIONS
 			.iter()

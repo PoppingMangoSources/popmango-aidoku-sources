@@ -11,7 +11,6 @@ pub fn content_rating() -> String {
 	defaults_get::<String>("contentRating").unwrap_or_else(|| "safe".into())
 }
 
-// None when all 16 types in `settings.json` are selected.
 pub fn types() -> Option<Vec<String>> {
 	defaults_get::<Vec<String>>("types").filter(|types| types.len() < 16)
 }

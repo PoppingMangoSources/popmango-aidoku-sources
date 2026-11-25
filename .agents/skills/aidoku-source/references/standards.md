@@ -461,6 +461,18 @@ user-visible fixes) were flagged again on these PRs.
 | `ALLOWED_HOSTS` / `ALLOWED_SCHEMES` in `handle_deep_link` and an unverified `www.` subdomain ("only `https` links will be sent... so checking is unnecessary", "`www.novelbuddy.me` urls won't be sent to the source unless it's added to the `urls` field in `source.json`", "does the `www` subdomain work for you? I don't think it's valid", #917, #918) | Do not add host or scheme allowlists in `handle_deep_link` (the app only dispatches matching `source.json` URLs), and never add `www.` to `source.json` `urls` without verifying it actually resolves. | R |
 | Per-column `copy_image` directly from a downloaded image in `PageImageProcessor` (#915) | Drawing a downloaded image once into a canvas bitmap before heavy per-column/tile `copy_image` loops avoids repeated iOS `cgImage` crops that can stall page loading on device. | R |
 
+### From #912 and #928 (other contributors, November 25)
+
+Read on 2026-11-25 from the review comments API; quotes are kkantan's.
+
+| What was flagged | The rule | |
+|---|---|---|
+| Fetching chapters for every search/listing result to support min/max chapter filters ("requesting chapters for every result is not a good idea. if that is the only way to support the chapter filters, it's not worth it", #928) | Never issue per-result detail or chapter requests to implement a search filter locally; omit a filter when the site's search/listing endpoint cannot evaluate it without N+1 requests. | R |
+| Version bumped by more than one ("the source version should only be incremented by one", #928) | Increment `source.json` `version` by exactly 1 per upstream update PR. | F |
+| Tests written inline in `src/lib.rs` ("I would prefer if this was moved into a `tests.rs` file instead", #928) | Keep tests out of `src/lib.rs` (in a separate `test.rs` / `tests.rs` module). | F |
+| Porting a legacy source (`fr.bluesolo`) without checking legacy keys ("does this use the same keys as the legacy source? if not, you should set `breakingChangeVersion` to `2`", #912) | When migrating a source from `Aidoku-Community/legacy-sources`, compare its series and chapter key format against the legacy implementation and set `breakingChangeVersion` when keys differ. | R |
+| `get_manga_update` using `into_minimal_manga` instead of `Into::into` ("this function should still use `Into::into`, since it's used by `get_manga_update` to set details. otherwise you're missing stuff like the description. `to_mangas`, however, should use `into_minimal_manga` directly since it's used for listing results", #912) | Keep full `Into::into` (or `into_details`) on the `get_manga_update` path and use `into_minimal_manga` / `into_basic_manga` exclusively for search, listing, and non-hero home cards. | R |
+
 ### From #878, #894, #909 and #912 (other contributors, November 18-19)
 
 Read on 2026-11-20 from the review comments API; every review body was empty, so the inline

@@ -425,7 +425,6 @@ fn canonical_number_key(number: Option<f32>, raw: &str) -> core::result::Result<
 }
 
 impl ChapterItem {
-	// The site's Uploader column; a numbered one ("official2") is another copy from that origin.
 	fn uploader(&self) -> &str {
 		[&self.source_name, &self.source, &self.scan_group]
 			.into_iter()
@@ -441,7 +440,6 @@ impl ChapterItem {
 			.to_lowercase()
 	}
 
-	// The site's pick among uploads: the lowest rank letter, then the first copy.
 	fn site_order(&self) -> (&str, u32) {
 		let uploader = self.uploader();
 		let copy = uploader
@@ -478,7 +476,6 @@ impl ChapterItem {
 		let language = String::from(self.language());
 		let (volume_number, title) = clean_title_and_volume(self.title.as_deref(), number);
 		let scanlators = Some(vec![self.uploader().into()]);
-		// The reader picks an upload by its rank letter, "a" being the default.
 		let query = self
 			.rank
 			.as_deref()
@@ -530,7 +527,6 @@ pub fn chapter_list(
 			0
 		}
 	};
-	// Sort newest-first by chapter number; within a number, prefer the user's pick then site rank.
 	items.sort_unstable_by(|a, b| {
 		let num_cmp = match (b.effective_number(), a.effective_number()) {
 			(Some(bn), Some(an)) => bn.total_cmp(&an),
@@ -549,7 +545,6 @@ pub fn chapter_list(
 			.map(|item| item.into_chapter(slug))
 			.collect();
 	}
-	// Because items are sorted by (number desc, preference, site_order), the first seen wins.
 	let mut seen = BTreeSet::new();
 	items
 		.into_iter()

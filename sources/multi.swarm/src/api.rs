@@ -40,7 +40,6 @@ impl Content {
 		}
 	}
 
-	// The site's rating parameters, as its own pages send them.
 	pub fn rating_query(&self, query: &mut QueryParameters, feed: bool) {
 		match self.rating.as_str() {
 			"safe" => {
@@ -62,7 +61,6 @@ impl Content {
 		}
 	}
 
-	// A cleared language or type selection shows nothing.
 	pub fn cleared(&self) -> bool {
 		self.languages.is_empty() || self.types.as_ref().is_some_and(|types| types.is_empty())
 	}
@@ -83,7 +81,6 @@ impl Content {
 		}
 	}
 
-	// Applied to whatever each record carries; records without a field pass it.
 	pub fn allows(&self, title: &Title) -> bool {
 		let kind = title.kind.as_deref().filter(|kind| !kind.is_empty());
 		let typed = self.types.as_ref().is_none_or(|types| {
@@ -145,7 +142,7 @@ impl SearchParams {
 		if !self.genres.is_empty() {
 			query.push("genres", Some(&self.genres.join(",")));
 		}
-		// Titles carry their type in either case.
+		// Records store mixed-case type values.
 		if let Some(types) = &self.content.types {
 			let both: Vec<String> = types
 				.iter()
@@ -174,10 +171,9 @@ impl SearchParams {
 		};
 		// Both paths are fixed, so the query starts here.
 		let response: Listing<Title> = get(&format!("{API_URL}/{path}?{query}"))?;
-		// With a filter set, the total is only the offset plus one page.
 		let has_next_page = !response.data.is_empty()
 			&& response.total.unwrap_or_default() > (offset + response.data.len()) as i64;
-		// The site takes no maximum; text search results carry no count.
+		// API accepts `minChapters` only; filter upper bound locally when `chapterCount` is present.
 		let fits = |title: &Title| match (self.chapters.1, title.chapter_count) {
 			(Some(to), Some(count)) => count <= to,
 			_ => true,
@@ -194,7 +190,6 @@ impl SearchParams {
 	}
 }
 
-// The comic page carries the series and every upload as `initialData`.
 pub fn comic_page(slug: &str) -> Result<ComicPage> {
 	// A series key is a bare slug, so the query starts here.
 	let response = Request::get(format!("{BASE_URL}/comic/{slug}?_rsc"))?
@@ -205,7 +200,7 @@ pub fn comic_page(slug: &str) -> Result<ComicPage> {
 		bail!("Swarm returned status {status}");
 	}
 	let body = response.get_string()?;
-	// The first `initialData` that reads as a comic page; another object can carry the name.
+	// Other RSC chunks can use `"initialData"` with a different schema.
 	let marker = r#""initialData":"#;
 	body.match_indices(marker)
 		.find_map(|(start, _)| {
