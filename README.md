@@ -65,7 +65,7 @@ These are Aidoku sources for sites that aren't in [Aidoku Community sources](htt
 </tr>
 <tr>
 <td align="center" width="50%"><img src="sources/multi.swarm/res/icon.png" width="64"/><br/><b>Swarm</b><br/><sub><a href="https://swarm.ws">swarm.ws</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.swarm-v6.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/multi.swarm-v6.aix">.aix (v6)</a></sub></td>
-<td align="center" width="50%"><img src="media/sources/templescan.png" width="64"/><br/><b>Temple Scan</b><br/><sub><a href="https://templetoons.com">templetoons.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v8.aix">.aix (v8)</a></sub></td>
+<td align="center" width="50%"><img src="media/sources/templescan.png" width="64"/><br/><b>Temple Scan</b><br/><sub><a href="https://templetoons.com">templetoons.com</a></sub><br/><img src="media/heat-1.svg" alt="17+" height="18"/><br/><br/><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v9.aix"><img src="media/route-button.svg" alt="Choose route" height="30"/></a><br/><sub><a href="https://poppingmangosources.github.io/popmango-aidoku-sources/sources/en.templescan-v9.aix">.aix (v9)</a></sub></td>
 </tr>
 </table>
 

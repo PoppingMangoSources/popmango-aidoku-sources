@@ -1,0 +1,20 @@
+[
+	{
+		"type": "group",
+		"title": "Verify Captcha",
+		"items": [
+			{
+				"type": "login",
+				"method": "web",
+				"url": "https://templetoons.com/challenge?redirect=%2F",
+				"key": "verify",
+				"title": "Verify Temple Scan Captcha",
+				"logoutTitle": "Re-Verify Temple Scan Captcha",
+				"refreshes": [
+					"content"
+				]
+			}
+		],
+		"footer": "Open this if Temple Scan asks for verification. Cookies are kept for the source once completed."
+	}
+]
