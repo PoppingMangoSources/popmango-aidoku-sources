@@ -10,7 +10,13 @@ from pathlib import Path
 
 SOURCE_ID = re.compile(r"(?:[a-z]{2,3}|multi)\.[a-z0-9][a-z0-9.-]*\Z")
 TEMPLATE_DEPENDENCY = re.compile(r'path\s*=\s*"\.\./\.\./templates/([A-Za-z0-9_-]+)"')
-SOURCE_BRANCHES = {"fix/kagane-chapter-fetch": "multi.kagane", "fix-eternal": "es.eternalmangas"}
+SOURCE_BRANCHES = {
+    "fix/kagane-chapter-fetch": "multi.kagane",
+    "fix-eternal": "es.eternalmangas",
+    "feat/kagane-update-mirrors": "multi.kagane",
+    "feat/xcomic-update-mirrors": "multi.xcomic",
+    "feat/aquamanga-update-domain": "en.aquamanga",
+}
 TEMPLATE_BRANCH = re.compile(r"feat/([a-z0-9_]+)-template\Z")
 
 
