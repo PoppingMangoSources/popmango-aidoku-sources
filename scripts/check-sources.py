@@ -488,6 +488,11 @@ def check_rust(source: Path, single_language: bool) -> None:
             call = FULL_PATH_CALL.search(line)
             if call and not line.lstrip().startswith(("use ", "pub use ", "//")):
                 note(path, f"{where} calls {call.group(0)[:-1]} by its full path; import it")
+            if not line.lstrip().startswith("//"):
+                if re.search(r"\bSome\([^)]*\.into\(\)\)\.filter\([^)]*!\w+\.is_empty\(\)", line):
+                    note(path, f"{where} allocates a String before checking is_empty(); use (!s.is_empty()).then(|| s.into())")
+                if re.search(r'"[^"]*\?\{[a-z_]+\}&', line):
+                    note(path, f"{where} appends & after a query string variable; push every parameter into QueryParameters")
             for pattern, message in LINE_RULES:
                 if pattern.search(line):
                     fail(path, f"{where} {message}")

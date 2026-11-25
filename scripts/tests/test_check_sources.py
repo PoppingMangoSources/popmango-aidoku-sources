@@ -722,6 +722,28 @@ class SurvivingMutantTests(unittest.TestCase):
         self.assertEqual(self.outcome(checks.check_rust, self.source, True), [])
         self.assertFalse(any('one short helper function' in item for item in checks.notes), checks.notes)
 
+    def test_empty_string_allocated_before_filter_and_query_concat_notes(self):
+        self.write(
+            'src/lib.rs',
+            'fn bad(name: &str, qs: &str) -> (Option<String>, String) {\n'
+            '\t(Some(name.into()).filter(|s: &String| !s.is_empty()), format!("{BASE_URL}/search?{qs}&page=1"))\n'
+            '}\n',
+        )
+        checks.notes.clear()
+        self.assertEqual(self.outcome(checks.check_rust, self.source, True), [])
+        self.assertTrue(any('allocates a String before checking is_empty()' in item for item in checks.notes), checks.notes)
+        self.assertTrue(any('appends & after a query string variable' in item for item in checks.notes), checks.notes)
+        self.write(
+            'src/lib.rs',
+            'fn good(name: &str, qs: &str) -> (Option<String>, String) {\n'
+            '\t((!name.is_empty()).then(|| name.into()), format!("{BASE_URL}/search?{qs}"))\n'
+            '}\n',
+        )
+        checks.notes.clear()
+        self.assertEqual(self.outcome(checks.check_rust, self.source, True), [])
+        self.assertFalse(any('allocates a String before checking is_empty()' in item for item in checks.notes), checks.notes)
+        self.assertFalse(any('appends & after a query string variable' in item for item in checks.notes), checks.notes)
+
 
 class KeyoappHttpTests(unittest.TestCase):
     def test_only_checked_fetches_are_allowed_in_keyoapp_parsers(self):

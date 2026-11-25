@@ -28,7 +28,7 @@ sources:
   - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/blob/3fbdaee/sources/en.lewdmanhwa/res/settings.json
   - ext: https://toonz.to/comics
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/en/toonz
-verified_at: 9f4bbf5
+verified_at: 119527c
 ---
 
 Toonz (`toonz.to`), Toonx (`toonx.to`), LewdManhwa (`lewdmanhwa.com`) and WebtoonClub

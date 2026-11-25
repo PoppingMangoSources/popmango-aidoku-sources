@@ -141,8 +141,17 @@ that shipped:
       (matching `vinetheme`, `en.webnex`, `toonz`); templates re-export shared helpers so
       consumers with custom overrides don't duplicate scanners or add `serde_json`
 - [ ] Guard `FilterValue::Select { id, value } if !value.is_empty()` so an empty `"Any"` option
-      cannot overwrite a setting-backed filter default; when Next.js streams `S:` chunks outside
-      `<main>`, select against the whole document
+      cannot overwrite a setting-backed filter default, and initialize omitted select defaults to
+      match each filter's first option (#878); when Next.js streams `S:` chunks outside `<main>`,
+      select against the whole document
+- [ ] Push every query parameter (including `page`) into the same `QueryParameters` instead of
+      concatenating `?{qs}&page=...` (#918); test `!s.is_empty()` before allocating a `String`
+      rather than `Some(s.into()).filter(|s| !s.is_empty())` (#899)
+- [ ] Collect tags then `sort_unstable()` + `dedup()` rather than linear `!tags.contains()` per
+      tag (#915); when a feed only gives boolean `is_nsfw`, map `false` to `ContentRating::Unknown`
+      (#917); in HTML-to-Markdown converters, recurse into unknown tags and escape text nodes (#918)
+- [ ] No host or scheme allowlists in `handle_deep_link` (the app dispatches matching `source.json`
+      URLs only), and verify any `www.` subdomain works before adding it to `urls` (#917, #918)
 - [ ] `.json_owned()` rather than `.string()` plus `serde_json::from_str`; `parse_date`
       rather than a hand-written parser; no `JsContext` where a Rust crate does the job
 - [ ] An Option goes straight to a callee that takes one (`if query.is_some() { qs.push("q", query.as_deref()) }`); no `if let Some(q) = q { push(.., Some(&q)) }`
