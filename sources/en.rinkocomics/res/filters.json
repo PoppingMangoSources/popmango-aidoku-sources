@@ -2,7 +2,45 @@
 	{
 		"type": "sort",
 		"id": "sort",
+		"title": "Sort",
 		"canAscend": false,
-		"options": ["Newest First", "Oldest First", "A-Z", "Z-A"]
+		"options": [
+			"Latest Update",
+			"Most Viewed",
+			"Newest Series",
+			"A-Z"
+		]
+	},
+	{
+		"type": "select",
+		"id": "type",
+		"title": "Type",
+		"options": [
+			"Comics",
+			"Novels"
+		],
+		"ids": [
+			"comic",
+			"novel"
+		]
+	},
+	{
+		"type": "select",
+		"id": "status",
+		"title": "Status",
+		"options": [
+			"Any",
+			"Ongoing",
+			"Completed",
+			"Season End",
+			"Dropped"
+		],
+		"ids": [
+			"",
+			"ongoing",
+			"completed",
+			"season_end",
+			"dropped"
+		]
 	}
 ]
