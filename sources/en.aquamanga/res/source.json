@@ -2,8 +2,8 @@
 	"info": {
 		"id": "en.aquamanga",
 		"name": "Aqua Manga",
-		"version": 2,
-		"url": "https://aquareader.org",
+		"version": 3,
+		"url": "https://aquamanga.io",
 		"contentRating": 1,
 		"languages": [
 			"en"
