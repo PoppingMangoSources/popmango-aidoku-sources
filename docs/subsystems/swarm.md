@@ -2,7 +2,7 @@
 title: Swarm (multi.swarm)
 type: subsystem
 created: 2026-11-19
-updated: 2026-11-25
+updated: 2026-11-26
 sources:
   - code: sources/multi.swarm/src/lib.rs
   - code: sources/multi.swarm/src/api.rs
@@ -16,11 +16,11 @@ sources:
   - code: sources/multi.swarm/res/source.json
   - ext: https://swarm.ws/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/swarm
-verified_at: 9f0af67
+verified_at: 15b35c7
 ---
 
 Swarm (`swarm.ws`) is a Next.js site over a JSON API, reachable from the sandbox; the live
-suite runs. Probed on 2026-11-19.
+suite runs. Probed on 2026-11-19 and 2026-11-26.
 
 ## Requests
 
@@ -30,9 +30,21 @@ suite runs. Probed on 2026-11-19.
 - Series and chapters: `/comic/{slug}?_rsc` with `RSC: 1`, the `initialData` object
   (`api.rs` `comic_page`). Chapter keys are upload ids.
 - Pages: `POST /api/sp` with `{"payload":"ivHex:cipherHex"}`, AES-256-CBC under SHA-256 of a
-  constant from the site's reader (`helpers.rs` `encrypt_payload`).
+  constant from the site's reader (`helpers.rs` `encrypt_payload`); relative entries resolve
+  against `baseUrl` (`models.rs` `Pages::into_urls`).
 - Novels: `/api/novel`, `/api/novel/{slug}`, `/api/novel/{slug}/chapter/{n}`; keys `novel/{slug}`.
-- Home: popular and new-comics analytics (`window=7d`), `/api/latest?filter=hot|new`, novels.
+- Home: popular and new-comics analytics (`window=7d&limit=25`), `/api/latest?filter=hot|new`,
+  novels (`home.rs`).
+
+> ⚠️ `/api/latest` intermittently stalls on cache misses (up to Cloudflare 524). Match the site's
+> query order (`limit=50&filter=...&nsfw=...&suggestive=...&page=1`), cap home timeouts at 8s,
+> and load Popular, New Comics, and Novels first via `HomePartialResult::Component` so Discover
+> renders in under a second instead of holding the `Interpreter` WASM actor lock.
+
+> ⚠️ Do not register `ImageRequestProvider` on Swarm: the site's reader renders chapter `<img>`
+> tags with `referrerPolicy="no-referrer"`, and `cash.swarm.ws`, `/covers/`, and `/api/image-proxy`
+> all answer without `Referer`; omitting `ImageRequestProvider` lets Aidoku fetch covers and
+> chapter pages in parallel without queuing on the single-threaded WASM `Interpreter` actor.
 
 > ⚠️ Any filter collapses `total` to offset plus one page plus one, so the next page is
 > "total exceeds what was shown", not a real count.

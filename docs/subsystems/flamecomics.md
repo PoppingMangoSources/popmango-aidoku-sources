@@ -2,12 +2,12 @@
 title: Flame Comics (en.flamecomics)
 type: subsystem
 created: 2026-11-01
-updated: 2026-11-02
+updated: 2026-11-26
 sources:
-  - ext: https://github.com/PoppingMangoSources/popmango-aidoku-sources/tree/171e770833b81843aa13c36514d13d6ca11ca25a/sources/en.flamecomics
+  - ext: https://github.com/Aidoku-Community/sources/tree/main/sources/en.flamecomics
   - ext: https://github.com/Aidoku-Community/sources/pull/860
-  - ext: https://github.com/Aidoku-Community/sources/issues/855
-verified_at: d1c881a
+  - ext: https://github.com/Aidoku-Community/sources/issues/930
+verified_at: 15b35c7
 ---
 
 Flame Comics (`flamecomics.xyz`) is a Next.js site. Its `/api` has only narrow endpoints:
@@ -23,12 +23,8 @@ The old source scraped Mantine class names by position. The site's markup moved 
 gave issue 855: untitled latest rows, novels that would not open, and a crash from a date
 parser that called `expect`.
 
-> ⚠️ The crate is not on `main`. It was removed while upstream PR 860 is open; the submission is
-> the `fix/en.flamecomics` branch, and the last copy on `main`, with its live tests in
-> `src/test.rs`, is commit `171e770`. A review round builds from that commit:
-> `scripts/pr-branch.sh en.flamecomics --branch fix/en.flamecomics --from 171e770 --fix …`, after
-> restoring the crate on `main` if the change needs testing there. Function names below refer
-> to that commit.
+> ⚠️ The crate lives upstream only (merged in PR 860; last fork copy with `src/test.rs` at
+> `171e770`). Maintenance branches cut straight from `upstream/main` (`fix-flame-titles`).
 
 ## Keys
 
@@ -36,7 +32,17 @@ Series and novels have separate id spaces that overlap (`/series/12` and `/novel
 different titles), so keys are the site's paths, `/series/{id}` and `/novel/{id}`
 (`key` in `helpers.rs`), and chapter keys are `/{token}`. These are the
 keys the old source used, so libraries and read history carry over without a
-`breakingChangeVersion`.
+`breakingChangeVersion`. `labelNovels` (`Label Novels`, default `true`) appends ` (Novel)`
+to novel titles on browse, home, and details so comics and novels sharing a title remain
+distinguishable.
+
+> ⚠️ On detail pages, a comic with a novel adaptation carries **both** `series_id` and
+> `novel_id` in `pageProps.series` (for example `/series/2` has `series_id: 2, novel_id: 8`),
+> and a novel with a comic adaptation carries both in `pageProps.novels` (`/novel/8` has
+> `series_id: 2, novel_id: 8`). Never prefer `novel_id` unconditionally: classify cards by
+> `type` (`"Novel" | "Web Novel"`, falling back to `series_id.is_none() && novel_id.is_some()`),
+> and pass `manga.key.starts_with("/novel/")` into `into_details` so comic detail refreshes keep
+> `/series/{id}` keys, URLs, and covers.
 
 ## Home
 

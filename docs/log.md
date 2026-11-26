@@ -248,3 +248,13 @@ after upstream merged the mirror cleanup dropping `xcomic.net` and `yona.to`. Re
 and [[mangak-template]] at `9f0af67`, and recorded the November 25 upstream review comments and the
 Kagane reader-CDN mirror check in the shared `standards.md` references.
 
+## 2026-11-26 Flame Comics linked novels, Kagane upstream diff, and Swarm speed
+
+Restored existing upstream comments and untouched code on `feat/kagane-update-mirrors` (`5ab4aa9`).
+Prepared `fix-flame-titles` for `en.flamecomics` to keep `/series/` keys, URLs, and covers when a
+comic links a novel adaptation and add `labelNovels` (`Label Novels`), recorded in [[flamecomics]].
+Updated `multi.swarm` (`15b35c7`, v9) to stream fast Home rows first via `HomePartialResult::Component`
+with bounded 8s timeouts and cached `/api/latest` parameter order, resolve relative `/api/sp`
+`baseUrl` paths, and drop `ImageRequestProvider` so covers and chapter pages load natively in
+parallel without `Interpreter` actor contention; synced [[swarm]].
+
