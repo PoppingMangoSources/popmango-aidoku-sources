@@ -162,6 +162,7 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(scope.source_for_branch('feat/kagane-update-mirrors'), 'multi.kagane')
         self.assertEqual(scope.source_for_branch('feat/xcomic-update-mirrors'), 'multi.xcomic')
         self.assertEqual(scope.source_for_branch('feat/aquamanga-update-domain'), 'en.aquamanga')
+        self.assertEqual(scope.source_for_branch('fix-flame-titles'), 'en.flamecomics')
         self.assertIsNone(scope.source_for_branch('chore/en.example-before-rebuild-12345678'))
         self.assertIsNone(scope.source_for_branch('feat/keyoapp-template'))
         self.assertEqual(scope.template_for_branch('feat/keyoapp-template'), 'keyoapp')

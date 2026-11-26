@@ -194,6 +194,7 @@ pub fn comic_page(slug: &str) -> Result<ComicPage> {
 	// A series key is a bare slug, so the query starts here.
 	let response = Request::get(format!("{BASE_URL}/comic/{slug}?_rsc"))?
 		.header("RSC", "1")
+		.timeout(15.0)
 		.send()?;
 	let status = response.status_code();
 	if !(200..300).contains(&status) {
@@ -216,6 +217,7 @@ pub fn site_headers(request: Request) -> Request {
 	request
 		.header("Accept", "application/json")
 		.header("Referer", &format!("{BASE_URL}/"))
+		.timeout(15.0)
 }
 
 pub fn request(url: &str) -> Result<Request> {

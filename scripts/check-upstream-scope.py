@@ -16,6 +16,7 @@ SOURCE_BRANCHES = {
     "feat/kagane-update-mirrors": "multi.kagane",
     "feat/xcomic-update-mirrors": "multi.xcomic",
     "feat/aquamanga-update-domain": "en.aquamanga",
+    "fix-flame-titles": "en.flamecomics",
 }
 TEMPLATE_BRANCH = re.compile(r"feat/([a-z0-9_]+)-template\Z")
 

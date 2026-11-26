@@ -581,3 +581,28 @@ fn deep_links() {
 		Some(DeepLinkResult::Manga { key }) if key == NOVEL
 	));
 }
+
+#[aidoku_test]
+fn review_page_urls_resolve_relative_proxy_paths() {
+	let pages: Pages = serde_json::from_str(
+		r#"{
+			"baseUrl": "/api/secure-proxy/tok",
+			"chapter": {
+				"data": [
+					"https://cash.swarm.ws/noah/abc/1.webp",
+					"/api/storage/2.webp",
+					"3.jpg"
+				]
+			}
+		}"#,
+	)
+	.unwrap();
+	assert_eq!(
+		pages.into_urls(),
+		[
+			"https://cash.swarm.ws/noah/abc/1.webp",
+			"https://swarm.ws/api/storage/2.webp",
+			"https://swarm.ws/api/secure-proxy/tok/3.jpg",
+		]
+	);
+}

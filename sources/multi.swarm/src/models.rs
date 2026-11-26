@@ -118,12 +118,35 @@ pub struct NovelText {
 
 #[derive(Deserialize)]
 pub struct Pages {
-	pub chapter: PageUrls,
+	#[serde(rename = "baseUrl")]
+	base_url: Option<String>,
+	chapter: PageUrls,
 }
 
 #[derive(Deserialize)]
-pub struct PageUrls {
-	pub data: Vec<String>,
+struct PageUrls {
+	data: Vec<String>,
+}
+
+impl Pages {
+	pub fn into_urls(self) -> Vec<String> {
+		let base = self.base_url.unwrap_or_default();
+		self.chapter
+			.data
+			.into_iter()
+			.map(|path| {
+				if path.is_empty() || path.starts_with("https://") || path.starts_with("http://") {
+					path
+				} else if path.starts_with('/') {
+					format!("{BASE_URL}{path}")
+				} else if base.starts_with("https://") || base.starts_with("http://") {
+					format!("{}/{path}", base.trim_end_matches('/'))
+				} else {
+					format!("{BASE_URL}{}/{path}", base.trim_end_matches('/'))
+				}
+			})
+			.collect()
+	}
 }
 
 // Some records hold their lists as Python reprs ("['Action', \"Boys' Love\"]").

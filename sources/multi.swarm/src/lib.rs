@@ -8,14 +8,14 @@ mod settings;
 mod test;
 
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Manga,
-	MangaPageResult, Page, PageContent, PageContext, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Manga, MangaPageResult, Page,
+	PageContent, Result, Source,
 	alloc::{String, Vec, format, vec},
 	helpers::string::PlainText,
 	imports::net::Request,
 	prelude::*,
 };
-use api::{API_URL, BASE_URL, SORTS, SearchParams, comic_page, get, parse, site_headers};
+use api::{API_URL, SORTS, SearchParams, comic_page, get, parse, site_headers};
 use helpers::{Link, encrypt_payload, parse_link};
 use models::{Genres, NOVEL_PREFIX, Novel, NovelText, Pages, Response, chapter_list};
 
@@ -166,7 +166,7 @@ impl Source for Swarm {
 			.header("Content-Type", "application/json")
 			.body(format!(r#"{{"payload":"{payload}"}}"#))
 			.send()?;
-		let images = parse::<Pages>(response)?.chapter.data;
+		let images = parse::<Pages>(response)?.into_urls();
 		// `/noah/fall.png` is the site's missing-page placeholder.
 		if images.is_empty()
 			|| images
@@ -182,12 +182,6 @@ impl Source for Swarm {
 				..Default::default()
 			})
 			.collect())
-	}
-}
-
-impl ImageRequestProvider for Swarm {
-	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
-		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
 	}
 }
 
@@ -217,4 +211,4 @@ impl DeepLinkHandler for Swarm {
 	}
 }
 
-register_source!(Swarm, Home, ImageRequestProvider, DeepLinkHandler);
+register_source!(Swarm, Home, DeepLinkHandler);

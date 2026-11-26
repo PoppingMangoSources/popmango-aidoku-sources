@@ -36,16 +36,16 @@ pub const SECTIONS: [(&str, Feed); 5] = [
 
 fn feed_url(feed: Feed, content: &Content) -> String {
 	match feed {
-		Feed::Popular => format!("{API_URL}/analytics/popular?window=7d&limit=50&offset=0"),
-		Feed::NewComics => format!("{API_URL}/analytics/new-comics?window=7d&limit=50&offset=0"),
+		Feed::Popular => format!("{API_URL}/analytics/popular?window=7d&limit=25&offset=0"),
+		Feed::NewComics => format!("{API_URL}/analytics/new-comics?window=7d&limit=25&offset=0"),
 		Feed::Novels => format!("{API_URL}/novel"),
 		Feed::Hot | Feed::New => {
 			let filter = if let Feed::Hot = feed { "hot" } else { "new" };
 			let mut query = QueryParameters::new();
 			query.push_encoded("limit", Some("50"));
 			query.push_encoded("filter", Some(filter));
-			query.push_encoded("page", Some("1"));
 			content.rating_query(&mut query, true);
+			query.push_encoded("page", Some("1"));
 			format!("{API_URL}/latest?{query}")
 		}
 	}
@@ -138,31 +138,34 @@ impl Home for Swarm {
 				.collect(),
 		}));
 
-		let requests = SECTIONS
-			.iter()
-			.map(|(_, feed)| request(&feed_url(*feed, &content)))
-			.collect::<Result<Vec<_>>>()?;
+		let mut loaded: [Option<HomeComponent>; 5] = Default::default();
 		let mut failure = None;
-		let components: Vec<_> = SECTIONS
-			.iter()
-			.zip(Request::send_all(requests))
-			.filter_map(|((title, feed), response)| {
+		for batch in [&[0usize, 3, 4][..], &[1, 2][..]] {
+			let requests = batch
+				.iter()
+				.map(|&index| Ok(request(&feed_url(SECTIONS[index].1, &content))?.timeout(8.0)))
+				.collect::<Result<Vec<_>>>()?;
+			for (&index, response) in batch.iter().zip(Request::send_all(requests)) {
+				let (title, feed) = SECTIONS[index];
 				match response
 					.map_err(AidokuError::from)
-					.and_then(|response| fill(*feed, response, &content))
+					.and_then(|response| fill(feed, response, &content))
 				{
-					Ok(value) => Some(HomeComponent {
-						title: Some(String::from(*title)),
-						subtitle: None,
-						value: value?,
-					}),
-					Err(error) => {
-						failure = Some(error);
-						None
+					Ok(Some(value)) => {
+						let component = HomeComponent {
+							title: Some(String::from(title)),
+							subtitle: None,
+							value,
+						};
+						send_partial_result(&HomePartialResult::Component(component.clone()));
+						loaded[index] = Some(component);
 					}
+					Ok(None) => {}
+					Err(error) => failure = Some(error),
 				}
-			})
-			.collect();
+			}
+		}
+		let components: Vec<_> = loaded.into_iter().flatten().collect();
 		if components.is_empty() {
 			return Err(failure.unwrap_or_else(|| error!("No home sections")));
 		}
