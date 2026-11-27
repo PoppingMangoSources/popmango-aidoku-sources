@@ -13,18 +13,30 @@ use aidoku::{
 	imports::{net::Request, std::send_partial_result},
 	prelude::*,
 };
-use api::{BASE_URL, SORTS, SearchParams, get, html};
-use core::cell::RefCell;
-use helpers::{chapters, details, next_page, terms, title_url};
-use models::Years;
+use api::{BASE_URL, SORTS, SearchParams, confirm_age, get, html, parse, rpc};
+use core::cell::{Cell, RefCell};
+use helpers::{chapters, details, gated, language_pages, next_page, terms};
+use models::{GatedInput, GatedReader, GatedTitle, Reading, Years};
 
 struct OniSaga {
 	// The site pages with signed cursors only.
 	cursor: RefCell<Option<String>>,
+	age_confirmed: Cell<bool>,
 }
 
 impl OniSaga {
+	fn confirm_age(&self) -> Result<()> {
+		if !self.age_confirmed.get() {
+			confirm_age()?;
+			self.age_confirmed.set(true);
+		}
+		Ok(())
+	}
+
 	fn page(&self, mut search: SearchParams, page: i32) -> Result<MangaPageResult> {
+		if search.adult() {
+			self.confirm_age()?;
+		}
 		if page > 1 {
 			let Some(cursor) = self.cursor.take() else {
 				return Ok(MangaPageResult::default());
@@ -41,6 +53,7 @@ impl Source for OniSaga {
 	fn new() -> Self {
 		Self {
 			cursor: RefCell::new(None),
+			age_confirmed: Cell::new(false),
 		}
 	}
 
@@ -108,31 +121,65 @@ impl Source for OniSaga {
 		needs_chapters: bool,
 	) -> Result<Manga> {
 		let languages = settings::languages();
-		let first = languages.first().map_or("en", String::as_str);
-		let doc = get(&title_url(&manga.key, first))?;
+		let doc = get(&format!(
+			"{BASE_URL}/title/{}?chapters=all&order=desc",
+			manga.key
+		))?;
+		if gated(&doc)? {
+			self.confirm_age()?;
+			let input = GatedInput {
+				slug: &manga.key,
+				release_id: None,
+			};
+			let title = parse::<GatedTitle>(rpc("account/titleView", input)?.send()?)?;
+			let mut update = title.into_manga(&manga.key, &languages);
+			if !needs_details {
+				manga.chapters = update.chapters;
+				return Ok(manga);
+			}
+			if !needs_chapters {
+				update.chapters = None;
+			}
+			manga.copy_from(update);
+			return Ok(manga);
+		}
 		if needs_details {
 			manga.copy_from(details(&doc, &manga.key)?);
 		}
 		if !needs_chapters {
 			return Ok(manga);
 		}
-		if needs_details && (languages.len() > 1 || next_page(&doc).is_some()) {
+
+		let alternatives = rsc::extract::<Reading>(&doc, &["alternatives"])
+			.ok_or_else(|| error!("OniSaga's title page has no language list"))?
+			.alternatives;
+		let targets = language_pages(&alternatives, &languages);
+		if needs_details
+			&& (targets.iter().any(|(_, url)| url.is_some()) || next_page(&doc).is_some())
+		{
 			send_partial_result(&manga);
 		}
-
-		// Each language has its own chapter pages.
-		let others = Request::send_all(
-			languages
+		let mut responses = Request::send_all(
+			targets
 				.iter()
-				.skip(1)
-				.map(|language| Request::get(title_url(&manga.key, language)))
+				.filter_map(|(_, url)| url.as_deref())
+				.map(Request::get)
 				.collect::<core::result::Result<Vec<_>, _>>()?,
-		);
-		let docs =
-			core::iter::once(Ok(doc)).chain(others.into_iter().map(|response| html(response?)));
+		)
+		.into_iter();
+		let mut current = Some(doc);
 		let mut list = Vec::new();
-		for (doc, language) in docs.zip(&languages) {
-			let mut doc = doc?;
+		for (language, url) in &targets {
+			let mut doc = match url {
+				Some(_) => html(
+					responses
+						.next()
+						.ok_or_else(|| error!("OniSaga didn't answer"))??,
+				)?,
+				None => current
+					.take()
+					.ok_or_else(|| error!("OniSaga listed two current languages"))?,
+			};
 			loop {
 				chapters(&doc, &manga.key, language, &mut list);
 				let Some(next) = next_page(&doc) else {
@@ -141,7 +188,7 @@ impl Source for OniSaga {
 				doc = get(&next)?;
 			}
 		}
-		if languages.len() > 1 {
+		if targets.len() > 1 {
 			// Stable, so each number keeps the reader's language order.
 			list.sort_by(|a, b| {
 				let number = |chapter: &Chapter| chapter.chapter_number.unwrap_or(-1.0);
@@ -154,18 +201,26 @@ impl Source for OniSaga {
 
 	fn get_page_list(&self, manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		let doc = get(&format!("{BASE_URL}/read/{}/{}", manga.key, chapter.key))?;
-		if doc.select_first("main[data-ui=content-gate]").is_some() {
-			bail!("OniSaga shows this chapter only to signed-in readers who allow its rating");
-		}
-		let pages = doc
-			.select("figure[data-page] img")
+		let urls = if gated(&doc)? {
+			self.confirm_age()?;
+			let input = GatedInput {
+				slug: &manga.key,
+				release_id: Some(&chapter.key),
+			};
+			parse::<GatedReader>(rpc("account/readerView", input)?.send()?)?.into_urls()
+		} else {
+			doc.select("figure[data-page] img")
+				.into_iter()
+				.flatten()
+				.map(|img| img.attr("src").unwrap_or_default())
+				.collect()
+		};
+		let pages = urls
 			.into_iter()
-			.flatten()
-			.map(|img| {
-				img.attr("src")
-					.filter(|src| !src.is_empty())
-					.map(|src| Page {
-						content: PageContent::url(src),
+			.map(|url| {
+				(!url.is_empty())
+					.then(|| Page {
+						content: PageContent::url(url),
 						..Default::default()
 					})
 					.ok_or_else(|| error!("OniSaga left a page without an image"))

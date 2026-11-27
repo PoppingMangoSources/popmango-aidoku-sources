@@ -1,6 +1,6 @@
 use crate::{
 	api::{BASE_URL, CDN_URL},
-	models::parse_time,
+	models::{Alternative, parse_time},
 };
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaStatus, Result, Viewer,
@@ -73,11 +73,6 @@ fn slug(name: &str) -> String {
 	slug
 }
 
-pub fn title_url(slug: &str, language: &str) -> String {
-	// Keys are bare slugs, without a query.
-	format!("{BASE_URL}/title/{slug}?chapters=all&order=desc&lang={language}")
-}
-
 // Page covers ask for a thumbnail width.
 fn full_size(src: String) -> String {
 	match src.split_once("&w=") {
@@ -109,10 +104,48 @@ pub fn title_link(element: &Element) -> Option<Manga> {
 	})
 }
 
-pub fn details(doc: &Document, key: &str) -> Result<Manga> {
-	if doc.select_first("main[data-ui=content-gate]").is_some() {
-		bail!("OniSaga shows this title only to signed-in readers who allow its rating");
+// Adult titles are a gate, filled from the API for guests who confirm their age.
+pub fn gated(doc: &Document) -> Result<bool> {
+	let Some(gate) = doc.select_first("main[data-ui=content-gate]") else {
+		return Ok(false);
+	};
+	if gate.attr("data-gate").as_deref() != Some("self-confirmation") {
+		bail!("OniSaga opens this only for a signed-in account allowed to see it");
 	}
+	Ok(true)
+}
+
+// Each chosen language the title has, with the page to read it from, or `None` for the page
+// already loaded. Some languages live only in another numbering, listed after the main one.
+pub fn language_pages<'a>(
+	alternatives: &[Alternative],
+	languages: &'a [String],
+) -> Vec<(&'a str, Option<String>)> {
+	languages
+		.iter()
+		.filter_map(|language| {
+			let mut matching = alternatives.iter().filter(|alternative| {
+				alternative
+					.href
+					.split(['?', '&'])
+					.any(|part| part.strip_prefix("lang=") == Some(language.as_str()))
+			});
+			let first = matching.next()?;
+			let alternative = if first.current {
+				first
+			} else {
+				matching
+					.find(|alternative| alternative.current)
+					.unwrap_or(first)
+			};
+			let url = (!alternative.current)
+				.then(|| format!("{BASE_URL}{}&chapters=all", alternative.href));
+			Some((language.as_str(), url))
+		})
+		.collect()
+}
+
+pub fn details(doc: &Document, key: &str) -> Result<Manga> {
 	let hero = doc
 		.select_first("section[aria-labelledby=work-title]")
 		.ok_or_else(|| error!("OniSaga returned no title page"))?;

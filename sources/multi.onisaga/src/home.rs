@@ -135,6 +135,9 @@ impl Home for OniSaga {
 		if search.is_empty() {
 			return Ok(HomeLayout::default());
 		}
+		if search.adult() {
+			self.confirm_age()?;
+		}
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: SECTIONS
 				.iter()

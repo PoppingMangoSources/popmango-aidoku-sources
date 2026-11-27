@@ -1,9 +1,9 @@
 use super::{
 	OniSaga,
 	api::{BASE_URL, SearchParams},
-	helpers::{chapter_number, chapters, details, next_page, terms},
+	helpers::{chapter_number, chapters, details, gated, language_pages, next_page, terms},
 	home::{SECTIONS, components},
-	models::{BrowsePage, Rpc},
+	models::{Alternative, BrowsePage, GatedReader, GatedTitle, Rpc},
 };
 use aidoku::{
 	ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, HomeComponentValue, Listing,
@@ -354,9 +354,65 @@ fn review_title_page_details_and_chapters() {
 }
 
 #[aidoku_test]
-fn review_gated_title_fails() {
-	let doc = Html::parse(r#"<main data-ui="content-gate"><h1>Mature</h1></main>"#).unwrap();
-	assert!(details(&doc, "gated").is_err());
+fn review_adult_gates_and_api() {
+	let gate = |html: &str| gated(&Html::parse(html).unwrap());
+	assert!(!gate("<main><h1>Open</h1></main>").unwrap());
+	assert!(gate(r#"<main data-ui="content-gate" data-gate="self-confirmation"></main>"#).unwrap());
+	assert!(gate(r#"<main data-ui="content-gate" data-gate="account"></main>"#).is_err());
+
+	let title: GatedTitle = serde_json::from_str(
+		r#"{"title":"Night","synopsis":"","publicationStatus":"releasing","language":"en","units":[{"label":"Chapter 1","title":null,"releaseId":"11"},{"label":"Chapter 2","title":"Dawn","releaseId":"12"},{"label":"Chapter 3","title":null,"releaseId":null}]}"#,
+	)
+	.unwrap();
+	let manga = title.into_manga("night", &[String::from("en")]);
+	assert_eq!(manga.content_rating, ContentRating::NSFW);
+	assert_eq!(manga.status, MangaStatus::Ongoing);
+	assert!(manga.description.is_none());
+	let chapters = manga.chapters.unwrap();
+	let keys = chapters
+		.iter()
+		.map(|chapter| (chapter.key.as_str(), chapter.chapter_number))
+		.collect::<Vec<_>>();
+	// Newest first, and a unit without a release is left out.
+	assert_eq!(keys, [("12", Some(2.0)), ("11", Some(1.0))]);
+	assert_eq!(
+		chapters[0].url.as_deref(),
+		Some("https://onisaga.com/read/night/12")
+	);
+
+	let reader: GatedReader = serde_json::from_str(
+		r#"{"bootstrap":{"manifest":{"pages":[{"url":"https://media.onisaga.com/api/media/a?k=p"}]}}}"#,
+	)
+	.unwrap();
+	assert_eq!(reader.into_urls(), ["https://onisaga.com/api/media/a?k=p"]);
+}
+
+#[aidoku_test]
+fn review_language_pages_follow_the_site_links() {
+	// Naruto's list: a main numbering, then a merged "other numbering" for some languages.
+	let alternatives: Vec<Alternative> = serde_json::from_str(
+		r#"[{"href":"/title/naruto?lang=en&order=desc","current":true},{"href":"/title/naruto?lang=ja&order=desc","current":false},{"href":"/title/naruto?stream=78117&lang=en&order=desc","current":false},{"href":"/title/naruto?stream=78117&lang=ja&order=desc","current":false},{"href":"/title/naruto?stream=78117&lang=th&order=desc","current":false}]"#,
+	)
+	.unwrap();
+	let languages = ["ja", "en", "th", "fr"].map(String::from);
+	assert_eq!(
+		language_pages(&alternatives, &languages),
+		[
+			(
+				"ja",
+				Some(String::from(
+					"https://onisaga.com/title/naruto?lang=ja&order=desc&chapters=all"
+				))
+			),
+			("en", None),
+			(
+				"th",
+				Some(String::from(
+					"https://onisaga.com/title/naruto?stream=78117&lang=th&order=desc&chapters=all"
+				))
+			),
+		]
+	);
 }
 
 #[aidoku_test]
@@ -418,6 +474,13 @@ fn review_resources() {
 		.find(|item| item["key"] == "contentRatings")
 		.unwrap();
 	assert_eq!(ratings["default"], serde_json::json!(["safe"]));
+	let all = serde_json::json!(["safe", "suggestive", "mature", "explicit"]);
+	assert_eq!(ratings["values"], all);
+	let rating = filters
+		.iter()
+		.find(|filter| filter["id"] == "rating")
+		.unwrap();
+	assert_eq!(rating["ids"], all);
 }
 
 #[aidoku_test]

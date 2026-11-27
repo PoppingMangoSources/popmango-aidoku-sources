@@ -188,11 +188,15 @@
 		"canExclude": false,
 		"options": [
 			"Safe",
-			"Suggestive"
+			"Suggestive",
+			"Mature",
+			"Explicit"
 		],
 		"ids": [
 			"safe",
-			"suggestive"
+			"suggestive",
+			"mature",
+			"explicit"
 		]
 	},
 	{

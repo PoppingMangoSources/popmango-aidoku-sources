@@ -82,12 +82,14 @@ impl SearchParams {
 			|| self.origin.as_ref().is_some_and(Vec::is_empty)
 	}
 
+	pub fn adult(&self) -> bool {
+		self.ratings
+			.iter()
+			.any(|rating| rating == "mature" || rating == "explicit")
+	}
+
 	pub fn request(&self) -> Result<Request> {
-		let body = serde_json::to_vec(&Rpc { json: self })?;
-		Ok(Request::post(format!("{BASE_URL}/api/rpc/catalog/browse"))?
-			.header("Content-Type", "application/json")
-			.header("Accept", "application/json")
-			.body(body))
+		rpc("catalog/browse", self)
 	}
 
 	pub fn page(&self) -> Result<(MangaPageResult, Option<String>)> {
@@ -107,6 +109,25 @@ impl SearchParams {
 			page.next_cursor,
 		))
 	}
+}
+
+pub fn rpc<T: Serialize>(method: &str, input: T) -> Result<Request> {
+	let body = serde_json::to_vec(&Rpc { json: input })?;
+	Ok(Request::post(format!("{BASE_URL}/api/rpc/{method}"))?
+		.header("Content-Type", "application/json")
+		.header("Accept", "application/json")
+		.body(body))
+}
+
+// Guests see Mature and Explicit titles only after stating they are 18 or older.
+pub fn confirm_age() -> Result<()> {
+	Request::post(format!("{BASE_URL}/api/age-confirmation"))?
+		.header("Content-Type", "application/x-www-form-urlencoded")
+		.header("Origin", BASE_URL)
+		.header("Referer", &format!("{BASE_URL}/"))
+		.body("action=confirm&next=%2Frobots.txt")
+		.send()?;
+	Ok(())
 }
 
 fn checked(response: Response) -> Result<Response> {

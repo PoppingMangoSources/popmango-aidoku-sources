@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "A search's own Origin or Content rating filter replaces these.",
+		"footer": "Choosing Mature or Explicit tells OniSaga you are 18 or older. A search's own Origin or Content rating filter replaces these.",
 		"items": [
 			{
 				"type": "multi-select",
@@ -10,11 +10,15 @@
 				"title": "Content Rating",
 				"values": [
 					"safe",
-					"suggestive"
+					"suggestive",
+					"mature",
+					"explicit"
 				],
 				"titles": [
 					"Safe",
-					"Suggestive"
+					"Suggestive",
+					"Mature",
+					"Explicit"
 				],
 				"default": [
 					"safe"
