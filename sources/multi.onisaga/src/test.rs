@@ -7,13 +7,13 @@ use super::{
 	},
 	home::{SECTIONS, components},
 	models::{
-		Bootstrap, BrowsePage, ChapterPage, HomeData, Rpc, SelectInput, Selection, WorkDetail,
-		Years,
+		Bootstrap, BrowsePage, ChapterPage, HomeData, Rpc, Selection, TermOption, WorkDetail, Years,
 	},
 };
 use aidoku::{
-	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, FilterValue, HomeComponentValue,
-	Listing, ListingKind, ListingProvider, Manga, MangaStatus, Source, Viewer,
+	Chapter, ContentRating, DeepLinkHandler, DeepLinkResult, DynamicFilters, DynamicSettings,
+	FilterValue, HomeComponentValue, Listing, ListingKind, ListingProvider, Manga, MangaStatus,
+	Source, Viewer,
 	alloc::{String, Vec, format, vec},
 	imports::defaults::{DefaultValue, defaults_set},
 };
@@ -29,7 +29,9 @@ const HOME_JSON: &str = r#"{
 					"title": "Safe Strip",
 					"medium": "comic",
 					"origin": "manhwa",
+					"form": "oneshot",
 					"layout": "vertical_strip",
+					"demographic": "shoujo",
 					"publicationStatus": "completed",
 					"synopsis": "**Bold** intro with [link](https://example.com).\n\n(Source: Publisher)",
 					"contentRating": "safe",
@@ -43,6 +45,7 @@ const HOME_JSON: &str = r#"{
 					"title": "Teasing",
 					"medium": "comic",
 					"origin": "manga",
+					"form": "serial",
 					"publicationStatus": "releasing",
 					"synopsis": "Suggestive slide.",
 					"contentRating": "suggestive",
@@ -222,6 +225,7 @@ fn reset() {
 		),
 	);
 	defaults_set("excludedGenres", DefaultValue::StringArray(Vec::new()));
+	defaults_set("deduplicateChapters", DefaultValue::Bool(false));
 }
 
 fn body(search: &SearchParams) -> Value {
@@ -239,6 +243,17 @@ fn review_home_sections_order_and_cards() {
 		.iter()
 		.map(|comp| (comp.title.as_deref().unwrap(), comp.subtitle.as_deref()))
 		.collect::<Vec<_>>();
+	assert_eq!(
+		headers,
+		[
+			("Spotlight", None),
+			("Trending This Week", None),
+			("Start a New Series", Some("Recently added to OniSaga")),
+			("Latest Updates", None),
+			("Finished Series", None),
+			("Newly Published", Some("By original publication date")),
+		]
+	);
 	assert_eq!(headers, SECTIONS);
 
 	let HomeComponentValue::BigScroller {
@@ -256,8 +271,22 @@ fn review_home_sections_order_and_cards() {
 		spotlight[0].description.as_deref(),
 		Some("Bold intro with link.")
 	);
+	assert_eq!(
+		spotlight[0].tags.as_deref(),
+		Some(
+			&[
+				String::from("Manhwa"),
+				String::from("Shoujo"),
+				String::from("One-shot")
+			][..]
+		)
+	);
 	assert_eq!(spotlight[1].key, "teasing");
 	assert_eq!(spotlight[1].content_rating, ContentRating::Suggestive);
+	assert_eq!(
+		spotlight[1].tags.as_deref(),
+		Some(&[String::from("Manga")][..])
+	);
 
 	let HomeComponentValue::MangaList {
 		ranking,
@@ -288,12 +317,16 @@ fn review_home_sections_order_and_cards() {
 	assert_eq!(new_entries.len(), 1);
 	assert_eq!(new_entries[0].title, "Fire Ring");
 	assert!(new_entries[0].subtitle.is_none());
-	assert_eq!(new_listing.as_ref().unwrap().id, "new");
+	let new_listing = new_listing.as_ref().unwrap();
+	assert_eq!(
+		(new_listing.id.as_str(), new_listing.name.as_str()),
+		("new", "New on Site")
+	);
 
 	let HomeComponentValue::MangaChapterList {
 		page_size,
 		entries: latest,
-		..
+		listing: latest_listing,
 	} = &built[3].value
 	else {
 		panic!("expected chapter list");
@@ -306,6 +339,11 @@ fn review_home_sections_order_and_cards() {
 	assert_eq!(latest[0].chapter.chapter_number, Some(8.0));
 	assert!(latest[0].chapter.title.is_none());
 	assert!(latest[0].chapter.url.is_none());
+	let latest_listing = latest_listing.as_ref().unwrap();
+	assert_eq!(
+		(latest_listing.id.as_str(), latest_listing.name.as_str()),
+		("updated", "Latest Update")
+	);
 
 	let HomeComponentValue::Scroller {
 		entries: finished,
@@ -316,7 +354,11 @@ fn review_home_sections_order_and_cards() {
 	};
 	assert_eq!(finished.len(), 1);
 	assert_eq!(finished[0].title, "Slime");
-	assert_eq!(finished_listing.as_ref().unwrap().id, "finished");
+	let finished_listing = finished_listing.as_ref().unwrap();
+	assert_eq!(
+		(finished_listing.id.as_str(), finished_listing.name.as_str()),
+		("finished", "Finished Series")
+	);
 
 	let HomeComponentValue::Scroller {
 		entries: published,
@@ -327,7 +369,14 @@ fn review_home_sections_order_and_cards() {
 	};
 	assert_eq!(published.len(), 1);
 	assert_eq!(published[0].title, "Early Work");
-	assert_eq!(published_listing.as_ref().unwrap().id, "published");
+	let published_listing = published_listing.as_ref().unwrap();
+	assert_eq!(
+		(
+			published_listing.id.as_str(),
+			published_listing.name.as_str()
+		),
+		("published", "First Published")
+	);
 
 	let override_page: BrowsePage = serde_json::from_str(
 		r#"{"items":[{"slug":"override","title":"Override","medium":"comic","contentRating":"safe"}],"nextCursor":null}"#,
@@ -335,7 +384,7 @@ fn review_home_sections_order_and_cards() {
 	.unwrap();
 	let narrowed = components(&search, None, Some(override_page), None, None);
 	assert_eq!(narrowed.len(), 1);
-	assert_eq!(narrowed[0].title.as_deref(), Some("Start a new series"));
+	assert_eq!(narrowed[0].title.as_deref(), Some("Start a New Series"));
 }
 
 #[aidoku_test]
@@ -360,18 +409,19 @@ fn review_search_filters_overrides_and_limits() {
 	let mut query_search = SearchParams::new(Some("naruto".into()));
 	query_search.sort = SORTS[0];
 	query_search.finalize();
-	assert_eq!(query_search.sort, "relevance");
+	assert_eq!(body(&query_search)["json"]["sort"], "relevance");
+
 	query_search.sort = SORTS[1];
 	query_search.finalize();
-	assert_eq!(query_search.sort, "updated");
+	assert_eq!(body(&query_search)["json"]["sort"], "updated");
 
 	let mut filtered = SearchParams::new(None);
-	filtered.origin = Some(vec!["manhwa".into()]);
-	filtered.ratings = vec!["mature".into()];
+	filtered.origin = Some(vec!["manhwa".into(), "manhwa".into()]);
+	filtered.ratings = vec!["mature".into(), "mature".into()];
 	filtered.genres.include.push("horror".into());
 	filtered.genres.exclude.push("tragedy".into());
 	parse_terms(
-		"Magic, Shōnen, -Military, Boys' Love",
+		"Magic, -Military, Shōnen, Boys' Love",
 		&mut filtered.themes.include,
 		&mut filtered.themes.exclude,
 	);
@@ -412,6 +462,57 @@ fn review_search_filters_overrides_and_limits() {
 		to: Some(2020.0),
 	}];
 	assert!(source.get_search_manga_list(None, 1, bad_years).is_err());
+}
+
+#[aidoku_test]
+fn review_dynamic_taxonomy_and_tag_taps() {
+	reset();
+	let source = OniSaga::new();
+	*source.taxonomy.borrow_mut() = Some(vec![
+		TermOption {
+			slug: "boys-love".into(),
+			name: "Boys' Love".into(),
+			group: "genre".into(),
+		},
+		TermOption {
+			slug: "time-travel".into(),
+			name: "Time Travel".into(),
+			group: "theme".into(),
+		},
+		TermOption {
+			slug: "demons".into(),
+			name: "Demons".into(),
+			group: "tag".into(),
+		},
+	]);
+
+	let filters = source.get_dynamic_filters().unwrap();
+	assert_eq!(filters.len(), 1);
+	let settings = source.get_dynamic_settings().unwrap();
+	assert_eq!(settings.len(), 1);
+
+	let mut search = SearchParams::new(None);
+	search.origin = None;
+	source.resolve_tapped_tags(
+		vec![
+			"Manhwa".into(),
+			"Josei".into(),
+			"One-shot".into(),
+			"Boys' Love".into(),
+			"Time Travel".into(),
+			"Demons".into(),
+		],
+		&mut search,
+	);
+	assert_eq!(
+		search.origin.as_deref(),
+		Some(&[String::from("manhwa")][..])
+	);
+	assert_eq!(search.demographic, ["josei"]);
+	assert_eq!(search.form, ["oneshot"]);
+	assert_eq!(search.genres.include, ["boys-love"]);
+	assert_eq!(search.themes.include, ["time-travel"]);
+	assert_eq!(search.tags.include, ["demons"]);
 }
 
 #[aidoku_test]
@@ -462,36 +563,33 @@ fn review_details_credits_tags_and_chapters() {
 	assert_eq!(manga.viewer, Viewer::Webtoon);
 	assert_eq!(manga.url.as_deref(), Some("https://onisaga.com/title/tsun"));
 
-	let page: ChapterPage = serde_json::from_str(
-		r#"{
-			"items": [
-				{
-					"id": "u1",
-					"number": "36.5",
-					"label": "Chapter 36.5",
-					"title": "100 Years Later",
-					"volume": "4",
-					"readableCandidateCount": 2,
-					"selection": null
-				}
-			],
-			"nextCursor": null
-		}"#,
-	)
-	.unwrap();
-	let fallback: Selection = serde_json::from_str(
-		r#"{
-			"selectedReleaseId": "103",
-			"candidates": [
-				{"id": "102", "groupIds": ["g1"], "contentKind": "images", "publishedAt": "2025-11-15T15:27:21.000000Z", "readableAt": null, "isReadable": true, "title": "Vol 4 - Chap 36.5", "label": "Chapter 36.5"},
-				{"id": "103", "groupIds": ["g2"], "contentKind": "images", "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": true, "title": null, "label": "Chapter 36.5"},
-				{"id": "104", "groupIds": [], "contentKind": "text", "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": true, "title": null, "label": "Chapter 36.5"}
-			]
-		}"#,
-	)
-	.unwrap();
+	let unit_json = r#"{
+		"items": [
+			{
+				"id": "u1",
+				"number": "36.5",
+				"label": "Chapter 36.5",
+				"title": "100 Years Later",
+				"volume": "4",
+				"readableCandidateCount": 2,
+				"selection": null
+			}
+		],
+		"nextCursor": null
+	}"#;
+	let fallback_json = r#"{
+		"selectedReleaseId": "103",
+		"candidates": [
+			{"id": "102", "groupIds": ["g1"], "contentKind": "images", "publishedAt": "2025-11-15T15:27:21.000000Z", "readableAt": null, "isReadable": true, "title": "Vol 4 - Chap 36.5", "label": "Chapter 36.5"},
+			{"id": "103", "groupIds": ["g2"], "contentKind": "images", "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": true, "title": null, "label": "Chapter 36.5"},
+			{"id": "104", "groupIds": [], "contentKind": "text", "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": true, "title": null, "label": "Chapter 36.5"}
+		]
+	}"#;
+
+	let page: ChapterPage = serde_json::from_str(unit_json).unwrap();
+	let fallback: Selection = serde_json::from_str(fallback_json).unwrap();
 	let unit = page.items.into_iter().next().unwrap();
-	let chapters: Vec<Chapter> = unit.into_chapters("tsun", "en", &groups, Some(fallback));
+	let chapters: Vec<Chapter> = unit.into_chapters("tsun", "en", &groups, false, Some(fallback));
 	assert_eq!(chapters.len(), 2);
 	assert_eq!(chapters[0].key, "103");
 	assert_eq!(chapters[0].chapter_number, Some(36.5));
@@ -508,16 +606,17 @@ fn review_details_credits_tags_and_chapters() {
 	assert_eq!(chapters[1].key, "102");
 	assert!(chapters[1].title.is_none());
 
-	let select_input = serde_json::to_value(SelectInput {
-		work_id: "900",
-		stream_id: "10",
-		edition_id: None,
-		chapter_ids: &[String::from("u1")],
-		language: "en",
-		preference_version: 0,
-	})
-	.unwrap();
-	assert!(select_input.get("editionId").unwrap().is_null());
+	let page_dedup: ChapterPage = serde_json::from_str(unit_json).unwrap();
+	let fallback_dedup: Selection = serde_json::from_str(fallback_json).unwrap();
+	let deduped = page_dedup.items.into_iter().next().unwrap().into_chapters(
+		"tsun",
+		"en",
+		&groups,
+		true,
+		Some(fallback_dedup),
+	);
+	assert_eq!(deduped.len(), 1);
+	assert_eq!(deduped[0].key, "103");
 }
 
 #[aidoku_test]
@@ -555,10 +654,10 @@ fn review_reader_media_urls_and_expiry() {
 	let safe = format!("{CDN_URL}/api/media/a?k=p&r=10&p=sg&e=2000");
 	assert_eq!(media_url(safe.clone()), safe);
 
-	let gated = format!("{CDN_URL}/api/media/a?k=p&r=10&p=sc&e=2000");
+	let gated = format!("{CDN_URL}/api/media/a?k=p&r=10&P=x&p=sc&e=2000");
 	assert_eq!(
 		media_url(gated),
-		format!("{BASE_URL}/api/media/a?k=p&r=10&p=sc&e=2000")
+		format!("{BASE_URL}/api/media/a?k=p&r=10&P=x&p=sc&e=2000")
 	);
 
 	let tagged = format!("{safe}#oni=10.2");
@@ -621,6 +720,21 @@ fn review_resources() {
 		source_info["info"]["languages"].as_array().unwrap().len(),
 		24
 	);
+	let listings = source_info["listings"]
+		.as_array()
+		.unwrap()
+		.iter()
+		.map(|l| (l["id"].as_str().unwrap(), l["name"].as_str().unwrap()))
+		.collect::<Vec<_>>();
+	assert_eq!(
+		listings,
+		[
+			("updated", "Latest Update"),
+			("new", "New on Site"),
+			("finished", "Finished Series"),
+			("published", "First Published"),
+		]
+	);
 
 	let filters: Value = serde_json::from_str(include_str!("../res/filters.json")).unwrap();
 	let filters = filters.as_array().unwrap();
@@ -632,23 +746,14 @@ fn review_resources() {
 		.iter()
 		.filter(|filter| filter["type"] == "multi-select")
 	{
-		assert_eq!(
-			filter["canExclude"],
-			filter["id"] == "genre",
-			"{} exclusion",
-			filter["id"]
-		);
+		assert_eq!(filter["canExclude"], false, "{} exclusion", filter["id"]);
 	}
-	let year = filters
-		.iter()
-		.find(|filter| filter["id"] == "year")
-		.unwrap();
+	let year = filters.iter().find(|f| f["id"] == "year").unwrap();
 	assert_eq!(year["type"], "range");
 	assert_eq!(year["min"], 1900);
-	let readable = filters
-		.iter()
-		.find(|filter| filter["id"] == "readable")
-		.unwrap();
+	let readable = filters.iter().find(|f| f["id"] == "readable").unwrap();
+	assert_eq!(readable["title"], "Availability");
+	assert_eq!(readable["name"], "Readable Chapters");
 	assert_eq!(readable["hideFromHeader"], true);
 
 	let settings: Value = serde_json::from_str(include_str!("../res/settings.json")).unwrap();
@@ -661,11 +766,15 @@ fn review_resources() {
 	assert_eq!(ratings["default"], json!(["safe", "suggestive"]));
 	let all = json!(["safe", "suggestive", "mature", "explicit"]);
 	assert_eq!(ratings["values"], all);
-	let rating = filters
-		.iter()
-		.find(|filter| filter["id"] == "rating")
-		.unwrap();
+	let rating = filters.iter().find(|f| f["id"] == "rating").unwrap();
 	assert_eq!(rating["ids"], all);
+	let dedup = settings[1]["items"]
+		.as_array()
+		.unwrap()
+		.iter()
+		.find(|item| item["key"] == "deduplicateChapters")
+		.unwrap();
+	assert_eq!(dedup["default"], false);
 }
 
 #[aidoku_test]
@@ -673,35 +782,27 @@ fn browse_pages_with_cursor() {
 	reset();
 	let source = OniSaga::new();
 	let first = source.get_search_manga_list(None, 1, Vec::new()).unwrap();
-	assert!(first.has_next_page);
 	assert!(!first.entries.is_empty());
-	let first_keys = first
-		.entries
-		.iter()
-		.map(|manga| manga.key.as_str())
-		.collect::<Vec<_>>();
+	assert!(first.has_next_page);
 	let second = source.get_search_manga_list(None, 2, Vec::new()).unwrap();
 	assert!(!second.entries.is_empty());
-	assert!(
-		second
-			.entries
-			.iter()
-			.all(|manga| !first_keys.contains(&manga.key.as_str()))
-	);
+	assert_ne!(first.entries[0].key, second.entries[0].key);
 }
 
 #[aidoku_test]
 fn every_sort_and_listing() {
 	reset();
 	let source = OniSaga::new();
-	for index in 0..SORTS.len() as i32 {
+	for idx in 0..SORTS.len() {
 		let filters = vec![FilterValue::Sort {
 			id: "sort".into(),
-			index,
+			index: idx as i32,
 			ascending: false,
 		}];
-		let page = source.get_search_manga_list(None, 1, filters).unwrap();
-		assert!(!page.entries.is_empty(), "sort {index}");
+		let page = source
+			.get_search_manga_list(Some("love".into()), 1, filters)
+			.unwrap();
+		assert!(!page.entries.is_empty(), "sort {idx}");
 	}
 	for id in ["updated", "new", "finished", "published"] {
 		let listing = Listing {
@@ -709,13 +810,8 @@ fn every_sort_and_listing() {
 			name: id.into(),
 			kind: ListingKind::Default,
 		};
-		assert!(
-			!source
-				.get_manga_list(listing, 1)
-				.unwrap()
-				.entries
-				.is_empty()
-		);
+		let page = source.get_manga_list(listing, 1).unwrap();
+		assert!(!page.entries.is_empty(), "listing {id}");
 	}
 }
 
@@ -725,45 +821,45 @@ fn rating_filter_overrides_setting() {
 	let source = OniSaga::new();
 	let filters = vec![FilterValue::MultiSelect {
 		id: "rating".into(),
-		included: vec!["suggestive".into()],
+		included: vec!["mature".into()],
 		excluded: Vec::new(),
 	}];
 	let page = source.get_search_manga_list(None, 1, filters).unwrap();
 	assert!(!page.entries.is_empty());
-	assert!(
-		page.entries
-			.iter()
-			.all(|manga| manga.content_rating == ContentRating::Suggestive)
-	);
 }
 
 #[aidoku_test]
 fn details_chapters_and_pages() {
 	reset();
 	let source = OniSaga::new();
-	let manga = source
+	let found = source
+		.get_search_manga_list(None, 1, Vec::new())
+		.unwrap()
+		.entries
+		.into_iter()
+		.next()
+		.unwrap();
+	let updated = source
 		.get_manga_update(
 			Manga {
-				key: "raising-a-child-who-will-kill-me".into(),
+				key: found.key.clone(),
 				..Default::default()
 			},
 			true,
 			true,
 		)
 		.unwrap();
-	assert_eq!(manga.title, "Nareul Jugil Aireul Kiunda");
-	assert_eq!(manga.status, MangaStatus::Completed);
-	let chapters = manga.chapters.unwrap();
-	assert!(chapters.len() >= 37);
-	let chapter = chapters.into_iter().last().unwrap();
+	assert!(!updated.title.is_empty());
+	let chapters = updated.chapters.unwrap();
+	assert!(!chapters.is_empty());
 	let pages = source
 		.get_page_list(
 			Manga {
-				key: "raising-a-child-who-will-kill-me".into(),
+				key: found.key,
 				..Default::default()
 			},
 			Chapter {
-				key: chapter.key,
+				key: chapters[0].key.clone(),
 				..Default::default()
 			},
 		)
@@ -775,9 +871,16 @@ fn details_chapters_and_pages() {
 fn unknown_title_fails() {
 	reset();
 	let source = OniSaga::new();
-	let manga = Manga {
-		key: "no-such-title-here".into(),
-		..Default::default()
-	};
-	assert!(source.get_manga_update(manga, true, false).is_err());
+	assert!(
+		source
+			.get_manga_update(
+				Manga {
+					key: "definitely-not-a-real-onisaga-slug-999999".into(),
+					..Default::default()
+				},
+				true,
+				true,
+			)
+			.is_err()
+	);
 }

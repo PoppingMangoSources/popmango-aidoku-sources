@@ -1,13 +1,14 @@
 use crate::{
 	api::{BASE_URL, CDN_URL},
 	helpers::{
-		clean_chapter_title, demographic_name, media_url, non_empty, parse_chapter_number,
-		parse_content_rating, parse_iso_date, parse_status, plain_synopsis, viewer,
+		clean_chapter_title, demographic_name, form_name, media_url, non_empty, origin_name,
+		parse_chapter_number, parse_content_rating, parse_iso_date, parse_status, plain_synopsis,
+		viewer,
 	},
 };
 use aidoku::{
 	AidokuError, Chapter, Manga, MangaStatus, Result,
-	alloc::{String, Vec, format},
+	alloc::{String, Vec, format, vec},
 	prelude::*,
 };
 use serde::{Deserialize, Serialize};
@@ -17,46 +18,6 @@ const MAX_TERMS: usize = 20;
 #[derive(Serialize, Deserialize)]
 pub struct Rpc<T> {
 	pub json: T,
-}
-
-#[derive(Serialize)]
-pub struct Empty {}
-
-#[derive(Serialize)]
-pub struct SlugInput<'a> {
-	pub slug: &'a str,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ReleaseInput<'a> {
-	pub release_id: &'a str,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IndexInput<'a> {
-	pub work_id: &'a str,
-	pub stream_id: &'a str,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub edition_id: Option<&'a str>,
-	pub lang: &'a str,
-	pub order: &'static str,
-	pub limit: i32,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub cursor: Option<&'a str>,
-}
-
-// `chapters/select` requires `editionId` to be present (nullable, not optional).
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SelectInput<'a> {
-	pub work_id: &'a str,
-	pub stream_id: &'a str,
-	pub edition_id: Option<&'a str>,
-	pub chapter_ids: &'a [String],
-	pub language: &'a str,
-	pub preference_version: i32,
 }
 
 #[derive(Deserialize)]
@@ -93,12 +54,9 @@ impl Terms {
 pub fn dedup_keep_order(values: &mut Vec<String>) {
 	let mut seen = Vec::with_capacity(values.len());
 	values.retain(|value| {
-		if seen.contains(value) {
-			false
-		} else {
-			seen.push(value.clone());
-			true
-		}
+		(!seen.contains(value))
+			.then(|| seen.push(value.clone()))
+			.is_some()
 	});
 }
 
@@ -110,7 +68,7 @@ pub struct Years {
 	pub to: Option<i32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct TermOption {
 	pub slug: String,
 	pub name: String,
@@ -132,7 +90,9 @@ pub struct Work {
 	medium: Option<String>,
 	cover_url: Option<String>,
 	origin: Option<String>,
+	form: Option<String>,
 	layout: Option<String>,
+	demographic: Option<String>,
 	publication_status: Option<String>,
 	content_rating: Option<String>,
 	synopsis: Option<String>,
@@ -154,7 +114,7 @@ pub struct HomeData {
 	pub finished: Section<Vec<Work>>,
 	pub newly_published: Section<Vec<Work>>,
 	#[serde(default)]
-	pub trending: Vec<Trend>,
+	pub trending: Vec<Work>,
 }
 
 #[derive(Deserialize)]
@@ -165,16 +125,6 @@ pub struct Section<T> {
 #[derive(Deserialize)]
 pub struct SpotlightItem {
 	pub card: Option<Work>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Trend {
-	slug: String,
-	title: Option<String>,
-	medium: Option<String>,
-	origin: Option<String>,
-	content_rating: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -330,7 +280,7 @@ pub struct PageImage {
 	pub url: String,
 }
 
-fn basic_work(
+fn build_work(
 	slug: String,
 	title: Option<String>,
 	medium: Option<&str>,
@@ -338,7 +288,7 @@ fn basic_work(
 	status: Option<&str>,
 	rating: Option<&str>,
 ) -> Result<Manga> {
-	if medium.is_some_and(|medium| medium != "comic") {
+	if medium.is_some_and(|m| m != "comic") {
 		bail!("OniSaga novel entries are not supported");
 	}
 	let title = title
@@ -347,6 +297,7 @@ fn basic_work(
 	if slug.is_empty() {
 		bail!("OniSaga returned a title without a slug");
 	}
+	let cover = cover.or_else(|| Some(format!("{CDN_URL}/api/covers/{slug}")));
 	Ok(Manga {
 		key: slug,
 		title,
@@ -358,23 +309,17 @@ fn basic_work(
 }
 
 impl Work {
-	pub fn is_comic(&self) -> bool {
-		self.medium
-			.as_deref()
-			.is_none_or(|medium| medium == "comic")
-	}
-
 	pub fn allowed(
 		&self,
 		ratings: &[String],
 		origins: Option<&[String]>,
 		languages: &[String],
 	) -> bool {
-		self.is_comic()
+		self.medium.as_deref().is_none_or(|m| m == "comic")
 			&& self
 				.content_rating
 				.as_ref()
-				.is_some_and(|rating| ratings.contains(rating))
+				.is_none_or(|rating| ratings.contains(rating))
 			&& origins.is_none_or(|origins| {
 				self.origin
 					.as_ref()
@@ -393,18 +338,35 @@ impl Work {
 			medium,
 			cover_url,
 			origin,
+			form,
 			layout,
+			demographic,
 			publication_status,
 			content_rating,
 			synopsis,
 			..
 		} = self;
+		let pills = [
+			origin.as_deref().and_then(origin_name),
+			demographic.as_deref().and_then(demographic_name),
+			form.as_deref().and_then(form_name),
+		]
+		.into_iter()
+		.flatten()
+		.map(Into::into)
+		.collect::<Vec<String>>();
+		let tags = Some(if pills.is_empty() {
+			vec!["Comic".into()]
+		} else {
+			pills
+		});
 		let description = synopsis.as_deref().and_then(plain_synopsis);
 		let viewer = viewer(layout.as_deref(), origin.as_deref(), &[]);
 		Ok(Manga {
 			description,
+			tags,
 			viewer,
-			..basic_work(
+			..build_work(
 				slug,
 				title,
 				medium.as_deref(),
@@ -420,7 +382,7 @@ impl TryFrom<Work> for Manga {
 	type Error = AidokuError;
 
 	fn try_from(work: Work) -> Result<Self> {
-		basic_work(
+		build_work(
 			work.slug,
 			work.title,
 			work.medium.as_deref(),
@@ -428,52 +390,6 @@ impl TryFrom<Work> for Manga {
 			work.publication_status.as_deref(),
 			work.content_rating.as_deref(),
 		)
-	}
-}
-
-impl Trend {
-	pub fn allowed(&self, ratings: &[String], origins: Option<&[String]>) -> bool {
-		self.medium
-			.as_deref()
-			.is_none_or(|medium| medium == "comic")
-			&& self
-				.content_rating
-				.as_ref()
-				.is_none_or(|rating| ratings.contains(rating))
-			&& origins.is_none_or(|origins| {
-				self.origin
-					.as_ref()
-					.is_none_or(|origin| origins.contains(origin))
-			})
-	}
-}
-
-impl TryFrom<Trend> for Manga {
-	type Error = AidokuError;
-
-	fn try_from(trend: Trend) -> Result<Self> {
-		if trend
-			.medium
-			.as_deref()
-			.is_some_and(|medium| medium != "comic")
-		{
-			bail!("OniSaga novel entries are not supported");
-		}
-		let title = trend
-			.title
-			.and_then(non_empty)
-			.ok_or_else(|| error!("OniSaga returned a trending entry without a title"))?;
-		if trend.slug.is_empty() {
-			bail!("OniSaga returned a trending entry without a slug");
-		}
-		let cover = Some(format!("{CDN_URL}/api/covers/{}", trend.slug));
-		Ok(Manga {
-			key: trend.slug,
-			title,
-			cover,
-			content_rating: parse_content_rating(trend.content_rating.as_deref()),
-			..Default::default()
-		})
 	}
 }
 
@@ -505,28 +421,24 @@ impl WorkDetail {
 		if !self.is_comic() {
 			bail!("OniSaga novel entries are not supported");
 		}
-		let Some(title) = non_empty(self.canonical_title) else {
-			bail!("OniSaga returned an incomplete title");
-		};
-		if self.slug.is_empty() {
-			bail!("OniSaga returned an incomplete title");
-		}
-		let cover = Some(if self.metadata_version.is_empty() {
-			format!("{CDN_URL}/api/covers/{}", self.slug)
-		} else {
-			format!(
-				"{CDN_URL}/api/covers/{}?mv={}",
-				self.slug, self.metadata_version
-			)
+		let cover = (!self.slug.is_empty()).then(|| {
+			if self.metadata_version.is_empty() {
+				format!("{CDN_URL}/api/covers/{}", self.slug)
+			} else {
+				format!(
+					"{CDN_URL}/api/covers/{}?mv={}",
+					self.slug, self.metadata_version
+				)
+			}
 		});
-		Ok(Manga {
-			key: self.slug,
-			title,
+		build_work(
+			self.slug,
+			Some(self.canonical_title),
+			Some(&self.medium),
 			cover,
-			status: parse_status(&self.publication_status),
-			content_rating: parse_content_rating(Some(&self.content_rating)),
-			..Default::default()
-		})
+			Some(&self.publication_status),
+			Some(&self.content_rating),
+		)
 	}
 }
 
@@ -554,44 +466,33 @@ impl TryFrom<WorkDetail> for Manga {
 		let mut artists = Vec::new();
 		for (name, role) in credits
 			.into_iter()
-			.filter_map(|credit| non_empty(credit.name).map(|name| (name, credit.role)))
+			.filter_map(|c| non_empty(c.name).map(|name| (name, c.role)))
 		{
-			let is_author = matches!(
+			if matches!(
 				role.as_str(),
 				"story" | "author" | "story_and_art" | "original_creator"
-			);
-			let is_artist = matches!(
+			) && !authors.contains(&name)
+			{
+				authors.push(name.clone());
+			}
+			if matches!(
 				role.as_str(),
 				"art" | "illustrator" | "story_and_art" | "character_design"
-			);
-			match (is_author, is_artist) {
-				(true, true) => {
-					if !authors.contains(&name) {
-						authors.push(name.clone());
-					}
-					if !artists.contains(&name) {
-						artists.push(name);
-					}
-				}
-				(true, false) if !authors.contains(&name) => authors.push(name),
-				(false, true) if !artists.contains(&name) => artists.push(name),
-				_ => {}
+			) && !artists.contains(&name)
+			{
+				artists.push(name);
 			}
 		}
 
 		let mut tags = terms
 			.into_iter()
-			.filter(|term| {
-				!term.spoiler
-					&& matches!(
-						term.group.as_str(),
-						"genre" | "theme" | "demographic" | "tag"
-					)
+			.filter(|t| {
+				!t.spoiler && matches!(t.group.as_str(), "genre" | "theme" | "demographic" | "tag")
 			})
-			.filter_map(|term| non_empty(term.name))
+			.filter_map(|t| non_empty(t.name))
 			.collect::<Vec<_>>();
-		if let Some(demographic) = demographic.as_deref().and_then(demographic_name) {
-			tags.push(demographic.into());
+		if let Some(demo) = demographic.as_deref().and_then(demographic_name) {
+			tags.push(demo.into());
 		}
 		tags.sort_unstable();
 		tags.dedup();
@@ -627,27 +528,27 @@ impl Reading {
 		let default_stream = self
 			.default_scope
 			.as_ref()
-			.map(|scope| scope.stream_id.as_str())
+			.map(|s| s.stream_id.as_str())
 			.or_else(|| {
 				self.streams
 					.iter()
-					.find(|stream| stream.is_default)
-					.map(|stream| stream.id.as_str())
+					.find(|s| s.is_default)
+					.map(|s| s.id.as_str())
 			});
 		languages
 			.iter()
-			.filter_map(|language| {
+			.filter_map(|lang| {
 				self.languages
 					.iter()
-					.filter(|scope| scope.language == *language && scope.readable_units > 0)
-					.max_by_key(|scope| {
-						let preferred = default_stream == Some(scope.stream_id.as_str())
+					.filter(|s| s.language == *lang && s.readable_units > 0)
+					.max_by_key(|s| {
+						let preferred = default_stream == Some(s.stream_id.as_str())
 							|| self.default_scope.as_ref().is_some_and(|def| {
-								def.stream_id == scope.stream_id
-									&& def.edition_id == scope.edition_id
-									&& def.language == scope.language
+								def.stream_id == s.stream_id
+									&& def.edition_id == s.edition_id
+									&& def.language == s.language
 							});
-						(preferred, scope.readable_units)
+						(preferred, s.readable_units)
 					})
 					.cloned()
 			})
@@ -661,6 +562,7 @@ impl ChapterUnit {
 		slug: &str,
 		language: &str,
 		groups: &[Group],
+		deduplicate: bool,
 		fallback: Option<Selection>,
 	) -> Vec<Chapter> {
 		let Some(selection) = self.selection.or(fallback) else {
@@ -669,61 +571,57 @@ impl ChapterUnit {
 		let chapter_number = self
 			.number
 			.as_deref()
-			.and_then(|num| num.parse::<f32>().ok())
+			.and_then(|n| n.parse::<f32>().ok())
 			.or_else(|| parse_chapter_number(&self.label));
-		let volume_number = self
-			.volume
-			.as_deref()
-			.and_then(|vol| vol.parse::<f32>().ok());
+		let volume_number = self.volume.as_deref().and_then(|v| v.parse::<f32>().ok());
 		let unit_label = self.label;
 		let unit_title = self.title;
-		let selected = selection.selected_release_id.as_deref();
 
 		let mut releases = selection
 			.candidates
 			.into_iter()
-			.filter(|release| {
-				release.is_readable && release.content_kind == "images" && !release.id.is_empty()
-			})
+			.filter(|r| r.is_readable && r.content_kind == "images" && !r.id.is_empty())
 			.collect::<Vec<_>>();
-		if let Some(selected_id) = selected
-			&& let Some(pos) = releases
-				.iter()
-				.position(|release| release.id == selected_id)
+		if let Some(selected_id) = selection.selected_release_id.as_deref()
+			&& let Some(pos) = releases.iter().position(|r| r.id == selected_id)
 			&& pos > 0
 		{
 			let chosen = releases.remove(pos);
 			releases.insert(0, chosen);
 		}
+		if deduplicate {
+			releases.truncate(1);
+		}
 
 		releases
 			.into_iter()
-			.map(|release| {
-				let scanlators = release
+			.map(|r| {
+				let scanlators = r
 					.group_ids
 					.iter()
 					.filter_map(|id| {
-						let name = groups.iter().find(|group| group.id == *id)?.name.trim();
+						let name = groups.iter().find(|g| g.id == *id)?.name.trim();
 						(!name.is_empty()).then(|| name.into())
 					})
 					.collect::<Vec<String>>();
+				let label = if r.label.is_empty() {
+					&unit_label
+				} else {
+					&r.label
+				};
 				let title = clean_chapter_title(
-					release.title.or_else(|| unit_title.clone()),
-					if release.label.is_empty() {
-						&unit_label
-					} else {
-						&release.label
-					},
+					r.title.or_else(|| unit_title.clone()),
+					label,
 					chapter_number,
 				);
-				let date_uploaded = release
+				let date_uploaded = r
 					.readable_at
 					.as_deref()
-					.or(Some(release.published_at.as_str()))
+					.or(Some(r.published_at.as_str()))
 					.and_then(parse_iso_date);
-				let url = Some(format!("{BASE_URL}/read/{slug}/{}", release.id));
+				let url = Some(format!("{BASE_URL}/read/{slug}/{}", r.id));
 				Chapter {
-					key: release.id,
+					key: r.id,
 					title,
 					chapter_number,
 					volume_number,
@@ -743,17 +641,13 @@ impl Bootstrap {
 		if self.kind == "text" {
 			bail!("This OniSaga chapter is text, which this source cannot show");
 		}
-		let mut pages = self
-			.manifest
-			.map(|manifest| manifest.pages)
-			.unwrap_or_default();
-		if pages.is_empty() || pages.iter().any(|page| page.url.is_empty()) {
+		let mut pages = self.manifest.map(|m| m.pages).unwrap_or_default();
+		if pages.is_empty() || pages.iter().any(|p| p.url.is_empty()) {
 			bail!("OniSaga has no pages for this chapter");
 		}
-		pages.sort_unstable_by_key(|page| page.ord);
+		pages.sort_unstable_by_key(|p| p.ord);
 		for page in &mut pages {
-			let url = core::mem::take(&mut page.url);
-			page.url = media_url(url);
+			page.url = media_url(core::mem::take(&mut page.url));
 		}
 		Ok(pages)
 	}

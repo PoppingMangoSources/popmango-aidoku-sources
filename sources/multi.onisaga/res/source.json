@@ -2,7 +2,7 @@
 	"info": {
 		"id": "multi.onisaga",
 		"name": "OniSaga",
-		"version": 5,
+		"version": 6,
 		"url": "https://onisaga.com",
 		"contentRating": 1,
 		"languages": [
@@ -41,19 +41,19 @@
 	"listings": [
 		{
 			"id": "updated",
-			"name": "Latest update"
+			"name": "Latest Update"
 		},
 		{
 			"id": "new",
-			"name": "New on site"
+			"name": "New on Site"
 		},
 		{
 			"id": "finished",
-			"name": "Finished series"
+			"name": "Finished Series"
 		},
 		{
 			"id": "published",
-			"name": "First published"
+			"name": "First Published"
 		}
 	]
 }

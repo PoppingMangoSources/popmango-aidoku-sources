@@ -20,3 +20,7 @@ pub fn origins() -> Option<Vec<String>> {
 pub fn excluded_genres() -> Vec<String> {
 	defaults_get::<Vec<String>>("excludedGenres").unwrap_or_default()
 }
+
+pub fn deduplicate_chapters() -> bool {
+	defaults_get::<bool>("deduplicateChapters").unwrap_or(false)
+}

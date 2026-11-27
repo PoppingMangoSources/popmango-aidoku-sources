@@ -5,43 +5,7 @@ use aidoku::{
 	imports::std::{parse_date, parse_date_with_options},
 };
 
-pub const GENRES: [&str; 31] = [
-	"action",
-	"adventure",
-	"boys-love",
-	"comedy",
-	"cooking",
-	"crime",
-	"drama",
-	"fantasy",
-	"gender-bender",
-	"girls-love",
-	"harem",
-	"historical",
-	"horror",
-	"isekai",
-	"magical-girls",
-	"martial-arts",
-	"mecha",
-	"medical",
-	"music",
-	"mystery",
-	"philosophical",
-	"psychological",
-	"romance",
-	"science-fiction",
-	"slice-of-life",
-	"sports",
-	"superhero",
-	"supernatural",
-	"thriller",
-	"tragedy",
-	"wuxia",
-];
-
 pub const DEMOGRAPHICS: [&str; 5] = ["shounen", "shoujo", "seinen", "josei", "kodomo"];
-
-pub const FORMS: [&str; 5] = ["serial", "oneshot", "anthology", "doujinshi", "artbook"];
 
 #[derive(Debug, PartialEq)]
 pub enum Link {
@@ -51,20 +15,15 @@ pub enum Link {
 
 pub fn parse_link(url: &str) -> Option<Link> {
 	let path = url.trim().strip_prefix(BASE_URL)?;
-	let mut segments = path
+	let mut segs = path
 		.split(['?', '#'])
 		.next()?
 		.split('/')
-		.filter(|segment| !segment.is_empty());
-	match (
-		segments.next(),
-		segments.next(),
-		segments.next(),
-		segments.next(),
-	) {
+		.filter(|s| !s.is_empty());
+	match (segs.next(), segs.next(), segs.next(), segs.next()) {
 		(Some("title"), Some(slug), None, None) => Some(Link::Title(slug.into())),
-		(Some("read"), Some(slug), Some(release), None) if release != "continue" => {
-			Some(Link::Chapter(slug.into(), release.into()))
+		(Some("read"), Some(slug), Some(rel), None) if rel != "continue" => {
+			Some(Link::Chapter(slug.into(), rel.into()))
 		}
 		_ => None,
 	}
@@ -109,6 +68,31 @@ pub fn viewer(layout: Option<&str>, origin: Option<&str>, tags: &[String]) -> Vi
 	}
 }
 
+pub fn origin_name(slug: &str) -> Option<&'static str> {
+	match slug {
+		"manga" => Some("Manga"),
+		"manhwa" => Some("Manhwa"),
+		"manhua" => Some("Manhua"),
+		"comic" => Some("Comic"),
+		"oel" => Some("OEL"),
+		"other_asian" => Some("Other Asian"),
+		"other" => Some("Other"),
+		_ => None,
+	}
+}
+
+pub fn origin_slug(slug: &str) -> Option<&'static str> {
+	match slug {
+		"manga" => Some("manga"),
+		"manhwa" => Some("manhwa"),
+		"manhua" => Some("manhua"),
+		"comic" => Some("comic"),
+		"oel" => Some("oel"),
+		"other-asian" | "other_asian" => Some("other_asian"),
+		_ => None,
+	}
+}
+
 pub fn demographic_name(slug: &str) -> Option<&'static str> {
 	match slug {
 		"shounen" => Some("Shounen"),
@@ -120,16 +104,45 @@ pub fn demographic_name(slug: &str) -> Option<&'static str> {
 	}
 }
 
+pub fn form_name(slug: &str) -> Option<&'static str> {
+	match slug {
+		"oneshot" => Some("One-shot"),
+		"anthology" => Some("Anthology"),
+		"doujinshi" => Some("Doujinshi"),
+		"artbook" => Some("Art book"),
+		_ => None,
+	}
+}
+
+pub fn form_slug(slug: &str) -> Option<&'static str> {
+	match slug {
+		"serial" => Some("serial"),
+		"oneshot" | "one-shot" => Some("oneshot"),
+		"anthology" => Some("anthology"),
+		"doujinshi" => Some("doujinshi"),
+		"artbook" | "art-book" => Some("artbook"),
+		_ => None,
+	}
+}
+
+pub fn non_empty(value: String) -> Option<String> {
+	let trimmed = value.trim();
+	if trimmed.is_empty() {
+		None
+	} else if trimmed.len() == value.len() {
+		Some(value)
+	} else {
+		Some(trimmed.into())
+	}
+}
+
 fn strip_ascii_prefix<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
 	let (head, tail) = text.split_at_checked(prefix.len())?;
 	head.eq_ignore_ascii_case(prefix).then_some(tail)
 }
 
 fn strip_chapter_prefix(text: &str) -> Option<(&str, bool)> {
-	let mut rest = text.trim();
-	if let Some((_, after)) = rest.split_once('·') {
-		rest = after.trim();
-	}
+	let rest = text.split_once('·').map_or(text, |(_, after)| after).trim();
 	if strip_ascii_prefix(rest, "vol").is_some() {
 		return None;
 	}
@@ -142,18 +155,6 @@ fn strip_chapter_prefix(text: &str) -> Option<(&str, bool)> {
 		}
 	}
 	Some((rest, false))
-}
-
-pub fn non_empty(value: String) -> Option<String> {
-	let trimmed = value.trim();
-	if trimmed.is_empty() {
-		return None;
-	}
-	Some(if trimmed.len() == value.len() {
-		value
-	} else {
-		trimmed.into()
-	})
 }
 
 pub fn parse_chapter_number(label: &str) -> Option<f32> {
@@ -190,59 +191,38 @@ pub fn clean_chapter_title(
 			return Some(title);
 		}
 	}
-	if number.is_none() {
-		let label = label.trim();
-		if !label.is_empty() {
-			return Some(label.into());
-		}
-	}
-	None
-}
-
-fn fold_ascii(ch: char, out: &mut String) {
-	if ch.is_ascii() {
-		out.push(ch.to_ascii_lowercase());
-		return;
-	}
-	let folded = match ch {
-		'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' | 'ā' | 'À' | 'Á' | 'Â' | 'Ã' | 'Ä' | 'Å' | 'Ā' => {
-			"a"
-		}
-		'æ' | 'Æ' => "ae",
-		'ç' | 'ć' | 'č' | 'Ç' | 'Ć' | 'Č' => "c",
-		'è' | 'é' | 'ê' | 'ë' | 'ē' | 'È' | 'É' | 'Ê' | 'Ë' | 'Ē' => "e",
-		'ì' | 'í' | 'î' | 'ï' | 'ī' | 'Ì' | 'Í' | 'Î' | 'Ï' | 'Ī' => "i",
-		'ñ' | 'ń' | 'Ñ' | 'Ń' => "n",
-		'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ø' | 'ō' | 'Ò' | 'Ó' | 'Ô' | 'Õ' | 'Ö' | 'Ø' | 'Ō' => {
-			"o"
-		}
-		'œ' | 'Œ' => "oe",
-		'ß' => "ss",
-		'ù' | 'ú' | 'û' | 'ü' | 'ū' | 'Ù' | 'Ú' | 'Û' | 'Ü' | 'Ū' => "u",
-		'ý' | 'ÿ' | 'Ý' | 'Ÿ' => "y",
-		'\'' | '\u{2019}' => return,
-		_ => " ",
-	};
-	out.push_str(folded);
+	number
+		.is_none()
+		.then_some(label.trim())
+		.and_then(|s| (!s.is_empty()).then(|| s.into()))
 }
 
 // OniSaga term slugs accept only `[a-z0-9]+(?:-[a-z0-9]+)*`.
 pub fn slugify(name: &str) -> String {
 	let mut ascii = String::with_capacity(name.len());
 	for ch in name.chars() {
-		fold_ascii(ch, &mut ascii);
+		match ch {
+			_ if ch.is_ascii() => ascii.push(ch.to_ascii_lowercase()),
+			'\'' | '\u{2019}' => {}
+			'à'..='å' | 'ā' | 'À'..='Å' | 'Ā' => ascii.push('a'),
+			'æ' | 'Æ' => ascii.push_str("ae"),
+			'ç' | 'ć' | 'č' | 'Ç' | 'Ć' | 'Č' => ascii.push('c'),
+			'è'..='ë' | 'ē' | 'È'..='Ë' | 'Ē' => ascii.push('e'),
+			'ì'..='ï' | 'ī' | 'Ì'..='Ï' | 'Ī' => ascii.push('i'),
+			'ñ' | 'ń' | 'Ñ' | 'Ń' => ascii.push('n'),
+			'ò'..='ö' | 'ø' | 'ō' | 'Ò'..='Ö' | 'Ø' | 'Ō' => ascii.push('o'),
+			'œ' | 'Œ' => ascii.push_str("oe"),
+			'ß' => ascii.push_str("ss"),
+			'ù'..='ü' | 'ū' | 'Ù'..='Ü' | 'Ū' => ascii.push('u'),
+			'ý' | 'ÿ' | 'Ý' | 'Ÿ' => ascii.push('y'),
+			_ => ascii.push(' '),
+		}
 	}
-	let mut slug = String::new();
-	for word in ascii
+	ascii
 		.split(|c: char| !c.is_ascii_alphanumeric())
 		.filter(|word| !word.is_empty())
-	{
-		if !slug.is_empty() {
-			slug.push('-');
-		}
-		slug.push_str(word);
-	}
-	slug
+		.collect::<Vec<_>>()
+		.join("-")
 }
 
 pub fn parse_terms(input: &str, include: &mut Vec<String>, exclude: &mut Vec<String>) {
@@ -258,74 +238,41 @@ pub fn parse_terms(input: &str, include: &mut Vec<String>, exclude: &mut Vec<Str
 	}
 }
 
-fn strip_markdown_line(line: &str) -> String {
-	let line = line
-		.trim()
-		.trim_start_matches('#')
-		.trim_start_matches('>')
-		.trim();
-	let mut out = String::with_capacity(line.len());
-	let mut chars = line.chars().peekable();
-	while let Some(ch) = chars.next() {
-		match ch {
-			'\\' => {
-				if let Some(escaped) = chars.next() {
-					out.push(escaped);
-				}
-			}
-			'[' => {
-				let mut label = String::new();
-				let mut closed = false;
-				for next in chars.by_ref() {
-					if next == ']' {
-						closed = true;
-						break;
-					}
-					label.push(next);
-				}
-				if closed && chars.peek() == Some(&'(') {
-					chars.next();
-					for next in chars.by_ref() {
-						if next == ')' {
-							break;
-						}
-					}
-					out.push_str(&label);
-				} else {
-					out.push('[');
-					out.push_str(&label);
-					if closed {
-						out.push(']');
-					}
-				}
-			}
-			'*' | '_' => {}
-			_ => out.push(ch),
+fn clean_line(line: &str) -> String {
+	let mut rest = line.trim().trim_start_matches(['#', '>']).trim();
+	let mut out = String::with_capacity(rest.len());
+	while let Some((before, after_open)) = rest.split_once('[') {
+		if let Some((label, after_mid)) = after_open.split_once("](")
+			&& let Some((_, after_close)) = after_mid.split_once(')')
+		{
+			out.push_str(before);
+			out.push_str(label);
+			rest = after_close;
+			continue;
 		}
+		out.push_str(before);
+		out.push('[');
+		rest = after_open;
 	}
+	out.push_str(rest);
+	out.retain(|c| c != '*' && c != '_' && c != '\\');
 	out
 }
 
 pub fn plain_synopsis(text: &str) -> Option<String> {
-	let mut joined = String::new();
-	for raw in text.lines() {
-		let cleaned = strip_markdown_line(raw);
-		let trimmed = cleaned.trim();
-		if trimmed.is_empty() {
-			continue;
-		}
-		let lower = trimmed.to_ascii_lowercase();
-		if lower.starts_with("(source:")
-			|| lower.starts_with("[source:")
-			|| lower.starts_with("source:")
-		{
-			continue;
-		}
-		if !joined.is_empty() {
-			joined.push(' ');
-		}
-		joined.push_str(trimmed);
-	}
+	let mut joined = text
+		.lines()
+		.map(clean_line)
+		.filter(|line| {
+			let s = line.trim();
+			!s.is_empty()
+				&& !["(source:", "[source:", "source:"]
+					.iter()
+					.any(|p| strip_ascii_prefix(s, p).is_some())
+		})
+		.map(|line| String::from(line.trim()))
+		.collect::<Vec<_>>()
+		.join(" ");
 	if let Some((before, tail)) = joined.rsplit_once('(')
 		&& let Some(inner) = tail.strip_suffix(')')
 		&& strip_ascii_prefix(inner.trim_start(), "source:").is_some()
@@ -339,7 +286,7 @@ pub fn plain_synopsis(text: &str) -> Option<String> {
 pub fn media_url(url: String) -> String {
 	let safe = url
 		.split_once('?')
-		.is_some_and(|(_, query)| query.split('&').any(|part| part == "p=sg"));
+		.is_some_and(|(_, q)| q.split('&').any(|part| part == "p=sg"));
 	if safe {
 		url
 	} else {
@@ -354,13 +301,9 @@ pub fn page_fragment(url: &str) -> Option<(&str, &str, i32)> {
 }
 
 pub fn page_expired(url: &str, now: i64) -> bool {
-	let Some((_, query)) = url.split_once('?') else {
-		return false;
-	};
-	query
-		.split(['&', '#'])
-		.find_map(|part| part.strip_prefix("e="))
-		.and_then(|value| value.parse::<i64>().ok())
+	url.split_once('?')
+		.and_then(|(_, q)| q.split(['&', '#']).find_map(|p| p.strip_prefix("e=")))
+		.and_then(|v| v.parse::<i64>().ok())
 		.is_some_and(|expiry| now + 60 >= expiry)
 }
 
@@ -376,7 +319,9 @@ pub fn parse_iso_date(time: &str) -> Option<i64> {
 	.or_else(|| {
 		// Fallback for hosts whose formatter drops fractional seconds and zones.
 		let naive = time.split('.').next()?;
-		let naive = naive.trim_end_matches("+00:00").trim_end_matches('Z');
-		parse_date(naive, "yyyy-MM-ddTHH:mm:ss")
+		parse_date(
+			naive.trim_end_matches("+00:00").trim_end_matches('Z'),
+			"yyyy-MM-ddTHH:mm:ss",
+		)
 	})
 }

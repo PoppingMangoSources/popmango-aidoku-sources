@@ -6,8 +6,9 @@ mod models;
 mod settings;
 
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Listing,
-	ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result, Source,
+	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, DynamicSettings, Filter, FilterValue,
+	GroupSetting, ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult,
+	MultiSelectFilter, MultiSelectSetting, Page, PageContent, PageContext, Result, Setting, Source,
 	alloc::{String, Vec, collections::BTreeMap, format, vec},
 	imports::{
 		net::{Request, TimeUnit, set_rate_limit},
@@ -18,14 +19,15 @@ use aidoku::{
 use api::{BASE_URL, CHAPTER_PAGE_SIZE, SORTS, SearchParams, parse, rpc, set_age};
 use core::cell::{Cell, RefCell};
 use helpers::{
-	DEMOGRAPHICS, FORMS, GENRES, Link, page_expired, page_fragment, parse_link, parse_terms,
-	slugify,
+	DEMOGRAPHICS, Link, form_slug, origin_slug, page_expired, page_fragment, parse_link,
+	parse_terms, slugify,
 };
 use models::{
-	Bootstrap, ChapterPage, ChapterUnit, Empty, IndexInput, PageImage, ReleaseInput, Scope,
-	SelectInput, SelectPage, Selection, SlugInput, TermOption, WorkDetail, Years,
+	Bootstrap, ChapterPage, ChapterUnit, PageImage, Scope, SelectPage, Selection, TermOption,
+	WorkDetail, Years,
 };
-use settings::languages;
+use serde_json::json;
+use settings::{deduplicate_chapters, languages};
 
 const MAX_CURSORS: usize = 64;
 
@@ -33,6 +35,7 @@ struct OniSaga {
 	cursors: RefCell<Vec<(String, String)>>,
 	age: Cell<Option<bool>>,
 	pages: RefCell<Option<(String, Vec<PageImage>)>>,
+	taxonomy: RefCell<Option<Vec<TermOption>>>,
 }
 
 impl OniSaga {
@@ -42,6 +45,61 @@ impl OniSaga {
 			self.age.set(Some(adult));
 		}
 		Ok(())
+	}
+
+	fn taxonomy(&self) -> Result<Vec<TermOption>> {
+		if let Some(cached) = self.taxonomy.borrow().as_ref() {
+			return Ok(cached.clone());
+		}
+		let terms: Vec<TermOption> = parse(rpc("catalog/taxonomy", json!({}))?.send()?)?;
+		*self.taxonomy.borrow_mut() = Some(terms.clone());
+		Ok(terms)
+	}
+
+	fn genres(&self) -> Result<(Vec<String>, Vec<String>)> {
+		Ok(self
+			.taxonomy()?
+			.into_iter()
+			.filter(|t| t.group == "genre" && !t.slug.is_empty() && !t.name.is_empty())
+			.map(|t| (t.slug, t.name))
+			.unzip())
+	}
+
+	fn resolve_tapped_tags(&self, tapped: Vec<String>, search: &mut SearchParams) {
+		let mut origins = Vec::new();
+		let mut unknown = Vec::new();
+		for (name, slug) in tapped.into_iter().filter_map(|name| {
+			let slug = slugify(&name);
+			(!slug.is_empty()).then_some((name, slug))
+		}) {
+			if let Some(origin) = origin_slug(&slug) {
+				origins.push(origin.into());
+			} else if DEMOGRAPHICS.contains(&slug.as_str()) {
+				search.demographic.push(slug);
+			} else if let Some(form) = form_slug(&slug) {
+				search.form.push(form.into());
+			} else {
+				unknown.push((name, slug));
+			}
+		}
+		if !origins.is_empty() {
+			search.origin = Some(origins);
+		}
+		if unknown.is_empty() {
+			return;
+		}
+		let taxonomy = self.taxonomy().unwrap_or_default();
+		for (name, slug) in unknown {
+			let matched = taxonomy
+				.iter()
+				.find(|t| t.slug == slug || t.name.eq_ignore_ascii_case(&name));
+			match matched.map(|t| (t.group.as_str(), t.slug.as_str())) {
+				Some(("genre", found)) => search.genres.include.push(found.into()),
+				Some(("theme", found)) => search.themes.include.push(found.into()),
+				Some((_, found)) => search.tags.include.push(found.into()),
+				None => search.tags.include.push(slug),
+			}
+		}
 	}
 
 	fn page(&self, mut search: SearchParams, page: i32) -> Result<MangaPageResult> {
@@ -58,7 +116,7 @@ impl OniSaga {
 				.borrow()
 				.iter()
 				.find(|(k, _)| *k == key)
-				.map(|(_, cursor)| cursor.clone());
+				.map(|(_, c)| c.clone());
 			let Some(cursor) = cursor else {
 				return Ok(MangaPageResult::default());
 			};
@@ -81,22 +139,22 @@ impl OniSaga {
 	}
 
 	fn detail(&self, slug: &str) -> Result<WorkDetail> {
-		let response = rpc("catalog/detail", SlugInput { slug })?.send()?;
+		let response = rpc("catalog/detail", json!({ "slug": slug }))?.send()?;
 		let status = response.status_code();
 		if (status == 403 || status == 404) && self.age.get() != Some(true) {
 			self.sync_age(true)?;
-			return parse(rpc("catalog/detail", SlugInput { slug })?.send()?);
+			return parse(rpc("catalog/detail", json!({ "slug": slug }))?.send()?);
 		}
 		parse(response)
 	}
 
 	fn bootstrap(&self, release_id: &str) -> Result<Vec<PageImage>> {
-		let response = rpc("reader/bootstrap", ReleaseInput { release_id })?.send()?;
+		let response = rpc("reader/bootstrap", json!({ "releaseId": release_id }))?.send()?;
 		let status = response.status_code();
 		let bootstrap: Bootstrap =
 			if (status == 403 || status == 404) && self.age.get() != Some(true) {
 				self.sync_age(true)?;
-				parse(rpc("reader/bootstrap", ReleaseInput { release_id })?.send()?)?
+				parse(rpc("reader/bootstrap", json!({ "releaseId": release_id }))?.send()?)?
 			} else {
 				parse(response)?
 			};
@@ -106,61 +164,28 @@ impl OniSaga {
 	}
 }
 
-fn resolve_tapped_tags(tapped: Vec<String>, search: &mut SearchParams) {
-	let mut unknown = Vec::new();
-	for (name, slug) in tapped.into_iter().filter_map(|name| {
-		let slug = slugify(&name);
-		(!slug.is_empty()).then_some((name, slug))
-	}) {
-		if GENRES.contains(&slug.as_str()) {
-			search.genres.include.push(slug);
-		} else if DEMOGRAPHICS.contains(&slug.as_str()) {
-			search.demographic.push(slug);
-		} else if FORMS.contains(&slug.as_str()) {
-			search.form.push(slug);
-		} else {
-			unknown.push((name, slug));
-		}
+fn index_request(work_id: &str, scope: &Scope, cursor: Option<&str>) -> Result<Request> {
+	let mut input = json!({
+		"workId": work_id,
+		"streamId": scope.stream_id,
+		"lang": scope.language,
+		"order": "desc",
+		"limit": CHAPTER_PAGE_SIZE,
+	});
+	if let Some(edition_id) = &scope.edition_id {
+		input["editionId"] = json!(edition_id);
 	}
-	if unknown.is_empty() {
-		return;
+	if let Some(cursor) = cursor {
+		input["cursor"] = json!(cursor);
 	}
-	let taxonomy = rpc("catalog/taxonomy", Empty {})
-		.and_then(|req| req.send().map_err(Into::into))
-		.and_then(parse::<Vec<TermOption>>)
-		.unwrap_or_default();
-	for (name, slug) in unknown {
-		let matched = taxonomy
-			.iter()
-			.find(|term| term.slug == slug || term.name.eq_ignore_ascii_case(&name));
-		match matched.map(|term| (term.group.as_str(), term.slug.as_str())) {
-			Some(("genre", found)) => search.genres.include.push(found.into()),
-			Some(("theme", found)) => search.themes.include.push(found.into()),
-			Some((_, found)) => search.tags.include.push(found.into()),
-			None => search.tags.include.push(slug),
-		}
-	}
+	rpc("chapters/index", input)
 }
 
 fn fetch_scope_units(work_id: &str, scope: &Scope, first: ChapterPage) -> Result<Vec<ChapterUnit>> {
 	let mut units = first.items;
 	let mut cursor = first.next_cursor;
 	while let Some(next_cursor) = cursor {
-		let page: ChapterPage = parse(
-			rpc(
-				"chapters/index",
-				IndexInput {
-					work_id,
-					stream_id: &scope.stream_id,
-					edition_id: scope.edition_id.as_deref(),
-					lang: &scope.language,
-					order: "desc",
-					limit: CHAPTER_PAGE_SIZE,
-					cursor: Some(&next_cursor),
-				},
-			)?
-			.send()?,
-		)?;
+		let page: ChapterPage = parse(index_request(work_id, scope, Some(&next_cursor))?.send()?)?;
 		if page.items.is_empty() {
 			break;
 		}
@@ -177,29 +202,28 @@ fn resolve_missing_selections(
 ) -> Result<BTreeMap<String, Selection>> {
 	let missing = units
 		.iter()
-		.filter(|unit| {
-			unit.selection.is_none()
-				&& unit.readable_candidate_count != Some(0)
-				&& !unit.id.is_empty()
+		.filter(|u| {
+			u.selection.is_none() && u.readable_candidate_count != Some(0) && !u.id.is_empty()
 		})
-		.map(|unit| unit.id.clone())
+		.map(|u| u.id.clone())
 		.collect::<Vec<_>>();
 	if missing.is_empty() {
 		return Ok(BTreeMap::new());
 	}
+	// `chapters/select` requires `editionId` to be present (null when unset).
 	let requests = missing
 		.chunks(CHAPTER_PAGE_SIZE as usize)
 		.map(|chunk| {
 			rpc(
 				"chapters/select",
-				SelectInput {
-					work_id,
-					stream_id: &scope.stream_id,
-					edition_id: scope.edition_id.as_deref(),
-					chapter_ids: chunk,
-					language: &scope.language,
-					preference_version: 0,
-				},
+				json!({
+					"workId": work_id,
+					"streamId": scope.stream_id,
+					"editionId": scope.edition_id,
+					"chapterIds": chunk,
+					"language": scope.language,
+					"preferenceVersion": 0,
+				}),
 			)
 		})
 		.collect::<Result<Vec<_>>>()?;
@@ -221,6 +245,7 @@ impl Source for OniSaga {
 			cursors: RefCell::new(Vec::new()),
 			age: Cell::new(None),
 			pages: RefCell::new(None),
+			taxonomy: RefCell::new(None),
 		}
 	}
 
@@ -231,9 +256,7 @@ impl Source for OniSaga {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		if let Some(target) = query.as_deref().and_then(parse_link) {
-			let slug = match target {
-				Link::Title(slug) | Link::Chapter(slug, _) => slug,
-			};
+			let (Link::Title(slug) | Link::Chapter(slug, _)) = target;
 			if let Ok(detail) = self.detail(&slug)
 				&& let Ok(manga) = detail.into_basic_manga()
 			{
@@ -284,8 +307,7 @@ impl Source for OniSaga {
 					_ => {}
 				},
 				FilterValue::Range { id, from, to } if id == "year" => {
-					let from = from.map(|year| year as i32);
-					let to = to.map(|year| year as i32);
+					let (from, to) = (from.map(|y| y as i32), to.map(|y| y as i32));
 					if let (Some(start), Some(end)) = (from, to)
 						&& start > end
 					{
@@ -302,7 +324,7 @@ impl Source for OniSaga {
 			}
 		}
 		if !tapped.is_empty() {
-			resolve_tapped_tags(tapped, &mut search);
+			self.resolve_tapped_tags(tapped, &mut search);
 		}
 		self.page(search, page)
 	}
@@ -328,8 +350,7 @@ impl Source for OniSaga {
 			return Ok(manga);
 		}
 
-		let chosen_languages = languages();
-		let scopes = reading.language_scopes(&chosen_languages);
+		let scopes = reading.language_scopes(&languages());
 		if scopes.is_empty() {
 			manga.chapters = Some(Vec::new());
 			return Ok(manga);
@@ -338,26 +359,14 @@ impl Source for OniSaga {
 			send_partial_result(&manga);
 		}
 
-		let initial_requests = scopes
+		let deduplicate = deduplicate_chapters();
+		let initial = scopes
 			.iter()
-			.map(|scope| {
-				rpc(
-					"chapters/index",
-					IndexInput {
-						work_id: &reading.work_id,
-						stream_id: &scope.stream_id,
-						edition_id: scope.edition_id.as_deref(),
-						lang: &scope.language,
-						order: "desc",
-						limit: CHAPTER_PAGE_SIZE,
-						cursor: None,
-					},
-				)
-			})
+			.map(|scope| index_request(&reading.work_id, scope, None))
 			.collect::<Result<Vec<_>>>()?;
 
 		let mut list = Vec::new();
-		for (scope, response) in scopes.iter().zip(Request::send_all(initial_requests)) {
+		for (scope, response) in scopes.iter().zip(Request::send_all(initial)) {
 			let first: ChapterPage = parse(response?)?;
 			let units = fetch_scope_units(&reading.work_id, scope, first)?;
 			let mut selections = resolve_missing_selections(&reading.work_id, scope, &units)?;
@@ -367,6 +376,7 @@ impl Source for OniSaga {
 					&manga.key,
 					&scope.language,
 					&reading.groups,
+					deduplicate,
 					fallback,
 				));
 			}
@@ -375,8 +385,8 @@ impl Source for OniSaga {
 		if scopes.len() > 1 {
 			// Stable, so each number keeps the reader's language order.
 			list.sort_by(|a, b| {
-				let number = |chapter: &Chapter| chapter.chapter_number.unwrap_or(-1.0);
-				number(b).total_cmp(&number(a))
+				let num = |c: &Chapter| c.chapter_number.unwrap_or(-1.0);
+				num(b).total_cmp(&num(a))
 			});
 		}
 		manga.chapters = Some(list);
@@ -384,14 +394,61 @@ impl Source for OniSaga {
 	}
 
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
-		let pages = self.bootstrap(&chapter.key)?;
-		Ok(pages
+		Ok(self
+			.bootstrap(&chapter.key)?
 			.into_iter()
-			.map(|page| Page {
-				content: PageContent::url(format!("{}#oni={}.{}", page.url, chapter.key, page.ord)),
+			.map(|p| Page {
+				content: PageContent::url(format!("{}#oni={}.{}", p.url, chapter.key, p.ord)),
 				..Default::default()
 			})
 			.collect())
+	}
+}
+
+impl DynamicFilters for OniSaga {
+	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
+		let (ids, options) = self.genres()?;
+		Ok(vec![
+			MultiSelectFilter {
+				id: "genre".into(),
+				title: Some("Genres".into()),
+				is_genre: true,
+				can_exclude: true,
+				uses_tag_style: true,
+				options: options.into_iter().map(Into::into).collect(),
+				ids: Some(ids.into_iter().map(Into::into).collect()),
+				..Default::default()
+			}
+			.into(),
+		])
+	}
+}
+
+impl DynamicSettings for OniSaga {
+	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
+		let (values, titles) = self.genres()?;
+		Ok(vec![
+			GroupSetting {
+				title: "Exclusions".into(),
+				footer: Some(
+					"Titles with these genres are hidden unless a search includes them (up to 20)."
+						.into(),
+				),
+				items: vec![
+					MultiSelectSetting {
+						key: "excludedGenres".into(),
+						title: "Excluded Genres".into(),
+						values: values.into_iter().map(Into::into).collect(),
+						titles: Some(titles.into_iter().map(Into::into).collect()),
+						refreshes: Some(vec!["content".into(), "listings".into()]),
+						..Default::default()
+					}
+					.into(),
+				],
+				..Default::default()
+			}
+			.into(),
+		])
 	}
 }
 
@@ -413,33 +470,26 @@ impl ListingProvider for OniSaga {
 
 impl ImageRequestProvider for OniSaga {
 	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
-		let resolved = if let Some((clean, release_id, ord)) = page_fragment(&url) {
-			if page_expired(clean, current_date()) {
-				let cached = self.pages.borrow().as_ref().and_then(|(id, pages)| {
-					if id != release_id {
-						return None;
-					}
-					let found = pages.iter().find(|page| page.ord == ord)?;
+		let resolved = match page_fragment(&url) {
+			Some((clean, release_id, ord)) if page_expired(clean, current_date()) => self
+				.pages
+				.borrow()
+				.as_ref()
+				.filter(|(id, _)| id == release_id)
+				.and_then(|(_, pages)| {
+					let found = pages.iter().find(|p| p.ord == ord)?;
 					(!page_expired(&found.url, current_date())).then(|| found.url.clone())
-				});
-				match cached {
-					Some(fresh) => fresh,
-					None => self
-						.bootstrap(release_id)
-						.ok()
-						.and_then(|pages| {
-							pages
-								.into_iter()
-								.find(|page| page.ord == ord)
-								.map(|page| page.url)
-						})
-						.unwrap_or_else(|| clean.into()),
-				}
-			} else {
-				clean.into()
-			}
-		} else {
-			url
+				})
+				.or_else(|| {
+					self.bootstrap(release_id)
+						.ok()?
+						.into_iter()
+						.find(|p| p.ord == ord)
+						.map(|p| p.url)
+				})
+				.unwrap_or_else(|| clean.into()),
+			Some((clean, ..)) => clean.into(),
+			None => url,
 		};
 		Ok(Request::get(resolved)?.header("Referer", &format!("{BASE_URL}/")))
 	}
@@ -458,6 +508,8 @@ register_source!(
 	OniSaga,
 	Home,
 	ListingProvider,
+	DynamicFilters,
+	DynamicSettings,
 	ImageRequestProvider,
 	DeepLinkHandler
 );
