@@ -399,7 +399,6 @@ fn review_search_filters_overrides_and_limits() {
 
 	let mut filtered = SearchParams::new(None);
 	filtered.origin = Some(vec!["manhwa".into(), "manhwa".into()]);
-	filtered.ratings = vec!["mature".into(), "mature".into()];
 	filtered.genres.include.push("horror".into());
 	filtered.genres.exclude.push("tragedy".into());
 	parse_terms(
@@ -419,11 +418,6 @@ fn review_search_filters_overrides_and_limits() {
 		filtered.languages.push(format!("l{idx}"));
 	}
 	filtered.finalize();
-	assert!(filtered.ratings.is_empty());
-	defaults_set("contentRating", DefaultValue::String("adult".into()));
-	filtered.ratings = vec!["mature".into(), "mature".into()];
-	filtered.finalize();
-	assert_eq!(filtered.ratings, ["mature"]);
 	assert_eq!(filtered.languages.len(), 10);
 	assert_eq!(filtered.tags.exclude.len(), 20);
 	assert_eq!(filtered.genres.include, ["horror"]);
@@ -431,6 +425,7 @@ fn review_search_filters_overrides_and_limits() {
 	assert_eq!(filtered.themes.include, ["magic", "shonen", "boys-love"]);
 	assert_eq!(filtered.themes.exclude, ["military"]);
 
+	defaults_set("contentRating", DefaultValue::String("adult".into()));
 	assert_eq!(
 		SearchParams::new(None).ratings,
 		["safe", "suggestive", "mature", "explicit"]
@@ -797,11 +792,7 @@ fn review_resources() {
 		ratings["titles"],
 		json!(["All ages", "Include suggestive", "18+ · I'm 18 or older"])
 	);
-	let rating = filters.iter().find(|f| f["id"] == "rating").unwrap();
-	assert_eq!(
-		rating["ids"],
-		json!(["safe", "suggestive", "mature", "explicit"])
-	);
+	assert!(filters.iter().all(|f| f["id"] != "rating"));
 	let dedup = settings[1]["items"]
 		.as_array()
 		.unwrap()
@@ -850,25 +841,25 @@ fn every_sort_and_listing() {
 }
 
 #[aidoku_test]
-fn rating_filter_picks_within_setting() {
+fn each_content_rating_setting() {
 	reset();
 	let source = OniSaga::new();
-	let mature = || {
-		vec![FilterValue::MultiSelect {
-			id: "rating".into(),
-			included: vec!["mature".into()],
-			excluded: Vec::new(),
-		}]
-	};
-	let page = source.get_search_manga_list(None, 1, mature()).unwrap();
-	assert!(page.entries.is_empty());
-	defaults_set("contentRating", DefaultValue::String("adult".into()));
-	let page = source.get_search_manga_list(None, 1, mature()).unwrap();
+	defaults_set("contentRating", DefaultValue::String("safe".into()));
+	let page = source.get_search_manga_list(None, 1, Vec::new()).unwrap();
 	assert!(!page.entries.is_empty());
 	assert!(
 		page.entries
 			.iter()
-			.all(|manga| manga.content_rating == ContentRating::NSFW)
+			.all(|manga| manga.content_rating == ContentRating::Safe)
+	);
+	defaults_set("contentRating", DefaultValue::String("adult".into()));
+	let page = source
+		.get_search_manga_list(Some("love".into()), 1, Vec::new())
+		.unwrap();
+	assert!(
+		page.entries
+			.iter()
+			.any(|manga| manga.content_rating == ContentRating::NSFW)
 	);
 }
 

@@ -108,24 +108,6 @@
 		]
 	},
 	{
-		"type": "multi-select",
-		"id": "rating",
-		"title": "Content rating",
-		"canExclude": false,
-		"options": [
-			"Safe",
-			"Suggestive",
-			"Mature",
-			"Explicit"
-		],
-		"ids": [
-			"safe",
-			"suggestive",
-			"mature",
-			"explicit"
-		]
-	},
-	{
 		"type": "range",
 		"id": "year",
 		"title": "Publication year",

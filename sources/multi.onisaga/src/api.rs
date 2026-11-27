@@ -4,7 +4,7 @@ use crate::{
 		BrowsePage, ChapterPage, ChapterUnit, ErrorResponse, Reading, Rpc, Scope, SelectPage,
 		Selection, Terms, Years,
 	},
-	settings::{adult, content_ratings, excluded_genres, languages, origins},
+	settings::{content_ratings, excluded_genres, languages, origins},
 };
 use aidoku::{
 	Chapter, Manga, MangaPageResult, Result,
@@ -101,12 +101,6 @@ impl SearchParams {
 		dedup_keep_order(&mut self.form);
 		dedup_keep_order(&mut self.status);
 		dedup_keep_order(&mut self.demographic);
-		dedup_keep_order(&mut self.ratings);
-		// Mature and Explicit need the 18+ setting, which is what confirms the age.
-		if !adult() {
-			self.ratings
-				.retain(|rating| rating == "safe" || rating == "suggestive");
-		}
 		dedup_keep_order(&mut self.languages);
 		self.languages.truncate(MAX_LANGUAGES);
 		self.genres.finalize();

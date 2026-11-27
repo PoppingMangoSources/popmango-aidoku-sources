@@ -11,7 +11,9 @@ pub fn adult() -> bool {
 	defaults_get::<String>("contentRating").is_some_and(|rating| rating == "adult")
 }
 
-// Each choice adds to the one before, as on the site.
+// Each choice adds to the one before, as on the site. There is no Content rating search filter
+// to override this: OniSaga only shows Mature and Explicit titles after its 18+ confirmation,
+// which this setting gives, so a filter could not reach them on its own.
 pub fn content_ratings() -> Vec<String> {
 	let count = match defaults_get::<String>("contentRating").as_deref() {
 		Some("safe") => 1,

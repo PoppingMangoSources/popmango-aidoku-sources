@@ -152,7 +152,6 @@ impl Source for OniSaga {
 					"status" => search.status = included,
 					"form" => search.form = included,
 					"demographic" => search.demographic = included,
-					"rating" => search.ratings = included,
 					_ => {}
 				},
 				FilterValue::Select { id, value } if !value.is_empty() && id == "genre" => {

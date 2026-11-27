@@ -91,9 +91,10 @@ Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
 
 Source `contentRating` is `1`. The `contentRating` select mirrors the site's own prompt: `All
 ages` (safe), `Include suggestive` (safe and suggestive, the default) and `18+ · I'm 18 or older`
-(all four), each adding to the one before (`sources/multi.onisaga/src/settings.rs:15`). The
-search's Content rating filter picks within that setting: without 18+, `finalize` drops Mature
-and Explicit, so a filter of only those sends nothing (`sources/multi.onisaga/src/api.rs:94`).
+(all four), each adding to the one before (`sources/multi.onisaga/src/settings.rs:15`). There
+is no Content rating search filter: the site only shows Mature and Explicit titles after its 18+
+confirmation, which this setting gives, so a filter could not override it (owner's call,
+2026-11-28).
 Selecting all seven origins omits `origin` (`None`) so titles with `origin: null` still appear;
 clearing `origins` or `languages` returns empty results before issuing any network request.
 
