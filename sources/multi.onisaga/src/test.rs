@@ -38,7 +38,7 @@ const TITLE_HTML: &str = r#"<!doctype html><html><body><main>
 <span data-cover=""><img src="https://media.onisaga.com/api/covers/tsun?mv=34&amp;w=240"></span>
 <div><span data-medium="manhwa">Manhwa</span><span>Publication on hiatus</span><span><span>Suggestive</span></span><span><span>Korean → English</span></span></div>
 <h1 id="work-title">Tsun-Yandere</h1>
-<p><span>Story <a href="/creator/a">Writer One</a></span> <span>Art <a href="/creator/b">Artist One</a></span> <span>Story and art <a href="/creator/c">Both</a></span></p>
+<p><span>Story <a href="/creator/a">Writer One</a></span> <span>Art <a href="/creator/b">Artist One</a></span> <span>Story and art <a href="/creator/c">Both</a></span> <span>Story <a href="/creator/a">Writer One</a></span></p>
 <div><a href="/browse?genre=romance">Romance</a><a href="/browse?genre=comedy">Comedy</a><a href="/browse?genre=comedy">Comedy</a></div>
 </section>
 <p id="synopsis">First line.

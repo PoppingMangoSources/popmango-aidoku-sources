@@ -116,7 +116,8 @@ pub fn gated(doc: &Document) -> Result<bool> {
 }
 
 // Each chosen language the title has, with the page to read it from, or `None` for the page
-// already loaded. Some languages live only in another numbering, listed after the main one.
+// already loaded. Some languages live only in another numbering, listed after the main one. A
+// matched link always has a query, since it carries `lang=`.
 pub fn language_pages<'a>(
 	alternatives: &[Alternative],
 	languages: &'a [String],
@@ -172,7 +173,13 @@ pub fn details(doc: &Document, key: &str) -> Result<Manga> {
 				})
 			})
 			.filter_map(|link| link.text())
-			.collect::<Vec<_>>();
+			// Keep the site's order; a person credited twice appears once.
+			.fold(Vec::new(), |mut names, name| {
+				if !names.contains(&name) {
+					names.push(name);
+				}
+				names
+			});
 		(!names.is_empty()).then_some(names)
 	};
 	let mut tags = hero
