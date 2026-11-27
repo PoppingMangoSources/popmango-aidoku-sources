@@ -15,7 +15,7 @@ sources:
   - code: sources/multi.onisaga/res/source.json
   - code: sources/multi.onisaga/src/test.rs
   - ext: https://onisaga.com/browse
-verified_at: 2ff2c09
+verified_at: c071d71
 ---
 
 OniSaga (`onisaga.com`) is a Next.js site behind Cloudflare with public media on
@@ -70,11 +70,11 @@ Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
 
 ## Ratings, origins, languages and media URLs
 
-Source `contentRating` is `1`, defaulting `contentRatings` to `["safe"]` (`Suggestive` off by
-default, `Mature` and `Explicit` opt-in). Selecting all seven origins omits `origin` (`None`) so
-titles with `origin: null` still appear; clearing `contentRatings`, `origins` or `languages`
-returns empty results before issuing any network request (`sources/multi.onisaga/src/settings.rs:25`,
-`sources/multi.onisaga/src/api.rs:113`).
+Source `contentRating` is `1`, defaulting `contentRatings` to `["safe", "suggestive"]` (`Mature`
+and `Explicit` opt-in). Selecting all seven origins omits `origin` (`None`) so titles with
+`origin: null` still appear; clearing `contentRatings`, `origins` or `languages` returns empty
+results before issuing any network request (`sources/multi.onisaga/src/settings.rs:14`,
+`sources/multi.onisaga/src/api.rs:112`).
 
 > ⚠️ `POST /api/age-confirmation` sets a 180-day `__Host-onisaga.age_confirmed` cookie on
 > `onisaga.com`. `sync_age` sends `action=withdraw&next=%2Frobots.txt` whenever the active request

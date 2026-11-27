@@ -2,7 +2,7 @@
 title: Source checks (check-sources.py)
 type: operation
 created: 2026-10-31
-updated: 2026-11-20
+updated: 2026-11-27
 sources:
   - code: scripts/check-sources.py
   - code: scripts/check-rule-tests.py
@@ -42,7 +42,7 @@ sources:
   - code: scripts/tests/test_archives.py
   - code: scripts/tests/test_live_test_report.py
   - code: scripts/tests/test_archive_gates.py
-verified_at: afbc5da
+verified_at: c071d71
 ---
 
 `scripts/check-sources.py` checks the source rules from the root `CLAUDE.md` / `AGENTS.md`
@@ -387,3 +387,6 @@ The current upstream Vine implementation is the known failing baseline for these
 merged calibration still runs Keyoapp and MangaThemesia, and candidate CI runs all selected
 contracts. Its spacing and dynamic tag capability rules also have Python guard regressions.
 The Iken review protections remain in place, including standard test scaffolds and isGenre.
+The empty-string allocation note (`scripts/check-sources.py:482`) checks comment-stripped source
+bodies across line breaks so both `Some(x.into()).filter(...)` and `.map(|x| x.into()).filter(...)`
+are reported before `is_empty()`.

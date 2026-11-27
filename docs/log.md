@@ -277,3 +277,8 @@ parallel without `Interpreter` actor contention; synced [[swarm]].
   `chapters/select`, `reader/bootstrap`), dropping HTML/Flight scraping (`src/rsc.rs`), enforcing
   `medium: ["comic"]` and strict Zod limits, adding per-listing cursors, age-cookie withdrawal,
   tag/author/artist search and signed `#oni=` page renewal; synced [[onisaga]].
+
+- 2026-11-27: Updated `multi.onisaga` (`c071d71`, v5) to default `contentRatings` to `["safe", "suggestive"]`,
+  fail `Bootstrap::into_pages` on blank page URLs, narrow internal visibility and destructure owned
+  models, and widened the `check-sources.py` empty-string allocation note to cover multi-line
+  `.map(|...| ...into()).filter(|...| !...is_empty())`; synced [[onisaga]] and [[source-checks]].
