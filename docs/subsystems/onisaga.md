@@ -17,7 +17,7 @@ sources:
   - code: sources/multi.onisaga/src/test.rs
   - ext: https://onisaga.com/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/onisaga
-verified_at: 45c50ed
+verified_at: c62d60a
 ---
 
 OniSaga (`onisaga.com`) is a Next.js site behind Cloudflare with images on `media.onisaga.com`.
@@ -37,11 +37,16 @@ in `src/test.rs` could not run here.
   in one `send_all` (`sources/multi.onisaga/src/home.rs`). The spotlight (`titles`/`thumbs`
   props) and latest updates (`entries`/`scope` props) come from the page's Flight data; trending
   and finished series are read from `section[aria-labelledby=…]` lists.
-- **Details and chapters**: `GET /title/<slug>?chapters=all&order=desc&lang=<code>`, one per
-  selected language, following the `nav[aria-label="Chapter pages"]` `cc=` link 100 rows at a
-  time (`sources/multi.onisaga/src/lib.rs`).
+- **Details and chapters**: `GET /title/<slug>?chapters=all&order=desc`, then each selected
+  language from the page's own language list (the Flight `alternatives` of its reading button),
+  following the `nav[aria-label="Chapter pages"]` `cc=` link 100 rows at a time
+  (`sources/multi.onisaga/src/lib.rs`, `helpers.rs` `language_pages`).
 - **Pages**: `GET /read/<slug>/<release>`, every `figure[data-page] img` (all pages are in the
   HTML).
+- **Mature and Explicit**: `POST /api/age-confirmation` (`action=confirm`), then
+  `POST /api/rpc/account/titleView` `{slug}` and `account/readerView` `{slug, releaseId}` for
+  gated titles. These shapes come from the keiyoushi client and another client's build; the
+  sandbox cannot send them past Cloudflare (unverified here).
 
 The site's JavaScript also calls `catalog.home`, `catalog.detail` and `reader.bootstrap` RPCs
 (seen in another client's build). Their inputs could not be probed from here, so details and
@@ -64,11 +69,21 @@ pages stay on the HTML, which was verified live.
 
 ## Ratings, origins and languages
 
-The guest audience is Safe and Suggestive. Mature and Explicit titles need the site's age
-confirmation and their pages are a `main[data-ui=content-gate]`; the source offers only Safe and
-Suggestive, Safe by default, and fails a gated title or chapter with a message. A title page
-shows a "Suggestive" fact chip and nothing for Safe, which is how details set the rating
+The guest audience is Safe and Suggestive. Choosing Mature or Explicit (setting or search filter)
+makes the source confirm the reader's age once per load (`sources/multi.onisaga/src/lib.rs`
+`confirm_age`); Safe is the only default, as a source rated 1 needs. A title page shows a
+"Suggestive" fact chip and nothing for Safe, which is how details set the rating
 (`sources/multi.onisaga/src/helpers.rs`).
+
+> ⚠️ A Mature or Explicit title page is only a `main[data-ui=content-gate]`. With
+> `data-gate="self-confirmation"` the details, chapters (one language, oldest first) and pages come
+> from the `account/*` RPCs; any other gate needs a signed-in account and fails with a message.
+> Their images are rewritten from `media.onisaga.com` to the main host, the only one the age
+> cookie reaches.
+
+> ⚠️ The age cookie lasts about 180 days and is never withdrawn, so turning Mature off later still
+> leaves the site's own home rows (trending, finished) free to show adult titles, which those rows
+> cannot be filtered for.
 
 > ⚠️ Every origin selected sends no `origin`: titles with a null origin (Fire Ring) would
 > otherwise vanish. A cleared Origin, Content Rating or language selection browses nothing, before
@@ -77,6 +92,11 @@ shows a "Suggestive" fact chip and nothing for Safe, which is how details set th
 > ⚠️ Rows unavailable in the page's language print "Not available here" and carry no
 > other-language panel, so one title page cannot list several languages; each language is its own
 > request. Only the main row of a language page is read, never its `langPanel` variants.
+
+> ⚠️ Some languages live only in another numbering (`?stream=…&lang=ja`), where `?lang=ja` alone
+> lists every chapter as unavailable. Follow the language list's link: its current entry, else the
+> first, which is the main numbering (Naruto lists its merged colour stream after it). A language
+> the list lacks costs no request.
 
 ## Chapter rows
 
