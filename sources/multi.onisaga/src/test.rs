@@ -285,7 +285,7 @@ fn review_home_sections_order_and_cards() {
 	assert_eq!(trending[0].title, "Blue Lock");
 	assert_eq!(
 		trending[0].image_url.as_deref(),
-		Some("https://media.onisaga.com/api/covers/blue-lock")
+		Some("https://media.onisaga.com/api/covers/blue-lock?w=480")
 	);
 	assert!(trending[0].subtitle.is_none());
 
@@ -523,7 +523,7 @@ fn review_details_credits_tags_and_chapters() {
 	assert_eq!(manga.title, "Tsun-Yandere");
 	assert_eq!(
 		manga.cover.as_deref(),
-		Some("https://media.onisaga.com/api/covers/tsun?mv=34")
+		Some("https://media.onisaga.com/api/covers/tsun?mv=34&w=480")
 	);
 	assert_eq!(
 		manga.authors.as_deref(),
@@ -627,9 +627,9 @@ fn review_adult_covers_use_the_main_host() {
 	assert_eq!(
 		covers,
 		[
-			format!("{CDN_URL}/api/covers/kept?mv=3"),
-			format!("{BASE_URL}/api/covers/gated?mv=7"),
-			format!("{BASE_URL}/api/covers/bare"),
+			format!("{CDN_URL}/api/covers/kept?mv=3&w=480"),
+			format!("{BASE_URL}/api/covers/gated?mv=7&w=480"),
+			format!("{BASE_URL}/api/covers/bare?w=480"),
 		]
 	);
 }

@@ -287,10 +287,12 @@ fn build_work(
 	} else {
 		cover
 	};
+	// The site's largest card width; the full original is several times heavier.
+	let separator = if cover.contains('?') { '&' } else { '?' };
 	Ok(Manga {
 		key: slug,
 		title,
-		cover: Some(cover),
+		cover: Some(format!("{cover}{separator}w=480")),
 		status: status.map_or(MangaStatus::Unknown, parse_status),
 		content_rating: parse_content_rating(rating),
 		..Default::default()

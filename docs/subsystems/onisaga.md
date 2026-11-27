@@ -110,6 +110,10 @@ clearing `origins` or `languages` returns empty results before issuing any netwo
 > `BASE_URL`, where the app adds the shared cookie to the cover request
 > (`sources/multi.onisaga/src/models.rs:286`). Safe and Suggestive covers stay on the media host.
 
+> ⚠️ A cover without `w=` is the full original (472 KB for one JPEG, against 65 KB as WebP at
+> `w=480`). The site's own cards request `w=160` to `w=480`, so `build_work` appends `w=480` with
+> `&` or `?` as the url needs (captured site code, 2026-11-21).
+
 > ⚠️ Some uploads repeat the number in the chapter title ("Chapter 46 46"). `clean_chapter_title`
 > treats a title whose words after the chapter prefix are all the chapter number as a duplicate
 > (`sources/multi.onisaga/src/helpers.rs:195`).
