@@ -17,14 +17,15 @@ Confirmed by console probes and in-app checks unless marked.
   went dead. `base_url()` filters `defaults_get("url")` against `MIRRORS` so a dead mirror
   saved in `UserDefaults` falls back to `kagane.moe`, and `BaseUrlProvider` makes Open Website
   follow the selected mirror.
-- **Reader pages:** `POST /api/integrity` then `POST /api/v2/books/{id}?is_datasaver=false`
-  with `x-integrity-token`; image URLs require the quality segment
-  `{cache_url}/api/v2/books/page/original/{book_id}/{page_id}.{ext}?token={access_token}`.
+- **Reader pages:** `POST /api/integrity` then `POST /api/v2/books/{id}?intent=Read` (empty
+  body) with `x-integrity-token`; image URLs require the quality segment (`datasaver` when
+  `dataSaver` is enabled, `original` otherwise):
+  `{cache_url}/api/v2/books/page/{quality}/{book_id}/{page_id}.{ext}?token={access_token}`.
 
 > ⚠️ `kagane.org` is Kagane's mirror-picker hub: it answers `/api/v2` and book manifests (`1 of N`),
 > so runner/API probes look green, while `kstatic.to` rejects `Origin: https://kagane.org` on reader
-> page images. Keep `https://kagane.moe` first in `urls` and `MIRRORS`, and never drop `/original/`
-> from `/api/v2/books/page/original/`.
+> page images. Keep `https://kagane.moe` first in `urls` and `MIRRORS`, and never drop the
+> `original`/`datasaver` segment from `/api/v2/books/page/{quality}/`.
 - **Chapters** come from `GET /series/{id}/books/index?fields=List` — rows of values in
   the order `fields` names, groups as indices into `groups`; order by `sort_no`, since
   chapter numbers restart. The series endpoint no longer lists books. (inferred from
