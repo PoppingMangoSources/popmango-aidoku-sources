@@ -262,3 +262,8 @@ parallel without `Interpreter` actor contention; synced [[swarm]].
   as JSON (decoding `ComicDetails` without chapters when `!needs_chapters`), run Home in a single
   parallel batch with a 2s timeout on `/api/latest` so cold cache misses do not hold `Interpreter`
   for 8s, and precompute `chapter_list` sort keys once per item; synced [[swarm]].
+
+- 2026-11-27: Updated `multi.swarm` (`9fcd3ad`, v11) to send `"clean":true` on `POST /api/sp`
+  (replacing expired `/noah/` strip hashes that 404 on `cash.swarm.ws`), warm 10 pages ahead via
+  parallel 0.4s `Range: bytes=0-0` requests (`cf-cache-status: HIT`), and allow 60s reader image
+  timeouts; synced [[swarm]].
