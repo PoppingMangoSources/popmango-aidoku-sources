@@ -267,3 +267,7 @@ parallel without `Interpreter` actor contention; synced [[swarm]].
   (replacing expired `/noah/` strip hashes that 404 on `cash.swarm.ws`), warm 10 pages ahead via
   parallel 0.4s `Range: bytes=0-0` requests (`cf-cache-status: HIT`), and allow 60s reader image
   timeouts; synced [[swarm]].
+
+- 2026-11-27: Reverted `multi.swarm` (`983b992`, v12) to its pre-`15b35c7` source implementation
+  at the owner's request after the v9–v11 Home timeout and reader warm-ahead changes regressed
+  in-app behavior; synced [[swarm]].
