@@ -16,7 +16,7 @@ sources:
   - code: sources/multi.swarm/res/source.json
   - ext: https://swarm.ws/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/swarm
-verified_at: 15b35c7
+verified_at: 58f53dc
 ---
 
 Swarm (`swarm.ws`) is a Next.js site over a JSON API, reachable from the sandbox; the live
@@ -27,8 +27,8 @@ suite runs. Probed on 2026-11-19 and 2026-11-26.
 - Browse `/api/manga/filtered`, text search `/api/comic/search` (`title=`), both with `limit`,
   `offset`, `order` (`last_updated`, `title`, `newest`), `genres`, `types`, `tags`, `nsfw`,
   `suggestive`, `yearStartMin`/`yearStartMax` and `minChapters` (`api.rs`).
-- Series and chapters: `/comic/{slug}?_rsc` with `RSC: 1`, the `initialData` object
-  (`api.rs` `comic_page`). Chapter keys are upload ids.
+- Series and chapters: `/api/comic/slug/{slug}/details` (`api.rs` `comic`, decoding `ComicDetails`
+  when chapters are omitted and `ComicPage` when chapters are requested). Chapter keys are upload ids.
 - Pages: `POST /api/sp` with `{"payload":"ivHex:cipherHex"}`, AES-256-CBC under SHA-256 of a
   constant from the site's reader (`helpers.rs` `encrypt_payload`); relative entries resolve
   against `baseUrl` (`models.rs` `Pages::into_urls`).
@@ -37,9 +37,11 @@ suite runs. Probed on 2026-11-19 and 2026-11-26.
   novels (`home.rs`).
 
 > ⚠️ `/api/latest` intermittently stalls on cache misses (up to Cloudflare 524). Match the site's
-> query order (`limit=50&filter=...&nsfw=...&suggestive=...&page=1`), cap home timeouts at 8s,
-> and load Popular, New Comics, and Novels first via `HomePartialResult::Component` so Discover
-> renders in under a second instead of holding the `Interpreter` WASM actor lock.
+> query order (`limit=50&filter=...&nsfw=...&suggestive=...&page=1`) and send all five Home
+> requests in a single `Request::send_all` batch with a 2s timeout on `/api/latest` (6s on the
+> rest) so `get_home` releases the `Interpreter` WASM actor lock within 2s instead of blocking
+> subsequent series/chapter calls. Precompute chapter sort keys once per filtered item before
+> `sort_unstable_by` so large catalogues do not repeat label parsing in interpreted `Wasm3`.
 
 > ⚠️ Do not register `ImageRequestProvider` on Swarm: the site's reader renders chapter `<img>`
 > tags with `referrerPolicy="no-referrer"`, and `cash.swarm.ws`, `/covers/`, and `/api/image-proxy`

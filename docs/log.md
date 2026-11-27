@@ -258,3 +258,7 @@ with bounded 8s timeouts and cached `/api/latest` parameter order, resolve relat
 `baseUrl` paths, and drop `ImageRequestProvider` so covers and chapter pages load natively in
 parallel without `Interpreter` actor contention; synced [[swarm]].
 
+- 2026-11-26: Updated `multi.swarm` (`58f53dc`, v10) to fetch `/api/comic/slug/{slug}/details`
+  as JSON (decoding `ComicDetails` without chapters when `!needs_chapters`), run Home in a single
+  parallel batch with a 2s timeout on `/api/latest` so cold cache misses do not hold `Interpreter`
+  for 8s, and precompute `chapter_list` sort keys once per item; synced [[swarm]].
