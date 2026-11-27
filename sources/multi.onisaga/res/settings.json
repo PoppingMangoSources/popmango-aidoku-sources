@@ -1,0 +1,86 @@
+[
+	{
+		"type": "group",
+		"title": "Content",
+		"footer": "Choosing Mature or Explicit confirms you are 18 or older. A search's Type or Content rating filter overrides these.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "contentRatings",
+				"title": "Content Rating",
+				"values": [
+					"safe",
+					"suggestive",
+					"mature",
+					"explicit"
+				],
+				"titles": [
+					"Safe",
+					"Suggestive",
+					"Mature",
+					"Explicit"
+				],
+				"default": [
+					"safe",
+					"suggestive"
+				],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "multi-select",
+				"key": "origins",
+				"title": "Type",
+				"values": [
+					"manga",
+					"manhwa",
+					"manhua",
+					"comic",
+					"oel",
+					"other_asian",
+					"other"
+				],
+				"titles": [
+					"Manga",
+					"Manhwa",
+					"Manhua",
+					"Comic",
+					"OEL",
+					"Other Asian",
+					"Other"
+				],
+				"default": [
+					"manga",
+					"manhwa",
+					"manhua",
+					"comic",
+					"oel",
+					"other_asian",
+					"other"
+				],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Chapters",
+		"footer": "Keep OniSaga's preferred upload per chapter instead of listing every group.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "deduplicateChapters",
+				"title": "Deduplicate Chapters",
+				"default": false,
+				"refreshes": [
+					"content"
+				]
+			}
+		]
+	}
+]
