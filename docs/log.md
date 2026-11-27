@@ -289,3 +289,9 @@ parallel without `Interpreter` actor contention; synced [[swarm]].
   renders rating and type badges), add opt-in `deduplicateChapters`, capitalize Discover and listing
   headings, rename the availability check filter (`Availability` / `Readable Chapters`), and trim
   unused RPC input models; synced [[onisaga]].
+
+- 2026-11-27: Refactored `multi.onisaga` (`7be7a0f`, v7) module boundaries to match merged JSON API
+  sources: extracted `DynamicFilters`, `DynamicSettings`, taxonomy caching and tapped-tag resolution
+  into `src/filters.rs`, moved `chapter_list` RPC pagination into `src/api.rs`, and moved
+  `dedup_keep_order` into `src/helpers.rs` so `src/lib.rs` and `src/models.rs` keep only trait impls
+  and data models; synced [[onisaga]].
