@@ -202,7 +202,7 @@ fn reset() {
 	defaults_set("languages", DefaultValue::StringArray(vec!["en".into()]));
 	defaults_set(
 		"contentRatings",
-		DefaultValue::StringArray(vec!["safe".into()]),
+		DefaultValue::StringArray(vec!["safe".into(), "suggestive".into()]),
 	);
 	defaults_set(
 		"origins",
@@ -249,13 +249,15 @@ fn review_home_sections_order_and_cards() {
 		panic!("expected big scroller");
 	};
 	assert_eq!(*auto_scroll_interval, Some(8.0));
-	assert_eq!(spotlight.len(), 1);
+	assert_eq!(spotlight.len(), 2);
 	assert_eq!(spotlight[0].key, "safe-strip");
 	assert_eq!(spotlight[0].viewer, Viewer::Webtoon);
 	assert_eq!(
 		spotlight[0].description.as_deref(),
 		Some("Bold intro with link.")
 	);
+	assert_eq!(spotlight[1].key, "teasing");
+	assert_eq!(spotlight[1].content_rating, ContentRating::Suggestive);
 
 	let HomeComponentValue::MangaList {
 		ranking,
@@ -346,7 +348,7 @@ fn review_search_filters_overrides_and_limits() {
 	let default_search = SearchParams::new(None);
 	let json = body(&default_search)["json"].clone();
 	assert_eq!(json["medium"], json!(["comic"]));
-	assert_eq!(json["ratings"], json!(["safe"]));
+	assert_eq!(json["ratings"], json!(["safe", "suggestive"]));
 	assert_eq!(json["languages"], json!(["en"]));
 	assert_eq!(json["sort"], "updated");
 	assert!(json.get("origin").is_none());
@@ -576,6 +578,12 @@ fn review_reader_media_urls_and_expiry() {
 
 	let prose: Bootstrap = serde_json::from_str(r#"{"kind":"text","manifest":null}"#).unwrap();
 	assert!(prose.into_pages().is_err());
+
+	let hole: Bootstrap = serde_json::from_str(
+		r#"{"kind":"images","manifest":{"pages":[{"ord":1,"url":"https://media.onisaga.com/api/media/a?p=sg"},{"ord":2,"url":""}]}}"#,
+	)
+	.unwrap();
+	assert!(hole.into_pages().is_err());
 }
 
 #[aidoku_test]
@@ -650,7 +658,7 @@ fn review_resources() {
 		.iter()
 		.find(|item| item["key"] == "contentRatings")
 		.unwrap();
-	assert_eq!(ratings["default"], json!(["safe"]));
+	assert_eq!(ratings["default"], json!(["safe", "suggestive"]));
 	let all = json!(["safe", "suggestive", "mature", "explicit"]);
 	assert_eq!(ratings["values"], all);
 	let rating = filters

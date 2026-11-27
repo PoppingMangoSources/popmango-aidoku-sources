@@ -194,37 +194,37 @@ pub struct LatestUnit {
 	at: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 pub struct WorkDetail {
 	pub slug: String,
-	pub canonical_title: String,
-	pub medium: String,
-	pub origin: Option<String>,
-	pub layout: Option<String>,
-	pub demographic: Option<String>,
-	pub publication_status: String,
-	pub content_rating: String,
-	pub synopsis_md: Option<String>,
-	pub metadata_version: String,
+	canonical_title: String,
+	medium: String,
+	origin: Option<String>,
+	layout: Option<String>,
+	demographic: Option<String>,
+	publication_status: String,
+	content_rating: String,
+	synopsis_md: Option<String>,
+	metadata_version: String,
 	#[serde(default)]
-	pub credits: Vec<Credit>,
+	credits: Vec<Credit>,
 	#[serde(default)]
-	pub terms: Vec<WorkTerm>,
+	terms: Vec<WorkTerm>,
 	pub reading: Reading,
 }
 
 #[derive(Deserialize)]
-pub struct Credit {
-	pub name: String,
-	pub role: String,
+struct Credit {
+	name: String,
+	role: String,
 }
 
 #[derive(Deserialize)]
-pub struct WorkTerm {
-	pub group: String,
-	pub name: String,
+struct WorkTerm {
+	group: String,
+	name: String,
 	#[serde(default)]
-	pub spoiler: bool,
+	spoiler: bool,
 }
 
 #[derive(Default, Deserialize)]
@@ -232,20 +232,20 @@ pub struct WorkTerm {
 pub struct Reading {
 	pub work_id: String,
 	#[serde(default)]
-	pub streams: Vec<Stream>,
+	streams: Vec<Stream>,
 	#[serde(default)]
-	pub languages: Vec<Scope>,
+	languages: Vec<Scope>,
 	#[serde(default)]
 	pub groups: Vec<Group>,
-	pub default_scope: Option<Scope>,
+	default_scope: Option<Scope>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Stream {
-	pub id: String,
+struct Stream {
+	id: String,
 	#[serde(default)]
-	pub is_default: bool,
+	is_default: bool,
 }
 
 #[derive(Clone, Deserialize)]
@@ -255,13 +255,13 @@ pub struct Scope {
 	pub edition_id: Option<String>,
 	pub language: String,
 	#[serde(default)]
-	pub readable_units: i32,
+	readable_units: i32,
 }
 
 #[derive(Deserialize)]
 pub struct Group {
-	pub id: String,
-	pub name: String,
+	id: String,
+	name: String,
 }
 
 #[derive(Deserialize)]
@@ -275,10 +275,10 @@ pub struct ChapterPage {
 #[serde(rename_all = "camelCase")]
 pub struct ChapterUnit {
 	pub id: String,
-	pub number: Option<String>,
-	pub label: String,
-	pub title: Option<String>,
-	pub volume: Option<String>,
+	number: Option<String>,
+	label: String,
+	title: Option<String>,
+	volume: Option<String>,
 	#[serde(default)]
 	pub readable_candidate_count: Option<i32>,
 	pub selection: Option<Selection>,
@@ -294,40 +294,67 @@ pub struct SelectPage {
 pub struct Selection {
 	#[serde(default)]
 	pub chapter_id: String,
-	pub selected_release_id: Option<String>,
+	selected_release_id: Option<String>,
 	#[serde(default)]
-	pub candidates: Vec<Release>,
+	candidates: Vec<Release>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Release {
-	pub id: String,
+struct Release {
+	id: String,
 	#[serde(default)]
-	pub group_ids: Vec<String>,
-	pub content_kind: String,
-	pub published_at: String,
-	pub readable_at: Option<String>,
-	pub is_readable: bool,
-	pub title: Option<String>,
-	pub label: String,
+	group_ids: Vec<String>,
+	content_kind: String,
+	published_at: String,
+	readable_at: Option<String>,
+	is_readable: bool,
+	title: Option<String>,
+	label: String,
 }
 
 #[derive(Deserialize)]
 pub struct Bootstrap {
-	pub kind: String,
-	pub manifest: Option<Manifest>,
+	kind: String,
+	manifest: Option<Manifest>,
 }
 
 #[derive(Deserialize)]
-pub struct Manifest {
-	pub pages: Vec<PageImage>,
+struct Manifest {
+	pages: Vec<PageImage>,
 }
 
 #[derive(Clone, Deserialize)]
 pub struct PageImage {
 	pub ord: i32,
 	pub url: String,
+}
+
+fn basic_work(
+	slug: String,
+	title: Option<String>,
+	medium: Option<&str>,
+	cover: Option<String>,
+	status: Option<&str>,
+	rating: Option<&str>,
+) -> Result<Manga> {
+	if medium.is_some_and(|medium| medium != "comic") {
+		bail!("OniSaga novel entries are not supported");
+	}
+	let title = title
+		.and_then(non_empty)
+		.ok_or_else(|| error!("OniSaga returned a title without a name"))?;
+	if slug.is_empty() {
+		bail!("OniSaga returned a title without a slug");
+	}
+	Ok(Manga {
+		key: slug,
+		title,
+		cover,
+		status: status.map_or(MangaStatus::Unknown, parse_status),
+		content_rating: parse_content_rating(rating),
+		..Default::default()
+	})
 }
 
 impl Work {
@@ -359,13 +386,32 @@ impl Work {
 				.any(|entry| languages.contains(&entry.language)))
 	}
 
-	pub fn into_details(mut self) -> Result<Manga> {
-		let description = self.synopsis.take().as_deref().and_then(plain_synopsis);
-		let viewer = viewer(self.layout.as_deref(), self.origin.as_deref(), &[]);
+	pub fn into_details(self) -> Result<Manga> {
+		let Self {
+			slug,
+			title,
+			medium,
+			cover_url,
+			origin,
+			layout,
+			publication_status,
+			content_rating,
+			synopsis,
+			..
+		} = self;
+		let description = synopsis.as_deref().and_then(plain_synopsis);
+		let viewer = viewer(layout.as_deref(), origin.as_deref(), &[]);
 		Ok(Manga {
 			description,
 			viewer,
-			..self.try_into()?
+			..basic_work(
+				slug,
+				title,
+				medium.as_deref(),
+				cover_url,
+				publication_status.as_deref(),
+				content_rating.as_deref(),
+			)?
 		})
 	}
 }
@@ -374,27 +420,14 @@ impl TryFrom<Work> for Manga {
 	type Error = AidokuError;
 
 	fn try_from(work: Work) -> Result<Self> {
-		if !work.is_comic() {
-			bail!("OniSaga novel entries are not supported");
-		}
-		let title = work
-			.title
-			.and_then(non_empty)
-			.ok_or_else(|| error!("OniSaga returned a title without a name"))?;
-		if work.slug.is_empty() {
-			bail!("OniSaga returned a title without a slug");
-		}
-		Ok(Manga {
-			key: work.slug,
-			title,
-			cover: work.cover_url,
-			status: work
-				.publication_status
-				.as_deref()
-				.map_or(MangaStatus::Unknown, parse_status),
-			content_rating: parse_content_rating(work.content_rating.as_deref()),
-			..Default::default()
-		})
+		basic_work(
+			work.slug,
+			work.title,
+			work.medium.as_deref(),
+			work.cover_url,
+			work.publication_status.as_deref(),
+			work.content_rating.as_deref(),
+		)
 	}
 }
 
@@ -500,10 +533,26 @@ impl WorkDetail {
 impl TryFrom<WorkDetail> for Manga {
 	type Error = AidokuError;
 
-	fn try_from(mut detail: WorkDetail) -> Result<Self> {
+	fn try_from(detail: WorkDetail) -> Result<Self> {
+		let WorkDetail {
+			slug,
+			canonical_title,
+			medium,
+			origin,
+			layout,
+			demographic,
+			publication_status,
+			content_rating,
+			synopsis_md,
+			metadata_version,
+			credits,
+			terms,
+			..
+		} = detail;
+
 		let mut authors = Vec::new();
 		let mut artists = Vec::new();
-		for (name, role) in core::mem::take(&mut detail.credits)
+		for (name, role) in credits
 			.into_iter()
 			.filter_map(|credit| non_empty(credit.name).map(|name| (name, credit.role)))
 		{
@@ -530,7 +579,7 @@ impl TryFrom<WorkDetail> for Manga {
 			}
 		}
 
-		let mut tags = core::mem::take(&mut detail.terms)
+		let mut tags = terms
 			.into_iter()
 			.filter(|term| {
 				!term.spoiler
@@ -541,20 +590,24 @@ impl TryFrom<WorkDetail> for Manga {
 			})
 			.filter_map(|term| non_empty(term.name))
 			.collect::<Vec<_>>();
-		if let Some(demographic) = detail
-			.demographic
-			.take()
-			.as_deref()
-			.and_then(demographic_name)
-		{
+		if let Some(demographic) = demographic.as_deref().and_then(demographic_name) {
 			tags.push(demographic.into());
 		}
 		tags.sort_unstable();
 		tags.dedup();
 
-		let viewer = viewer(detail.layout.as_deref(), detail.origin.as_deref(), &tags);
-		let description = detail.synopsis_md.take().and_then(non_empty);
-		let basic = detail.into_basic_manga()?;
+		let viewer = viewer(layout.as_deref(), origin.as_deref(), &tags);
+		let description = synopsis_md.and_then(non_empty);
+		let basic = WorkDetail {
+			slug,
+			canonical_title,
+			medium,
+			publication_status,
+			content_rating,
+			metadata_version,
+			..Default::default()
+		}
+		.into_basic_manga()?;
 		let url = Some(format!("{BASE_URL}/title/{}", basic.key));
 		Ok(Manga {
 			authors: (!authors.is_empty()).then_some(authors),
@@ -694,8 +747,7 @@ impl Bootstrap {
 			.manifest
 			.map(|manifest| manifest.pages)
 			.unwrap_or_default();
-		pages.retain(|page| !page.url.is_empty());
-		if pages.is_empty() {
+		if pages.is_empty() || pages.iter().any(|page| page.url.is_empty()) {
 			bail!("OniSaga has no pages for this chapter");
 		}
 		pages.sort_unstable_by_key(|page| page.ord);

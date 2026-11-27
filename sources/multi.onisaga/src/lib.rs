@@ -108,11 +108,10 @@ impl OniSaga {
 
 fn resolve_tapped_tags(tapped: Vec<String>, search: &mut SearchParams) {
 	let mut unknown = Vec::new();
-	for name in tapped {
+	for (name, slug) in tapped.into_iter().filter_map(|name| {
 		let slug = slugify(&name);
-		if slug.is_empty() {
-			continue;
-		}
+		(!slug.is_empty()).then_some((name, slug))
+	}) {
 		if GENRES.contains(&slug.as_str()) {
 			search.genres.include.push(slug);
 		} else if DEMOGRAPHICS.contains(&slug.as_str()) {

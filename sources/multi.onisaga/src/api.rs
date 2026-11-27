@@ -12,12 +12,12 @@ use serde::{Serialize, de::DeserializeOwned};
 
 pub const BASE_URL: &str = "https://onisaga.com";
 pub const CDN_URL: &str = "https://media.onisaga.com";
-pub const PAGE_SIZE: i32 = 42;
 pub const CHAPTER_PAGE_SIZE: i32 = 200;
 
 // Sorts in `filters.json` order; `""` resolves to relevance with a query or latest update without.
 pub const SORTS: [&str; 5] = ["", "updated", "new", "title", "published"];
 
+const PAGE_SIZE: i32 = 42;
 const MAX_LANGUAGES: usize = 10;
 
 #[derive(Serialize)]

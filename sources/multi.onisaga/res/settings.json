@@ -21,7 +21,8 @@
 					"Explicit"
 				],
 				"default": [
-					"safe"
+					"safe",
+					"suggestive"
 				],
 				"refreshes": [
 					"content",

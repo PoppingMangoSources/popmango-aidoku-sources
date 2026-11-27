@@ -479,6 +479,12 @@ def check_rust(source: Path, single_language: bool) -> None:
         check_cards(path, body)
         check_item_spacing(path, body)
         check_api_use(path, body)
+        for match_obj in re.finditer(
+            r"(?:\bSome\(|\.map\(\s*\|\w+\|)\s*[\w.()]*\.into\(\)\s*\)\s*\.filter\(\s*\|\w+(?::\s*&String)?\|\s*!\w+\.is_empty\(\)\s*\)",
+            body,
+        ):
+            line_no = body.count("\n", 0, match_obj.start()) + 1
+            note(path, f"line {line_no} allocates a String before checking is_empty(); use (!s.is_empty()).then(|| s.into())")
         for number, line in enumerate(path.read_text().splitlines(), 1):
             where = f"line {number}"
             if SECTION_BANNER.match(line):
@@ -494,8 +500,6 @@ def check_rust(source: Path, single_language: bool) -> None:
             if call and not line.lstrip().startswith(("use ", "pub use ", "//")):
                 note(path, f"{where} calls {call.group(0)[:-1]} by its full path; import it")
             if not line.lstrip().startswith("//"):
-                if re.search(r"\bSome\([^)]*\.into\(\)\)\.filter\([^)]*!\w+\.is_empty\(\)", line):
-                    note(path, f"{where} allocates a String before checking is_empty(); use (!s.is_empty()).then(|| s.into())")
                 if re.search(r'"[^"]*\?\{[a-z_]+\}&', line):
                     note(path, f"{where} appends & after a query string variable; push every parameter into QueryParameters")
             for pattern, message in LINE_RULES:
