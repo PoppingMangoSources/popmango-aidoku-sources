@@ -10,7 +10,7 @@ sources:
   - code: public/index.html
   - code: public/main.js
   - code: public/styles.css
-verified_at: afbc5da
+verified_at: 45c50ed
 ---
 
 # README art and the install page

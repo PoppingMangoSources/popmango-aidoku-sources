@@ -48,6 +48,7 @@ _(none yet)_
 - [[yaoime]] -- yaoi.me's settings cookie, browse parameters, chapter variants and the signed reader
 - [[toonz]] -- the toonz template: its content cookie, streamed pages, home rows per site and the challenged Toonz pages (template on main; consumers archived)
 - [[swarm]] -- Swarm's API, local exclusions, encrypted page request, languages and uploads
+- [[onisaga]] -- OniSaga's catalog API, home rows, Flight references, ratings and per-language chapter pages
 - [[webnex]] -- WebNex's streamed shelves, browse parameters that alias, chapter and year presets, section visibility and the plain-request reader (archived)
 - [[xcomic]] -- XCOMIC's GraphQL API, editions, feeds and filters (upstream only)
 - [[toonkotsu]] -- Toonkotsu's JSON API, ratings, web view reader and read limits (upstream only)
