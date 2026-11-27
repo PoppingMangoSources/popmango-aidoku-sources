@@ -15,9 +15,11 @@ use aidoku::{
 	imports::net::Request,
 	prelude::*,
 };
-use api::{API_URL, SORTS, SearchParams, comic_page, get, parse, site_headers};
+use api::{API_URL, SORTS, SearchParams, comic, get, parse, site_headers};
 use helpers::{Link, encrypt_payload, parse_link};
-use models::{Genres, NOVEL_PREFIX, Novel, NovelText, Pages, Response, chapter_list};
+use models::{
+	ComicDetails, ComicPage, Genres, NOVEL_PREFIX, Novel, NovelText, Pages, Response, chapter_list,
+};
 
 struct Swarm;
 
@@ -33,8 +35,8 @@ impl Source for Swarm {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let pasted = match query.as_deref().and_then(parse_link) {
-			Some(Link::Comic(slug) | Link::Chapter(slug, ..)) => comic_page(&slug)
-				.and_then(|page| Manga::try_from(page.manga))
+			Some(Link::Comic(slug) | Link::Chapter(slug, ..)) => comic::<ComicDetails>(&slug)
+				.and_then(|details| Manga::try_from(details.manga))
 				.ok(),
 			Some(Link::Novel(slug) | Link::NovelChapter(slug, _)) => {
 				get::<Response<Novel>>(&format!("{API_URL}/novel/{slug}"))
@@ -123,11 +125,11 @@ impl Source for Swarm {
 			return Ok(manga);
 		}
 
-		let page = comic_page(&manga.key)?;
-		if needs_details {
-			manga.copy_from(page.manga.into_details()?);
-		}
 		if needs_chapters {
+			let page: ComicPage = comic(&manga.key)?;
+			if needs_details {
+				manga.copy_from(page.manga.into_details()?);
+			}
 			manga.chapters = Some(chapter_list(
 				page.chapters,
 				&manga.key,
@@ -136,6 +138,8 @@ impl Source for Swarm {
 				&settings::deduplicate_chapters(),
 				&settings::preferred_uploaders(),
 			));
+		} else if needs_details {
+			manga.copy_from(comic::<ComicDetails>(&manga.key)?.manga.into_details()?);
 		}
 		Ok(manga)
 	}
@@ -196,7 +200,7 @@ impl DeepLinkHandler for Swarm {
 				manga_key: format!("{NOVEL_PREFIX}{slug}"),
 				key,
 			}),
-			Some(Link::Chapter(slug, number, rank)) => comic_page(&slug)?
+			Some(Link::Chapter(slug, number, rank)) => comic::<ComicPage>(&slug)?
 				.chapters
 				.into_iter()
 				.find(|chapter| {

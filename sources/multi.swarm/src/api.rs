@@ -1,12 +1,12 @@
 use crate::{
 	helpers::app_language,
-	models::{ComicPage, Listing, Title},
+	models::{Listing, Title},
 	settings,
 };
 use aidoku::{
 	ContentRating, Manga, MangaPageResult, Result,
 	alloc::{String, Vec, format, string::ToString},
-	helpers::uri::QueryParameters,
+	helpers::uri::{QueryParameters, encode_uri_component},
 	imports::net::{Request, Response},
 	prelude::*,
 };
@@ -190,27 +190,11 @@ impl SearchParams {
 	}
 }
 
-pub fn comic_page(slug: &str) -> Result<ComicPage> {
-	// A series key is a bare slug, so the query starts here.
-	let response = Request::get(format!("{BASE_URL}/comic/{slug}?_rsc"))?
-		.header("RSC", "1")
-		.timeout(15.0)
-		.send()?;
-	let status = response.status_code();
-	if !(200..300).contains(&status) {
-		bail!("Swarm returned status {status}");
-	}
-	let body = response.get_string()?;
-	// Other RSC chunks can use `"initialData"` with a different schema.
-	let marker = r#""initialData":"#;
-	body.match_indices(marker)
-		.find_map(|(start, _)| {
-			serde_json::Deserializer::from_str(&body[start + marker.len()..])
-				.into_iter::<ComicPage>()
-				.next()?
-				.ok()
-		})
-		.ok_or_else(|| error!("Series not found"))
+pub fn comic<T: DeserializeOwned>(slug: &str) -> Result<T> {
+	get(&format!(
+		"{API_URL}/comic/slug/{}/details",
+		encode_uri_component(slug)
+	))
 }
 
 pub fn site_headers(request: Request) -> Request {

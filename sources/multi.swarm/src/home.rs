@@ -138,34 +138,37 @@ impl Home for Swarm {
 				.collect(),
 		}));
 
-		let mut loaded: [Option<HomeComponent>; 5] = Default::default();
+		let requests = SECTIONS
+			.iter()
+			.map(|(_, feed)| {
+				let timeout = match feed {
+					Feed::Hot | Feed::New => 2.0,
+					_ => 6.0,
+				};
+				Ok(request(&feed_url(*feed, &content))?.timeout(timeout))
+			})
+			.collect::<Result<Vec<_>>>()?;
 		let mut failure = None;
-		for batch in [&[0usize, 3, 4][..], &[1, 2][..]] {
-			let requests = batch
-				.iter()
-				.map(|&index| Ok(request(&feed_url(SECTIONS[index].1, &content))?.timeout(8.0)))
-				.collect::<Result<Vec<_>>>()?;
-			for (&index, response) in batch.iter().zip(Request::send_all(requests)) {
-				let (title, feed) = SECTIONS[index];
+		let components: Vec<_> = SECTIONS
+			.iter()
+			.zip(Request::send_all(requests))
+			.filter_map(|((title, feed), response)| {
 				match response
 					.map_err(AidokuError::from)
-					.and_then(|response| fill(feed, response, &content))
+					.and_then(|response| fill(*feed, response, &content))
 				{
-					Ok(Some(value)) => {
-						let component = HomeComponent {
-							title: Some(String::from(title)),
-							subtitle: None,
-							value,
-						};
-						send_partial_result(&HomePartialResult::Component(component.clone()));
-						loaded[index] = Some(component);
+					Ok(value) => Some(HomeComponent {
+						title: Some(String::from(*title)),
+						subtitle: None,
+						value: value?,
+					}),
+					Err(error) => {
+						failure = Some(error);
+						None
 					}
-					Ok(None) => {}
-					Err(error) => failure = Some(error),
 				}
-			}
-		}
-		let components: Vec<_> = loaded.into_iter().flatten().collect();
+			})
+			.collect();
 		if components.is_empty() {
 			return Err(failure.unwrap_or_else(|| error!("No home sections")));
 		}
