@@ -282,3 +282,10 @@ parallel without `Interpreter` actor contention; synced [[swarm]].
   fail `Bootstrap::into_pages` on blank page URLs, narrow internal visibility and destructure owned
   models, and widened the `check-sources.py` empty-string allocation note to cover multi-line
   `.map(|...| ...into()).filter(|...| !...is_empty())`; synced [[onisaga]] and [[source-checks]].
+
+- 2026-11-27: Updated `multi.onisaga` (`966ddd3`, v6) to fetch `Genres` and `Excluded Genres`
+  dynamically via `catalog/taxonomy` (`DynamicFilters` and `DynamicSettings`), populate Spotlight
+  `BigScroller` pills (`[origin, demographic, form]` with `"Comic"` fallback so `HomeBigScrollerView`
+  renders rating and type badges), add opt-in `deduplicateChapters`, capitalize Discover and listing
+  headings, rename the availability check filter (`Availability` / `Readable Chapters`), and trim
+  unused RPC input models; synced [[onisaga]].
