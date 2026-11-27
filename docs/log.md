@@ -295,3 +295,7 @@ parallel without `Interpreter` actor contention; synced [[swarm]].
   into `src/filters.rs`, moved `chapter_list` RPC pagination into `src/api.rs`, and moved
   `dedup_keep_order` into `src/helpers.rs` so `src/lib.rs` and `src/models.rs` keep only trait impls
   and data models; synced [[onisaga]].
+
+- 2026-11-27: Removed dead novel-checking fields (`medium`, `content_kind`, `kind`, `is_comic`) from
+  `multi.onisaga` (`7169615`, v8) after live-site verification confirmed OniSaga serves only comics;
+  synced [[onisaga]].

@@ -16,7 +16,7 @@ sources:
   - code: sources/multi.onisaga/res/source.json
   - code: sources/multi.onisaga/src/test.rs
   - ext: https://onisaga.com/browse
-verified_at: 7be7a0f
+verified_at: 7169615
 ---
 
 OniSaga (`onisaga.com`) is a Next.js site behind Cloudflare with public media on
@@ -29,7 +29,7 @@ unblocked host.
 ## RPC endpoints
 
 Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
-`Referer: https://onisaga.com/` and reads `{"json": output}` (`sources/multi.onisaga/src/api.rs:164`).
+`Referer: https://onisaga.com/` and reads `{"json": output}` (`sources/multi.onisaga/src/api.rs:162`).
 
 - **Search and listings**: `POST /api/rpc/catalog/browse` (`sources/multi.onisaga/src/api.rs:29`)
   returning `{"items": [...], "nextCursor": ...}`, shared across search and the four `source.json`
@@ -52,38 +52,32 @@ Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
   When `excludedGenres` is non-empty, `origins` is narrowed, or `en` is deselected, the three
   browse-backed shelves (`new`, `finished`, `published`) are fetched in parallel with
   `catalog/home` via `catalog/browse` so server-side genre, origin and language filters apply
-  (`sources/multi.onisaga/src/api.rs:131`, `sources/multi.onisaga/src/home.rs:178`).
+  (`sources/multi.onisaga/src/api.rs:129`, `sources/multi.onisaga/src/home.rs:178`).
 - **Details**: `POST /api/rpc/catalog/detail` (`{"slug"}`) returns full title metadata, credits,
   spoiler-flagged terms, demographic and `reading` stream/language/group tables
-  (`sources/multi.onisaga/src/models.rs:139`).
+  (`sources/multi.onisaga/src/models.rs:138`).
 - **Chapters**: `POST /api/rpc/chapters/index` pages units 200 at a time (`order: "desc"`) per
-  selected language scope (`sources/multi.onisaga/src/api.rs:227`,
-  `sources/multi.onisaga/src/api.rs:284`). Units whose `selection` is `null` (non-default
+  selected language scope (`sources/multi.onisaga/src/api.rs:225`,
+  `sources/multi.onisaga/src/api.rs:282`). Units whose `selection` is `null` (non-default
   languages or multi-group rows) batch `POST /api/rpc/chapters/select` in 200-ID chunks
-  (`sources/multi.onisaga/src/api.rs:241`). Each unit promotes OniSaga's `selectedReleaseId`
+  (`sources/multi.onisaga/src/api.rs:239`). Each unit promotes OniSaga's `selectedReleaseId`
   first, and the opt-in `deduplicateChapters` (`Deduplicate Chapters`, default `false`) setting
   truncates each unit to that preferred upload without dropping distinct chapter parts or
-  unnumbered units (`sources/multi.onisaga/src/models.rs:551`,
+  unnumbered units (`sources/multi.onisaga/src/models.rs:528`,
   `sources/multi.onisaga/res/settings.json:76`).
-- **Reader pages**: `POST /api/rpc/reader/bootstrap` (`{"releaseId"}`) returns `kind` (`"images"`
-  or `"text"`) and `manifest.pages` (`sources/multi.onisaga/src/lib.rs:90`,
-  `sources/multi.onisaga/src/models.rs:631`).
+- **Reader pages**: `POST /api/rpc/reader/bootstrap` (`{"releaseId"}`) returns `manifest.pages`
+  (`sources/multi.onisaga/src/lib.rs:90`, `sources/multi.onisaga/src/models.rs:608`).
 
 > ⚠️ Aidoku's `HomeBigScrollerView` gates the entire bottom pill row — including the colored
 > `Suggestive` / `18+` content-rating pill — behind non-empty `entry.tags`. `catalog/home` Spotlight
 > cards omit `terms` (genres require per-card `catalog/detail` RPCs, which Home avoids), so
 > `Work::into_details` populates `tags` from `[origin, demographic, form]` with a `"Comic"`
-> fallback (`sources/multi.onisaga/src/models.rs:325`).
-
-> ⚠️ `catalog/browse` mixes comics and text novels unless `medium: ["comic"]` is sent on every
-> search and listing payload (`sources/multi.onisaga/src/api.rs:72`), and `Work`, `WorkDetail` and
-> `Bootstrap` reject non-comic or `"text"` entries so prose chapters never fail silently as empty
-> image lists.
+> fallback (`sources/multi.onisaga/src/models.rs:315`).
 
 > ⚠️ OniSaga's Zod schema on `catalog/browse` is `.strict()` and rejects duplicate array items,
 > more than 10 `languages`, more than 20 `include` or `exclude` slugs per taxonomy group,
 > `year.from > year.to`, `"relevance"` sort without `q`, and non-ASCII term slugs outside
-> `^[a-z0-9]+(?:-[a-z0-9]+)*$` (`sources/multi.onisaga/src/api.rs:96`,
+> `^[a-z0-9]+(?:-[a-z0-9]+)*$` (`sources/multi.onisaga/src/api.rs:94`,
 > `sources/multi.onisaga/src/models.rs:44`, `sources/multi.onisaga/src/helpers.rs:210`). `slugify`
 > folds Latin diacritics (`Shōnen` → `shonen`) before splitting on ASCII non-alphanumerics, and
 > `form_slug` / `origin_slug` map hyphenated pill labels (`One-shot` → `oneshot`, `Art book` →
@@ -91,7 +85,7 @@ Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
 > (`sources/multi.onisaga/src/helpers.rs:84`).
 
 > ⚠️ `chapters/index` treats `editionId` as optional, whereas `chapters/select` requires
-> `"editionId": null` when a scope has no edition (`sources/multi.onisaga/src/api.rs:260`).
+> `"editionId": null` when a scope has no edition (`sources/multi.onisaga/src/api.rs:258`).
 
 ## Ratings, origins, languages and media URLs
 
@@ -99,13 +93,13 @@ Source `contentRating` is `1`, defaulting `contentRatings` to `["safe", "suggest
 and `Explicit` opt-in). Selecting all seven origins omits `origin` (`None`) so titles with
 `origin: null` still appear; clearing `contentRatings`, `origins` or `languages` returns empty
 results before issuing any network request (`sources/multi.onisaga/src/settings.rs:10`,
-`sources/multi.onisaga/src/api.rs:118`).
+`sources/multi.onisaga/src/api.rs:116`).
 
 > ⚠️ `POST /api/age-confirmation` sets a 180-day `__Host-onisaga.age_confirmed` cookie on
 > `onisaga.com`. `sync_age` sends `action=withdraw&next=%2Frobots.txt` whenever the active request
 > drops back to Safe/Suggestive so adult home cards do not leak afterward, while `detail` and
 > `bootstrap` retry once with `sync_age(true)` on HTTP 403/404 so saved library entries and deep
-> links still open (`sources/multi.onisaga/src/lib.rs:36`, `sources/multi.onisaga/src/api.rs:174`).
+> links still open (`sources/multi.onisaga/src/lib.rs:36`, `sources/multi.onisaga/src/api.rs:172`).
 
 > ⚠️ Safe and Suggestive page URLs carry `p=sg` and load directly from `media.onisaga.com`;
 > age-gated page URLs carry `p=sc` (or lack `p=sg`) and must be rewritten to `onisaga.com` because
@@ -114,9 +108,9 @@ results before issuing any network request (`sources/multi.onisaga/src/settings.
 > ⚠️ Page URLs carry short-lived `e=<unix_expiry>` signatures. `get_page_list` appends
 > `#oni=<releaseId>.<ord>`, and `ImageRequestProvider` strips that fragment, adds
 > `Referer: https://onisaga.com/`, and re-bootstraps the chapter once when `now + 60 >= expiry`
-> (`sources/multi.onisaga/src/lib.rs:264`, `sources/multi.onisaga/src/helpers.rs:306`).
+> (`sources/multi.onisaga/src/lib.rs:261`, `sources/multi.onisaga/src/helpers.rs:306`).
 
 > ⚠️ A title's `reading.languages` can list the same language under more than one numbering stream
 > (for example a monochrome default stream and a partial colour stream). `language_scopes` picks
 > the scope matching `defaultScope` or `streams[].isDefault` before falling back to the highest
-> `readableUnits` count (`sources/multi.onisaga/src/models.rs:518`).
+> `readableUnits` count (`sources/multi.onisaga/src/models.rs:495`).
