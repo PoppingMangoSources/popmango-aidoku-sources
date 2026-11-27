@@ -142,7 +142,7 @@ impl Home for Swarm {
 			.iter()
 			.map(|(_, feed)| {
 				let timeout = match feed {
-					Feed::Hot | Feed::New => 2.0,
+					Feed::Hot | Feed::New => 2.5,
 					_ => 6.0,
 				};
 				Ok(request(&feed_url(*feed, &content))?.timeout(timeout))

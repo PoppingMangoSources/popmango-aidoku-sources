@@ -605,4 +605,28 @@ fn review_page_urls_resolve_relative_proxy_paths() {
 			"https://swarm.ws/api/secure-proxy/tok/3.jpg",
 		]
 	);
+	let saver: Pages = serde_json::from_str(
+		r#"{"chapter":{"data":[],"dataSaver":["https://cash.swarm.ws/noah/abc/1.webp"]}}"#,
+	)
+	.unwrap();
+	assert_eq!(saver.into_urls(), ["https://cash.swarm.ws/noah/abc/1.webp"]);
+}
+
+#[aidoku_test]
+fn review_warm_ahead_batches_next_ten_pages() {
+	let mut warmed = 2;
+	assert!(helpers::next_warm_range(24, &mut warmed, 0).is_empty());
+	assert_eq!(helpers::next_warm_range(24, &mut warmed, 1), 2..12);
+	assert_eq!(warmed, 12);
+	assert!(helpers::next_warm_range(24, &mut warmed, 6).is_empty());
+	assert_eq!(helpers::next_warm_range(24, &mut warmed, 7), 12..22);
+	assert_eq!(warmed, 22);
+	assert!(helpers::next_warm_range(24, &mut warmed, 16).is_empty());
+	assert_eq!(helpers::next_warm_range(24, &mut warmed, 17), 22..24);
+	assert!(helpers::next_warm_range(24, &mut warmed, 23).is_empty());
+
+	let mut jump = 2;
+	assert_eq!(helpers::next_warm_range(60, &mut jump, 35), 36..46);
+	assert_eq!(jump, 46);
+	assert!(helpers::next_warm_range(60, &mut jump, 59).is_empty());
 }

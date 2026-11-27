@@ -8,24 +8,28 @@ mod settings;
 mod test;
 
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, Manga, MangaPageResult, Page,
-	PageContent, Result, Source,
-	alloc::{String, Vec, format, vec},
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Manga,
+	MangaPageResult, Page, PageContent, PageContext, Result, Source,
+	alloc::{String, Vec, format, string::ToString, vec},
 	helpers::string::PlainText,
 	imports::net::Request,
 	prelude::*,
 };
-use api::{API_URL, SORTS, SearchParams, comic, get, parse, site_headers};
-use helpers::{Link, encrypt_payload, parse_link};
+use api::{API_URL, SORTS, SearchParams, comic, get, parse, site_headers, warm};
+use core::cell::RefCell;
+use helpers::{Link, encrypt_payload, next_warm_range, parse_link};
 use models::{
 	ComicDetails, ComicPage, Genres, NOVEL_PREFIX, Novel, NovelText, Pages, Response, chapter_list,
 };
 
-struct Swarm;
+#[derive(Default)]
+struct Swarm {
+	pages: RefCell<(Vec<String>, usize)>,
+}
 
 impl Source for Swarm {
 	fn new() -> Self {
-		Self
+		Self::default()
 	}
 
 	fn get_search_manga_list(
@@ -165,7 +169,11 @@ impl Source for Swarm {
 			}]);
 		}
 
-		let payload = encrypt_payload(&format!(r#"{{"chapterId":"{}"}}"#, chapter.key));
+		// `clean` bypasses expired cached strip hashes that 404 on the CDN.
+		let payload = encrypt_payload(&format!(
+			r#"{{"chapterId":"{}","clean":true}}"#,
+			chapter.key
+		));
 		let response = site_headers(Request::post(format!("{API_URL}/sp"))?)
 			.header("Content-Type", "application/json")
 			.body(format!(r#"{{"payload":"{payload}"}}"#))
@@ -179,13 +187,41 @@ impl Source for Swarm {
 		{
 			bail!("This upload has no pages; try another uploader");
 		}
-		Ok(images
-			.into_iter()
-			.map(|url| Page {
-				content: PageContent::url(url),
-				..Default::default()
+		let pages = images
+			.iter()
+			.enumerate()
+			.map(|(index, url)| {
+				let mut context = PageContext::new();
+				context.insert("index".into(), index.to_string());
+				Page {
+					content: PageContent::url_context(url.as_str(), context),
+					..Default::default()
+				}
 			})
-			.collect())
+			.collect();
+		let initial = images.len().min(2);
+		*self.pages.borrow_mut() = (images, initial);
+		Ok(pages)
+	}
+}
+
+impl ImageRequestProvider for Swarm {
+	fn get_image_request(&self, url: String, context: Option<PageContext>) -> Result<Request> {
+		let Some(index) = context
+			.as_ref()
+			.and_then(|ctx| ctx.get("index"))
+			.and_then(|value| value.parse::<usize>().ok())
+		else {
+			return Ok(Request::get(url)?.timeout(25.0));
+		};
+		let batch = {
+			let mut state = self.pages.borrow_mut();
+			let (urls, warmed) = &mut *state;
+			let range = next_warm_range(urls.len(), warmed, index);
+			urls[range].to_vec()
+		};
+		warm(&batch);
+		Ok(Request::get(url)?.timeout(60.0))
 	}
 }
 
@@ -215,4 +251,4 @@ impl DeepLinkHandler for Swarm {
 	}
 }
 
-register_source!(Swarm, Home, DeepLinkHandler);
+register_source!(Swarm, Home, ImageRequestProvider, DeepLinkHandler);

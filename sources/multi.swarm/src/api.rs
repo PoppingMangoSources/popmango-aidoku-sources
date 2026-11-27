@@ -219,3 +219,18 @@ pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 pub fn get<T: DeserializeOwned>(url: &str) -> Result<T> {
 	parse(request(url)?.send()?)
 }
+
+// Cold CDN strips take several seconds to populate; a short byte-range request warms Cloudflare ahead of the reader.
+pub fn warm(urls: &[String]) {
+	let requests: Vec<_> = urls
+		.iter()
+		.filter_map(|url| {
+			Request::get(url)
+				.ok()
+				.map(|req| req.header("Range", "bytes=0-0").timeout(0.4))
+		})
+		.collect();
+	if !requests.is_empty() {
+		Request::send_all(requests);
+	}
+}

@@ -130,15 +130,21 @@ pub struct Pages {
 
 #[derive(Deserialize)]
 struct PageUrls {
+	#[serde(default)]
 	data: Vec<String>,
+	#[serde(default, rename = "dataSaver")]
+	data_saver: Vec<String>,
 }
 
 impl Pages {
 	pub fn into_urls(self) -> Vec<String> {
 		let base = self.base_url.unwrap_or_default();
-		self.chapter
-			.data
-			.into_iter()
+		let list = if !self.chapter.data.is_empty() {
+			self.chapter.data
+		} else {
+			self.chapter.data_saver
+		};
+		list.into_iter()
 			.map(|path| {
 				if path.is_empty() || path.starts_with("https://") || path.starts_with("http://") {
 					path

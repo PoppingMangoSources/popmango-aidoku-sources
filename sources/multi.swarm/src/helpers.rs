@@ -90,3 +90,14 @@ pub fn encrypt_payload(json: &str) -> String {
 	};
 	format!("{}:{}", hex(iv), hex(&encrypted))
 }
+
+pub fn next_warm_range(len: usize, warmed: &mut usize, index: usize) -> core::ops::Range<usize> {
+	if index > 0 && *warmed < len && index + 5 >= *warmed {
+		let start = (*warmed).max(index + 1);
+		let end = (start + 10).min(len);
+		*warmed = end;
+		start..end
+	} else {
+		0..0
+	}
+}
