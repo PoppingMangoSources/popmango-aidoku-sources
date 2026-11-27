@@ -1,0 +1,214 @@
+[
+	{
+		"type": "sort",
+		"id": "sort",
+		"canAscend": false,
+		"options": [
+			"Latest update",
+			"New on site",
+			"Title A–Z",
+			"First published"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "origin",
+		"title": "Origin",
+		"canExclude": false,
+		"options": [
+			"Manga",
+			"Manhwa",
+			"Manhua",
+			"Comic",
+			"OEL",
+			"Other Asian",
+			"Other"
+		],
+		"ids": [
+			"manga",
+			"manhwa",
+			"manhua",
+			"comic",
+			"oel",
+			"other_asian",
+			"other"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "genre",
+		"title": "Genres",
+		"isGenre": true,
+		"canExclude": true,
+		"options": [
+			"Action",
+			"Adventure",
+			"Boys' Love",
+			"Comedy",
+			"Cooking",
+			"Crime",
+			"Drama",
+			"Fantasy",
+			"Gender Bender",
+			"Girls' Love",
+			"Harem",
+			"Historical",
+			"Horror",
+			"Isekai",
+			"Magical Girls",
+			"Martial Arts",
+			"Mecha",
+			"Medical",
+			"Music",
+			"Mystery",
+			"Philosophical",
+			"Psychological",
+			"Romance",
+			"Science Fiction",
+			"Slice of Life",
+			"Sports",
+			"Superhero",
+			"Supernatural",
+			"Thriller",
+			"Tragedy",
+			"Wuxia"
+		],
+		"ids": [
+			"action",
+			"adventure",
+			"boys-love",
+			"comedy",
+			"cooking",
+			"crime",
+			"drama",
+			"fantasy",
+			"gender-bender",
+			"girls-love",
+			"harem",
+			"historical",
+			"horror",
+			"isekai",
+			"magical-girls",
+			"martial-arts",
+			"mecha",
+			"medical",
+			"music",
+			"mystery",
+			"philosophical",
+			"psychological",
+			"romance",
+			"science-fiction",
+			"slice-of-life",
+			"sports",
+			"superhero",
+			"supernatural",
+			"thriller",
+			"tragedy",
+			"wuxia"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "status",
+		"title": "Publication status",
+		"canExclude": false,
+		"options": [
+			"Ongoing",
+			"Completed",
+			"Hiatus",
+			"Cancelled",
+			"Announced",
+			"Unknown"
+		],
+		"ids": [
+			"releasing",
+			"completed",
+			"hiatus",
+			"cancelled",
+			"announced",
+			"unknown"
+		]
+	},
+	{
+		"type": "text",
+		"id": "theme",
+		"title": "Themes",
+		"placeholder": "e.g. Magic, -Military"
+	},
+	{
+		"type": "text",
+		"id": "tag",
+		"title": "Tags",
+		"placeholder": "e.g. Demons, -Murder"
+	},
+	{
+		"type": "multi-select",
+		"id": "form",
+		"title": "Publication format",
+		"canExclude": false,
+		"options": [
+			"Serial",
+			"One-shot",
+			"Anthology",
+			"Doujinshi",
+			"Artbook"
+		],
+		"ids": [
+			"serial",
+			"oneshot",
+			"anthology",
+			"doujinshi",
+			"artbook"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "demographic",
+		"title": "Demographic",
+		"canExclude": false,
+		"options": [
+			"Shounen",
+			"Shoujo",
+			"Seinen",
+			"Josei",
+			"Kodomo"
+		],
+		"ids": [
+			"shounen",
+			"shoujo",
+			"seinen",
+			"josei",
+			"kodomo"
+		]
+	},
+	{
+		"type": "multi-select",
+		"id": "rating",
+		"title": "Content rating",
+		"canExclude": false,
+		"options": [
+			"Safe",
+			"Suggestive",
+			"Mature",
+			"Explicit"
+		],
+		"ids": [
+			"safe",
+			"suggestive",
+			"mature",
+			"explicit"
+		]
+	},
+	{
+		"type": "range",
+		"id": "year",
+		"title": "First published",
+		"min": 1900
+	},
+	{
+		"type": "check",
+		"id": "readable",
+		"title": "Only works with readable chapters here",
+		"hideFromHeader": true
+	}
+]

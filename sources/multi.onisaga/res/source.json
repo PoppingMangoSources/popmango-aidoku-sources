@@ -1,0 +1,44 @@
+{
+	"info": {
+		"id": "multi.onisaga",
+		"name": "OniSaga",
+		"version": 1,
+		"url": "https://onisaga.com",
+		"contentRating": 1,
+		"languages": [
+			"en",
+			"ar",
+			"bg",
+			"bn",
+			"de",
+			"es",
+			"es-419",
+			"fa",
+			"fr",
+			"hu",
+			"id",
+			"it",
+			"ja",
+			"pl",
+			"pt",
+			"pt-BR",
+			"ru",
+			"th",
+			"tr",
+			"uk",
+			"vi",
+			"zh"
+		],
+		"minAppVersion": "0.7.1"
+	},
+	"listings": [
+		{
+			"id": "new",
+			"name": "New on site"
+		},
+		{
+			"id": "published",
+			"name": "First published"
+		}
+	]
+}
