@@ -2,28 +2,23 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "Choosing Mature or Explicit confirms you are 18 or older. A search's Type or Content rating filter overrides these.",
+		"footer": "18+ tells OniSaga you are 18 or older, as the site's own prompt does, and adds mature and explicit titles with their real covers. A search's Type filter overrides these, and its Content rating filter picks within this one.",
 		"items": [
 			{
-				"type": "multi-select",
-				"key": "contentRatings",
+				"type": "select",
+				"key": "contentRating",
 				"title": "Content Rating",
 				"values": [
 					"safe",
 					"suggestive",
-					"mature",
-					"explicit"
+					"adult"
 				],
 				"titles": [
-					"Safe",
-					"Suggestive",
-					"Mature",
-					"Explicit"
+					"All ages",
+					"Include suggestive",
+					"18+ · I'm 18 or older"
 				],
-				"default": [
-					"safe",
-					"suggestive"
-				],
+				"default": "suggestive",
 				"refreshes": [
 					"content",
 					"listings"

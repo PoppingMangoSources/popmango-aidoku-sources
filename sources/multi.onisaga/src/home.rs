@@ -2,6 +2,7 @@ use crate::{
 	OniSaga,
 	api::{SearchParams, parse, rpc},
 	models::{BrowsePage, HomeData, Work},
+	settings::adult,
 };
 use aidoku::{
 	AidokuError, Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
@@ -156,7 +157,7 @@ impl Home for OniSaga {
 		if search.is_empty() {
 			return Ok(HomeLayout::default());
 		}
-		self.sync_age(search.adult())?;
+		self.sync_age(adult())?;
 
 		send_partial_result(&HomePartialResult::Layout(HomeLayout {
 			components: SECTIONS

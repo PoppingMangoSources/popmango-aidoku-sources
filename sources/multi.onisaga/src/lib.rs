@@ -20,8 +20,9 @@ use api::{BASE_URL, SORTS, SearchParams, chapter_list, parse, rpc, set_age};
 use core::cell::{Cell, RefCell};
 use helpers::{Link, page_expired, page_fragment, parse_link, parse_terms};
 use models::{Bootstrap, PageImage, TermOption, WorkDetail, Years};
-use serde_json::json;
-use settings::{deduplicate_chapters, languages};
+use serde::de::DeserializeOwned;
+use serde_json::{Value, json};
+use settings::{adult, deduplicate_chapters, languages};
 
 const MAX_CURSORS: usize = 64;
 
@@ -46,7 +47,7 @@ impl OniSaga {
 		if search.is_empty() {
 			return Ok(MangaPageResult::default());
 		}
-		self.sync_age(search.adult())?;
+		self.sync_age(adult())?;
 		let listing_key = search.key()?;
 		if page > 1 {
 			let key = format!("{page}:{listing_key}");
@@ -77,26 +78,23 @@ impl OniSaga {
 		Ok(result)
 	}
 
-	fn detail(&self, slug: &str) -> Result<WorkDetail> {
-		let response = rpc("catalog/detail", json!({ "slug": slug }))?.send()?;
-		let status = response.status_code();
-		if (status == 403 || status == 404) && self.age.get() != Some(true) {
+	// Adult titles answer 403 or 404 without the age cookie, so saved and linked ones confirm it.
+	fn gated<T: DeserializeOwned>(&self, method: &str, input: Value) -> Result<T> {
+		let response = rpc(method, &input)?.send()?;
+		if matches!(response.status_code(), 403 | 404) && self.age.get() != Some(true) {
 			self.sync_age(true)?;
-			return parse(rpc("catalog/detail", json!({ "slug": slug }))?.send()?);
+			return parse(rpc(method, input)?.send()?);
 		}
 		parse(response)
 	}
 
+	fn detail(&self, slug: &str) -> Result<WorkDetail> {
+		self.gated("catalog/detail", json!({ "slug": slug }))
+	}
+
 	fn bootstrap(&self, release_id: &str) -> Result<Vec<PageImage>> {
-		let response = rpc("reader/bootstrap", json!({ "releaseId": release_id }))?.send()?;
-		let status = response.status_code();
 		let bootstrap: Bootstrap =
-			if (status == 403 || status == 404) && self.age.get() != Some(true) {
-				self.sync_age(true)?;
-				parse(rpc("reader/bootstrap", json!({ "releaseId": release_id }))?.send()?)?
-			} else {
-				parse(response)?
-			};
+			self.gated("reader/bootstrap", json!({ "releaseId": release_id }))?;
 		let pages = bootstrap.into_pages()?;
 		*self.pages.borrow_mut() = Some((release_id.into(), pages.clone()));
 		Ok(pages)

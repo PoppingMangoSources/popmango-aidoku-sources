@@ -280,11 +280,17 @@ fn build_work(
 	if slug.is_empty() {
 		bail!("OniSaga returned a title without a slug");
 	}
-	let cover = cover.or_else(|| Some(format!("{CDN_URL}/api/covers/{slug}")));
+	let cover = cover.unwrap_or_else(|| format!("{CDN_URL}/api/covers/{slug}"));
+	// The media host blurs adult covers; the main host carries the age cookie.
+	let cover = if matches!(rating, Some("mature" | "explicit")) {
+		cover.replacen(CDN_URL, BASE_URL, 1)
+	} else {
+		cover
+	};
 	Ok(Manga {
 		key: slug,
 		title,
-		cover,
+		cover: Some(cover),
 		status: status.map_or(MangaStatus::Unknown, parse_status),
 		content_rating: parse_content_rating(rating),
 		..Default::default()

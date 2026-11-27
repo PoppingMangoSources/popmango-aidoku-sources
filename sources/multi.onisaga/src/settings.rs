@@ -7,9 +7,21 @@ pub fn languages() -> Vec<String> {
 	defaults_get::<Vec<String>>("languages").unwrap_or_else(|| vec!["en".into()])
 }
 
+pub fn adult() -> bool {
+	defaults_get::<String>("contentRating").is_some_and(|rating| rating == "adult")
+}
+
+// Each choice adds to the one before, as on the site.
 pub fn content_ratings() -> Vec<String> {
-	defaults_get::<Vec<String>>("contentRatings")
-		.unwrap_or_else(|| vec!["safe".into(), "suggestive".into()])
+	let count = match defaults_get::<String>("contentRating").as_deref() {
+		Some("safe") => 1,
+		Some("adult") => 4,
+		_ => 2,
+	};
+	["safe", "suggestive", "mature", "explicit"][..count]
+		.iter()
+		.map(|&rating| rating.into())
+		.collect()
 }
 
 // None while every origin is chosen, so titles without one still show.

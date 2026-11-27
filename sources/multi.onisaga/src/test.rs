@@ -188,10 +188,7 @@ const DETAIL_JSON: &str = r#"{
 
 fn reset() {
 	defaults_set("languages", DefaultValue::StringArray(vec!["en".into()]));
-	defaults_set(
-		"contentRatings",
-		DefaultValue::StringArray(vec!["safe".into(), "suggestive".into()]),
-	);
+	defaults_set("contentRating", DefaultValue::String("suggestive".into()));
 	defaults_set(
 		"origins",
 		DefaultValue::StringArray(
@@ -422,7 +419,11 @@ fn review_search_filters_overrides_and_limits() {
 		filtered.languages.push(format!("l{idx}"));
 	}
 	filtered.finalize();
-	assert!(filtered.adult());
+	assert!(filtered.ratings.is_empty());
+	defaults_set("contentRating", DefaultValue::String("adult".into()));
+	filtered.ratings = vec!["mature".into(), "mature".into()];
+	filtered.finalize();
+	assert_eq!(filtered.ratings, ["mature"]);
 	assert_eq!(filtered.languages.len(), 10);
 	assert_eq!(filtered.tags.exclude.len(), 20);
 	assert_eq!(filtered.genres.include, ["horror"]);
@@ -430,8 +431,12 @@ fn review_search_filters_overrides_and_limits() {
 	assert_eq!(filtered.themes.include, ["magic", "shonen", "boys-love"]);
 	assert_eq!(filtered.themes.exclude, ["military"]);
 
-	defaults_set("contentRatings", DefaultValue::StringArray(Vec::new()));
-	assert!(SearchParams::new(None).is_empty());
+	assert_eq!(
+		SearchParams::new(None).ratings,
+		["safe", "suggestive", "mature", "explicit"]
+	);
+	defaults_set("contentRating", DefaultValue::String("safe".into()));
+	assert_eq!(SearchParams::new(None).ratings, ["safe"]);
 	reset();
 	defaults_set("languages", DefaultValue::StringArray(Vec::new()));
 	assert!(SearchParams::new(None).is_empty());
@@ -605,6 +610,31 @@ fn review_details_credits_tags_and_chapters() {
 }
 
 #[aidoku_test]
+fn review_adult_covers_use_the_main_host() {
+	let page: BrowsePage = serde_json::from_str(
+		r#"{"items": [
+			{"slug": "kept", "title": "Kept", "contentRating": "suggestive", "coverUrl": "https://media.onisaga.com/api/covers/kept?mv=3"},
+			{"slug": "gated", "title": "Gated", "contentRating": "explicit", "coverUrl": "https://media.onisaga.com/api/covers/gated?mv=7"},
+			{"slug": "bare", "title": "Bare", "contentRating": "mature"}
+		], "nextCursor": null}"#,
+	)
+	.unwrap();
+	let covers = page
+		.items
+		.into_iter()
+		.map(|work| Manga::try_from(work).unwrap().cover.unwrap())
+		.collect::<Vec<_>>();
+	assert_eq!(
+		covers,
+		[
+			format!("{CDN_URL}/api/covers/kept?mv=3"),
+			format!("{BASE_URL}/api/covers/gated?mv=7"),
+			format!("{BASE_URL}/api/covers/bare"),
+		]
+	);
+}
+
+#[aidoku_test]
 fn review_chapter_labels_and_slugs() {
 	assert_eq!(parse_chapter_number("Ch 700.5"), Some(700.5));
 	assert_eq!(parse_chapter_number("Chapter 46"), Some(46.0));
@@ -624,6 +654,18 @@ fn review_chapter_labels_and_slugs() {
 	assert_eq!(
 		clean_chapter_title(None, "Oneshot", None),
 		Some("Oneshot".into())
+	);
+	assert_eq!(
+		clean_chapter_title(Some("Chapter 46 46".into()), "Chapter 46", Some(46.0)),
+		None
+	);
+	assert_eq!(
+		clean_chapter_title(Some("46 46".into()), "46", Some(46.0)),
+		None
+	);
+	assert_eq!(
+		clean_chapter_title(Some("46 Days".into()), "46", Some(46.0)),
+		Some("46 Days".into())
 	);
 	assert_eq!(slugify("LGBTQ+ Themes"), "lgbtq-themes");
 	assert_eq!(slugify("Girls' Love"), "girls-love");
@@ -746,13 +788,20 @@ fn review_resources() {
 		.as_array()
 		.unwrap()
 		.iter()
-		.find(|item| item["key"] == "contentRatings")
+		.find(|item| item["key"] == "contentRating")
 		.unwrap();
-	assert_eq!(ratings["default"], json!(["safe", "suggestive"]));
-	let all = json!(["safe", "suggestive", "mature", "explicit"]);
-	assert_eq!(ratings["values"], all);
+	assert_eq!(ratings["type"], "select");
+	assert_eq!(ratings["default"], "suggestive");
+	assert_eq!(ratings["values"], json!(["safe", "suggestive", "adult"]));
+	assert_eq!(
+		ratings["titles"],
+		json!(["All ages", "Include suggestive", "18+ · I'm 18 or older"])
+	);
 	let rating = filters.iter().find(|f| f["id"] == "rating").unwrap();
-	assert_eq!(rating["ids"], all);
+	assert_eq!(
+		rating["ids"],
+		json!(["safe", "suggestive", "mature", "explicit"])
+	);
 	let dedup = settings[1]["items"]
 		.as_array()
 		.unwrap()
@@ -801,16 +850,26 @@ fn every_sort_and_listing() {
 }
 
 #[aidoku_test]
-fn rating_filter_overrides_setting() {
+fn rating_filter_picks_within_setting() {
 	reset();
 	let source = OniSaga::new();
-	let filters = vec![FilterValue::MultiSelect {
-		id: "rating".into(),
-		included: vec!["mature".into()],
-		excluded: Vec::new(),
-	}];
-	let page = source.get_search_manga_list(None, 1, filters).unwrap();
+	let mature = || {
+		vec![FilterValue::MultiSelect {
+			id: "rating".into(),
+			included: vec!["mature".into()],
+			excluded: Vec::new(),
+		}]
+	};
+	let page = source.get_search_manga_list(None, 1, mature()).unwrap();
+	assert!(page.entries.is_empty());
+	defaults_set("contentRating", DefaultValue::String("adult".into()));
+	let page = source.get_search_manga_list(None, 1, mature()).unwrap();
 	assert!(!page.entries.is_empty());
+	assert!(
+		page.entries
+			.iter()
+			.all(|manga| manga.content_rating == ContentRating::NSFW)
+	);
 }
 
 #[aidoku_test]

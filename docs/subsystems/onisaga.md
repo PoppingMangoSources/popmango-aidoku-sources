@@ -2,7 +2,7 @@
 title: OniSaga (multi.onisaga)
 type: subsystem
 created: 2026-11-27
-updated: 2026-11-27
+updated: 2026-11-28
 sources:
   - code: sources/multi.onisaga/src/api.rs
   - code: sources/multi.onisaga/src/filters.rs
@@ -89,17 +89,30 @@ Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
 
 ## Ratings, origins, languages and media URLs
 
-Source `contentRating` is `1`, defaulting `contentRatings` to `["safe", "suggestive"]` (`Mature`
-and `Explicit` opt-in). Selecting all seven origins omits `origin` (`None`) so titles with
-`origin: null` still appear; clearing `contentRatings`, `origins` or `languages` returns empty
-results before issuing any network request (`sources/multi.onisaga/src/settings.rs:10`,
-`sources/multi.onisaga/src/api.rs:116`).
+Source `contentRating` is `1`. The `contentRating` select mirrors the site's own prompt: `All
+ages` (safe), `Include suggestive` (safe and suggestive, the default) and `18+ · I'm 18 or older`
+(all four), each adding to the one before (`sources/multi.onisaga/src/settings.rs:15`). The
+search's Content rating filter picks within that setting: without 18+, `finalize` drops Mature
+and Explicit, so a filter of only those sends nothing (`sources/multi.onisaga/src/api.rs:94`).
+Selecting all seven origins omits `origin` (`None`) so titles with `origin: null` still appear;
+clearing `origins` or `languages` returns empty results before issuing any network request.
 
 > ⚠️ `POST /api/age-confirmation` sets a 180-day `__Host-onisaga.age_confirmed` cookie on
-> `onisaga.com`. `sync_age` sends `action=withdraw&next=%2Frobots.txt` whenever the active request
-> drops back to Safe/Suggestive so adult home cards do not leak afterward, while `detail` and
-> `bootstrap` retry once with `sync_age(true)` on HTTP 403/404 so saved library entries and deep
-> links still open (`sources/multi.onisaga/src/lib.rs:36`, `sources/multi.onisaga/src/api.rs:172`).
+> `onisaga.com`. `sync_age` follows the 18+ setting only (confirm on, `action=withdraw` off), so
+> a search no longer flips the cookie mid-session. A refused confirmation is an error, not a
+> silently remembered state. `detail` and `bootstrap` go through `gated`, which confirms and
+> retries once on HTTP 403/404 so saved library entries and deep links still open
+> (`sources/multi.onisaga/src/lib.rs:82`, `sources/multi.onisaga/src/api.rs:171`).
+
+> ⚠️ `media.onisaga.com/api/covers/<slug>` answers adult titles with a small blurred placeholder
+> (`x-art: blur`) because the host-only age cookie never reaches it; the site itself loads adult
+> covers from `onisaga.com/api/covers/`. `build_work` moves Mature and Explicit covers to
+> `BASE_URL`, where the app adds the shared cookie to the cover request
+> (`sources/multi.onisaga/src/models.rs:286`). Safe and Suggestive covers stay on the media host.
+
+> ⚠️ Some uploads repeat the number in the chapter title ("Chapter 46 46"). `clean_chapter_title`
+> treats a title whose words after the chapter prefix are all the chapter number as a duplicate
+> (`sources/multi.onisaga/src/helpers.rs:195`).
 
 > ⚠️ Safe and Suggestive page URLs carry `p=sg` and load directly from `media.onisaga.com`;
 > age-gated page URLs carry `p=sc` (or lack `p=sg`) and must be rewritten to `onisaga.com` because

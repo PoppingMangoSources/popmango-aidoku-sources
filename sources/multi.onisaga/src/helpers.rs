@@ -191,10 +191,13 @@ pub fn clean_chapter_title(
 				break;
 			}
 		}
+		// Some uploads repeat the number, as in "Chapter 46 46".
 		let duplicate = strip_chapter_prefix(rest).is_some_and(|(tail, prefixed)| {
-			tail.parse::<f32>()
-				.ok()
-				.is_some_and(|parsed| prefixed || Some(parsed) == number)
+			!tail.is_empty()
+				&& tail.split_whitespace().all(|part| {
+					part.parse::<f32>()
+						.is_ok_and(|parsed| prefixed || Some(parsed) == number)
+				})
 		});
 		if !duplicate {
 			return Some(title);

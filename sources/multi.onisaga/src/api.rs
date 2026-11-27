@@ -4,7 +4,7 @@ use crate::{
 		BrowsePage, ChapterPage, ChapterUnit, ErrorResponse, Reading, Rpc, Scope, SelectPage,
 		Selection, Terms, Years,
 	},
-	settings::{content_ratings, excluded_genres, languages, origins},
+	settings::{adult, content_ratings, excluded_genres, languages, origins},
 };
 use aidoku::{
 	Chapter, Manga, MangaPageResult, Result,
@@ -12,7 +12,10 @@ use aidoku::{
 	imports::net::{Request, Response},
 	prelude::*,
 };
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+	Serialize,
+	de::{DeserializeOwned, IgnoredAny},
+};
 use serde_json::json;
 
 pub const BASE_URL: &str = "https://onisaga.com";
@@ -99,6 +102,11 @@ impl SearchParams {
 		dedup_keep_order(&mut self.status);
 		dedup_keep_order(&mut self.demographic);
 		dedup_keep_order(&mut self.ratings);
+		// Mature and Explicit need the 18+ setting, which is what confirms the age.
+		if !adult() {
+			self.ratings
+				.retain(|rating| rating == "safe" || rating == "suggestive");
+		}
 		dedup_keep_order(&mut self.languages);
 		self.languages.truncate(MAX_LANGUAGES);
 		self.genres.finalize();
@@ -117,12 +125,6 @@ impl SearchParams {
 		self.ratings.is_empty()
 			|| self.languages.is_empty()
 			|| self.origin.as_ref().is_some_and(Vec::is_empty)
-	}
-
-	pub fn adult(&self) -> bool {
-		self.ratings
-			.iter()
-			.any(|rating| rating == "mature" || rating == "explicit")
 	}
 
 	// `catalog/home` cards lack genre lists and default to English-heavy shelves.
@@ -175,12 +177,16 @@ pub fn set_age(adult: bool) -> Result<()> {
 	} else {
 		"action=withdraw&next=%2Frobots.txt"
 	};
-	Request::post(format!("{BASE_URL}/api/age-confirmation"))?
+	let response = Request::post(format!("{BASE_URL}/api/age-confirmation"))?
 		.header("Content-Type", "application/x-www-form-urlencoded")
 		.header("Origin", BASE_URL)
 		.header("Referer", &format!("{BASE_URL}/"))
 		.body(body)
 		.send()?;
+	// A refused confirmation would leave adult titles missing with no reason given.
+	if adult && !(200..300).contains(&response.status_code()) {
+		parse::<IgnoredAny>(response)?;
+	}
 	Ok(())
 }
 
