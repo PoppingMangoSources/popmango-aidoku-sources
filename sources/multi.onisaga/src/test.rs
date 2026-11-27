@@ -43,7 +43,6 @@ const HOME_JSON: &str = r#"{
 				"card": {
 					"slug": "teasing",
 					"title": "Teasing",
-					"medium": "comic",
 					"origin": "manga",
 					"form": "serial",
 					"publicationStatus": "releasing",
@@ -52,26 +51,12 @@ const HOME_JSON: &str = r#"{
 					"coverUrl": "https://media.onisaga.com/api/covers/teasing?mv=2",
 					"languages": [{"language": "en"}]
 				}
-			},
-			{
-				"card": {
-					"slug": "text-novel",
-					"title": "Text Novel",
-					"medium": "novel",
-					"origin": null,
-					"publicationStatus": "releasing",
-					"synopsis": "Novel slide.",
-					"contentRating": "safe",
-					"coverUrl": "https://media.onisaga.com/api/covers/text-novel?mv=3",
-					"languages": [{"language": "en"}]
-				}
 			}
 		]
 	},
 	"trending": [
-		{"slug": "blue-lock", "title": "Blue Lock", "medium": "comic", "origin": "manga", "contentRating": "safe"},
-		{"slug": "adult-pick", "title": "Adult Pick", "medium": "comic", "origin": "manhwa", "contentRating": "mature"},
-		{"slug": "prose-hit", "title": "Prose Hit", "medium": "novel", "origin": null, "contentRating": "safe"}
+		{"slug": "blue-lock", "title": "Blue Lock", "origin": "manga", "contentRating": "safe"},
+		{"slug": "adult-pick", "title": "Adult Pick", "origin": "manhwa", "contentRating": "mature"}
 	],
 	"newOnSite": {
 		"value": [
@@ -396,7 +381,7 @@ fn review_search_filters_overrides_and_limits() {
 	);
 	let default_search = SearchParams::new(None);
 	let json = body(&default_search)["json"].clone();
-	assert_eq!(json["medium"], json!(["comic"]));
+	assert!(json.get("medium").is_none());
 	assert_eq!(json["ratings"], json!(["safe", "suggestive"]));
 	assert_eq!(json["languages"], json!(["en"]));
 	assert_eq!(json["sort"], "updated");
@@ -580,9 +565,9 @@ fn review_details_credits_tags_and_chapters() {
 	let fallback_json = r#"{
 		"selectedReleaseId": "103",
 		"candidates": [
-			{"id": "102", "groupIds": ["g1"], "contentKind": "images", "publishedAt": "2025-11-15T15:27:21.000000Z", "readableAt": null, "isReadable": true, "title": "Vol 4 - Chap 36.5", "label": "Chapter 36.5"},
-			{"id": "103", "groupIds": ["g2"], "contentKind": "images", "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": true, "title": null, "label": "Chapter 36.5"},
-			{"id": "104", "groupIds": [], "contentKind": "text", "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": true, "title": null, "label": "Chapter 36.5"}
+			{"id": "102", "groupIds": ["g1"], "publishedAt": "2025-11-15T15:27:21.000000Z", "readableAt": null, "isReadable": true, "title": "Vol 4 - Chap 36.5", "label": "Chapter 36.5"},
+			{"id": "103", "groupIds": ["g2"], "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": true, "title": null, "label": "Chapter 36.5"},
+			{"id": "104", "groupIds": [], "publishedAt": "2025-10-07T14:08:34.000000Z", "readableAt": null, "isReadable": false, "title": null, "label": "Chapter 36.5"}
 		]
 	}"#;
 
@@ -675,11 +660,11 @@ fn review_reader_media_urls_and_expiry() {
 	assert_eq!(pages[1].ord, 2);
 	assert_eq!(pages[1].url, "https://onisaga.com/api/media/b?p=sc");
 
-	let prose: Bootstrap = serde_json::from_str(r#"{"kind":"text","manifest":null}"#).unwrap();
-	assert!(prose.into_pages().is_err());
+	let empty_manifest: Bootstrap = serde_json::from_str(r#"{"manifest":null}"#).unwrap();
+	assert!(empty_manifest.into_pages().is_err());
 
 	let hole: Bootstrap = serde_json::from_str(
-		r#"{"kind":"images","manifest":{"pages":[{"ord":1,"url":"https://media.onisaga.com/api/media/a?p=sg"},{"ord":2,"url":""}]}}"#,
+		r#"{"manifest":{"pages":[{"ord":1,"url":"https://media.onisaga.com/api/media/a?p=sg"},{"ord":2,"url":""}]}}"#,
 	)
 	.unwrap();
 	assert!(hole.into_pages().is_err());

@@ -78,7 +78,6 @@ pub struct BrowsePage {
 pub struct Work {
 	slug: String,
 	title: Option<String>,
-	medium: Option<String>,
 	cover_url: Option<String>,
 	origin: Option<String>,
 	form: Option<String>,
@@ -139,7 +138,6 @@ pub struct LatestUnit {
 pub struct WorkDetail {
 	pub slug: String,
 	canonical_title: String,
-	medium: String,
 	origin: Option<String>,
 	layout: Option<String>,
 	demographic: Option<String>,
@@ -246,7 +244,6 @@ struct Release {
 	id: String,
 	#[serde(default)]
 	group_ids: Vec<String>,
-	content_kind: String,
 	published_at: String,
 	readable_at: Option<String>,
 	is_readable: bool,
@@ -256,7 +253,6 @@ struct Release {
 
 #[derive(Deserialize)]
 pub struct Bootstrap {
-	kind: String,
 	manifest: Option<Manifest>,
 }
 
@@ -274,14 +270,10 @@ pub struct PageImage {
 fn build_work(
 	slug: String,
 	title: Option<String>,
-	medium: Option<&str>,
 	cover: Option<String>,
 	status: Option<&str>,
 	rating: Option<&str>,
 ) -> Result<Manga> {
-	if medium.is_some_and(|m| m != "comic") {
-		bail!("OniSaga novel entries are not supported");
-	}
 	let title = title
 		.and_then(non_empty)
 		.ok_or_else(|| error!("OniSaga returned a title without a name"))?;
@@ -306,11 +298,9 @@ impl Work {
 		origins: Option<&[String]>,
 		languages: &[String],
 	) -> bool {
-		self.medium.as_deref().is_none_or(|m| m == "comic")
-			&& self
-				.content_rating
-				.as_ref()
-				.is_none_or(|rating| ratings.contains(rating))
+		self.content_rating
+			.as_ref()
+			.is_none_or(|rating| ratings.contains(rating))
 			&& origins.is_none_or(|origins| {
 				self.origin
 					.as_ref()
@@ -326,7 +316,6 @@ impl Work {
 		let Self {
 			slug,
 			title,
-			medium,
 			cover_url,
 			origin,
 			form,
@@ -360,7 +349,6 @@ impl Work {
 			..build_work(
 				slug,
 				title,
-				medium.as_deref(),
 				cover_url,
 				publication_status.as_deref(),
 				content_rating.as_deref(),
@@ -376,7 +364,6 @@ impl TryFrom<Work> for Manga {
 		build_work(
 			work.slug,
 			work.title,
-			work.medium.as_deref(),
 			work.cover_url,
 			work.publication_status.as_deref(),
 			work.content_rating.as_deref(),
@@ -404,14 +391,7 @@ impl LatestUnit {
 }
 
 impl WorkDetail {
-	pub fn is_comic(&self) -> bool {
-		self.medium == "comic"
-	}
-
 	pub fn into_basic_manga(self) -> Result<Manga> {
-		if !self.is_comic() {
-			bail!("OniSaga novel entries are not supported");
-		}
 		let cover = (!self.slug.is_empty()).then(|| {
 			if self.metadata_version.is_empty() {
 				format!("{CDN_URL}/api/covers/{}", self.slug)
@@ -425,7 +405,6 @@ impl WorkDetail {
 		build_work(
 			self.slug,
 			Some(self.canonical_title),
-			Some(&self.medium),
 			cover,
 			Some(&self.publication_status),
 			Some(&self.content_rating),
@@ -440,7 +419,6 @@ impl TryFrom<WorkDetail> for Manga {
 		let WorkDetail {
 			slug,
 			canonical_title,
-			medium,
 			origin,
 			layout,
 			demographic,
@@ -493,7 +471,6 @@ impl TryFrom<WorkDetail> for Manga {
 		let basic = WorkDetail {
 			slug,
 			canonical_title,
-			medium,
 			publication_status,
 			content_rating,
 			metadata_version,
@@ -571,7 +548,7 @@ impl ChapterUnit {
 		let mut releases = selection
 			.candidates
 			.into_iter()
-			.filter(|r| r.is_readable && r.content_kind == "images" && !r.id.is_empty())
+			.filter(|r| r.is_readable && !r.id.is_empty())
 			.collect::<Vec<_>>();
 		if let Some(selected_id) = selection.selected_release_id.as_deref()
 			&& let Some(pos) = releases.iter().position(|r| r.id == selected_id)
@@ -629,9 +606,6 @@ impl ChapterUnit {
 
 impl Bootstrap {
 	pub fn into_pages(self) -> Result<Vec<PageImage>> {
-		if self.kind == "text" {
-			bail!("This OniSaga chapter is text, which this source cannot show");
-		}
 		let mut pages = self.manifest.map(|m| m.pages).unwrap_or_default();
 		if pages.is_empty() || pages.iter().any(|p| p.url.is_empty()) {
 			bail!("OniSaga has no pages for this chapter");

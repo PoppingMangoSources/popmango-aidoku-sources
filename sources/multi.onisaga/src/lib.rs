@@ -206,9 +206,6 @@ impl Source for OniSaga {
 		if needs_details {
 			manga.copy_from(Manga::try_from(detail)?);
 		} else {
-			if !detail.is_comic() {
-				bail!("OniSaga novel entries are not supported");
-			}
 			manga.key = detail.slug;
 		}
 		if !needs_chapters {

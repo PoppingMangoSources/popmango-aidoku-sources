@@ -29,7 +29,6 @@ const MAX_LANGUAGES: usize = 10;
 pub struct SearchParams {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub q: Option<String>,
-	pub medium: [&'static str; 1],
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub origin: Option<Vec<String>>,
 	#[serde(skip_serializing_if = "Vec::is_empty")]
@@ -69,7 +68,6 @@ impl SearchParams {
 		Self {
 			sort: if q.is_some() { "relevance" } else { "updated" },
 			q,
-			medium: ["comic"],
 			origin: origins(),
 			form: Vec::new(),
 			status: Vec::new(),
