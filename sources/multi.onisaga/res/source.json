@@ -2,7 +2,7 @@
 	"info": {
 		"id": "multi.onisaga",
 		"name": "OniSaga",
-		"version": 3,
+		"version": 4,
 		"url": "https://onisaga.com",
 		"contentRating": 1,
 		"languages": [
@@ -19,6 +19,7 @@
 			"id",
 			"it",
 			"ja",
+			"ko",
 			"pl",
 			"pt",
 			"pt-BR",
@@ -27,14 +28,28 @@
 			"tr",
 			"uk",
 			"vi",
-			"zh"
+			"zh",
+			"zh-Hant"
 		],
 		"minAppVersion": "0.7.1"
 	},
+	"config": {
+		"supportsAuthorSearch": true,
+		"supportsArtistSearch": true,
+		"supportsTagSearch": true
+	},
 	"listings": [
+		{
+			"id": "updated",
+			"name": "Latest update"
+		},
 		{
 			"id": "new",
 			"name": "New on site"
+		},
+		{
+			"id": "finished",
+			"name": "Finished series"
 		},
 		{
 			"id": "published",

@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "Choosing Mature or Explicit tells OniSaga you are 18 or older. A search's own Origin or Content rating filter replaces these.",
+		"footer": "Choosing Mature or Explicit confirms you are 18 or older. A search's Type or Content rating filter overrides these.",
 		"items": [
 			{
 				"type": "multi-select",
@@ -31,7 +31,7 @@
 			{
 				"type": "multi-select",
 				"key": "origins",
-				"title": "Origin",
+				"title": "Type",
 				"values": [
 					"manga",
 					"manhwa",
@@ -69,7 +69,7 @@
 	{
 		"type": "group",
 		"title": "Exclusions",
-		"footer": "Titles with these genres are left out unless a search includes them.",
+		"footer": "Titles with these genres are hidden unless a search includes them (up to 20).",
 		"items": [
 			{
 				"type": "multi-select",

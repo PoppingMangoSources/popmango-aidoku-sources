@@ -4,6 +4,7 @@
 		"id": "sort",
 		"canAscend": false,
 		"options": [
+			"Relevance",
 			"Latest update",
 			"New on site",
 			"Title A–Z",
@@ -13,7 +14,7 @@
 	{
 		"type": "multi-select",
 		"id": "origin",
-		"title": "Origin",
+		"title": "Type",
 		"canExclude": false,
 		"options": [
 			"Manga",
@@ -117,16 +118,14 @@
 			"Completed",
 			"Hiatus",
 			"Cancelled",
-			"Announced",
-			"Unknown"
+			"Announced"
 		],
 		"ids": [
 			"releasing",
 			"completed",
 			"hiatus",
 			"cancelled",
-			"announced",
-			"unknown"
+			"announced"
 		]
 	},
 	{
@@ -151,7 +150,7 @@
 			"One-shot",
 			"Anthology",
 			"Doujinshi",
-			"Artbook"
+			"Art book"
 		],
 		"ids": [
 			"serial",
@@ -202,7 +201,7 @@
 	{
 		"type": "range",
 		"id": "year",
-		"title": "First published",
+		"title": "Publication year",
 		"min": 1900
 	},
 	{
