@@ -271,3 +271,9 @@ parallel without `Interpreter` actor contention; synced [[swarm]].
 - 2026-11-27: Reverted `multi.swarm` (`983b992`, v12) to its pre-`15b35c7` source implementation
   at the owner's request after the v9–v11 Home timeout and reader warm-ahead changes regressed
   in-app behavior; synced [[swarm]].
+
+- 2026-11-27: Reworked `multi.onisaga` (`2ff2c09`, v4) onto OniSaga's JSON RPC endpoints
+  (`catalog/home`, `catalog/browse`, `catalog/detail`, `catalog/taxonomy`, `chapters/index`,
+  `chapters/select`, `reader/bootstrap`), dropping HTML/Flight scraping (`src/rsc.rs`), enforcing
+  `medium: ["comic"]` and strict Zod limits, adding per-listing cursors, age-cookie withdrawal,
+  tag/author/artist search and signed `#oni=` page renewal; synced [[onisaga]].
