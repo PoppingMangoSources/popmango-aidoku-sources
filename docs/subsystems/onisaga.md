@@ -17,7 +17,7 @@ sources:
   - code: sources/multi.onisaga/src/test.rs
   - ext: https://onisaga.com/browse
   - ext: https://github.com/keiyoushi/extensions-source/tree/main/src/all/onisaga
-verified_at: c62d60a
+verified_at: 9864f39
 ---
 
 OniSaga (`onisaga.com`) is a Next.js site behind Cloudflare with images on `media.onisaga.com`.
