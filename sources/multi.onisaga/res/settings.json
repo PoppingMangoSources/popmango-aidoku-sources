@@ -1,0 +1,152 @@
+[
+	{
+		"type": "group",
+		"title": "Content",
+		"footer": "Choosing Mature or Explicit tells OniSaga you are 18 or older. A search's own Origin or Content rating filter replaces these.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "contentRatings",
+				"title": "Content Rating",
+				"values": [
+					"safe",
+					"suggestive",
+					"mature",
+					"explicit"
+				],
+				"titles": [
+					"Safe",
+					"Suggestive",
+					"Mature",
+					"Explicit"
+				],
+				"default": [
+					"safe"
+				],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			},
+			{
+				"type": "multi-select",
+				"key": "origins",
+				"title": "Origin",
+				"values": [
+					"manga",
+					"manhwa",
+					"manhua",
+					"comic",
+					"oel",
+					"other_asian",
+					"other"
+				],
+				"titles": [
+					"Manga",
+					"Manhwa",
+					"Manhua",
+					"Comic",
+					"OEL",
+					"Other Asian",
+					"Other"
+				],
+				"default": [
+					"manga",
+					"manhwa",
+					"manhua",
+					"comic",
+					"oel",
+					"other_asian",
+					"other"
+				],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"title": "Exclusions",
+		"footer": "Titles with these genres are left out unless a search includes them.",
+		"items": [
+			{
+				"type": "multi-select",
+				"key": "excludedGenres",
+				"title": "Excluded Genres",
+				"values": [
+					"action",
+					"adventure",
+					"boys-love",
+					"comedy",
+					"cooking",
+					"crime",
+					"drama",
+					"fantasy",
+					"gender-bender",
+					"girls-love",
+					"harem",
+					"historical",
+					"horror",
+					"isekai",
+					"magical-girls",
+					"martial-arts",
+					"mecha",
+					"medical",
+					"music",
+					"mystery",
+					"philosophical",
+					"psychological",
+					"romance",
+					"science-fiction",
+					"slice-of-life",
+					"sports",
+					"superhero",
+					"supernatural",
+					"thriller",
+					"tragedy",
+					"wuxia"
+				],
+				"titles": [
+					"Action",
+					"Adventure",
+					"Boys' Love",
+					"Comedy",
+					"Cooking",
+					"Crime",
+					"Drama",
+					"Fantasy",
+					"Gender Bender",
+					"Girls' Love",
+					"Harem",
+					"Historical",
+					"Horror",
+					"Isekai",
+					"Magical Girls",
+					"Martial Arts",
+					"Mecha",
+					"Medical",
+					"Music",
+					"Mystery",
+					"Philosophical",
+					"Psychological",
+					"Romance",
+					"Science Fiction",
+					"Slice of Life",
+					"Sports",
+					"Superhero",
+					"Supernatural",
+					"Thriller",
+					"Tragedy",
+					"Wuxia"
+				],
+				"default": [],
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	}
+]
