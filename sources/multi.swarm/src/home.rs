@@ -36,16 +36,16 @@ pub const SECTIONS: [(&str, Feed); 5] = [
 
 fn feed_url(feed: Feed, content: &Content) -> String {
 	match feed {
-		Feed::Popular => format!("{API_URL}/analytics/popular?window=7d&limit=25&offset=0"),
-		Feed::NewComics => format!("{API_URL}/analytics/new-comics?window=7d&limit=25&offset=0"),
+		Feed::Popular => format!("{API_URL}/analytics/popular?window=7d&limit=50&offset=0"),
+		Feed::NewComics => format!("{API_URL}/analytics/new-comics?window=7d&limit=50&offset=0"),
 		Feed::Novels => format!("{API_URL}/novel"),
 		Feed::Hot | Feed::New => {
 			let filter = if let Feed::Hot = feed { "hot" } else { "new" };
 			let mut query = QueryParameters::new();
 			query.push_encoded("limit", Some("50"));
 			query.push_encoded("filter", Some(filter));
-			content.rating_query(&mut query, true);
 			query.push_encoded("page", Some("1"));
+			content.rating_query(&mut query, true);
 			format!("{API_URL}/latest?{query}")
 		}
 	}
@@ -140,13 +140,7 @@ impl Home for Swarm {
 
 		let requests = SECTIONS
 			.iter()
-			.map(|(_, feed)| {
-				let timeout = match feed {
-					Feed::Hot | Feed::New => 2.5,
-					_ => 6.0,
-				};
-				Ok(request(&feed_url(*feed, &content))?.timeout(timeout))
-			})
+			.map(|(_, feed)| request(&feed_url(*feed, &content)))
 			.collect::<Result<Vec<_>>>()?;
 		let mut failure = None;
 		let components: Vec<_> = SECTIONS

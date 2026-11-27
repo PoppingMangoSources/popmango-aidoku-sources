@@ -62,11 +62,6 @@ pub struct Update {
 }
 
 #[derive(Deserialize)]
-pub struct ComicDetails {
-	pub manga: Title,
-}
-
-#[derive(Deserialize)]
 pub struct ComicPage {
 	pub manga: Title,
 	pub chapters: Vec<ChapterItem>,
@@ -123,41 +118,12 @@ pub struct NovelText {
 
 #[derive(Deserialize)]
 pub struct Pages {
-	#[serde(rename = "baseUrl")]
-	base_url: Option<String>,
-	chapter: PageUrls,
+	pub chapter: PageUrls,
 }
 
 #[derive(Deserialize)]
-struct PageUrls {
-	#[serde(default)]
-	data: Vec<String>,
-	#[serde(default, rename = "dataSaver")]
-	data_saver: Vec<String>,
-}
-
-impl Pages {
-	pub fn into_urls(self) -> Vec<String> {
-		let base = self.base_url.unwrap_or_default();
-		let list = if !self.chapter.data.is_empty() {
-			self.chapter.data
-		} else {
-			self.chapter.data_saver
-		};
-		list.into_iter()
-			.map(|path| {
-				if path.is_empty() || path.starts_with("https://") || path.starts_with("http://") {
-					path
-				} else if path.starts_with('/') {
-					format!("{BASE_URL}{path}")
-				} else if base.starts_with("https://") || base.starts_with("http://") {
-					format!("{}/{path}", base.trim_end_matches('/'))
-				} else {
-					format!("{BASE_URL}{}/{path}", base.trim_end_matches('/'))
-				}
-			})
-			.collect()
-	}
+pub struct PageUrls {
+	pub data: Vec<String>,
 }
 
 // Some records hold their lists as Python reprs ("['Action', \"Boys' Love\"]").
@@ -468,12 +434,19 @@ impl ChapterItem {
 			.unwrap_or("swarmws")
 	}
 
-	fn copy(&self) -> u32 {
+	fn group(&self) -> String {
+		self.uploader()
+			.trim_end_matches(|c: char| c.is_ascii_digit())
+			.to_lowercase()
+	}
+
+	fn site_order(&self) -> (&str, u32) {
 		let uploader = self.uploader();
-		uploader
+		let copy = uploader
 			.strip_prefix(uploader.trim_end_matches(|c: char| c.is_ascii_digit()))
 			.and_then(|digits| digits.parse().ok())
-			.unwrap_or(1)
+			.unwrap_or(1);
+		(self.rank.as_deref().unwrap_or("~"), copy)
 	}
 
 	fn language(&self) -> &str {
@@ -498,7 +471,9 @@ impl ChapterItem {
 		raw_num
 	}
 
-	fn into_chapter(self, slug: &str, number: Option<f32>, language: String) -> Chapter {
+	fn into_chapter(self, slug: &str) -> Chapter {
+		let number = self.effective_number();
+		let language = String::from(self.language());
 		let (volume_number, title) = clean_title_and_volume(self.title.as_deref(), number);
 		let scanlators = Some(vec![self.uploader().into()]);
 		let query = self
@@ -532,78 +507,61 @@ pub fn chapter_list(
 	mode: &str,
 	preferred: &[String],
 ) -> Vec<Chapter> {
-	let listed = |names: &[String], uploader: &str, group: &str| {
+	let listed = |names: &[String], item: &ChapterItem| {
 		names
 			.iter()
-			.position(|name| name == uploader || name == group)
+			.position(|name| *name == item.uploader().to_lowercase() || *name == item.group())
 	};
-	let mut prepared: Vec<_> = items
+	let mut items: Vec<ChapterItem> = items
 		.into_iter()
-		.filter_map(|item| {
+		.filter(|item| {
 			let lang = item.language();
-			if !languages.iter().any(|language| language == lang) {
-				return None;
-			}
-			let need_names = !blocked.is_empty()
-				|| (mode == "chapter" && !preferred.is_empty())
-				|| mode == "uploader";
-			let (uploader, group) = if need_names {
-				let uploader = item.uploader().to_lowercase();
-				let group = String::from(uploader.trim_end_matches(|c: char| c.is_ascii_digit()));
-				(uploader, group)
-			} else {
-				(String::new(), String::new())
-			};
-			if !blocked.is_empty() && listed(blocked, &uploader, &group).is_some() {
-				return None;
-			}
-			let pref = if mode == "chapter" && !preferred.is_empty() {
-				listed(preferred, &uploader, &group).unwrap_or(preferred.len())
-			} else {
-				0
-			};
-			let number = item.effective_number();
-			let copy = item.copy();
-			let lang_owned = String::from(lang);
-			Some((item, number, lang_owned, group, pref, copy))
+			languages.iter().any(|language| language == lang)
 		})
+		.filter(|item| listed(blocked, item).is_none())
 		.collect();
-	prepared.sort_unstable_by(|a, b| {
-		let num_cmp = match (b.1, a.1) {
+	let preference = |item: &ChapterItem| {
+		if mode == "chapter" {
+			listed(preferred, item).unwrap_or(preferred.len())
+		} else {
+			0
+		}
+	};
+	items.sort_unstable_by(|a, b| {
+		let num_cmp = match (b.effective_number(), a.effective_number()) {
 			(Some(bn), Some(an)) => bn.total_cmp(&an),
 			(Some(_), None) => core::cmp::Ordering::Less,
 			(None, Some(_)) => core::cmp::Ordering::Greater,
-			(None, None) => b.0.number.cmp(&a.0.number),
+			(None, None) => b.number.cmp(&a.number),
 		};
 		num_cmp
-			.then_with(|| a.4.cmp(&b.4))
-			.then_with(|| {
-				(a.0.rank.as_deref().unwrap_or("~"), a.5)
-					.cmp(&(b.0.rank.as_deref().unwrap_or("~"), b.5))
-			})
-			.then_with(|| a.0.id.cmp(&b.0.id))
+			.then_with(|| preference(a).cmp(&preference(b)))
+			.then_with(|| a.site_order().cmp(&b.site_order()))
+			.then_with(|| a.id.cmp(&b.id))
 	});
 	if mode == "off" {
-		return prepared
+		return items
 			.into_iter()
-			.map(|(item, number, lang, ..)| item.into_chapter(slug, number, lang))
+			.map(|item| item.into_chapter(slug))
 			.collect();
 	}
 	let mut seen = BTreeSet::new();
-	prepared
+	items
 		.into_iter()
-		.filter_map(|(item, number, lang, mut group, ..)| {
-			if mode != "uploader" {
-				group.clear();
-			}
+		.filter(|item| {
+			let group = if mode == "uploader" {
+				item.group()
+			} else {
+				String::new()
+			};
 			let key = (
-				lang.clone(),
-				canonical_number_key(number, &item.number).map_err(String::from),
+				String::from(item.language()),
+				canonical_number_key(item.effective_number(), &item.number).map_err(String::from),
 				group,
 			);
 			seen.insert(key)
-				.then(|| item.into_chapter(slug, number, lang))
 		})
+		.map(|item| item.into_chapter(slug))
 		.collect()
 }
 

@@ -1,12 +1,12 @@
 use crate::{
 	helpers::app_language,
-	models::{Listing, Title},
+	models::{ComicPage, Listing, Title},
 	settings,
 };
 use aidoku::{
 	ContentRating, Manga, MangaPageResult, Result,
 	alloc::{String, Vec, format, string::ToString},
-	helpers::uri::{QueryParameters, encode_uri_component},
+	helpers::uri::QueryParameters,
 	imports::net::{Request, Response},
 	prelude::*,
 };
@@ -190,18 +190,32 @@ impl SearchParams {
 	}
 }
 
-pub fn comic<T: DeserializeOwned>(slug: &str) -> Result<T> {
-	get(&format!(
-		"{API_URL}/comic/slug/{}/details",
-		encode_uri_component(slug)
-	))
+pub fn comic_page(slug: &str) -> Result<ComicPage> {
+	// A series key is a bare slug, so the query starts here.
+	let response = Request::get(format!("{BASE_URL}/comic/{slug}?_rsc"))?
+		.header("RSC", "1")
+		.send()?;
+	let status = response.status_code();
+	if !(200..300).contains(&status) {
+		bail!("Swarm returned status {status}");
+	}
+	let body = response.get_string()?;
+	// Other RSC chunks can use `"initialData"` with a different schema.
+	let marker = r#""initialData":"#;
+	body.match_indices(marker)
+		.find_map(|(start, _)| {
+			serde_json::Deserializer::from_str(&body[start + marker.len()..])
+				.into_iter::<ComicPage>()
+				.next()?
+				.ok()
+		})
+		.ok_or_else(|| error!("Series not found"))
 }
 
 pub fn site_headers(request: Request) -> Request {
 	request
 		.header("Accept", "application/json")
 		.header("Referer", &format!("{BASE_URL}/"))
-		.timeout(15.0)
 }
 
 pub fn request(url: &str) -> Result<Request> {
@@ -218,19 +232,4 @@ pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 
 pub fn get<T: DeserializeOwned>(url: &str) -> Result<T> {
 	parse(request(url)?.send()?)
-}
-
-// Cold CDN strips take several seconds to populate; a short byte-range request warms Cloudflare ahead of the reader.
-pub fn warm(urls: &[String]) {
-	let requests: Vec<_> = urls
-		.iter()
-		.filter_map(|url| {
-			Request::get(url)
-				.ok()
-				.map(|req| req.header("Range", "bytes=0-0").timeout(0.4))
-		})
-		.collect();
-	if !requests.is_empty() {
-		Request::send_all(requests);
-	}
 }

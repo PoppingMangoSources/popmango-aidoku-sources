@@ -10,26 +10,20 @@ mod test;
 use aidoku::{
 	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Manga,
 	MangaPageResult, Page, PageContent, PageContext, Result, Source,
-	alloc::{String, Vec, format, string::ToString, vec},
+	alloc::{String, Vec, format, vec},
 	helpers::string::PlainText,
 	imports::net::Request,
 	prelude::*,
 };
-use api::{API_URL, SORTS, SearchParams, comic, get, parse, site_headers, warm};
-use core::cell::RefCell;
-use helpers::{Link, encrypt_payload, next_warm_range, parse_link};
-use models::{
-	ComicDetails, ComicPage, Genres, NOVEL_PREFIX, Novel, NovelText, Pages, Response, chapter_list,
-};
+use api::{API_URL, BASE_URL, SORTS, SearchParams, comic_page, get, parse, site_headers};
+use helpers::{Link, encrypt_payload, parse_link};
+use models::{Genres, NOVEL_PREFIX, Novel, NovelText, Pages, Response, chapter_list};
 
-#[derive(Default)]
-struct Swarm {
-	pages: RefCell<(Vec<String>, usize)>,
-}
+struct Swarm;
 
 impl Source for Swarm {
 	fn new() -> Self {
-		Self::default()
+		Self
 	}
 
 	fn get_search_manga_list(
@@ -39,8 +33,8 @@ impl Source for Swarm {
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
 		let pasted = match query.as_deref().and_then(parse_link) {
-			Some(Link::Comic(slug) | Link::Chapter(slug, ..)) => comic::<ComicDetails>(&slug)
-				.and_then(|details| Manga::try_from(details.manga))
+			Some(Link::Comic(slug) | Link::Chapter(slug, ..)) => comic_page(&slug)
+				.and_then(|page| Manga::try_from(page.manga))
 				.ok(),
 			Some(Link::Novel(slug) | Link::NovelChapter(slug, _)) => {
 				get::<Response<Novel>>(&format!("{API_URL}/novel/{slug}"))
@@ -129,11 +123,11 @@ impl Source for Swarm {
 			return Ok(manga);
 		}
 
+		let page = comic_page(&manga.key)?;
+		if needs_details {
+			manga.copy_from(page.manga.into_details()?);
+		}
 		if needs_chapters {
-			let page: ComicPage = comic(&manga.key)?;
-			if needs_details {
-				manga.copy_from(page.manga.into_details()?);
-			}
 			manga.chapters = Some(chapter_list(
 				page.chapters,
 				&manga.key,
@@ -142,8 +136,6 @@ impl Source for Swarm {
 				&settings::deduplicate_chapters(),
 				&settings::preferred_uploaders(),
 			));
-		} else if needs_details {
-			manga.copy_from(comic::<ComicDetails>(&manga.key)?.manga.into_details()?);
 		}
 		Ok(manga)
 	}
@@ -169,16 +161,12 @@ impl Source for Swarm {
 			}]);
 		}
 
-		// `clean` bypasses expired cached strip hashes that 404 on the CDN.
-		let payload = encrypt_payload(&format!(
-			r#"{{"chapterId":"{}","clean":true}}"#,
-			chapter.key
-		));
+		let payload = encrypt_payload(&format!(r#"{{"chapterId":"{}"}}"#, chapter.key));
 		let response = site_headers(Request::post(format!("{API_URL}/sp"))?)
 			.header("Content-Type", "application/json")
 			.body(format!(r#"{{"payload":"{payload}"}}"#))
 			.send()?;
-		let images = parse::<Pages>(response)?.into_urls();
+		let images = parse::<Pages>(response)?.chapter.data;
 		// `/noah/fall.png` is the site's missing-page placeholder.
 		if images.is_empty()
 			|| images
@@ -187,41 +175,19 @@ impl Source for Swarm {
 		{
 			bail!("This upload has no pages; try another uploader");
 		}
-		let pages = images
-			.iter()
-			.enumerate()
-			.map(|(index, url)| {
-				let mut context = PageContext::new();
-				context.insert("index".into(), index.to_string());
-				Page {
-					content: PageContent::url_context(url.as_str(), context),
-					..Default::default()
-				}
+		Ok(images
+			.into_iter()
+			.map(|url| Page {
+				content: PageContent::url(url),
+				..Default::default()
 			})
-			.collect();
-		let initial = images.len().min(2);
-		*self.pages.borrow_mut() = (images, initial);
-		Ok(pages)
+			.collect())
 	}
 }
 
 impl ImageRequestProvider for Swarm {
-	fn get_image_request(&self, url: String, context: Option<PageContext>) -> Result<Request> {
-		let Some(index) = context
-			.as_ref()
-			.and_then(|ctx| ctx.get("index"))
-			.and_then(|value| value.parse::<usize>().ok())
-		else {
-			return Ok(Request::get(url)?.timeout(25.0));
-		};
-		let batch = {
-			let mut state = self.pages.borrow_mut();
-			let (urls, warmed) = &mut *state;
-			let range = next_warm_range(urls.len(), warmed, index);
-			urls[range].to_vec()
-		};
-		warm(&batch);
-		Ok(Request::get(url)?.timeout(60.0))
+	fn get_image_request(&self, url: String, _context: Option<PageContext>) -> Result<Request> {
+		Ok(Request::get(url)?.header("Referer", &format!("{BASE_URL}/")))
 	}
 }
 
@@ -236,7 +202,7 @@ impl DeepLinkHandler for Swarm {
 				manga_key: format!("{NOVEL_PREFIX}{slug}"),
 				key,
 			}),
-			Some(Link::Chapter(slug, number, rank)) => comic::<ComicPage>(&slug)?
+			Some(Link::Chapter(slug, number, rank)) => comic_page(&slug)?
 				.chapters
 				.into_iter()
 				.find(|chapter| {
