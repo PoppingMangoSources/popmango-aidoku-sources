@@ -136,6 +136,15 @@ pub fn non_empty(value: String) -> Option<String> {
 	}
 }
 
+pub fn dedup_keep_order(values: &mut Vec<String>) {
+	let mut seen = Vec::with_capacity(values.len());
+	values.retain(|value| {
+		(!seen.contains(value))
+			.then(|| seen.push(value.clone()))
+			.is_some()
+	});
+}
+
 fn strip_ascii_prefix<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
 	let (head, tail) = text.split_at_checked(prefix.len())?;
 	head.eq_ignore_ascii_case(prefix).then_some(tail)

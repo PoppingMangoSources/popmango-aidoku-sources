@@ -1,23 +1,28 @@
 use crate::{
-	models::{BrowsePage, ErrorResponse, Rpc, Terms, Years, dedup_keep_order},
+	helpers::dedup_keep_order,
+	models::{
+		BrowsePage, ChapterPage, ChapterUnit, ErrorResponse, Reading, Rpc, Scope, SelectPage,
+		Selection, Terms, Years,
+	},
 	settings::{content_ratings, excluded_genres, languages, origins},
 };
 use aidoku::{
-	Manga, MangaPageResult, Result,
-	alloc::{String, Vec, format},
+	Chapter, Manga, MangaPageResult, Result,
+	alloc::{String, Vec, collections::BTreeMap, format},
 	imports::net::{Request, Response},
 	prelude::*,
 };
 use serde::{Serialize, de::DeserializeOwned};
+use serde_json::json;
 
 pub const BASE_URL: &str = "https://onisaga.com";
 pub const CDN_URL: &str = "https://media.onisaga.com";
-pub const CHAPTER_PAGE_SIZE: i32 = 200;
 
 // Sorts in `filters.json` order; `""` resolves to relevance with a query or latest update without.
 pub const SORTS: [&str; 5] = ["", "updated", "new", "title", "published"];
 
 const PAGE_SIZE: i32 = 42;
+const CHAPTER_PAGE_SIZE: i32 = 200;
 const MAX_LANGUAGES: usize = 10;
 
 #[derive(Serialize)]
@@ -200,4 +205,114 @@ pub fn parse<T: DeserializeOwned>(response: Response) -> Result<T> {
 		bail!("OniSaga returned HTTP {status}");
 	}
 	Ok(response.get_json_owned::<Rpc<T>>()?.json)
+}
+
+fn index_request(work_id: &str, scope: &Scope, cursor: Option<&str>) -> Result<Request> {
+	let mut input = json!({
+		"workId": work_id,
+		"streamId": scope.stream_id,
+		"lang": scope.language,
+		"order": "desc",
+		"limit": CHAPTER_PAGE_SIZE,
+	});
+	if let Some(edition_id) = &scope.edition_id {
+		input["editionId"] = json!(edition_id);
+	}
+	if let Some(cursor) = cursor {
+		input["cursor"] = json!(cursor);
+	}
+	rpc("chapters/index", input)
+}
+
+fn fetch_scope_units(work_id: &str, scope: &Scope, first: ChapterPage) -> Result<Vec<ChapterUnit>> {
+	let mut units = first.items;
+	let mut cursor = first.next_cursor;
+	while let Some(next_cursor) = cursor {
+		let page: ChapterPage = parse(index_request(work_id, scope, Some(&next_cursor))?.send()?)?;
+		if page.items.is_empty() {
+			break;
+		}
+		units.extend(page.items);
+		cursor = page.next_cursor;
+	}
+	Ok(units)
+}
+
+fn resolve_missing_selections(
+	work_id: &str,
+	scope: &Scope,
+	units: &[ChapterUnit],
+) -> Result<BTreeMap<String, Selection>> {
+	let missing = units
+		.iter()
+		.filter(|u| {
+			u.selection.is_none() && u.readable_candidate_count != Some(0) && !u.id.is_empty()
+		})
+		.map(|u| u.id.clone())
+		.collect::<Vec<_>>();
+	if missing.is_empty() {
+		return Ok(BTreeMap::new());
+	}
+	// `chapters/select` requires `editionId` to be present (null when unset).
+	let requests = missing
+		.chunks(CHAPTER_PAGE_SIZE as usize)
+		.map(|chunk| {
+			rpc(
+				"chapters/select",
+				json!({
+					"workId": work_id,
+					"streamId": scope.stream_id,
+					"editionId": scope.edition_id,
+					"chapterIds": chunk,
+					"language": scope.language,
+					"preferenceVersion": 0,
+				}),
+			)
+		})
+		.collect::<Result<Vec<_>>>()?;
+	let mut map = BTreeMap::new();
+	for response in Request::send_all(requests) {
+		let page: SelectPage = parse(response?)?;
+		for mut item in page.items {
+			let chapter_id = core::mem::take(&mut item.chapter_id);
+			map.insert(chapter_id, item);
+		}
+	}
+	Ok(map)
+}
+
+pub fn chapter_list(
+	slug: &str,
+	reading: &Reading,
+	scopes: &[Scope],
+	deduplicate: bool,
+) -> Result<Vec<Chapter>> {
+	let initial = scopes
+		.iter()
+		.map(|scope| index_request(&reading.work_id, scope, None))
+		.collect::<Result<Vec<_>>>()?;
+	let mut list = Vec::new();
+	for (scope, response) in scopes.iter().zip(Request::send_all(initial)) {
+		let first: ChapterPage = parse(response?)?;
+		let units = fetch_scope_units(&reading.work_id, scope, first)?;
+		let mut selections = resolve_missing_selections(&reading.work_id, scope, &units)?;
+		for unit in units {
+			let fallback = selections.remove(&unit.id);
+			list.extend(unit.into_chapters(
+				slug,
+				&scope.language,
+				&reading.groups,
+				deduplicate,
+				fallback,
+			));
+		}
+	}
+	if scopes.len() > 1 {
+		// Stable, so each number keeps the reader's language order.
+		list.sort_by(|a, b| {
+			let num = |c: &Chapter| c.chapter_number.unwrap_or(-1.0);
+			num(b).total_cmp(&num(a))
+		});
+	}
+	Ok(list)
 }

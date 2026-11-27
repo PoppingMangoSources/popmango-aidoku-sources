@@ -1,9 +1,9 @@
 use crate::{
 	api::{BASE_URL, CDN_URL},
 	helpers::{
-		clean_chapter_title, demographic_name, form_name, media_url, non_empty, origin_name,
-		parse_chapter_number, parse_content_rating, parse_iso_date, parse_status, plain_synopsis,
-		viewer,
+		clean_chapter_title, dedup_keep_order, demographic_name, form_name, media_url, non_empty,
+		origin_name, parse_chapter_number, parse_content_rating, parse_iso_date, parse_status,
+		plain_synopsis, viewer,
 	},
 };
 use aidoku::{
@@ -49,15 +49,6 @@ impl Terms {
 		dedup_keep_order(&mut self.exclude);
 		self.exclude.truncate(MAX_TERMS);
 	}
-}
-
-pub fn dedup_keep_order(values: &mut Vec<String>) {
-	let mut seen = Vec::with_capacity(values.len());
-	values.retain(|value| {
-		(!seen.contains(value))
-			.then(|| seen.push(value.clone()))
-			.is_some()
-	});
 }
 
 #[derive(Default, Serialize)]

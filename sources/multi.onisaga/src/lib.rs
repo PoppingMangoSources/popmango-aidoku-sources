@@ -1,31 +1,25 @@
 #![no_std]
 mod api;
+mod filters;
 mod helpers;
 mod home;
 mod models;
 mod settings;
 
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, DynamicFilters, DynamicSettings, Filter, FilterValue,
-	GroupSetting, ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult,
-	MultiSelectFilter, MultiSelectSetting, Page, PageContent, PageContext, Result, Setting, Source,
-	alloc::{String, Vec, collections::BTreeMap, format, vec},
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Listing,
+	ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result, Source,
+	alloc::{String, Vec, format, vec},
 	imports::{
 		net::{Request, TimeUnit, set_rate_limit},
 		std::{current_date, send_partial_result},
 	},
 	prelude::*,
 };
-use api::{BASE_URL, CHAPTER_PAGE_SIZE, SORTS, SearchParams, parse, rpc, set_age};
+use api::{BASE_URL, SORTS, SearchParams, chapter_list, parse, rpc, set_age};
 use core::cell::{Cell, RefCell};
-use helpers::{
-	DEMOGRAPHICS, Link, form_slug, origin_slug, page_expired, page_fragment, parse_link,
-	parse_terms, slugify,
-};
-use models::{
-	Bootstrap, ChapterPage, ChapterUnit, PageImage, Scope, SelectPage, Selection, TermOption,
-	WorkDetail, Years,
-};
+use helpers::{Link, page_expired, page_fragment, parse_link, parse_terms};
+use models::{Bootstrap, PageImage, TermOption, WorkDetail, Years};
 use serde_json::json;
 use settings::{deduplicate_chapters, languages};
 
@@ -35,7 +29,7 @@ struct OniSaga {
 	cursors: RefCell<Vec<(String, String)>>,
 	age: Cell<Option<bool>>,
 	pages: RefCell<Option<(String, Vec<PageImage>)>>,
-	taxonomy: RefCell<Option<Vec<TermOption>>>,
+	pub(crate) taxonomy: RefCell<Option<Vec<TermOption>>>,
 }
 
 impl OniSaga {
@@ -45,61 +39,6 @@ impl OniSaga {
 			self.age.set(Some(adult));
 		}
 		Ok(())
-	}
-
-	fn taxonomy(&self) -> Result<Vec<TermOption>> {
-		if let Some(cached) = self.taxonomy.borrow().as_ref() {
-			return Ok(cached.clone());
-		}
-		let terms: Vec<TermOption> = parse(rpc("catalog/taxonomy", json!({}))?.send()?)?;
-		*self.taxonomy.borrow_mut() = Some(terms.clone());
-		Ok(terms)
-	}
-
-	fn genres(&self) -> Result<(Vec<String>, Vec<String>)> {
-		Ok(self
-			.taxonomy()?
-			.into_iter()
-			.filter(|t| t.group == "genre" && !t.slug.is_empty() && !t.name.is_empty())
-			.map(|t| (t.slug, t.name))
-			.unzip())
-	}
-
-	fn resolve_tapped_tags(&self, tapped: Vec<String>, search: &mut SearchParams) {
-		let mut origins = Vec::new();
-		let mut unknown = Vec::new();
-		for (name, slug) in tapped.into_iter().filter_map(|name| {
-			let slug = slugify(&name);
-			(!slug.is_empty()).then_some((name, slug))
-		}) {
-			if let Some(origin) = origin_slug(&slug) {
-				origins.push(origin.into());
-			} else if DEMOGRAPHICS.contains(&slug.as_str()) {
-				search.demographic.push(slug);
-			} else if let Some(form) = form_slug(&slug) {
-				search.form.push(form.into());
-			} else {
-				unknown.push((name, slug));
-			}
-		}
-		if !origins.is_empty() {
-			search.origin = Some(origins);
-		}
-		if unknown.is_empty() {
-			return;
-		}
-		let taxonomy = self.taxonomy().unwrap_or_default();
-		for (name, slug) in unknown {
-			let matched = taxonomy
-				.iter()
-				.find(|t| t.slug == slug || t.name.eq_ignore_ascii_case(&name));
-			match matched.map(|t| (t.group.as_str(), t.slug.as_str())) {
-				Some(("genre", found)) => search.genres.include.push(found.into()),
-				Some(("theme", found)) => search.themes.include.push(found.into()),
-				Some((_, found)) => search.tags.include.push(found.into()),
-				None => search.tags.include.push(slug),
-			}
-		}
 	}
 
 	fn page(&self, mut search: SearchParams, page: i32) -> Result<MangaPageResult> {
@@ -162,80 +101,6 @@ impl OniSaga {
 		*self.pages.borrow_mut() = Some((release_id.into(), pages.clone()));
 		Ok(pages)
 	}
-}
-
-fn index_request(work_id: &str, scope: &Scope, cursor: Option<&str>) -> Result<Request> {
-	let mut input = json!({
-		"workId": work_id,
-		"streamId": scope.stream_id,
-		"lang": scope.language,
-		"order": "desc",
-		"limit": CHAPTER_PAGE_SIZE,
-	});
-	if let Some(edition_id) = &scope.edition_id {
-		input["editionId"] = json!(edition_id);
-	}
-	if let Some(cursor) = cursor {
-		input["cursor"] = json!(cursor);
-	}
-	rpc("chapters/index", input)
-}
-
-fn fetch_scope_units(work_id: &str, scope: &Scope, first: ChapterPage) -> Result<Vec<ChapterUnit>> {
-	let mut units = first.items;
-	let mut cursor = first.next_cursor;
-	while let Some(next_cursor) = cursor {
-		let page: ChapterPage = parse(index_request(work_id, scope, Some(&next_cursor))?.send()?)?;
-		if page.items.is_empty() {
-			break;
-		}
-		units.extend(page.items);
-		cursor = page.next_cursor;
-	}
-	Ok(units)
-}
-
-fn resolve_missing_selections(
-	work_id: &str,
-	scope: &Scope,
-	units: &[ChapterUnit],
-) -> Result<BTreeMap<String, Selection>> {
-	let missing = units
-		.iter()
-		.filter(|u| {
-			u.selection.is_none() && u.readable_candidate_count != Some(0) && !u.id.is_empty()
-		})
-		.map(|u| u.id.clone())
-		.collect::<Vec<_>>();
-	if missing.is_empty() {
-		return Ok(BTreeMap::new());
-	}
-	// `chapters/select` requires `editionId` to be present (null when unset).
-	let requests = missing
-		.chunks(CHAPTER_PAGE_SIZE as usize)
-		.map(|chunk| {
-			rpc(
-				"chapters/select",
-				json!({
-					"workId": work_id,
-					"streamId": scope.stream_id,
-					"editionId": scope.edition_id,
-					"chapterIds": chunk,
-					"language": scope.language,
-					"preferenceVersion": 0,
-				}),
-			)
-		})
-		.collect::<Result<Vec<_>>>()?;
-	let mut map = BTreeMap::new();
-	for response in Request::send_all(requests) {
-		let page: SelectPage = parse(response?)?;
-		for mut item in page.items {
-			let chapter_id = core::mem::take(&mut item.chapter_id);
-			map.insert(chapter_id, item);
-		}
-	}
-	Ok(map)
 }
 
 impl Source for OniSaga {
@@ -358,38 +223,12 @@ impl Source for OniSaga {
 		if needs_details {
 			send_partial_result(&manga);
 		}
-
-		let deduplicate = deduplicate_chapters();
-		let initial = scopes
-			.iter()
-			.map(|scope| index_request(&reading.work_id, scope, None))
-			.collect::<Result<Vec<_>>>()?;
-
-		let mut list = Vec::new();
-		for (scope, response) in scopes.iter().zip(Request::send_all(initial)) {
-			let first: ChapterPage = parse(response?)?;
-			let units = fetch_scope_units(&reading.work_id, scope, first)?;
-			let mut selections = resolve_missing_selections(&reading.work_id, scope, &units)?;
-			for unit in units {
-				let fallback = selections.remove(&unit.id);
-				list.extend(unit.into_chapters(
-					&manga.key,
-					&scope.language,
-					&reading.groups,
-					deduplicate,
-					fallback,
-				));
-			}
-		}
-
-		if scopes.len() > 1 {
-			// Stable, so each number keeps the reader's language order.
-			list.sort_by(|a, b| {
-				let num = |c: &Chapter| c.chapter_number.unwrap_or(-1.0);
-				num(b).total_cmp(&num(a))
-			});
-		}
-		manga.chapters = Some(list);
+		manga.chapters = Some(chapter_list(
+			&manga.key,
+			&reading,
+			&scopes,
+			deduplicate_chapters(),
+		)?);
 		Ok(manga)
 	}
 
@@ -402,53 +241,6 @@ impl Source for OniSaga {
 				..Default::default()
 			})
 			.collect())
-	}
-}
-
-impl DynamicFilters for OniSaga {
-	fn get_dynamic_filters(&self) -> Result<Vec<Filter>> {
-		let (ids, options) = self.genres()?;
-		Ok(vec![
-			MultiSelectFilter {
-				id: "genre".into(),
-				title: Some("Genres".into()),
-				is_genre: true,
-				can_exclude: true,
-				uses_tag_style: true,
-				options: options.into_iter().map(Into::into).collect(),
-				ids: Some(ids.into_iter().map(Into::into).collect()),
-				..Default::default()
-			}
-			.into(),
-		])
-	}
-}
-
-impl DynamicSettings for OniSaga {
-	fn get_dynamic_settings(&self) -> Result<Vec<Setting>> {
-		let (values, titles) = self.genres()?;
-		Ok(vec![
-			GroupSetting {
-				title: "Exclusions".into(),
-				footer: Some(
-					"Titles with these genres are hidden unless a search includes them (up to 20)."
-						.into(),
-				),
-				items: vec![
-					MultiSelectSetting {
-						key: "excludedGenres".into(),
-						title: "Excluded Genres".into(),
-						values: values.into_iter().map(Into::into).collect(),
-						titles: Some(titles.into_iter().map(Into::into).collect()),
-						refreshes: Some(vec!["content".into(), "listings".into()]),
-						..Default::default()
-					}
-					.into(),
-				],
-				..Default::default()
-			}
-			.into(),
-		])
 	}
 }
 
