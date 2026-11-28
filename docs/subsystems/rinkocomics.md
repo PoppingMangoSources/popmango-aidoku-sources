@@ -27,7 +27,7 @@ sandbox can reach, so the live tests in `src/test.rs` run here.
 > ⚠️ A long comic lists 20 chapters and loads the rest from `wp-admin/admin-ajax.php` with
 > `action=load_more_chapters`, the nonce from `script#comicworld-loadmore-js-extra` (the page holds
 > another nonce too), `offset`, `order=desc` and `ui=v2`. Without `ui=v2` the site answers with
-> an older `li.chapter` layout (`sources/en.rinkocomics/src/helpers.rs:208`). The total comes from
+> an older `li.chapter` layout (`sources/en.rinkocomics/src/helpers.rs:212`). The total comes from
 > the "Chapters" fact; novels list every episode on the page.
 
 > ⚠️ The test runner's `Element::next()` returns nothing, so the facts (Status, Type, Chapters)

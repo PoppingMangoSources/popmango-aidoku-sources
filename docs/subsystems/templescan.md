@@ -23,12 +23,19 @@ tokens (`tokens.rs`). This sandbox can reach the site, so `live_pages_pass_the_s
 > 2026-11-28: `Accept`, `Sec-Fetch-Dest: document`, `Sec-Fetch-Mode: navigate` and
 > `Sec-Fetch-Site: none` are each required, while `Accept-Language`,
 > `Upgrade-Insecure-Requests` and the user agent made no difference. `build_request`
-> (`sources/en.templescan/src/helpers.rs:213`) sends the four. The live test fails with the
+> (`sources/en.templescan/src/helpers.rs:202`) sends the four. The live test fails with the
 > verification error once `Accept` is removed.
 
 - **No Verify setting.** Up to v13 a web login item opened the check page and sent the cookies
   it collected. It never helped: the redirect comes from the missing headers, so the app kept
   showing the verification error after a pass. v14 removed it.
+> ⚠️ Every catalogue and chapter date is `yyyy-MM-ddTHH:mm:ss.SSSZ` (1217 of 1217 on
+> 2026-11-28), parsed with one format in UTC. The test runner drops the format's quoted `'T'`,
+> so the dates are `None` there and the date sorts are checked in the app, not asserted.
+
+> ⚠️ Only a query starting with `BASE_URL` is treated as a pasted link. It answers with a card
+> of key, title and cover, and a link whose page fails is searched as text.
+
 - **The check page is detected by its script** (`/app/challenge/page-<hash>.js`), not by its
   title: a series title containing "Verify" or "Challenge" would otherwise fail its details.
 - **Images take only a Referer.** Covers and pages on `media.templetoons.com` load with it.

@@ -570,5 +570,6 @@ Commercial price, sale, discount and purchasing controls are omitted from source
 filters and settings. Chapter visibility controls remain useful: Show Locked Chapters
 uses `showLocked`, defaults off and only appears where chapter lock metadata exists.
 Mixed comic/novel catalogues use `labelNovels`, default on, to append `(Novel)` without
-changing keys or reader routing. Eternal has novels but no locked chapters; its novel
+changing keys or reader routing, unless the site already marks its novel titles: Rinko Comics
+ends them in `[Novel]`, so it has no such setting and shows titles as written (owner's call). Eternal has novels but no locked chapters; its novel
 catalogue form uses `type=novel`.
