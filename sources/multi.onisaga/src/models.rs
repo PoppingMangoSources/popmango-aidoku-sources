@@ -3,7 +3,7 @@ use crate::{
 	helpers::{
 		clean_chapter_title, dedup_keep_order, demographic_name, form_name, media_url, non_empty,
 		origin_name, parse_chapter_number, parse_content_rating, parse_iso_date, parse_status,
-		plain_synopsis, viewer,
+		plain_synopsis, status_name, viewer,
 	},
 };
 use aidoku::{
@@ -91,8 +91,10 @@ pub struct Work {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct WorkLanguage {
 	language: String,
+	readable_units: Option<i32>,
 }
 
 #[derive(Deserialize)]
@@ -325,7 +327,7 @@ impl Work {
 				.any(|entry| languages.contains(&entry.language)))
 	}
 
-	pub fn into_details(self) -> Result<Manga> {
+	pub fn into_details(self, languages: &[String]) -> Result<Manga> {
 		let Self {
 			slug,
 			title,
@@ -337,16 +339,35 @@ impl Work {
 			publication_status,
 			content_rating,
 			synopsis,
-			..
+			languages: work_languages,
 		} = self;
+		// The app's Spotlight shows no status or chapter count of its own, so they follow the type
+		// as on the site's slide; the count is the reader's best language, each one numbering alike.
+		let chapters = work_languages
+			.into_iter()
+			.filter(|entry| languages.contains(&entry.language))
+			.filter_map(|entry| entry.readable_units)
+			.max()
+			.filter(|&count| count > 0)
+			.map(|count| match count {
+				1 => "1 chapter".into(),
+				_ => format!("{count} chapters"),
+			});
 		let pills = [
-			origin.as_deref().and_then(origin_name),
-			demographic.as_deref().and_then(demographic_name),
-			form.as_deref().and_then(form_name),
+			origin.as_deref().and_then(origin_name).map(Into::into),
+			publication_status
+				.as_deref()
+				.and_then(status_name)
+				.map(Into::into),
+			chapters,
+			demographic
+				.as_deref()
+				.and_then(demographic_name)
+				.map(Into::into),
+			form.as_deref().and_then(form_name).map(Into::into),
 		]
 		.into_iter()
 		.flatten()
-		.map(Into::into)
 		.collect::<Vec<String>>();
 		let tags = Some(if pills.is_empty() {
 			vec!["Comic".into()]

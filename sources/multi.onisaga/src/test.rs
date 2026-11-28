@@ -36,7 +36,7 @@ const HOME_JSON: &str = r#"{
 					"synopsis": "**Bold** intro with [link](https://example.com).\n\n(Source: Publisher)",
 					"contentRating": "safe",
 					"coverUrl": "https://media.onisaga.com/api/covers/safe-strip?mv=1",
-					"languages": [{"language": "en"}]
+					"languages": [{"language": "en", "readableUnits": 37}, {"language": "th", "readableUnits": 90}]
 				}
 			},
 			{
@@ -49,7 +49,7 @@ const HOME_JSON: &str = r#"{
 					"synopsis": "Suggestive slide.",
 					"contentRating": "suggestive",
 					"coverUrl": "https://media.onisaga.com/api/covers/teasing?mv=2",
-					"languages": [{"language": "en"}]
+					"languages": [{"language": "en", "readableUnits": 1}]
 				}
 			}
 		]
@@ -258,6 +258,8 @@ fn review_home_sections_order_and_cards() {
 		Some(
 			&[
 				String::from("Manhwa"),
+				String::from("Completed"),
+				String::from("37 chapters"),
 				String::from("Shoujo"),
 				String::from("One-shot")
 			][..]
@@ -267,7 +269,13 @@ fn review_home_sections_order_and_cards() {
 	assert_eq!(spotlight[1].content_rating, ContentRating::Suggestive);
 	assert_eq!(
 		spotlight[1].tags.as_deref(),
-		Some(&[String::from("Manga")][..])
+		Some(
+			&[
+				String::from("Manga"),
+				String::from("Ongoing"),
+				String::from("1 chapter")
+			][..]
+		)
 	);
 
 	let HomeComponentValue::MangaList {

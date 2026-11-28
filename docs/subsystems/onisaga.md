@@ -71,8 +71,10 @@ Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
 > ⚠️ Aidoku's `HomeBigScrollerView` gates the entire bottom pill row — including the colored
 > `Suggestive` / `18+` content-rating pill — behind non-empty `entry.tags`. `catalog/home` Spotlight
 > cards omit `terms` (genres require per-card `catalog/detail` RPCs, which Home avoids), so
-> `Work::into_details` populates `tags` from `[origin, demographic, form]` with a `"Comic"`
-> fallback (`sources/multi.onisaga/src/models.rs:315`).
+> `Work::into_details` populates `tags` from `[origin, status, chapter count, demographic, form]`
+> with a `"Comic"` fallback (`sources/multi.onisaga/src/models.rs:330`). The row has no status or
+> count of its own, so both ride as tags in the site's slide order; the count is the highest
+> `languages[].readableUnits` among the reader's languages ("37 chapters", "1 chapter").
 
 > ⚠️ OniSaga's Zod schema on `catalog/browse` is `.strict()` and rejects duplicate array items,
 > more than 10 `languages`, more than 20 `include` or `exclude` slugs per taxonomy group,

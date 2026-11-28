@@ -93,6 +93,17 @@ pub fn origin_slug(slug: &str) -> Option<&'static str> {
 	}
 }
 
+// Named as the app names each status on a details page.
+pub fn status_name(slug: &str) -> Option<&'static str> {
+	match slug {
+		"releasing" => Some("Ongoing"),
+		"completed" => Some("Completed"),
+		"hiatus" => Some("Hiatus"),
+		"cancelled" => Some("Cancelled"),
+		_ => None,
+	}
+}
+
 pub fn demographic_name(slug: &str) -> Option<&'static str> {
 	match slug {
 		"shounen" => Some("Shounen"),

@@ -86,7 +86,7 @@ pub fn components(
 			.into_iter()
 			.filter_map(|s| s.card)
 			.filter(|w| w.allowed(&search.ratings, origins, &search.languages))
-			.filter_map(|w| w.into_details().ok())
+			.filter_map(|w| w.into_details(&search.languages).ok())
 			.collect::<Vec<_>>();
 		(!entries.is_empty()).then_some(HomeComponentValue::BigScroller {
 			entries,
