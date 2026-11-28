@@ -1,14 +1,14 @@
 use super::{
 	TempleScan,
 	helpers::{
-		BASE_URL, build_home_layout, decode_reader_tokens, extract_reader_tokens,
-		is_challenge_page, page_catalog, parse_catalog, parse_series_chapters,
-		parse_series_details, sort_catalog,
+		BASE_URL, decode_reader_tokens, extract_reader_tokens, is_challenge_page, page_catalog,
+		parse_catalog, parse_series_chapters, parse_series_details, sort_catalog,
 	},
+	home::layout,
 	tokens,
 };
 use aidoku::{
-	DeepLinkHandler, DeepLinkResult, HomeComponentValue, Manga, MangaStatus, Source,
+	DeepLinkHandler, DeepLinkResult, Home, HomeComponentValue, Manga, MangaStatus, Source,
 	alloc::{String, Vec, format, vec},
 	imports::html::Html,
 };
@@ -51,8 +51,8 @@ const HOME_HTML: &str = r#"<!doctype html>
 #[aidoku_test]
 fn review_home_layout_flight_refs_and_show_locked() {
 	let doc = Html::parse_with_url(HOME_HTML, BASE_URL).expect("parse home");
-	let layout = build_home_layout(&doc, false);
-	let titles: Vec<&str> = layout
+	let built = layout(&doc, false);
+	let titles: Vec<&str> = built
 		.components
 		.iter()
 		.filter_map(|c| c.title.as_deref())
@@ -67,7 +67,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		]
 	);
 
-	match &layout.components[0].value {
+	match &built.components[0].value {
 		HomeComponentValue::BigScroller { entries, .. } => {
 			assert_eq!(entries.len(), 1);
 			assert_eq!(entries[0].key, "solo-hunter");
@@ -75,7 +75,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		}
 		_ => panic!("Featured must be BigScroller"),
 	}
-	match &layout.components[1].value {
+	match &built.components[1].value {
 		HomeComponentValue::Scroller { entries, .. } => {
 			assert_eq!(entries.len(), 1);
 			assert_eq!(entries[0].title, "Week King");
@@ -83,7 +83,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		}
 		_ => panic!("Trending This Week must be Scroller"),
 	}
-	match &layout.components[2].value {
+	match &built.components[2].value {
 		HomeComponentValue::MangaChapterList {
 			page_size, entries, ..
 		} => {
@@ -96,7 +96,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		}
 		_ => panic!("Latest Updates must be MangaChapterList"),
 	}
-	match &layout.components[3].value {
+	match &built.components[3].value {
 		HomeComponentValue::Scroller { entries, .. } => {
 			assert_eq!(entries.len(), 1);
 			assert_eq!(entries[0].title, "Brand New");
@@ -104,7 +104,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		_ => panic!("New Series must be Scroller"),
 	}
 
-	let layout_with_locked = build_home_layout(&doc, true);
+	let layout_with_locked = layout(&doc, true);
 	if let HomeComponentValue::MangaChapterList { entries, .. } =
 		&layout_with_locked.components[2].value
 	{
@@ -135,6 +135,9 @@ fn review_flight_text_rows_sorts_locked_chapters_and_reader_tokens() {
 	let challenge_html = r#"<html><head><title>Temple Scan</title><script src="/_next/static/chunks/app/challenge/page-61f1e8.js"></script></head><body></body></html>"#;
 	let challenge_doc = Html::parse_with_url(challenge_html, BASE_URL).expect("parse challenge");
 	assert!(is_challenge_page(&challenge_doc));
+	let titled_html = r#"<html><head><title>The Verify Challenge - Temple Scan</title></head><body></body></html>"#;
+	let titled_doc = Html::parse_with_url(titled_html, BASE_URL).expect("parse titled page");
+	assert!(!is_challenge_page(&titled_doc));
 
 	let detail_html = r#"<html><head><meta property="og:image" content="https://media.templetoons.com/c.webp"></head><body>
 		<h1 id="series-title">Alpha One</h1>
@@ -193,4 +196,41 @@ fn review_flight_text_rows_sorts_locked_chapters_and_reader_tokens() {
 			key: "ch-2".into(),
 		})
 	);
+}
+
+// Without the browser headers every page request lands on the site's check page.
+#[aidoku_test]
+fn live_pages_pass_the_site_check() {
+	let source = TempleScan::new();
+	let browse = source
+		.get_search_manga_list(None, 1, Vec::new())
+		.expect("browse");
+	assert!(!browse.entries.is_empty());
+
+	let manga = source
+		.get_manga_update(
+			Manga {
+				key: "the-lawful-wife".into(),
+				..Default::default()
+			},
+			true,
+			true,
+		)
+		.expect("details");
+	assert_eq!(manga.title, "The Lawful Wife");
+	let first = manga
+		.chapters
+		.clone()
+		.expect("chapters")
+		.into_iter()
+		.find(|chapter| chapter.key == "chapter-1")
+		.expect("chapter 1");
+	assert!(
+		!source
+			.get_page_list(manga, first)
+			.expect("pages")
+			.is_empty()
+	);
+
+	assert!(!source.get_home().expect("home").components.is_empty());
 }

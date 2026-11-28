@@ -1,5 +1,6 @@
 #![no_std]
 mod helpers;
+mod home;
 mod rsc;
 mod settings;
 #[cfg(test)]
@@ -7,17 +8,15 @@ mod test;
 mod tokens;
 
 use aidoku::{
-	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, HashMap, Home, HomeLayout,
-	ImageRequestProvider, Listing, ListingProvider, Manga, MangaPageResult, Page, PageContent,
-	PageContext, Result, Source, WebLoginHandler,
+	Chapter, DeepLinkHandler, DeepLinkResult, FilterValue, ImageRequestProvider, Listing,
+	ListingProvider, Manga, MangaPageResult, Page, PageContent, PageContext, Result, Source,
 	alloc::{String, Vec, vec},
 	imports::net::Request,
 	prelude::*,
 };
 use helpers::{
-	BASE_URL, build_home_layout, build_request, decode_reader_tokens, extract_reader_tokens,
-	fetch_doc, page_catalog, parse_catalog, parse_comic_href, parse_series_chapters,
-	parse_series_details, sort_catalog,
+	BASE_URL, build_request, decode_reader_tokens, extract_reader_tokens, fetch_doc, page_catalog,
+	parse_catalog, parse_comic_href, parse_series_chapters, parse_series_details, sort_catalog,
 };
 
 struct TempleScan;
@@ -162,19 +161,11 @@ impl Source for TempleScan {
 	}
 }
 
-impl Home for TempleScan {
-	fn get_home(&self) -> Result<HomeLayout> {
-		let doc = fetch_doc(&format!("{BASE_URL}/"))?;
-		Ok(build_home_layout(&doc, settings::show_locked_chapters()))
-	}
-}
-
 impl ListingProvider for TempleScan {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let index = match listing.id.as_str() {
 			"updated" => 0,
 			"created" => 1,
-			"title" => 2,
 			"views" => 3,
 			_ => bail!("Unknown listing"),
 		};
@@ -214,20 +205,10 @@ impl DeepLinkHandler for TempleScan {
 	}
 }
 
-impl WebLoginHandler for TempleScan {
-	fn handle_web_login(&self, key: String, cookies: HashMap<String, String>) -> Result<bool> {
-		if key == settings::VERIFY_KEY {
-			return Ok(cookies.iter().any(|(k, v)| !k.is_empty() && !v.is_empty()));
-		}
-		Ok(false)
-	}
-}
-
 register_source!(
 	TempleScan,
 	Home,
 	ListingProvider,
 	ImageRequestProvider,
-	DeepLinkHandler,
-	WebLoginHandler
+	DeepLinkHandler
 );

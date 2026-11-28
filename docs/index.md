@@ -50,6 +50,7 @@ _(none yet)_
 - [[swarm]] -- Swarm's API, local exclusions, encrypted page request, languages and uploads
 - [[onisaga]] -- OniSaga's JSON RPC API, home shelves, Zod limits, age cookie and signed reader manifests
 - [[rinkocomics]] -- Rinko Comics' paid-chapter permalinks, load-more AJAX, runner-safe fact reading and genre slugs
+- [[templescan]] -- Temple Scan's browser-header check, why the Verify setting went, and image headers that 403
 - [[webnex]] -- WebNex's streamed shelves, browse parameters that alias, chapter and year presets, section visibility and the plain-request reader (archived)
 - [[xcomic]] -- XCOMIC's GraphQL API, editions, feeds and filters (upstream only)
 - [[toonkotsu]] -- Toonkotsu's JSON API, ratings, web view reader and read limits (upstream only)

@@ -13,24 +13,5 @@
 				]
 			}
 		]
-	},
-	{
-		"type": "group",
-		"title": "Verify Captcha",
-		"items": [
-			{
-				"type": "login",
-				"method": "web",
-				"url": "https://templetoons.com/challenge?redirect=%2F",
-				"key": "verify",
-				"title": "Verify Temple Scan Captcha",
-				"logoutTitle": "Re-Verify Temple Scan Captcha",
-				"notification": "verify",
-				"refreshes": [
-					"content"
-				]
-			}
-		],
-		"footer": "Only needed if Temple Scan asks your network for verification."
 	}
 ]
