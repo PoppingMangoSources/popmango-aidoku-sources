@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Content",
-		"footer": "18+ tells OniSaga you are 18 or older, as the site's own prompt does, and adds mature and explicit titles with their real covers. A search's Type filter overrides these.",
+		"footer": "Shows titles at and below the selected rating. 18+ tells OniSaga you are 18 or older, as the site's own prompt does, and adds mature and explicit titles with their real covers. A search's Type filter overrides these.",
 		"items": [
 			{
 				"type": "select",
