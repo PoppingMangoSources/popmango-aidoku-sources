@@ -5,7 +5,7 @@ use aidoku::{
 	helpers::uri::QueryParameters,
 	imports::{
 		html::{Document, Element, Html},
-		net::Request,
+		net::{Request, Response},
 		std::{current_date, parse_date_with_options},
 	},
 	prelude::*,
@@ -16,9 +16,20 @@ pub const BASE_URL: &str = "https://rinkocomics.com";
 pub const SORTS: [&str; 4] = ["az", "updated", "views", "new"];
 
 pub fn get_html(url: &str) -> Result<Document> {
-	Ok(Request::get(url)?
-		.header("Referer", &format!("{BASE_URL}/"))
-		.html()?)
+	checked_html(
+		&Request::get(url)?
+			.header("Referer", &format!("{BASE_URL}/"))
+			.send()?,
+	)
+}
+
+// An error page parses as an empty one, so a status other than 2xx is an error.
+pub fn checked_html(response: &Response) -> Result<Document> {
+	let status = response.status_code();
+	if !(200..300).contains(&status) {
+		bail!("Rinko Comics answered with HTTP {status}");
+	}
+	Ok(response.get_html()?)
 }
 
 pub fn browse_url(kind: &str, page: i32, qs: &QueryParameters) -> String {

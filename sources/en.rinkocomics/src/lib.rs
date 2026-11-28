@@ -16,8 +16,8 @@ use aidoku::{
 	prelude::*,
 };
 use helpers::{
-	BASE_URL, SORTS, browse_page, browse_url, chapter_list, decode_pages, get_html, info, key_of,
-	parse_status, script, slugify, text,
+	BASE_URL, SORTS, browse_page, browse_url, chapter_list, checked_html, decode_pages, get_html,
+	info, key_of, parse_status, script, slugify, text,
 };
 
 struct RinkoComics;
@@ -159,7 +159,7 @@ impl DynamicFilters for RinkoComics {
 			.collect::<core::result::Result<Vec<_>, _>>()?;
 		let mut genres: Vec<(String, String)> = Vec::new();
 		for response in Request::send_all(requests) {
-			let html = response?.get_html()?;
+			let html = checked_html(&response?)?;
 			for label in html.select("#cwBrowse label").into_iter().flatten() {
 				if let Some(input) = label.select_first("input")
 					&& input.attr("name").as_deref() == Some("genres[]")

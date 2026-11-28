@@ -1,6 +1,6 @@
 use crate::{
 	RinkoComics,
-	helpers::{BASE_URL, browse_page, card, chapter, cover, key_of, text},
+	helpers::{BASE_URL, browse_page, card, chapter, checked_html, cover, key_of, text},
 };
 use aidoku::{
 	Chapter, ContentRating, Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult,
@@ -207,7 +207,7 @@ impl Home for RinkoComics {
 			.map(|response| {
 				response
 					.map_err(Into::into)
-					.and_then(|response| Ok(response.get_html()?))
+					.and_then(|response| checked_html(&response))
 					.map_err(|error| failure = Some(error))
 					.ok()
 			})
