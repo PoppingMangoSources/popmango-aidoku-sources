@@ -43,7 +43,7 @@ impl Source for RinkoComics {
 				FilterValue::Sort { index, .. } => {
 					qs.set("sort", SORTS.get(index as usize).copied());
 				}
-				FilterValue::Select { id, value } => match id.as_str() {
+				FilterValue::Select { id, value } if !value.is_empty() => match id.as_str() {
 					"type" => kind = value,
 					"status" => qs.set("status", Some(&value)),
 					// A tapped tag sends the genre's name.
@@ -110,7 +110,7 @@ impl Source for RinkoComics {
 
 	fn get_page_list(&self, _manga: Manga, chapter: Chapter) -> Result<Vec<Page>> {
 		if chapter.locked {
-			bail!("This chapter is locked on RinkoComics");
+			bail!("This chapter is locked on Rinko Comics");
 		}
 		let url = format!("{BASE_URL}/{}/", chapter.key);
 		let html = get_html(&url)?;
@@ -193,17 +193,30 @@ impl DynamicFilters for RinkoComics {
 
 impl ListingProvider for RinkoComics {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let (kind, sort) = match listing.id.as_str() {
-			"updated" => ("comic", "updated"),
-			"views" => ("comic", "views"),
-			"new" => ("comic", "new"),
-			"novels" => ("novel", "new"),
-			"novels-updated" => ("novel", "updated"),
+		// Indexes into SORTS: 1 latest update, 2 most viewed, 3 newest.
+		let (kind, index) = match listing.id.as_str() {
+			"updated" => ("comic", 1),
+			"views" => ("comic", 2),
+			"new" => ("comic", 3),
+			"novels" => ("novel", 3),
+			"novels-updated" => ("novel", 1),
 			_ => bail!("Unknown listing"),
 		};
-		let mut qs = QueryParameters::new();
-		qs.push("sort", Some(sort));
-		Ok(browse_page(&get_html(&browse_url(kind, page, &qs))?))
+		self.get_search_manga_list(
+			None,
+			page,
+			vec![
+				FilterValue::Sort {
+					id: "sort".into(),
+					index,
+					ascending: false,
+				},
+				FilterValue::Select {
+					id: "type".into(),
+					value: kind.into(),
+				},
+			],
+		)
 	}
 }
 

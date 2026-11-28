@@ -3,8 +3,8 @@ use crate::{
 	helpers::{BASE_URL, browse_page, card, chapter, cover, key_of, text},
 };
 use aidoku::{
-	ContentRating, Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
-	Listing, ListingKind, Manga, MangaWithChapter, Result,
+	Chapter, ContentRating, Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult,
+	Link, Listing, ListingKind, Manga, MangaWithChapter, Result,
 	alloc::{String, Vec, format, vec},
 	imports::{html::Document, net::Request, std::send_partial_result},
 	prelude::*,
@@ -79,9 +79,12 @@ fn latest(doc: &Document) -> Vec<MangaWithChapter> {
 							cover: cover(&article),
 							..card(&article.select_first("a.line-clamp-2")?)?
 						},
-						chapter: article
-							.select("a.chapter-item")?
-							.find_map(|row| chapter(&row))?,
+						chapter: Chapter {
+							url: None,
+							..article
+								.select("a.chapter-item")?
+								.find_map(|row| chapter(&row))?
+						},
 					})
 				})
 				.collect()
@@ -217,7 +220,7 @@ impl Home for RinkoComics {
 		);
 		let layout = layout(home.as_ref(), new.as_ref(), novels.as_ref());
 		if layout.components.is_empty() {
-			return Err(failure.unwrap_or_else(|| error!("RinkoComics's home page was empty")));
+			return Err(failure.unwrap_or_else(|| error!("Rinko Comics' home page was empty")));
 		}
 		Ok(layout)
 	}

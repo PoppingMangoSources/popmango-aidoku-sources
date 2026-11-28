@@ -111,11 +111,11 @@ pub fn info(doc: &Document, label: &str) -> Option<String> {
 }
 
 pub fn parse_status(status: &str) -> MangaStatus {
-	match status {
-		"Ongoing" => MangaStatus::Ongoing,
-		"Completed" => MangaStatus::Completed,
-		"Season end" => MangaStatus::Hiatus,
-		"Dropped" => MangaStatus::Cancelled,
+	match status.to_ascii_lowercase().as_str() {
+		"ongoing" => MangaStatus::Ongoing,
+		"completed" => MangaStatus::Completed,
+		"season end" => MangaStatus::Hiatus,
+		"dropped" => MangaStatus::Cancelled,
 		_ => MangaStatus::Unknown,
 	}
 }
@@ -176,7 +176,10 @@ pub fn chapter(row: &Element) -> Option<Chapter> {
 // SwiftSoup keeps a script's contents as data; the test runner reads them as text.
 pub fn script(doc: &Document, selector: &str) -> Option<String> {
 	let el = doc.select_first(selector)?;
-	el.data().filter(|s| !s.is_empty()).or_else(|| el.text())
+	el.data()
+		.filter(|s| !s.is_empty())
+		.or_else(|| el.html())
+		.or_else(|| el.text())
 }
 
 pub fn chapter_list(doc: &Document, url: &str, show_locked: bool) -> Result<Vec<Chapter>> {
@@ -194,19 +197,19 @@ pub fn chapter_list(doc: &Document, url: &str, show_locked: bool) -> Result<Vec<
 				))
 			}),
 		) else {
-			bail!("RinkoComics changed its chapter list");
+			bail!("Rinko Comics changed its chapter list");
 		};
 		let requests = (page_size..total)
 			.step_by(page_size.max(1))
 			.map(|offset| {
 				let mut form = QueryParameters::new();
-				form.push("action", Some("load_more_chapters"));
+				form.push_encoded("action", Some("load_more_chapters"));
 				form.push("nonce", Some(&nonce));
 				form.push("comic_id", Some(&comic_id));
-				form.push("offset", Some(&offset.to_string()));
-				form.push("order", Some("desc"));
+				form.push_encoded("offset", Some(&offset.to_string()));
+				form.push_encoded("order", Some("desc"));
 				// Without it the site answers with an older row layout.
-				form.push("ui", Some("v2"));
+				form.push_encoded("ui", Some("v2"));
 				Ok(
 					Request::post(format!("{BASE_URL}/wp-admin/admin-ajax.php"))?
 						.header("Content-Type", "application/x-www-form-urlencoded")
@@ -240,14 +243,18 @@ fn rows(doc: &Document, show_locked: bool) -> Vec<Chapter> {
 pub fn decode_pages(encoded: &str) -> Result<Vec<String>> {
 	let bytes = BASE64_STANDARD
 		.decode(encoded.trim())
-		.map_err(|_| error!("RinkoComics sent an unreadable page list"))?;
+		.map_err(|_| error!("Rinko Comics sent an unreadable page list"))?;
 	let Some((key, data)) = bytes.split_at_checked(16) else {
-		bail!("RinkoComics sent an empty page list");
+		bail!("Rinko Comics sent an empty page list");
 	};
 	let json = data
 		.iter()
 		.enumerate()
 		.map(|(i, b)| b ^ key[i % 16])
 		.collect::<Vec<_>>();
-	Ok(serde_json::from_slice(&json)?)
+	let pages: Vec<String> = serde_json::from_slice(&json)?;
+	if pages.is_empty() || pages.iter().any(|page| page.is_empty()) {
+		bail!("Rinko Comics sent an empty page list");
+	}
+	Ok(pages)
 }
