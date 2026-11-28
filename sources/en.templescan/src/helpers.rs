@@ -12,7 +12,7 @@ use aidoku::{
 	},
 	helpers::string::PlainText,
 	imports::{
-		html::{Document, Element},
+		html::{Document, Element, Html},
 		net::Request,
 		std::parse_date_with_options,
 	},
@@ -62,6 +62,8 @@ pub fn image_url(path: Option<&str>) -> Option<String> {
 	Some(
 		if path.starts_with("http://") || path.starts_with("https://") {
 			path.to_string()
+		} else if let Some(rest) = path.strip_prefix("//") {
+			format!("https://{rest}")
 		} else if path.starts_with('/') {
 			format!("{BASE_URL}{path}")
 		} else {
@@ -71,11 +73,11 @@ pub fn image_url(path: Option<&str>) -> Option<String> {
 }
 
 fn parse_status(status: Option<&str>) -> MangaStatus {
-	match status.unwrap_or("").trim().to_ascii_lowercase().as_str() {
-		s if s.contains("ongoing") => MangaStatus::Ongoing,
-		s if s.contains("completed") => MangaStatus::Completed,
-		s if s.contains("hiatus") => MangaStatus::Hiatus,
-		s if s.contains("cancel") || s.contains("drop") => MangaStatus::Cancelled,
+	match status.unwrap_or_default().to_ascii_lowercase().as_str() {
+		"ongoing" => MangaStatus::Ongoing,
+		"completed" => MangaStatus::Completed,
+		"hiatus" => MangaStatus::Hiatus,
+		"canceled" | "cancelled" | "dropped" => MangaStatus::Cancelled,
 		_ => MangaStatus::Unknown,
 	}
 }
@@ -97,27 +99,10 @@ pub fn rating_of(label: &str) -> ContentRating {
 }
 
 pub fn strip_html(html: &str) -> String {
-	let normalized = html.replace("<br>", "\n").replace("<br/>", "\n");
-	let mut out = String::with_capacity(normalized.len());
-	let mut in_tag = false;
-	for ch in normalized.chars() {
-		match ch {
-			'<' => in_tag = true,
-			'>' => in_tag = false,
-			_ if !in_tag => out.push(ch),
-			_ => {}
-		}
-	}
-	let text = match out.find('#') {
-		Some(idx) => out[..idx].trim_end_matches([' ', ':', '\n']).to_string(),
-		None => out,
-	};
-	text.replace("&nbsp;", " ")
-		.replace("&amp;", "&")
-		.replace("&#39;", "'")
-		.replace("&quot;", "\"")
-		.trim()
-		.to_string()
+	Html::parse_fragment(format!("<div>{html}</div>"))
+		.ok()
+		.and_then(|doc| doc.select_first("div")?.text())
+		.unwrap_or_else(|| html.into())
 }
 
 fn parse_iso_utc(value: Option<&str>) -> Option<i64> {
@@ -308,8 +293,9 @@ pub fn sort_catalog(items: &mut [CatalogItem], sort: i32, ascending: bool) {
 				.cmp(&b.created_at.unwrap_or(i64::MIN)),
 			2 => a
 				.title
-				.to_ascii_lowercase()
-				.cmp(&b.title.to_ascii_lowercase()),
+				.bytes()
+				.map(|c| c.to_ascii_lowercase())
+				.cmp(b.title.bytes().map(|c| c.to_ascii_lowercase())),
 			3 => a.views.cmp(&b.views),
 			_ => a
 				.updated_at

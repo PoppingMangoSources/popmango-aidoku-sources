@@ -14,12 +14,12 @@ use aidoku::{
 };
 use aidoku_test::aidoku_test;
 
-// Featured description uses `$29` Flight text reference (`29:T18,<p>A hero rises.#tags</p>`).
+// Featured description uses a `$29` Flight text reference whose HTML carries an entity.
 const HOME_HTML: &str = r#"<!doctype html>
 <html>
 <head><title>Temple Scan</title></head>
 <body>
-<script>self.__next_f.push([1,"29:T19,<p>A hero rises.#tags</p>1:[\"$\",\"$L1\",null,{\"featured\":[{\"a\":\"solo-hunter\",\"b\":\"Solo Hunter\",\"protagonist\":\"/uploads/p1.webp\",\"description\":\"$29\",\"badge\":\"NEW\"}],\"weekRes\":[{\"x\":\"week-king\",\"y\":\"Week King\",\"thumbnail\":\"/uploads/w1.webp\",\"badge\":\"18+\"}]}]\n"])</script>
+<script>self.__next_f.push([1,"29:T1a,<p>A hero&#x27;s rise.</p>1:[\"$\",\"$L1\",null,{\"featured\":[{\"a\":\"solo-hunter\",\"b\":\"Solo Hunter\",\"protagonist\":\"/uploads/p1.webp\",\"description\":\"$29\",\"badge\":\"NEW\"}],\"weekRes\":[{\"x\":\"week-king\",\"y\":\"Week King\",\"thumbnail\":\"/uploads/w1.webp\",\"badge\":\"18+\"}]}]\n"])</script>
 <section aria-labelledby="trending-title">
 	<ol><li><a href="/comic/week-king"><img src="/uploads/w1.webp"><h3>Week King</h3></a></li></ol>
 </section>
@@ -71,7 +71,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		HomeComponentValue::BigScroller { entries, .. } => {
 			assert_eq!(entries.len(), 1);
 			assert_eq!(entries[0].key, "solo-hunter");
-			assert_eq!(entries[0].description.as_deref(), Some("A hero rises."));
+			assert_eq!(entries[0].description.as_deref(), Some("A hero's rise."));
 		}
 		_ => panic!("Featured must be BigScroller"),
 	}

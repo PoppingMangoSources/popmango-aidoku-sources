@@ -33,6 +33,11 @@ tokens (`tokens.rs`). This sandbox can reach the site, so `live_pages_pass_the_s
 > 2026-11-28), parsed with one format in UTC. The test runner drops the format's quoted `'T'`,
 > so the dates are `None` there and the date sorts are checked in the app, not asserted.
 
+> ⚠️ Descriptions are HTML whose apostrophes arrive as `&#x27;`. `strip_html` parses the
+> fragment and takes its text, as merged SoraRaw does. The old hand loop decoded `&#39;` but not
+> `&#x27;`, and cut every description at its first `#`, so "Don't" ended the text. No live
+> description carried a hashtag (16 of 16 on 2026-11-28), so nothing is cut now.
+
 > ⚠️ Only a query starting with `BASE_URL` is treated as a pasted link. It answers with a card
 > of key, title and cover, and a link whose page fails is searched as text.
 

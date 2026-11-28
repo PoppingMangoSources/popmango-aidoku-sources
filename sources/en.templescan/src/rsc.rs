@@ -72,20 +72,13 @@ impl Flight {
 }
 
 fn append_chunks(script: &str, payload: &mut String) {
-	let mut rest = script;
-	while let Some(at) = rest.find(PUSH) {
-		let args = &rest[at + PUSH.len()..];
-		let mut values = serde_json::Deserializer::from_str(args).into_iter::<Value>();
-		match values.next() {
-			Some(Ok(Value::Array(items))) => {
-				if let [Value::Number(kind), Value::String(chunk), ..] = items.as_slice()
-					&& kind.as_u64() == Some(1)
-				{
-					payload.push_str(chunk);
-				}
-				rest = &args[values.byte_offset()..];
-			}
-			_ => rest = args,
+	for chunk in script.split(PUSH).skip(1) {
+		if let Some(Ok(value)) = serde_json::Deserializer::from_str(chunk)
+			.into_iter::<Value>()
+			.next() && value[0] == 1
+			&& let Some(text) = value[1].as_str()
+		{
+			payload.push_str(text);
 		}
 	}
 }
