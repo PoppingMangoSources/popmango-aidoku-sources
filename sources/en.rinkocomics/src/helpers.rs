@@ -1,383 +1,253 @@
-use crate::chapters::{
-	LOCK_SUFFIX, chapter_number_of, clean_chapter_title, is_locked_row, parse_date_str,
-};
+use crate::models::AjaxResponse;
 use aidoku::{
-	Chapter, ContentRating, HomeComponent, HomeComponentValue, HomeLayout, Link, Listing,
-	ListingKind, Manga, MangaPageResult, MangaStatus, MangaWithChapter, Result,
-	alloc::{String, Vec, collections::BTreeSet, format, string::ToString},
+	Chapter, ContentRating, Manga, MangaPageResult, MangaStatus, Result,
+	alloc::{String, Vec, format, string::ToString},
+	helpers::uri::QueryParameters,
 	imports::{
-		html::{Document, Element},
+		html::{Document, Element, Html},
 		net::Request,
+		std::{current_date, parse_date_with_options},
 	},
+	prelude::*,
 };
+use base64::prelude::*;
 
 pub const BASE_URL: &str = "https://rinkocomics.com";
 pub const SORTS: [&str; 4] = ["az", "updated", "views", "new"];
 
-pub fn clean(text: &str) -> String {
-	text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-pub fn abs_url(url: &str) -> String {
-	let trimmed = url.trim();
-	if trimmed.is_empty() {
-		String::new()
-	} else if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-		trimmed.to_string()
-	} else if trimmed.starts_with('/') {
-		format!("{BASE_URL}{trimmed}")
-	} else {
-		format!("{BASE_URL}/{trimmed}")
-	}
-}
-
-pub fn path_of(href: &str) -> String {
-	let absolute = abs_url(href);
-	let without_origin = absolute.strip_prefix(BASE_URL).unwrap_or(&absolute);
-	without_origin
-		.split(['?', '#'])
-		.next()
-		.unwrap_or("")
-		.trim_matches('/')
-		.into()
-}
-
-fn largest_srcset(srcset: &str) -> Option<&str> {
-	srcset
-		.split(',')
-		.filter_map(|entry| {
-			let mut parts = entry.split_whitespace();
-			let url = parts.next()?;
-			let width = parts
-				.next()
-				.and_then(|w| w.strip_suffix('w'))
-				.and_then(|w| w.parse::<u32>().ok())
-				.unwrap_or(0);
-			Some((url, width))
-		})
-		.max_by_key(|(_, width)| *width)
-		.map(|(url, _)| url)
-}
-
-pub fn image_from(element: &Element, selector: &str) -> Option<String> {
-	let img = element.select_first(selector)?;
-	let from_srcset = img
-		.attr("data-srcset")
-		.or_else(|| img.attr("srcset"))
-		.and_then(|s| largest_srcset(&s).map(String::from));
-	let src = from_srcset
-		.or_else(|| img.attr("data-src"))
-		.or_else(|| img.attr("data-lazy-src"))
-		.or_else(|| img.attr("src"))?;
-	let cleaned = src.trim();
-	(!cleaned.is_empty()).then(|| abs_url(cleaned))
-}
-
-pub fn parse_status(raw: &str) -> MangaStatus {
-	match raw.trim().to_ascii_lowercase().as_str() {
-		s if s.contains("ongoing") => MangaStatus::Ongoing,
-		s if s.contains("completed") => MangaStatus::Completed,
-		s if s.contains("hiatus") || s.contains("season") => MangaStatus::Hiatus,
-		s if s.contains("cancel") || s.contains("drop") => MangaStatus::Cancelled,
-		_ => MangaStatus::Unknown,
-	}
-}
-
-pub fn fetch_html(url: &str) -> Result<Document> {
+pub fn get_html(url: &str) -> Result<Document> {
 	Ok(Request::get(url)?
 		.header("Referer", &format!("{BASE_URL}/"))
 		.html()?)
 }
 
-pub fn listing(id: &str, name: &str) -> Listing {
-	Listing {
-		id: id.into(),
-		name: name.into(),
-		kind: ListingKind::Default,
+pub fn browse_url(kind: &str, page: i32, qs: &QueryParameters) -> String {
+	let mut url = format!("{BASE_URL}/{kind}/");
+	if page > 1 {
+		url.push_str(&format!("page/{page}/"));
 	}
+	if !qs.is_empty() {
+		url.push_str(&format!("?{qs}"));
+	}
+	url
 }
 
-fn parse_editors_choice(home: &Document) -> Vec<Manga> {
-	let mut seen = BTreeSet::new();
-	home.select("[data-cw-slider] [data-slide]")
-		.into_iter()
-		.flatten()
-		.filter_map(|slide| {
-			let href = slide.select_first("a.btn-primary")?.attr("href")?;
-			let key = path_of(&href);
-			if key.is_empty() || !seen.insert(key.clone()) {
-				return None;
-			}
-			let title = slide
-				.select_first("h2")
-				.and_then(|el| el.text())
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())?;
-			// Desktop slides mark genre pills with `span.chip`, excluding the chapter-count badge.
-			let mut tags: Vec<String> = slide
-				.select("span.chip")
-				.into_iter()
-				.flatten()
-				.filter_map(|span| span.text())
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())
-				.collect();
-			tags.sort_unstable();
-			tags.dedup();
-			Some(Manga {
-				url: Some(format!("{BASE_URL}/{key}/")),
-				key,
-				title,
-				cover: image_from(&slide, "img"),
-				description: slide
-					.select_first("p")
-					.and_then(|el| el.text())
-					.map(|t| clean(&t))
-					.filter(|t| !t.is_empty()),
-				tags: (!tags.is_empty()).then_some(tags),
-				content_rating: ContentRating::Safe,
-				..Default::default()
-			})
-		})
-		.collect()
+pub fn text(el: &Element, selector: &str) -> Option<String> {
+	el.select_first(selector)?.text().filter(|s| !s.is_empty())
 }
 
-fn parse_simple_cards(doc: &Document, selector: &str) -> Vec<Manga> {
-	let mut seen = BTreeSet::new();
-	doc.select(selector)
-		.into_iter()
-		.flatten()
-		.filter_map(|card| {
-			let key = path_of(&card.attr("href")?);
-			if key.is_empty() || !seen.insert(key.clone()) {
-				return None;
-			}
-			let title = card
-				.select_first(".line-clamp-2")
-				.and_then(|el| el.text())
-				.or_else(|| card.attr("title"))
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())?;
-			Some(Manga {
-				url: Some(format!("{BASE_URL}/{key}/")),
-				key,
-				title,
-				cover: image_from(&card, "img"),
-				content_rating: ContentRating::Safe,
-				..Default::default()
-			})
-		})
-		.collect()
+pub fn key_of(url: &str) -> Option<String> {
+	let key = url
+		.strip_prefix(BASE_URL)?
+		.split(['?', '#'])
+		.next()?
+		.trim_matches('/');
+	(!key.is_empty()).then(|| key.into())
 }
 
-fn parse_latest_releases(doc: &Document, show_locked: bool) -> Vec<MangaWithChapter> {
-	let mut seen = BTreeSet::new();
-	doc.select("#cw-latest article")
-		.into_iter()
-		.flatten()
-		.filter_map(|article| {
-			let link = article.select_first("a.line-clamp-2")?;
-			let key = path_of(&link.attr("href")?);
-			if key.is_empty() || !seen.insert(key.clone()) {
-				return None;
-			}
-			let title = link.text().map(|t| clean(&t)).filter(|t| !t.is_empty())?;
+// The site's genre slugs are their names lowercased with dashes ("Slice of Life").
+pub fn slugify(name: &str) -> String {
+	name.split(|c: char| !c.is_ascii_alphanumeric())
+		.filter(|part| !part.is_empty())
+		.map(str::to_ascii_lowercase)
+		.collect::<Vec<_>>()
+		.join("-")
+}
 
-			let rows: Vec<Element> = article
-				.select("a.chapter-item")
-				.into_iter()
-				.flatten()
-				.collect();
-			let picked = rows
-				.iter()
-				.find(|row| {
-					let ch_href = row.attr("href").unwrap_or_default();
-					!is_locked_row(row, &ch_href)
-						&& (ch_href.contains("/chapter/") || ch_href.contains("/novel_chapter/"))
+pub fn cover(el: &Element) -> Option<String> {
+	let img = el.select_first("img")?;
+	img.attr("srcset")
+		.and_then(|srcset| {
+			srcset
+				.split(',')
+				.filter_map(|entry| {
+					let (url, width) = entry.trim().split_once(' ')?;
+					Some((width.trim_end_matches('w').parse::<u32>().ok()?, url.into()))
 				})
-				.or_else(|| show_locked.then(|| rows.first()).flatten())?;
-
-			let ch_href = picked.attr("href").unwrap_or_default();
-			let locked = is_locked_row(picked, &ch_href);
-			let ch_path = if !ch_href.is_empty() && ch_href != "#" {
-				path_of(&ch_href)
-			} else {
-				format!("locked-{key}")
-			};
-			let ch_key = if locked {
-				format!("{ch_path}{LOCK_SUFFIX}")
-			} else {
-				ch_path
-			};
-			let spans: Vec<Element> = picked.select("span").into_iter().flatten().collect();
-			let label = spans
-				.first()
-				.and_then(|el| el.text())
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())?;
-			let stamp = spans.last().and_then(|el| el.text()).map(|t| clean(&t));
-			let chapter_number = chapter_number_of(&label);
-			Some(MangaWithChapter {
-				manga: Manga {
-					url: Some(format!("{BASE_URL}/{key}/")),
-					key,
-					title,
-					cover: image_from(&article, "img"),
-					content_rating: ContentRating::Safe,
-					..Default::default()
-				},
-				chapter: Chapter {
-					key: ch_key,
-					title: clean_chapter_title(&label, chapter_number),
-					chapter_number,
-					date_uploaded: stamp.as_deref().and_then(parse_date_str),
-					locked,
-					..Default::default()
-				},
-			})
+				.max_by_key(|(width, _)| *width)
+				.map(|(_, url)| url)
 		})
-		.collect()
+		.or_else(|| img.attr("abs:src"))
 }
 
-pub fn parse_browse_page(doc: &Document) -> MangaPageResult {
-	let mut seen = BTreeSet::new();
-	let entries = doc
-		.select("#cwBrowse ul > li")
-		.into_iter()
-		.flatten()
-		.filter_map(|item| {
-			let link = item.select_first("a")?;
-			let key = path_of(&link.attr("href")?);
-			if key.is_empty() || !seen.insert(key.clone()) {
-				return None;
-			}
-			let title = item
-				.select_first(".line-clamp-2")
-				.and_then(|el| el.text())
-				.or_else(|| link.attr("title"))
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())?;
-			let status = item
-				.select("span.text-subtle")
-				.and_then(|mut els| els.next_back())
-				.and_then(|el| el.text())
-				.map(|t| parse_status(&t))
-				.unwrap_or(MangaStatus::Unknown);
-			Some(Manga {
-				url: Some(format!("{BASE_URL}/{key}/")),
-				key,
-				title,
-				cover: image_from(&item, "img"),
-				status,
-				content_rating: ContentRating::Safe,
-				..Default::default()
-			})
-		})
-		.collect();
-	let has_next_page = doc
-		.select_first("#cwBrowse a.next, #cwBrowse a[rel='next']")
-		.is_some();
+pub fn card(link: &Element) -> Option<Manga> {
+	let key = key_of(&link.attr("abs:href")?)?;
+	Some(Manga {
+		url: Some(format!("{BASE_URL}/{key}/")),
+		key,
+		title: text(link, ".line-clamp-2")?,
+		cover: cover(link),
+		content_rating: ContentRating::Safe,
+		..Default::default()
+	})
+}
+
+pub fn browse_page(doc: &Document) -> MangaPageResult {
 	MangaPageResult {
-		entries,
-		has_next_page,
+		entries: doc
+			.select("#cwBrowse ul > li > a")
+			.map(|links| {
+				links
+					.filter_map(|link| {
+						Some(Manga {
+							// Only finished, dropped and paused cards name their status.
+							status: text(&link, "span.text-subtle")
+								.map_or(MangaStatus::Unknown, |s| parse_status(&s)),
+							..card(&link)?
+						})
+					})
+					.collect()
+			})
+			.unwrap_or_default(),
+		has_next_page: doc.select_first("#cwBrowse a.next").is_some(),
 	}
 }
 
-pub fn build_home_layout(
-	home: &Document,
-	new_comics: &Document,
-	novel_home: &Document,
-	show_locked: bool,
-) -> HomeLayout {
-	let mut components = Vec::new();
+// The details' fact grid: Status, Type, Chapters and Views.
+pub fn info(doc: &Document, label: &str) -> Option<String> {
+	doc.select("main dl > div")?
+		.find(|fact| text(fact, "dt").as_deref() == Some(label))
+		.and_then(|fact| text(&fact, "dd"))
+}
 
-	let editors_choice = parse_editors_choice(home);
-	if !editors_choice.is_empty() {
-		components.push(HomeComponent {
-			title: Some("Editor's Choice".into()),
-			subtitle: None,
-			value: HomeComponentValue::BigScroller {
-				entries: editors_choice,
-				auto_scroll_interval: Some(6.0),
-			},
-		});
+pub fn parse_status(status: &str) -> MangaStatus {
+	match status {
+		"Ongoing" => MangaStatus::Ongoing,
+		"Completed" => MangaStatus::Completed,
+		"Season end" => MangaStatus::Hiatus,
+		"Dropped" => MangaStatus::Cancelled,
+		_ => MangaStatus::Unknown,
 	}
+}
 
-	let featured_week: Vec<Link> =
-		parse_simple_cards(home, "section[aria-labelledby='cw-week-m'] a")
-			.into_iter()
-			.map(Into::into)
-			.collect();
-	if !featured_week.is_empty() {
-		components.push(HomeComponent {
-			title: Some("Featured This Week".into()),
-			subtitle: None,
-			value: HomeComponentValue::Scroller {
-				entries: featured_week,
-				listing: Some(listing("views", "Featured This Week")),
-			},
-		});
+// Rows print "Sep 27, 2026", or an age ("7h", "1mo") on the home page.
+pub fn parse_date(label: &str) -> Option<i64> {
+	let label = label.split('·').next()?.trim();
+	if let Some(idx) = label.find(|c: char| !c.is_ascii_digit())
+		&& idx > 0
+	{
+		let unit = match &label[idx..] {
+			"m" => 60,
+			"h" => 3600,
+			"d" => 86400,
+			"w" => 604800,
+			"mo" => 2592000,
+			"y" => 31536000,
+			_ => return None,
+		};
+		return Some(current_date() - label[..idx].parse::<i64>().ok()? * unit);
 	}
+	parse_date_with_options(label, "MMM d, yyyy", "en_US_POSIX", "current")
+}
 
-	let latest_comics = parse_latest_releases(home, show_locked);
-	if !latest_comics.is_empty() {
-		components.push(HomeComponent {
-			title: Some("Latest Releases (Comics)".into()),
-			subtitle: None,
-			value: HomeComponentValue::MangaChapterList {
-				page_size: Some(5),
-				entries: latest_comics,
-				listing: Some(listing("updated", "Latest Releases (Comics)")),
-			},
-		});
+// One parser for every chapter row: series pages, their load-more fragments and the home list.
+pub fn chapter(row: &Element) -> Option<Chapter> {
+	// Paid rows link to "#" and keep their address in `data-permalink`.
+	let locked = row.has_attr("data-reason");
+	let url = row.attr(if locked {
+		"abs:data-permalink"
+	} else {
+		"abs:href"
+	})?;
+	let spans = row.select("span")?.collect::<Vec<_>>();
+	// Labels read "Chapter 12", "Ch. 22", "Episode 107" or "#50".
+	let label = spans
+		.iter()
+		.find_map(|span| Some(span.own_text()?.trim().into()).filter(|t: &String| !t.is_empty()))?;
+	let number = label.trim_start_matches(|c: char| !c.is_ascii_digit());
+	let end = number
+		.find(|c: char| !c.is_ascii_digit() && c != '.')
+		.unwrap_or(number.len());
+	Some(Chapter {
+		key: key_of(&url)?,
+		title: text(row, "span.truncate").or_else(|| (end < number.len()).then(|| label.clone())),
+		chapter_number: number[..end].trim_end_matches('.').parse().ok(),
+		// From the end: a comic row's outer span also holds the label.
+		date_uploaded: spans
+			.iter()
+			.rev()
+			.find_map(|span| parse_date(&span.text()?)),
+		url: Some(url),
+		locked,
+		..Default::default()
+	})
+}
+
+// SwiftSoup keeps a script's contents as data; the test runner reads them as text.
+pub fn script(doc: &Document, selector: &str) -> Option<String> {
+	let el = doc.select_first(selector)?;
+	el.data().filter(|s| !s.is_empty()).or_else(|| el.text())
+}
+
+pub fn chapter_list(doc: &Document, url: &str, show_locked: bool) -> Result<Vec<Chapter>> {
+	let mut chapters = rows(doc, show_locked);
+	// A long comic lists its first chapters and loads the rest a page at a time.
+	if let Some(more) = doc.select_first("#cwMoreChapters") {
+		let (Some(comic_id), Some(page_size), Some(total), Some(nonce)) = (
+			more.attr("data-comic-id"),
+			more.attr("data-offset")
+				.and_then(|s| s.parse::<usize>().ok()),
+			info(doc, "Chapters").and_then(|s| s.parse::<usize>().ok()),
+			script(doc, "#comicworld-loadmore-js-extra").and_then(|s| {
+				Some(String::from(
+					s.split("\"nonce\":\"").nth(1)?.split('"').next()?,
+				))
+			}),
+		) else {
+			bail!("RinkoComics changed its chapter list");
+		};
+		let requests = (page_size..total)
+			.step_by(page_size.max(1))
+			.map(|offset| {
+				let mut form = QueryParameters::new();
+				form.push("action", Some("load_more_chapters"));
+				form.push("nonce", Some(&nonce));
+				form.push("comic_id", Some(&comic_id));
+				form.push("offset", Some(&offset.to_string()));
+				form.push("order", Some("desc"));
+				// Without it the site answers with an older row layout.
+				form.push("ui", Some("v2"));
+				Ok(
+					Request::post(format!("{BASE_URL}/wp-admin/admin-ajax.php"))?
+						.header("Content-Type", "application/x-www-form-urlencoded")
+						.body(form.to_string()),
+				)
+			})
+			.collect::<Result<Vec<_>>>()?;
+		for response in Request::send_all(requests) {
+			let html = response?.get_json_owned::<AjaxResponse>()?.data.html;
+			chapters.extend(rows(
+				&Html::parse_fragment_with_url(html, url)?,
+				show_locked,
+			));
+		}
 	}
+	Ok(chapters)
+}
 
-	let new_comics_links: Vec<Link> = parse_browse_page(new_comics)
-		.entries
-		.into_iter()
-		.map(Into::into)
-		.collect();
-	if !new_comics_links.is_empty() {
-		components.push(HomeComponent {
-			title: Some("New Comics".into()),
-			subtitle: None,
-			value: HomeComponentValue::Scroller {
-				entries: new_comics_links,
-				listing: Some(listing("new", "New Comics")),
-			},
-		});
-	}
+fn rows(doc: &Document, show_locked: bool) -> Vec<Chapter> {
+	// Comics list `a.chapter-item` rows; a novel lists every episode under `[data-ep]`.
+	doc.select("a.chapter-item, [data-ep] > a")
+		.map(|rows| {
+			rows.filter_map(|row| chapter(&row))
+				.filter(|chapter| show_locked || !chapter.locked)
+				.collect()
+		})
+		.unwrap_or_default()
+}
 
-	let new_novels: Vec<Link> = parse_simple_cards(
-		home,
-		"section[aria-labelledby='cw-novels'] a[href*='/novel/']",
-	)
-	.into_iter()
-	.map(Into::into)
-	.collect();
-	if !new_novels.is_empty() {
-		components.push(HomeComponent {
-			title: Some("New Novels".into()),
-			subtitle: None,
-			value: HomeComponentValue::Scroller {
-				entries: new_novels,
-				listing: Some(listing("novels", "New Novels")),
-			},
-		});
-	}
-
-	let latest_novels = parse_latest_releases(novel_home, show_locked);
-	if !latest_novels.is_empty() {
-		components.push(HomeComponent {
-			title: Some("Latest Releases (Novels)".into()),
-			subtitle: None,
-			value: HomeComponentValue::MangaChapterList {
-				page_size: Some(5),
-				entries: latest_novels,
-				listing: Some(listing("novels-updated", "Latest Releases (Novels)")),
-			},
-		});
-	}
-
-	HomeLayout { components }
+// The page list is base64: a 16-byte key, then a JSON array of urls XORed with it.
+pub fn decode_pages(encoded: &str) -> Result<Vec<String>> {
+	let bytes = BASE64_STANDARD
+		.decode(encoded.trim())
+		.map_err(|_| error!("RinkoComics sent an unreadable page list"))?;
+	let Some((key, data)) = bytes.split_at_checked(16) else {
+		bail!("RinkoComics sent an empty page list");
+	};
+	let json = data
+		.iter()
+		.enumerate()
+		.map(|(i, b)| b ^ key[i % 16])
+		.collect::<Vec<_>>();
+	Ok(serde_json::from_slice(&json)?)
 }
