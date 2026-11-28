@@ -2,9 +2,9 @@
 	"info": {
 		"id": "en.templescan",
 		"name": "Temple Scan",
-		"version": 14,
+		"version": 15,
 		"url": "https://templetoons.com",
-		"contentRating": 1,
+		"contentRating": 2,
 		"languages": ["en"],
 		"minAppVersion": "0.7.1"
 	},
