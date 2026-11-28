@@ -16,8 +16,8 @@ use aidoku::{
 	prelude::*,
 };
 use helpers::{
-	BASE_URL, SORTS, browse_page, browse_url, chapter_list, decode_pages, get_html, info, key_of,
-	parse_status, script, slugify, text,
+	BASE_URL, SORTS, browse_page, browse_url, chapter_list, decode_pages, display_title, get_html,
+	info, key_of, parse_status, script, slugify, text,
 };
 
 struct RinkoComics;
@@ -81,7 +81,10 @@ impl Source for RinkoComics {
 				.unwrap_or_default();
 			tags.sort_unstable();
 			tags.dedup();
-			manga.title = text(&main, "h1").ok_or_else(|| error!("Title not found"))?;
+			manga.title = display_title(
+				text(&main, "h1").ok_or_else(|| error!("Title not found"))?,
+				&manga.key,
+			);
 			manga.cover = html
 				.select_first("meta[property='og:image']")
 				.and_then(|meta| meta.attr("content"));

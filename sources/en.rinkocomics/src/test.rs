@@ -2,7 +2,10 @@
 
 use super::{
 	RinkoComics,
-	helpers::{BASE_URL, SORTS, chapter, decode_pages, key_of, parse_date, parse_status, slugify},
+	helpers::{
+		BASE_URL, SORTS, chapter, decode_pages, display_title, key_of, parse_date, parse_status,
+		slugify,
+	},
 	home::layout,
 };
 use aidoku::{
@@ -76,6 +79,15 @@ fn review_dates_statuses_and_slugs() {
 	}
 	assert_eq!(parse_status("Season end"), MangaStatus::Hiatus);
 	assert_eq!(parse_status("Dropped"), MangaStatus::Cancelled);
+	defaults_set("labelNovels", DefaultValue::Bool(true));
+	assert_eq!(
+		display_title("Flowers".into(), "novel/flowers"),
+		"Flowers (Novel)"
+	);
+	assert_eq!(display_title("Youth".into(), "comic/youth"), "Youth");
+	defaults_set("labelNovels", DefaultValue::Bool(false));
+	assert_eq!(display_title("Flowers".into(), "novel/flowers"), "Flowers");
+	defaults_set("labelNovels", DefaultValue::Bool(true));
 	assert_eq!(slugify("Slice of Life"), "slice-of-life");
 	assert_eq!(slugify("Survival Game"), "survival-game");
 	assert_eq!(

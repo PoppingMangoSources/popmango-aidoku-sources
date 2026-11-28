@@ -1,4 +1,4 @@
-use crate::models::AjaxResponse;
+use crate::{models::AjaxResponse, settings};
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaPageResult, MangaStatus, Result,
 	alloc::{String, Vec, format, string::ToString},
@@ -70,12 +70,20 @@ pub fn cover(el: &Element) -> Option<String> {
 		.or_else(|| img.attr("abs:src"))
 }
 
+pub fn display_title(title: String, key: &str) -> String {
+	if key.starts_with("novel/") && settings::label_novels() {
+		format!("{title} (Novel)")
+	} else {
+		title
+	}
+}
+
 pub fn card(link: &Element) -> Option<Manga> {
 	let key = key_of(&link.attr("abs:href")?)?;
 	Some(Manga {
 		url: Some(format!("{BASE_URL}/{key}/")),
+		title: display_title(text(link, ".line-clamp-2")?, &key),
 		key,
-		title: text(link, ".line-clamp-2")?,
 		cover: cover(link),
 		content_rating: ContentRating::Safe,
 		..Default::default()

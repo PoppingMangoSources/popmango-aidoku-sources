@@ -1,6 +1,23 @@
 [
 	{
 		"type": "group",
+		"title": "Titles",
+		"footer": "Novels share the catalogue with comics; this adds \"(Novel)\" to their titles.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "labelNovels",
+				"title": "Label Novels",
+				"default": true,
+				"refreshes": [
+					"content",
+					"listings"
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
 		"title": "Chapters",
 		"items": [
 			{
