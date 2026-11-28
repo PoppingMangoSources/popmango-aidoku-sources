@@ -46,7 +46,6 @@ impl Source for RinkoComics {
 				FilterValue::Select { id, value } if !value.is_empty() => match id.as_str() {
 					"type" => kind = value,
 					"status" => qs.set("status", Some(&value)),
-					// A tapped tag sends the genre's name.
 					"genre" => qs.push("genres[]", Some(&slugify(&value))),
 					_ => {}
 				},
@@ -89,7 +88,6 @@ impl Source for RinkoComics {
 			manga.status = info(&html, "Status").map_or(MangaStatus::Unknown, |s| parse_status(&s));
 			manga.tags = (!tags.is_empty()).then_some(tags);
 			manga.content_rating = ContentRating::Safe;
-			// Novels read as text pages, so only comics get a viewer.
 			if !manga.key.starts_with("novel/") {
 				manga.viewer = match info(&html, "Type").as_deref() {
 					Some("Manga") => Viewer::RightToLeft,

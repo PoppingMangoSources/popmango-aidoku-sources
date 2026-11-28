@@ -32,7 +32,6 @@ fn editors_choice(home: &Document) -> Vec<Manga> {
 			slides
 				.filter_map(|slide| {
 					let key = key_of(&slide.select_first("a.btn-primary")?.attr("abs:href")?)?;
-					// Genre pills; the chapter count badge is a plain span.
 					let mut tags = slide
 						.select("span.chip")
 						.map(|chips| {

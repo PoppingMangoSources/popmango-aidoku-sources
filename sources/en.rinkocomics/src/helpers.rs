@@ -56,7 +56,6 @@ pub fn key_of(url: &str) -> Option<String> {
 	(!key.is_empty()).then(|| key.into())
 }
 
-// The site's genre slugs are their names lowercased with dashes ("Slice of Life").
 pub fn slugify(name: &str) -> String {
 	name.split(|c: char| !c.is_ascii_alphanumeric())
 		.filter(|part| !part.is_empty())
@@ -101,7 +100,6 @@ pub fn browse_page(doc: &Document) -> MangaPageResult {
 				links
 					.filter_map(|link| {
 						Some(Manga {
-							// Only finished, dropped and paused cards name their status.
 							status: text(&link, "span.text-subtle")
 								.map_or(MangaStatus::Unknown, |s| parse_status(&s)),
 							..card(&link)?
@@ -114,7 +112,6 @@ pub fn browse_page(doc: &Document) -> MangaPageResult {
 	}
 }
 
-// The details' fact grid: Status, Type, Chapters and Views.
 pub fn info(doc: &Document, label: &str) -> Option<String> {
 	doc.select("main dl > div")?
 		.find(|fact| text(fact, "dt").as_deref() == Some(label))
@@ -161,7 +158,6 @@ pub fn chapter(row: &Element) -> Option<Chapter> {
 		"abs:href"
 	})?;
 	let spans = row.select("span")?.collect::<Vec<_>>();
-	// Labels read "Chapter 12", "Ch. 22", "Episode 107" or "#50".
 	let label = spans
 		.iter()
 		.find_map(|span| Some(span.own_text()?.trim().into()).filter(|t: &String| !t.is_empty()))?;
@@ -184,7 +180,6 @@ pub fn chapter(row: &Element) -> Option<Chapter> {
 	})
 }
 
-// SwiftSoup keeps a script's contents as data; the test runner reads them as text.
 pub fn script(doc: &Document, selector: &str) -> Option<String> {
 	let el = doc.select_first(selector)?;
 	el.data()
