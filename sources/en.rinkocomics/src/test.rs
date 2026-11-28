@@ -80,13 +80,19 @@ fn review_dates_statuses_and_slugs() {
 	assert_eq!(parse_status("Season end"), MangaStatus::Hiatus);
 	assert_eq!(parse_status("Dropped"), MangaStatus::Cancelled);
 	defaults_set("labelNovels", DefaultValue::Bool(true));
+	assert_eq!(display_title("Flowers", "novel/flowers"), "Flowers (Novel)");
+	// The site's own "[Novel]" suffix is replaced, not doubled.
 	assert_eq!(
-		display_title("Flowers".into(), "novel/flowers"),
-		"Flowers (Novel)"
+		display_title("Don't Tame It [Novel]", "novel/dont-tame-it"),
+		"Don't Tame It (Novel)"
 	);
-	assert_eq!(display_title("Youth".into(), "comic/youth"), "Youth");
+	assert_eq!(display_title("Youth", "comic/youth"), "Youth");
 	defaults_set("labelNovels", DefaultValue::Bool(false));
-	assert_eq!(display_title("Flowers".into(), "novel/flowers"), "Flowers");
+	assert_eq!(display_title("Flowers", "novel/flowers"), "Flowers");
+	assert_eq!(
+		display_title("Don't Tame It [Novel]", "novel/dont-tame-it"),
+		"Don't Tame It"
+	);
 	defaults_set("labelNovels", DefaultValue::Bool(true));
 	assert_eq!(slugify("Slice of Life"), "slice-of-life");
 	assert_eq!(slugify("Survival Game"), "survival-game");

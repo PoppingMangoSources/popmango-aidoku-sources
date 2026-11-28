@@ -82,7 +82,7 @@ impl Source for RinkoComics {
 			tags.sort_unstable();
 			tags.dedup();
 			manga.title = display_title(
-				text(&main, "h1").ok_or_else(|| error!("Title not found"))?,
+				&text(&main, "h1").ok_or_else(|| error!("Title not found"))?,
 				&manga.key,
 			);
 			manga.cover = html

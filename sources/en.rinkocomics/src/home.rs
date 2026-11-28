@@ -44,7 +44,7 @@ fn editors_choice(home: &Document) -> Vec<Manga> {
 					tags.sort_unstable();
 					Some(Manga {
 						url: Some(format!("{BASE_URL}/{key}/")),
-						title: display_title(text(&slide, "h2")?, &key),
+						title: display_title(&text(&slide, "h2")?, &key),
 						key,
 						cover: cover(&slide),
 						description: text(&slide, "p"),
