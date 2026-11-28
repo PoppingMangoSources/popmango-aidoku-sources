@@ -325,6 +325,7 @@ NAMED_DATE = re.compile(r'\bparse_date\(\s*[^,()]+(?:\([^()]*\))?[^,()]*,\s*"([^
 UTC_DATE = re.compile(r"""\bparse_date\([^;]*?"[^"]*'Z'"\s*\)""")
 RESHAPED_DATE = re.compile(r"""\bparse_date(?:_with_options)?\([^;]*?\.replace\('T',\s*" "\)""")
 SCHEME_SPLIT_LINK = re.compile(r'fn handle_deep_link\b[^}]*?split_once\("://"\)', re.S)
+SELECT_FIRST_LIST = re.compile(r'\.select_first\(\s*"([^"]*,[^"]*)"\s*\)')
 STRING_BODY = re.compile(r"let (\w+)\s*=[^;]*\.(?:string|data)\(\)\?;")
 INLINE_STRING_JSON = re.compile(r"serde_json::from_(?:str|slice)\([^;]*\.(?:string|data)\(\)\?")
 MULTI_SELECT = re.compile(r"\bMultiSelectFilter\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
@@ -365,6 +366,20 @@ def check_item_spacing(path: Path, text: str) -> None:
         report(path, f"line {line} needs a blank line between Rust items or methods")
 
 
+def shadowing_fallback(parts: list[str]) -> bool:
+    """True when one alternative matches everything another does: `main h1, h1` or `h1#title, h1`."""
+    for specific in parts:
+        last = re.split(r"\s*[ >+~]\s*", specific)[-1]
+        for broad in parts:
+            if broad == specific or not broad:
+                continue
+            if re.search(rf"[ >]{re.escape(broad)}$", specific):
+                return True
+            if re.fullmatch(r"[\w-]+", broad) and re.match(rf"{re.escape(broad)}[.#\[:]", last):
+                return True
+    return False
+
+
 def check_api_use(path: Path, text: str) -> None:
     """aidoku-rs calls that review comments replaced (AGENTS.md / CLAUDE.md sections 3 and 7)."""
     line = lambda match: text.count("\n", 0, match.start()) + 1
@@ -390,6 +405,11 @@ def check_api_use(path: Path, text: str) -> None:
     # 84 of 85 merged handlers strip BASE_URL; es.olympusscanlation splits, so it is a note.
     for match in SCHEME_SPLIT_LINK.finditer(text):
         note(path, f"line {line(match)} handle_deep_link splits on \"://\"; strip BASE_URL as merged handlers do")
+    # A selector list matches in page order, so a broader fallback can win over the specific
+    # selector it backs up: Rinko's chapter links resolved to the menu's `/comic/` link.
+    for match in SELECT_FIRST_LIST.finditer(text):
+        if shadowing_fallback([part.strip() for part in match.group(1).split(",")]):
+            note(path, f"line {line(match)} select_first takes the first match in page order, so a broader alternative can win; select the specific one alone")
     for name in STRING_BODY.findall(text):
         for match in re.finditer(rf"serde_json::from_(?:str|slice)\(\s*&?{name}\b", text):
             fail(path, f"line {line(match)} parses a response body with serde_json; use .json_owned()")

@@ -347,6 +347,17 @@ class CardRuleTests(unittest.TestCase):
         checks.check_api_use(self.path, "let name = name.replace('T', \" \");\n")
         self.assertEqual(checks.notes, [])
 
+    def test_select_first_list_with_a_broader_fallback_is_noted(self):
+        checks.notes.clear()
+        checks.check_api_use(self.path, 'html.select_first("main a[href*=\'/comic/\'], a[href*=\'/comic/\']")\n')
+        checks.check_api_use(self.path, 'doc.select_first("h1#series-title, main h1, h1")\n')
+        self.assertEqual(len(checks.notes), 2)
+        checks.notes.clear()
+        checks.check_api_use(self.path, 'doc.select_first("script#cwPages, #cwPages")\n')
+        checks.check_api_use(self.path, 'doc.select_first("meta[property=\'og:image\'], meta[name=\'twitter:image\']")\n')
+        checks.check_api_use(self.path, 'doc.select_first("#series-title")\n')
+        self.assertEqual(checks.notes, [])
+
     def test_deep_link_scheme_split_is_noted(self):
         checks.notes.clear()
         checks.check_api_use(self.path, 'fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {\n\tlet Some(path) = url.split_once("://").map(|(_, rest)| rest) else {\n')
