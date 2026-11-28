@@ -47,5 +47,5 @@ sandbox can reach, so the live tests in `src/test.rs` run here.
 > `None` for any date-only format, so tests assert only the ages.
 
 > ⚠️ Novel titles on the site already end in "[Novel]". `display_title`
-> (`sources/en.rinkocomics/src/helpers.rs:73`) strips that suffix, as the merged Iken template
+> (`sources/en.rinkocomics/src/helpers.rs:74`) strips that suffix, as the merged Iken template
 > does, then adds "(Novel)" when `labelNovels` is on; appending alone showed "[Novel] (Novel)".
