@@ -1,6 +1,6 @@
 use crate::{
 	RinkoComics,
-	helpers::{BASE_URL, browse_page, card, chapter, cover, display_title, key_of, text},
+	helpers::{BASE_URL, browse_page, card, chapter, cover, key_of, text},
 };
 use aidoku::{
 	ContentRating, Home, HomeComponent, HomeComponentValue, HomeLayout, HomePartialResult, Link,
@@ -44,7 +44,7 @@ fn editors_choice(home: &Document) -> Vec<Manga> {
 					tags.sort_unstable();
 					Some(Manga {
 						url: Some(format!("{BASE_URL}/{key}/")),
-						title: display_title(&text(&slide, "h2")?, &key),
+						title: text(&slide, "h2")?,
 						key,
 						cover: cover(&slide),
 						description: text(&slide, "p"),

@@ -46,6 +46,6 @@ sandbox can reach, so the live tests in `src/test.rs` run here.
 > ends with a "Free on Dec 27" span, so the date is the last span that parses. The runner returns
 > `None` for any date-only format, so tests assert only the ages.
 
-> ⚠️ Novel titles on the site already end in "[Novel]". `display_title`
-> (`sources/en.rinkocomics/src/helpers.rs:74`) strips that suffix, as the merged Iken template
-> does, then adds "(Novel)" when `labelNovels` is on; appending alone showed "[Novel] (Novel)".
+> ⚠️ Most novel titles on the site already end in "[Novel]", so the source has no Label Novels
+> setting and shows titles as the site writes them (owner's call). A label appended to every
+> novel showed "[Novel] (Novel)"; don't bring one back without checking the site's titles.

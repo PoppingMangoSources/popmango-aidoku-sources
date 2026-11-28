@@ -1,4 +1,4 @@
-use crate::{models::AjaxResponse, settings};
+use crate::models::AjaxResponse;
 use aidoku::{
 	Chapter, ContentRating, Manga, MangaPageResult, MangaStatus, Result,
 	alloc::{String, Vec, format, string::ToString},
@@ -70,25 +70,11 @@ pub fn cover(el: &Element) -> Option<String> {
 		.or_else(|| img.attr("abs:src"))
 }
 
-// Novel titles on the site already end in "[Novel]"; that suffix is replaced, not doubled.
-pub fn display_title(title: &str, key: &str) -> String {
-	let title = title.trim();
-	let title = ["(Novel)", "[Novel]"]
-		.into_iter()
-		.find_map(|suffix| title.strip_suffix(suffix))
-		.map_or(title, str::trim_end);
-	if key.starts_with("novel/") && settings::label_novels() {
-		format!("{title} (Novel)")
-	} else {
-		title.into()
-	}
-}
-
 pub fn card(link: &Element) -> Option<Manga> {
 	let key = key_of(&link.attr("abs:href")?)?;
 	Some(Manga {
 		url: Some(format!("{BASE_URL}/{key}/")),
-		title: display_title(&text(link, ".line-clamp-2")?, &key),
+		title: text(link, ".line-clamp-2")?,
 		key,
 		cover: cover(link),
 		content_rating: ContentRating::Safe,
