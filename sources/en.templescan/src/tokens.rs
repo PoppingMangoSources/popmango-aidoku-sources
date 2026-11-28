@@ -87,16 +87,3 @@ fn prefix(text: &str, max: usize) -> &str {
 	}
 	&text[..end]
 }
-
-#[cfg(test)]
-pub fn scramble(address: &str, index: usize, seed: &str) -> String {
-	let mut state = initial_state(index, seed).expect("position fits");
-	let bytes: Vec<u8> = address
-		.bytes()
-		.map(|byte| {
-			state = xorshift(state);
-			byte ^ (state as u8)
-		})
-		.collect();
-	base64::prelude::BASE64_URL_SAFE_NO_PAD.encode(bytes)
-}

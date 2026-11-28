@@ -358,6 +358,15 @@ class CardRuleTests(unittest.TestCase):
         checks.check_api_use(self.path, 'doc.select_first("#series-title")\n')
         self.assertEqual(checks.notes, [])
 
+    def test_cfg_test_helper_in_source_code_fails(self):
+        checks.failures.clear()
+        checks.check_api_use(self.path, '#[cfg(test)]\npub fn scramble(address: &str) -> String {\n')
+        self.assertEqual(len(checks.failures), 1)
+        checks.failures.clear()
+        checks.check_api_use(self.path, '#[cfg(test)]\nmod test;\n')
+        checks.check_api_use(self.path, '#[cfg(test)]\nmod tests {\n')
+        self.assertEqual(checks.failures, [])
+
     def test_deep_link_scheme_split_is_noted(self):
         checks.notes.clear()
         checks.check_api_use(self.path, 'fn handle_deep_link(&self, url: String) -> Result<Option<DeepLinkResult>> {\n\tlet Some(path) = url.split_once("://").map(|(_, rest)| rest) else {\n')

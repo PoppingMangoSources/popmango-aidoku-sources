@@ -326,6 +326,9 @@ UTC_DATE = re.compile(r"""\bparse_date\([^;]*?"[^"]*'Z'"\s*\)""")
 RESHAPED_DATE = re.compile(r"""\bparse_date(?:_with_options)?\([^;]*?\.replace\('T',\s*" "\)""")
 SCHEME_SPLIT_LINK = re.compile(r'fn handle_deep_link\b[^}]*?split_once\("://"\)', re.S)
 SELECT_FIRST_LIST = re.compile(r'\.select_first\(\s*"([^"]*,[^"]*)"\s*\)')
+# Every merged `#[cfg(test)]` gates `mod test;`/`mod tests;`; a gated helper ships in a submission
+# whose tests are left out.
+CFG_TEST_ITEM = re.compile(r'#\[cfg\(test\)\]\s*\n\s*(?!(?:pub(?:\([^)]*\))?\s+)?mod\s+tests?\s*[;{])')
 STRING_BODY = re.compile(r"let (\w+)\s*=[^;]*\.(?:string|data)\(\)\?;")
 INLINE_STRING_JSON = re.compile(r"serde_json::from_(?:str|slice)\([^;]*\.(?:string|data)\(\)\?")
 MULTI_SELECT = re.compile(r"\bMultiSelectFilter\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
@@ -410,6 +413,9 @@ def check_api_use(path: Path, text: str) -> None:
     for match in SELECT_FIRST_LIST.finditer(text):
         if shadowing_fallback([part.strip() for part in match.group(1).split(",")]):
             note(path, f"line {line(match)} select_first takes the first match in page order, so a broader alternative can win; select the specific one alone")
+    if path.name not in ("test.rs", "tests.rs"):
+        for match in CFG_TEST_ITEM.finditer(text):
+            fail(path, f"line {line(match)} gates a helper with #[cfg(test)]; move it into the test module, as every merged source does")
     for name in STRING_BODY.findall(text):
         for match in re.finditer(rf"serde_json::from_(?:str|slice)\(\s*&?{name}\b", text):
             fail(path, f"line {line(match)} parses a response body with serde_json; use .json_owned()")

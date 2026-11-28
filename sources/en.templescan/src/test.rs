@@ -194,8 +194,9 @@ fn review_flight_text_rows_sorts_locked_chapters_and_reader_tokens() {
 
 	let url0 = "https://media.templetoons.com/file/terms54/uploads/series/s/c/01.jpg";
 	let url1 = "https://media.templetoons.com/file/terms54/uploads/series/s/c/02.jpg";
-	let t0 = tokens::scramble(url0, 0, tokens::SEED);
-	let t1 = tokens::scramble(url1, 1, tokens::SEED);
+	// The two urls as the site's reader encodes them at positions 0 and 1.
+	let t0 = "spfvfINeTrkSh2H2W9rQJ8ntZ0At1dEaK47f7qJxaZWDgGFHwt8mu7UQsL9h-vxAvwlNmylq16a0NEi5n6PdgrhCFJc";
+	let t1 = "jowy6N22UpdUNT4M7xFHrRKmt1ppePuv2dLbDh38LjRksvzKXjES9zoutCHy8MwGpOPdSNO89ht2pOY5RI0nM6YrCr8";
 	let reader_html = format!(
 		r#"<html><body><script>self.__next_f.push([1,"5:I[44083,[\"static/chunks/reader.js\"],\"default\"]\n6:[\"$\",\"$L5\",null,{{\"layoutHints\":[1,1],\"p\":[\"{t0}\",\"{t1}\"]}}]\n"])</script></body></html>"#
 	);
