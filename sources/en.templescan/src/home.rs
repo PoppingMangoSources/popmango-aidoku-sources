@@ -1,7 +1,7 @@
 use crate::{
 	TempleScan,
 	helpers::{
-		BASE_URL, clean, fetch_doc, image_url, parse_chapter_anchor, parse_comic_href, rating_of,
+		BASE_URL, fetch_doc, image_url, parse_chapter_anchor, parse_comic_href, rating_of,
 		strip_html,
 	},
 	rsc::{Flight, slug_like},
@@ -12,6 +12,7 @@ use aidoku::{
 	Manga, MangaWithChapter, Result,
 	alloc::{String, Vec, collections::BTreeSet, format},
 	imports::html::{Document, Element},
+	prelude::*,
 };
 use serde_json::{Map, Value};
 
@@ -124,7 +125,6 @@ fn parse_card_anchor(anchor: &Element, title_override: Option<String>) -> Option
 			anchor
 				.select_first("h3, span[class*='line-clamp']")
 				.and_then(|el| el.text())
-				.map(|t| clean(&t))
 		})
 		.filter(|t| !t.is_empty())?;
 	let cover = anchor
@@ -136,7 +136,7 @@ fn parse_card_anchor(anchor: &Element, title_override: Option<String>) -> Option
 		.into_iter()
 		.flatten()
 		.filter_map(|span| span.text())
-		.any(|label| rating_of(&clean(&label)) == ContentRating::NSFW)
+		.any(|label| rating_of(&label) == ContentRating::NSFW)
 	{
 		ContentRating::NSFW
 	} else {
@@ -206,7 +206,7 @@ fn parse_home_latest(doc: &Document, show_locked: bool) -> Vec<MangaWithChapter>
 		s.select_first("#latest-updates-title").is_some()
 			|| s.select_first("h2")
 				.and_then(|h| h.text())
-				.is_some_and(|t| clean(&t).eq_ignore_ascii_case("latest updates"))
+				.is_some_and(|t| t.eq_ignore_ascii_case("latest updates"))
 	}) else {
 		return Vec::new();
 	};
@@ -223,7 +223,6 @@ fn parse_home_latest(doc: &Document, show_locked: bool) -> Vec<MangaWithChapter>
 			let title = article
 				.select_first("h3 a[href]")
 				.and_then(|el| el.text())
-				.map(|t| clean(&t))
 				.filter(|t| !t.is_empty());
 			let manga = parse_card_anchor(&cover_link, title)?;
 			let mut fallback = None;
@@ -255,7 +254,7 @@ fn parse_home_new_series(doc: &Document) -> Vec<Manga> {
 	let Some(section) = doc.select("section").into_iter().flatten().find(|s| {
 		s.select_first("h2")
 			.and_then(|h| h.text())
-			.is_some_and(|t| clean(&t).eq_ignore_ascii_case("new series"))
+			.is_some_and(|t| t.eq_ignore_ascii_case("new series"))
 	}) else {
 		return Vec::new();
 	};
@@ -344,9 +343,13 @@ pub fn layout(doc: &Document, show_locked: bool) -> HomeLayout {
 
 impl Home for TempleScan {
 	fn get_home(&self) -> Result<HomeLayout> {
-		Ok(layout(
+		let layout = layout(
 			&fetch_doc(&format!("{BASE_URL}/"))?,
 			settings::show_locked_chapters(),
-		))
+		);
+		if layout.components.is_empty() {
+			bail!("Temple Scan's home page had no sections");
+		}
+		Ok(layout)
 	}
 }

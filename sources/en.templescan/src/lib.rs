@@ -16,7 +16,8 @@ use aidoku::{
 };
 use helpers::{
 	BASE_URL, build_request, decode_reader_tokens, extract_reader_tokens, fetch_doc, page_catalog,
-	parse_catalog, parse_comic_href, parse_series_chapters, parse_series_details, sort_catalog,
+	parse_catalog, parse_comic_href, parse_series_chapters, parse_series_details, series_card,
+	sort_catalog,
 };
 
 struct TempleScan;
@@ -32,24 +33,21 @@ impl Source for TempleScan {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		if let Some((slug, _)) = query.as_deref().and_then(parse_comic_href) {
-			let mut manga = Manga {
-				key: slug,
-				..Default::default()
-			};
-			let doc = fetch_doc(&format!("{BASE_URL}/comic/{}", manga.key))?;
-			parse_series_details(&doc, &mut manga);
-			if !manga.title.is_empty() {
-				return Ok(MangaPageResult {
-					entries: vec![manga],
-					has_next_page: false,
-				});
-			}
+		// A pasted series link answers with its card; one that fails is searched as text.
+		if let Some((slug, _)) = query
+			.as_deref()
+			.and_then(|q| q.strip_prefix(BASE_URL))
+			.and_then(parse_comic_href)
+			&& let Ok(doc) = fetch_doc(&format!("{BASE_URL}/comic/{slug}"))
+			&& let Some(manga) = series_card(&doc, slug)
+		{
+			return Ok(MangaPageResult {
+				entries: vec![manga],
+				has_next_page: false,
+			});
 		}
 
-		let query = query
-			.map(|q| q.trim().to_ascii_lowercase())
-			.filter(|q| !q.is_empty());
+		let query = query.map(|q| q.to_ascii_lowercase());
 		let mut sort = 0;
 		let mut ascending = false;
 		let mut status = None;
@@ -107,7 +105,7 @@ impl Source for TempleScan {
 	) -> Result<Manga> {
 		let doc = fetch_doc(&format!("{BASE_URL}/comic/{}", manga.key))?;
 		if needs_details {
-			parse_series_details(&doc, &mut manga);
+			parse_series_details(&doc, &mut manga)?;
 		}
 		if needs_chapters {
 			manga.chapters = Some(parse_series_chapters(

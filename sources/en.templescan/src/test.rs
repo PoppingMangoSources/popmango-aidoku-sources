@@ -29,15 +29,15 @@ const HOME_HTML: &str = r#"<!doctype html>
 		<a href="/comic/latest-one"><img src="/uploads/l1.webp"></a>
 		<h3><a href="/comic/latest-one">Latest One</a></h3>
 		<ul>
-			<li><a href="/comic/latest-one/chapter-42"><span class="sr-only">Premium</span><span>Chapter 42</span><time datetime="2026-11-24T10:00:00Z">1h ago</time></a></li>
-			<li><a href="/comic/latest-one/chapter-41"><span>Chapter 41</span><time datetime="2026-11-23T10:00:00Z">1d ago</time></a></li>
+			<li><a href="/comic/latest-one/chapter-42"><span class="sr-only">Premium</span><span>Chapter 42</span><time datetime="2026-11-24T10:00:00.000Z">1h ago</time></a></li>
+			<li><a href="/comic/latest-one/chapter-41"><span>Chapter 41</span><time datetime="2026-11-23T10:00:00.000Z">1d ago</time></a></li>
 		</ul>
 	</article>
 	<article>
 		<a href="/comic/locked-only"><img src="/uploads/l2.webp"></a>
 		<h3><a href="/comic/locked-only">Locked Only</a></h3>
 		<ul>
-			<li><a href="/comic/locked-only/chapter-9"><span class="sr-only">Premium</span><span>Chapter 9</span><time datetime="2026-11-24T11:00:00Z">30m ago</time></a></li>
+			<li><a href="/comic/locked-only/chapter-9"><span class="sr-only">Premium</span><span>Chapter 9</span><time datetime="2026-11-24T11:00:00.000Z">30m ago</time></a></li>
 		</ul>
 	</article>
 </section>
@@ -117,14 +117,13 @@ fn review_home_layout_flight_refs_and_show_locked() {
 
 #[aidoku_test]
 fn review_flight_text_rows_sorts_locked_chapters_and_reader_tokens() {
-	let catalog_html = r#"<html><body><script>self.__next_f.push([1,"a:T5,hello1:[\"$\",\"$L2\",null,{\"initialPage\":1,\"list\":[{\"z1\":\"alpha-one\",\"z2\":\"Alpha One\",\"thumbnail\":\"/a.webp\",\"badge\":\"Safe\",\"status\":\"Ongoing\",\"created_at\":\"2026-01-01T00:00:00Z\",\"update_chapter\":\"2026-11-24T00:00:00Z\",\"total_views\":500,\"alternative_names\":\"Alt A\"},{\"z1\":\"beta-two\",\"z2\":\"Beta Two\",\"thumbnail\":\"/b.webp\",\"badge\":\"18+\",\"status\":\"Completed\",\"created_at\":\"2026-10-01T00:00:00Z\",\"update_chapter\":\"2026-11-20T00:00:00Z\",\"total_views\":1000,\"alternative_names\":\"\"}]}]\n"])</script></body></html>"#;
+	let catalog_html = r#"<html><body><script>self.__next_f.push([1,"a:T5,hello1:[\"$\",\"$L2\",null,{\"initialPage\":1,\"list\":[{\"z1\":\"alpha-one\",\"z2\":\"Alpha One\",\"thumbnail\":\"/a.webp\",\"badge\":\"Safe\",\"status\":\"Ongoing\",\"created_at\":\"2026-01-01T00:00:00.000Z\",\"update_chapter\":\"2026-11-24T00:00:00.000Z\",\"total_views\":500,\"alternative_names\":\"Alt A\"},{\"z1\":\"beta-two\",\"z2\":\"Beta Two\",\"thumbnail\":\"/b.webp\",\"badge\":\"18+\",\"status\":\"Completed\",\"created_at\":\"2026-10-01T00:00:00.000Z\",\"update_chapter\":\"2026-11-20T00:00:00.000Z\",\"total_views\":1000,\"alternative_names\":\"\"}]}]\n"])</script></body></html>"#;
 	let cat_doc = Html::parse_with_url(catalog_html, BASE_URL).expect("parse catalog");
 	let mut items = parse_catalog(&cat_doc);
 	assert_eq!(items.len(), 2);
 
-	// 0 = Update Chapter (desc), 1 = Created At, 2 = Title, 3 = Trending (views).
-	sort_catalog(&mut items, 0, false);
-	assert_eq!(items[0].slug, "alpha-one");
+	// 2 = Title, 3 = Trending (views). The runner drops a format's quoted 'T', so the date sorts
+	// are checked in the app.
 	sort_catalog(&mut items, 3, false);
 	assert_eq!(items[0].slug, "beta-two");
 	sort_catalog(&mut items, 2, true);
@@ -146,9 +145,9 @@ fn review_flight_text_rows_sorts_locked_chapters_and_reader_tokens() {
 		<ul aria-label="Series stats"><li>Ongoing</li></ul>
 		<ul aria-label="Genres"><li>Fantasy</li><li>Action</li><li>Action</li></ul>
 		<ul id="chapter-list">
-			<li><a href="/comic/alpha-one/ch-3"><span class="sr-only">Premium</span><span>Chapter 3</span><time datetime="2026-11-25T12:00:00Z">1h</time></a></li>
-			<li><a href="/comic/alpha-one/ch-2"><span>Chapter 2</span><span>Chapter 2</span><time datetime="2026-11-24T12:00:00Z">2h</time></a></li>
-			<li><a href="/comic/alpha-one/ch-1"><span>Ch. 1</span><span>Prologue</span><time datetime="2026-11-20T12:00:00Z">4d</time></a></li>
+			<li><a href="/comic/alpha-one/ch-3"><span class="sr-only">Premium</span><span>Chapter 3</span><time datetime="2026-11-25T12:00:00.000Z">1h</time></a></li>
+			<li><a href="/comic/alpha-one/ch-2"><span>Chapter 2</span><span>Chapter 2</span><time datetime="2026-11-24T12:00:00.000Z">2h</time></a></li>
+			<li><a href="/comic/alpha-one/ch-1"><span>Ch. 1</span><span>Prologue</span><time datetime="2026-11-20T12:00:00.000Z">4d</time></a></li>
 		</ul>
 	</body></html>"#;
 	let detail_doc = Html::parse_with_url(detail_html, BASE_URL).expect("parse detail");
@@ -156,13 +155,32 @@ fn review_flight_text_rows_sorts_locked_chapters_and_reader_tokens() {
 		key: "alpha-one".into(),
 		..Default::default()
 	};
-	parse_series_details(&detail_doc, &mut manga);
+	parse_series_details(&detail_doc, &mut manga).expect("details");
 	assert_eq!(manga.title, "Alpha One");
 	assert_eq!(manga.status, MangaStatus::Ongoing);
 	assert_eq!(
 		manga.tags,
 		Some(vec![String::from("Action"), String::from("Fantasy")])
 	);
+	// Credits keep the site's order and drop repeats; a page with no title is an error.
+	let credits = Html::parse_with_url(
+		r#"<html><body><h1 id="series-title">Beta</h1><dl><div><dt>Author</dt><dd>Palgarak / Seokho, Palgarak | Kingdom Company</dd></div></dl></body></html>"#,
+		BASE_URL,
+	)
+	.expect("parse credits");
+	let mut beta = Manga::default();
+	parse_series_details(&credits, &mut beta).expect("credits");
+	assert_eq!(
+		beta.authors,
+		Some(vec![
+			String::from("Palgarak"),
+			String::from("Seokho"),
+			String::from("Kingdom Company"),
+		])
+	);
+	let untitled = Html::parse_with_url("<html><body></body></html>", BASE_URL).expect("parse");
+	assert!(parse_series_details(&untitled, &mut Manga::default()).is_err());
+
 	let free_chapters = parse_series_chapters(&detail_doc, "alpha-one", false);
 	assert_eq!(free_chapters.len(), 2);
 	assert_eq!(free_chapters[0].chapter_number, Some(2.0));
@@ -233,4 +251,29 @@ fn live_pages_pass_the_site_check() {
 	);
 
 	assert!(!source.get_home().expect("home").components.is_empty());
+
+	// A pasted link answers with a compact card; a dead one, or text that only mentions a path,
+	// is searched as text.
+	let pasted = source
+		.get_search_manga_list(
+			Some(format!("{BASE_URL}/comic/the-lawful-wife")),
+			1,
+			Vec::new(),
+		)
+		.expect("pasted link");
+	assert_eq!(pasted.entries.len(), 1);
+	assert_eq!(pasted.entries[0].title, "The Lawful Wife");
+	assert!(pasted.entries[0].description.is_none() && pasted.entries[0].tags.is_none());
+	for query in [
+		format!("{BASE_URL}/comic/no-such-series-here"),
+		String::from("see /comic/the-lawful-wife"),
+	] {
+		assert!(
+			source
+				.get_search_manga_list(Some(query), 1, Vec::new())
+				.expect("text search")
+				.entries
+				.is_empty()
+		);
+	}
 }

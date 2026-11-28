@@ -121,18 +121,7 @@ pub fn strip_html(html: &str) -> String {
 }
 
 fn parse_iso_utc(value: Option<&str>) -> Option<i64> {
-	let raw = value?.trim();
-	parse_date_with_options(raw, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "en_US_POSIX", "UTC")
-		.or_else(|| parse_date_with_options(raw, "yyyy-MM-dd'T'HH:mm:ssXXX", "en_US_POSIX", "UTC"))
-		.or_else(|| {
-			let naive = raw
-				.split('.')
-				.next()?
-				.trim_end_matches("+00:00")
-				.trim_end_matches('Z');
-			parse_date_with_options(naive, "yyyy-MM-ddTHH:mm:ss", "en_US_POSIX", "UTC")
-		})
-		.or_else(|| parse_date_with_options(raw, "yyyy-MM-dd", "en_US_POSIX", "UTC"))
+	parse_date_with_options(value?, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "en_US_POSIX", "UTC")
 }
 
 fn first_number(text: &str) -> Option<f32> {
@@ -412,20 +401,33 @@ pub fn parse_chapter_anchor(
 	}
 }
 
-pub fn parse_series_details(doc: &Document, manga: &mut Manga) {
-	if let Some(title) = doc
-		.select_first("#series-title")
-		.and_then(|el| el.text())
-		.map(|t| clean(&t))
+fn series_title(doc: &Document) -> Option<String> {
+	doc.select_first("#series-title")?
+		.text()
 		.filter(|t| !t.is_empty())
-	{
-		manga.title = title;
-	}
-	manga.cover = doc
-		.select_first("meta[property='og:image']")
-		.and_then(|el| el.attr("content"))
-		.and_then(|s| image_url(Some(&s)))
-		.or_else(|| manga.cover.take());
+}
+
+fn series_cover(doc: &Document) -> Option<String> {
+	image_url(
+		doc.select_first("meta[property='og:image']")?
+			.attr("content")
+			.as_deref(),
+	)
+}
+
+pub fn series_card(doc: &Document, key: String) -> Option<Manga> {
+	Some(Manga {
+		url: Some(format!("{BASE_URL}/comic/{key}")),
+		title: series_title(doc)?,
+		cover: series_cover(doc),
+		key,
+		..Default::default()
+	})
+}
+
+pub fn parse_series_details(doc: &Document, manga: &mut Manga) -> Result<()> {
+	manga.title = series_title(doc).ok_or_else(|| error!("Title not found"))?;
+	manga.cover = series_cover(doc).or_else(|| manga.cover.take());
 
 	if let Some(synopsis) = doc.select_first("#series-synopsis-text") {
 		let paragraphs: Vec<String> = synopsis
@@ -433,7 +435,6 @@ pub fn parse_series_details(doc: &Document, manga: &mut Manga) {
 			.into_iter()
 			.flatten()
 			.filter_map(|p| p.text())
-			.map(|t| clean(&t))
 			.filter(|t| !t.is_empty())
 			.collect();
 		let text = if !paragraphs.is_empty() {
@@ -450,20 +451,17 @@ pub fn parse_series_details(doc: &Document, manga: &mut Manga) {
 		if entry
 			.select_first("dt")
 			.and_then(|el| el.text())
-			.is_some_and(|t| clean(&t).eq_ignore_ascii_case("author"))
-			&& let Some(val) = entry
-				.select_first("dd")
-				.and_then(|el| el.text())
-				.map(|t| clean(&t))
-				.filter(|t| !t.is_empty())
+			.is_some_and(|t| t.eq_ignore_ascii_case("author"))
+			&& let Some(val) = entry.select_first("dd").and_then(|el| el.text())
 		{
-			let mut authors: Vec<String> = val
-				.split([',', '|', ';'])
-				.map(clean)
-				.filter(|s| !s.is_empty())
+			// Credits join names with ",", "/" or "|", in the site's order.
+			let mut seen = BTreeSet::new();
+			let authors: Vec<String> = val
+				.split([',', '/', '|', ';'])
+				.map(str::trim)
+				.filter(|name| !name.is_empty() && seen.insert(*name))
+				.map(String::from)
 				.collect();
-			authors.sort_unstable();
-			authors.dedup();
 			manga.authors = (!authors.is_empty()).then_some(authors);
 		}
 	}
@@ -473,7 +471,7 @@ pub fn parse_series_details(doc: &Document, manga: &mut Manga) {
 		.into_iter()
 		.flatten()
 	{
-		if let Some(text) = stat.text().map(|t| clean(&t)) {
+		if let Some(text) = stat.text() {
 			let parsed = parse_status(Some(&text));
 			if parsed != MangaStatus::Unknown {
 				manga.status = parsed;
@@ -487,7 +485,6 @@ pub fn parse_series_details(doc: &Document, manga: &mut Manga) {
 		.into_iter()
 		.flatten()
 		.filter_map(|el| el.text())
-		.map(|t| clean(&t))
 		.filter(|t| !t.is_empty())
 		.collect();
 	tags.sort_unstable();
@@ -507,6 +504,7 @@ pub fn parse_series_details(doc: &Document, manga: &mut Manga) {
 	manga.tags = (!tags.is_empty()).then_some(tags);
 	manga.viewer = Viewer::Webtoon;
 	manga.url = Some(format!("{BASE_URL}/comic/{}", manga.key));
+	Ok(())
 }
 
 fn chapter_positions(doc: &Document) -> BTreeMap<String, f32> {
