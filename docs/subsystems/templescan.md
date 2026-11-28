@@ -7,8 +7,10 @@ sources:
   - code: sources/en.templescan/src/helpers.rs
   - code: sources/en.templescan/src/lib.rs
   - code: sources/en.templescan/src/test.rs
+  - code: sources/en.templescan/src/settings.rs
+  - code: sources/en.templescan/res/settings.json
   - ext: https://templetoons.com/comics
-verified_at: d7e2c7d
+verified_at: 27f8122
 ---
 
 Temple Scan (templetoons.com) is a Next.js app: the catalogue, details and reader data come
