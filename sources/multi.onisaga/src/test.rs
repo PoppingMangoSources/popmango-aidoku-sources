@@ -610,7 +610,8 @@ fn review_adult_covers_use_the_main_host() {
 		r#"{"items": [
 			{"slug": "kept", "title": "Kept", "contentRating": "suggestive", "coverUrl": "https://media.onisaga.com/api/covers/kept?mv=3"},
 			{"slug": "gated", "title": "Gated", "contentRating": "explicit", "coverUrl": "https://media.onisaga.com/api/covers/gated?mv=7"},
-			{"slug": "bare", "title": "Bare", "contentRating": "mature"}
+			{"slug": "bare", "title": "Bare", "contentRating": "mature"},
+			{"slug": "pathed", "title": "Pathed", "contentRating": "mature", "coverUrl": "/api/covers/pathed?mv=105"}
 		], "nextCursor": null}"#,
 	)
 	.unwrap();
@@ -625,6 +626,7 @@ fn review_adult_covers_use_the_main_host() {
 			format!("{CDN_URL}/api/covers/kept?mv=3&w=480"),
 			format!("{BASE_URL}/api/covers/gated?mv=7&w=480"),
 			format!("{BASE_URL}/api/covers/bare?w=480"),
+			format!("{BASE_URL}/api/covers/pathed?mv=105&w=480"),
 		]
 	);
 }
@@ -680,6 +682,10 @@ fn review_reader_media_urls_and_expiry() {
 	assert_eq!(
 		media_url(gated),
 		format!("{BASE_URL}/api/media/a?k=p&r=10&P=x&p=sc&e=2000")
+	);
+	assert_eq!(
+		media_url("/api/media/b?k=p&r=11&p=sgmx&e=2000".into()),
+		format!("{BASE_URL}/api/media/b?k=p&r=11&p=sgmx&e=2000")
 	);
 
 	let tagged = format!("{safe}#oni=10.2");

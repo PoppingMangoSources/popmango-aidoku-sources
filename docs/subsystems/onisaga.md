@@ -38,7 +38,7 @@ Every RPC call sends `{"json": input}` with `Origin: https://onisaga.com` and
   `(page:serialized_params, cursor)` pairs rather than one shared cursor
   (`sources/multi.onisaga/src/lib.rs:44`). The `readable` check filter uses `"title": "Availability"`
   and `"name": "Readable Chapters"` with `"hideFromHeader": true` to match OniSaga's `/browse`
-  panel (`sources/multi.onisaga/res/filters.json:135`).
+  panel (`sources/multi.onisaga/res/filters.json:118`).
 - **Dynamic taxonomy (`Genres` and `Excluded Genres`)**: `POST /api/rpc/catalog/taxonomy` (`{}`)
   is fetched once on demand and cached in `RefCell<Option<Vec<TermOption>>>`
   (`sources/multi.onisaga/src/filters.rs:15`), populating `Genres` via `DynamicFilters`
@@ -109,7 +109,12 @@ clearing `origins` or `languages` returns empty results before issuing any netwo
 > (`x-art: blur`) because the host-only age cookie never reaches it; the site itself loads adult
 > covers from `onisaga.com/api/covers/`. `build_work` moves Mature and Explicit covers to
 > `BASE_URL`, where the app adds the shared cookie to the cover request
-> (`sources/multi.onisaga/src/models.rs:286`). Safe and Suggestive covers stay on the media host.
+> (`sources/multi.onisaga/src/models.rs:285`). Safe and Suggestive covers stay on the media host.
+
+> ⚠️ Once the age is confirmed, the API returns every Mature and Explicit `coverUrl` as a bare
+> path (`/api/covers/<slug>?mv=N`), while Safe and Suggestive ones stay absolute media-host urls
+> (all 15 adult and 189 other cards in a signed-in capture, 2026-11-28). Aidoku cannot load a
+> path, so `build_work` prefixes `BASE_URL`; without that, every adult cover is blank.
 
 > ⚠️ A cover without `w=` is the full original (472 KB for one JPEG, against 65 KB as WebP at
 > `w=480`). The site's own cards request `w=160` to `w=480`, so `build_work` appends `w=480` with
@@ -121,7 +126,9 @@ clearing `origins` or `languages` returns empty results before issuing any netwo
 
 > ⚠️ Safe and Suggestive page URLs carry `p=sg` and load directly from `media.onisaga.com`;
 > age-gated page URLs carry `p=sc` (or lack `p=sg`) and must be rewritten to `onisaga.com` because
-> the `__Host-` age cookie is host-only (`sources/multi.onisaga/src/helpers.rs:295`).
+> the `__Host-` age cookie is host-only (`sources/multi.onisaga/src/helpers.rs:299`). With the age
+> confirmed, adult chapters' page urls come as bare paths (`/api/media/<id>?...&p=sgmx...`), which
+> `media_url` prefixes with `BASE_URL` (signed-in capture, 2026-11-28).
 
 > ⚠️ Page URLs carry short-lived `e=<unix_expiry>` signatures. `get_page_list` appends
 > `#oni=<releaseId>.<ord>`, and `ImageRequestProvider` strips that fragment, adds

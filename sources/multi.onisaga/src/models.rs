@@ -280,8 +280,13 @@ fn build_work(
 	if slug.is_empty() {
 		bail!("OniSaga returned a title without a slug");
 	}
-	let cover = cover.unwrap_or_else(|| format!("{CDN_URL}/api/covers/{slug}"));
-	// The media host blurs adult covers; the main host carries the age cookie.
+	// Adult covers come as a path on the main host, which carries the age cookie; the media host
+	// would blur them.
+	let cover = match cover {
+		Some(path) if path.starts_with('/') => format!("{BASE_URL}{path}"),
+		Some(url) => url,
+		None => format!("{CDN_URL}/api/covers/{slug}"),
+	};
 	let cover = if matches!(rating, Some("mature" | "explicit")) {
 		cover.replacen(CDN_URL, BASE_URL, 1)
 	} else {

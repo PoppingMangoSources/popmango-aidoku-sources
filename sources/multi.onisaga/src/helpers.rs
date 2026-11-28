@@ -1,7 +1,7 @@
 use crate::api::{BASE_URL, CDN_URL};
 use aidoku::{
 	ContentRating, MangaStatus, Viewer,
-	alloc::{String, Vec},
+	alloc::{String, Vec, format},
 	imports::std::{parse_date, parse_date_with_options},
 };
 
@@ -294,8 +294,12 @@ pub fn plain_synopsis(text: &str) -> Option<String> {
 	(!joined.is_empty()).then_some(joined)
 }
 
-// Safe pages carry `p=sg` and load from the CDN; gated pages need the main host's `__Host-` cookie.
+// Safe pages carry `p=sg` and load from the CDN; gated pages need the main host's `__Host-` cookie,
+// and with it confirmed the site hands them out as paths on that host.
 pub fn media_url(url: String) -> String {
+	if url.starts_with('/') {
+		return format!("{BASE_URL}{url}");
+	}
 	let safe = url
 		.split_once('?')
 		.is_some_and(|(_, q)| q.split('&').any(|part| part == "p=sg"));
