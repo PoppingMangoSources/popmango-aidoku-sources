@@ -1,10 +1,10 @@
 use super::{
 	TempleScan,
 	helpers::{
-		BASE_URL, decode_reader_tokens, extract_reader_tokens, is_challenge_page, page_catalog,
-		parse_catalog, parse_series_chapters, parse_series_details, sort_catalog,
+		BASE_URL, build_home_layout, decode_reader_tokens, extract_reader_tokens,
+		is_challenge_page, page_catalog, parse_catalog, parse_series_chapters,
+		parse_series_details, sort_catalog,
 	},
-	home::layout,
 	tokens,
 };
 use aidoku::{
@@ -51,8 +51,8 @@ const HOME_HTML: &str = r#"<!doctype html>
 #[aidoku_test]
 fn review_home_layout_flight_refs_and_show_locked() {
 	let doc = Html::parse_with_url(HOME_HTML, BASE_URL).expect("parse home");
-	let built = layout(&doc, false);
-	let titles: Vec<&str> = built
+	let layout = build_home_layout(&doc, false);
+	let titles: Vec<&str> = layout
 		.components
 		.iter()
 		.filter_map(|c| c.title.as_deref())
@@ -67,7 +67,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		]
 	);
 
-	match &built.components[0].value {
+	match &layout.components[0].value {
 		HomeComponentValue::BigScroller { entries, .. } => {
 			assert_eq!(entries.len(), 1);
 			assert_eq!(entries[0].key, "solo-hunter");
@@ -75,7 +75,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		}
 		_ => panic!("Featured must be BigScroller"),
 	}
-	match &built.components[1].value {
+	match &layout.components[1].value {
 		HomeComponentValue::Scroller { entries, .. } => {
 			assert_eq!(entries.len(), 1);
 			assert_eq!(entries[0].title, "Week King");
@@ -83,7 +83,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		}
 		_ => panic!("Trending This Week must be Scroller"),
 	}
-	match &built.components[2].value {
+	match &layout.components[2].value {
 		HomeComponentValue::MangaChapterList {
 			page_size, entries, ..
 		} => {
@@ -96,7 +96,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		}
 		_ => panic!("Latest Updates must be MangaChapterList"),
 	}
-	match &built.components[3].value {
+	match &layout.components[3].value {
 		HomeComponentValue::Scroller { entries, .. } => {
 			assert_eq!(entries.len(), 1);
 			assert_eq!(entries[0].title, "Brand New");
@@ -104,7 +104,7 @@ fn review_home_layout_flight_refs_and_show_locked() {
 		_ => panic!("New Series must be Scroller"),
 	}
 
-	let layout_with_locked = layout(&doc, true);
+	let layout_with_locked = build_home_layout(&doc, true);
 	if let HomeComponentValue::MangaChapterList { entries, .. } =
 		&layout_with_locked.components[2].value
 	{
