@@ -1,16 +1,29 @@
 use aidoku::alloc::{String, Vec, format, string::ToString};
+use base64::{
+	Engine,
+	alphabet::URL_SAFE,
+	engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
+};
 
 pub const SEED: &str = "di183bafh964gce5072";
 
 const POSITION_MULTIPLIER: u32 = 795_580_989;
 const SEED_MULTIPLIER: u32 = 2_048_675_417;
-const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 const DECLARATION_WINDOW: usize = 600;
 const MODULE_WINDOW: usize = 8 * 1024;
+// Tokens are unpadded base64url.
+const TOKENS: GeneralPurpose = GeneralPurpose::new(
+	&URL_SAFE,
+	GeneralPurposeConfig::new()
+		.with_decode_allow_trailing_bits(true)
+		.with_decode_padding_mode(DecodePaddingMode::Indifferent),
+);
 
 pub fn decode(token: &str, index: usize, seed: &str) -> Option<String> {
 	let mut state = initial_state(index, seed)?;
-	let bytes: Vec<u8> = unscramble(token)
+	let bytes: Vec<u8> = TOKENS
+		.decode(token)
+		.ok()?
 		.into_iter()
 		.map(|byte| {
 			state = xorshift(state);
@@ -36,28 +49,6 @@ fn xorshift(mut state: u32) -> u32 {
 	state ^= state >> 17;
 	state ^= state << 5;
 	state
-}
-
-fn unscramble(token: &str) -> Vec<u8> {
-	let mut bytes = Vec::with_capacity(token.len() * 3 / 4);
-	let mut bits = 0_u32;
-	let mut count = 0_u32;
-	for ch in token.bytes() {
-		let Some(value) = ALPHABET
-			.iter()
-			.position(|&letter| letter == ch)
-			.and_then(|v| u32::try_from(v).ok())
-		else {
-			continue;
-		};
-		bits = ((bits << 6) | value) & 0xFFFF;
-		count += 6;
-		if count >= 8 {
-			count -= 8;
-			bytes.push((bits >> count) as u8);
-		}
-	}
-	bytes
 }
 
 pub fn seed_from_chunk(chunk: &str, module: u64) -> Option<String> {
@@ -107,18 +98,5 @@ pub fn scramble(address: &str, index: usize, seed: &str) -> String {
 			byte ^ (state as u8)
 		})
 		.collect();
-	let mut token = String::new();
-	let (mut bits, mut count) = (0_u32, 0_u32);
-	for byte in bytes {
-		bits = (bits << 8) | u32::from(byte);
-		count += 8;
-		while count >= 6 {
-			count -= 6;
-			token.push(char::from(ALPHABET[((bits >> count) & 63) as usize]));
-		}
-	}
-	if count > 0 {
-		token.push(char::from(ALPHABET[((bits << (6 - count)) & 63) as usize]));
-	}
-	token
+	base64::prelude::BASE64_URL_SAFE_NO_PAD.encode(bytes)
 }

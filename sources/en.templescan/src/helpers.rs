@@ -454,7 +454,6 @@ pub fn parse_series_details(doc: &Document, manga: &mut Manga) -> Result<()> {
 			.is_some_and(|t| t.eq_ignore_ascii_case("author"))
 			&& let Some(val) = entry.select_first("dd").and_then(|el| el.text())
 		{
-			// Credits join names with ",", "/" or "|", in the site's order.
 			let mut seen = BTreeSet::new();
 			let authors: Vec<String> = val
 				.split([',', '/', '|', ';'])

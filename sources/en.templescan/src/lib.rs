@@ -33,7 +33,6 @@ impl Source for TempleScan {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		// A pasted series link answers with its card; one that fails is searched as text.
 		if let Some((slug, _)) = query
 			.as_deref()
 			.and_then(|q| q.strip_prefix(BASE_URL))
