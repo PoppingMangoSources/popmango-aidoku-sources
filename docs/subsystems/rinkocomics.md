@@ -11,7 +11,7 @@ sources:
   - code: sources/en.rinkocomics/src/test.rs
   - code: scripts/check-sources.py
   - ext: https://rinkocomics.com/comic/
-verified_at: 9bd5484
+verified_at: 626ef2d
 ---
 
 Rinko Comics runs the ComicWorld WordPress theme and serves both comics (`/comic/<slug>/`,
@@ -45,3 +45,7 @@ sandbox can reach, so the live tests in `src/test.rs` run here.
 > ⚠️ Dates are "Sep 27, 2026" on series pages and ages ("7h", "1mo") on home; a paid comic row
 > ends with a "Free on Dec 27" span, so the date is the last span that parses. The runner returns
 > `None` for any date-only format, so tests assert only the ages.
+
+> ⚠️ Novel titles on the site already end in "[Novel]". `display_title`
+> (`sources/en.rinkocomics/src/helpers.rs:73`) strips that suffix, as the merged Iken template
+> does, then adds "(Novel)" when `labelNovels` is on; appending alone showed "[Novel] (Novel)".
